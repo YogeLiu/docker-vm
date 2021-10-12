@@ -10,9 +10,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"chainmaker.org/chainmaker-go/utils"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/utils/v2"
 )
 
 const (

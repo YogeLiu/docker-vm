@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/config"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/logger"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"

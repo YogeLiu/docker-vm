@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "chainmaker.org/chainmaker-go/docker-go/dockercontainer/pb/protogo";
+option go_package = "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo";
 
 service CDMRpc {
     rpc CDMCommunicate(stream CDMMessage) returns(stream CDMMessage) {};

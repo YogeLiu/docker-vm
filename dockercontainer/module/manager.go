@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package module
 
 import (
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/module/core"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/module/rpc"
-	security2 "chainmaker.org/chainmaker-go/docker-go/dockercontainer/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/core"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/rpc"
+	security2 "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/security"
 	"go.uber.org/zap"
 )
 

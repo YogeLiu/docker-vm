@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/config"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/logger"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/utils"
 	"go.uber.org/zap"
 )
 

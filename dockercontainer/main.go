@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/logger"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/module"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module"
 	"go.uber.org/zap"
 )
 

@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"io"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/module/core"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/core"
 
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 	"go.uber.org/zap"
 )
 

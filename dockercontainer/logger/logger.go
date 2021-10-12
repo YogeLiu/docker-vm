@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -20,6 +20,7 @@ import (
 
 const (
 	// docker module for logging
+
 	MODULE_MANAGER          = "[Docker MANAGER]"
 	MODULE_SCHEDULER        = "[Docker Scheduler]"
 	MODULE_USERCONTROLLER   = "[Docker User Controller]"

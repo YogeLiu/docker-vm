@@ -2,8 +2,8 @@ package protocol
 
 import (
 	SDKProtogo "chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/module/security"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 )
 
 type Scheduler interface {

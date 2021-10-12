@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/config"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"

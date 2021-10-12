@@ -13,10 +13,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/config"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/pb/protogo"
-	"chainmaker.org/chainmaker-go/localconf"
-	"chainmaker.org/chainmaker-go/logger"
+	"chainmaker.org/chainmaker/localconf/v2"
+	"chainmaker.org/chainmaker/logger/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 	"google.golang.org/grpc"
 )
 

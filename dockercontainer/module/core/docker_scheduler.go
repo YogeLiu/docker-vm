@@ -11,15 +11,15 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/utils"
 
 	SDKProtogo "chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
 
 	"golang.org/x/sync/singleflight"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/logger"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/pb/protogo"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
 	"go.uber.org/zap"
 )
 

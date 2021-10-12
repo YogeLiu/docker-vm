@@ -9,7 +9,7 @@ import (
 
 	"chainmaker.org/chainmaker/protocol/v2"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 
 	"go.uber.org/zap"
 )

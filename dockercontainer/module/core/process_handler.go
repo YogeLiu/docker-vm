@@ -13,12 +13,12 @@ import (
 
 	protocol2 "chainmaker.org/chainmaker/protocol/v2"
 
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/utils"
 
 	SDKProtogo "chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/logger"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/pb/protogo"
-	"chainmaker.org/chainmaker-go/docker-go/dockercontainer/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 )

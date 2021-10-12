@@ -1,15 +1,17 @@
-module chainmaker.org/chainmaker-go/docker-go
+module chainmaker.org/chainmaker/vm-docker-go
 
 go 1.15
 
+// logger - develop_dockervm
+// localconf - develop_dockervm
+
 require (
-	chainmaker.org/chainmaker-go/docker-go/dockercontainer v0.0.0-00010101000000-000000000000
-	chainmaker.org/chainmaker-go/localconf v0.0.0-00010101000000-000000000000
-	chainmaker.org/chainmaker-go/logger v0.0.0
-	chainmaker.org/chainmaker-go/utils v0.0.0-00010101000000-000000000000
-	chainmaker.org/chainmaker/common v0.0.0-20210722032200-380ced605d25
-	chainmaker.org/chainmaker/pb-go/v2 v2.0.0
-	chainmaker.org/chainmaker/protocol/v2 v2.0.0
+	chainmaker.org/chainmaker/localconf/v2 v2.0.0-20211012132541-cc29b98ee654
+	chainmaker.org/chainmaker/logger/v2 v2.0.1-0.20211012134336-19adbc1fd8d2
+	chainmaker.org/chainmaker/pb-go/v2 v2.0.1-0.20211011124513-b828aaef61ff
+	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20210927062046-68813f263c0b
+	chainmaker.org/chainmaker/utils/v2 v2.0.0-20210916084713-abd13154c26b
+	chainmaker.org/chainmaker/vm-docker-go/dockercontainer v0.0.0-00010101000000-000000000000
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/Microsoft/hcsshim v0.8.17 // indirect
 	github.com/containerd/containerd v1.5.2 // indirect
@@ -22,9 +24,8 @@ require (
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/cobra v1.1.1
-	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.7.1
+	github.com/spf13/cobra v1.1.1 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
 	golang.org/x/time v0.0.0-20210608053304-ed9ce3a009e4 // indirect
 	golang.org/x/tools v0.1.5 // indirect
@@ -33,10 +34,5 @@ require (
 
 replace (
 	chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk => ./dockercontainer/pb_sdk
-
-	chainmaker.org/chainmaker-go/docker-go/dockercontainer => ./dockercontainer
-	chainmaker.org/chainmaker-go/localconf => ../../conf/localconf
-	chainmaker.org/chainmaker-go/logger => ../../logger
-	chainmaker.org/chainmaker-go/utils => ../../utils
-
+	chainmaker.org/chainmaker/vm-docker-go/dockercontainer => ./dockercontainer
 )
