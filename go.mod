@@ -6,6 +6,7 @@ go 1.15
 // localconf - develop_dockervm
 
 require (
+	chainmaker.org/chainmaker/common/v2 v2.0.1-0.20211011130949-b332c3193ef5 // indirect
 	chainmaker.org/chainmaker/localconf/v2 v2.0.0-20211012132541-cc29b98ee654
 	chainmaker.org/chainmaker/logger/v2 v2.0.1-0.20211012134336-19adbc1fd8d2
 	chainmaker.org/chainmaker/pb-go/v2 v2.0.1-0.20211011124513-b828aaef61ff
@@ -24,8 +25,6 @@ require (
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/cobra v1.1.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
 	golang.org/x/time v0.0.0-20210608053304-ed9ce3a009e4 // indirect
 	golang.org/x/tools v0.1.5 // indirect
