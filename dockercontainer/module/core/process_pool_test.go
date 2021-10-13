@@ -7,22 +7,38 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 	"go.uber.org/zap"
 	"reflect"
 	"sync"
 	"testing"
 )
 
+var (
+	processName = "processName1"
+)
+
 func TestNewProcessPool(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir)
 	tests := []struct {
 		name string
 		want *ProcessPool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testNewProcessPool",
+			want: &ProcessPool{
+				ProcessTable: sync.Map{},
+				logger:       log,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewProcessPool(); !reflect.DeepEqual(got, tt.want) {
+			got := NewProcessPool()
+			got.logger = log
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewProcessPool() = %v, want %v", got, tt.want)
 			}
 		})
@@ -30,10 +46,21 @@ func TestNewProcessPool(t *testing.T) {
 }
 
 func TestProcessPool_CheckProcessExist(t *testing.T) {
+	var processName string = "processName"
+	var processNameFalse string = "processName1"
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir)
+
+	processTableValue := &ProcessContext{
+		processList: [protocol.CallContractDepth + 1]*Process{},
+	}
+
+	processTable := sync.Map{}
+	processTable.Store(processName, processTableValue)
 	type fields struct {
 		ProcessTable sync.Map
 		logger       *zap.SugaredLogger
 	}
+
 	type args struct {
 		processName string
 	}
@@ -44,8 +71,35 @@ func TestProcessPool_CheckProcessExist(t *testing.T) {
 		want   *Process
 		want1  bool
 	}{
-		// TODO: Add test cases.
+
+		{
+			name: "testCheckProcessExist",
+			fields: fields{
+				ProcessTable: processTable,
+				logger:       log,
+			},
+			args: args{
+				processName: processName,
+			},
+			want:  nil,
+			want1: true,
+		},
+
+
+		{
+			name: "testCheckProcessExistFalse",
+			fields: fields{
+				ProcessTable: processTable,
+				logger:       log,
+			},
+			args: args{
+				processName: processNameFalse,
+			},
+			want:  nil,
+			want1: false,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pp := &ProcessPool{
@@ -64,6 +118,15 @@ func TestProcessPool_CheckProcessExist(t *testing.T) {
 }
 
 func TestProcessPool_RegisterCrossProcess(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir)
+	var processTableKey string = "processTableKey1"
+	processTableValue := &ProcessContext{
+		processList: [6]*Process{},
+		size:        1,
+	}
+	processTable := sync.Map{}
+	processTable.Store(processTableKey, processTableValue)
+
 	type fields struct {
 		ProcessTable sync.Map
 		logger       *zap.SugaredLogger
@@ -77,19 +140,31 @@ func TestProcessPool_RegisterCrossProcess(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testRegisterCrossProcess",
+			fields: fields{
+				ProcessTable: processTable,
+				logger:       log,
+			},
+			args: args{
+				initialProcessName: processTableKey,
+				calledProcess:      &Process{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = &ProcessPool{
+			pp := &ProcessPool{
 				ProcessTable: tt.fields.ProcessTable,
 				logger:       tt.fields.logger,
 			}
+			pp.RegisterCrossProcess(tt.args.initialProcessName, tt.args.calledProcess)
 		})
 	}
 }
 
 func TestProcessPool_RegisterNewProcess(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir)
 	type fields struct {
 		ProcessTable sync.Map
 		logger       *zap.SugaredLogger
@@ -103,70 +178,146 @@ func TestProcessPool_RegisterNewProcess(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testRegisterNewProcess",
+			fields: fields{
+				ProcessTable: sync.Map{},
+				logger:       log,
+			},
+			args: args{
+				processName: "processName1",
+				process:     nil,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = &ProcessPool{
+			pp := &ProcessPool{
 				ProcessTable: tt.fields.ProcessTable,
 				logger:       tt.fields.logger,
 			}
+			pp.RegisterNewProcess(tt.args.processName, tt.args.process)
 		})
 	}
 }
 
 func TestProcessPool_ReleaseCrossProcess(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir)
+
+	processTable := sync.Map{}
+	processTableKey := "processTableKey1"
+	processTableValue := &ProcessContext{
+		processList: [6]*Process{},
+		size:        1,
+	}
+
+	processTable.Store(processTableKey, processTableValue)
 	type fields struct {
 		ProcessTable sync.Map
 		logger       *zap.SugaredLogger
 	}
+
 	type args struct {
 		initialProcessName string
 		currentHeight      uint32
 	}
+
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testReleaseCrossProcess",
+			fields: fields{
+				ProcessTable: processTable,
+				logger:       log,
+			},
+			args: args{
+				initialProcessName: processTableKey,
+				currentHeight:      1,
+			},
+		},
+
+		{
+			name: "testReleaseCrossProcessFalse",
+			fields: fields{
+				ProcessTable: sync.Map{},
+				logger:       log,
+			},
+			args: args{
+				initialProcessName: processTableKey,
+				currentHeight:      0,
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = &ProcessPool{
+			pp := &ProcessPool{
 				ProcessTable: tt.fields.ProcessTable,
 				logger:       tt.fields.logger,
 			}
+			pp.ReleaseCrossProcess(tt.args.initialProcessName, tt.args.currentHeight)
 		})
 	}
 }
 
 func TestProcessPool_ReleaseProcess(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir)
+	processTable := sync.Map{}
+	processTableKey := processName
+	processTable.Store(processTableKey, "")
+
 	type fields struct {
 		ProcessTable sync.Map
 		logger       *zap.SugaredLogger
 	}
+
 	type args struct {
 		processName string
 	}
+
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testReleaseProcess",
+			fields: fields{
+				ProcessTable: processTable,
+				logger:       log,
+			},
+			args: args{
+				processName: processName,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = &ProcessPool{
+			pp := &ProcessPool{
 				ProcessTable: tt.fields.ProcessTable,
 				logger:       tt.fields.logger,
 			}
+			pp.ReleaseProcess(tt.args.processName)
 		})
 	}
 }
 
 func TestProcessPool_RetrieveHandlerFromProcess(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir)
+	processTable := sync.Map{}
+	processTableKey := processName
+	processTableValue := &ProcessContext{
+		processList: [6]*Process{
+			{Handler: &ProcessHandler{}},
+		},
+		size: 0,
+	}
+
+	processTable.Store(processTableKey, processTableValue)
+
 	type fields struct {
 		ProcessTable sync.Map
 		logger       *zap.SugaredLogger
@@ -180,7 +331,18 @@ func TestProcessPool_RetrieveHandlerFromProcess(t *testing.T) {
 		args   args
 		want   *ProcessHandler
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testRetrieveHandlerFromProcess",
+			fields: fields{
+				ProcessTable: processTable,
+				logger:       log,
+			},
+			args: args{
+				processName: processName,
+			},
+
+			want: &ProcessHandler{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -196,6 +358,18 @@ func TestProcessPool_RetrieveHandlerFromProcess(t *testing.T) {
 }
 
 func TestProcessPool_RetrieveProcessContext(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir)
+	processTable := sync.Map{}
+	processTableKey := processName
+	processTableValue := &ProcessContext{
+		processList: [6]*Process{
+			{Handler: &ProcessHandler{}},
+		},
+		size: 0,
+	}
+
+	processTable.Store(processTableKey, processTableValue)
+
 	type fields struct {
 		ProcessTable sync.Map
 		logger       *zap.SugaredLogger
@@ -209,8 +383,19 @@ func TestProcessPool_RetrieveProcessContext(t *testing.T) {
 		args   args
 		want   *ProcessContext
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testRetrieveProcessContext",
+			fields: fields{
+				ProcessTable: processTable,
+				logger:       log,
+			},
+			args: args{
+				initialProcessName: processName,
+			},
+			want: processTableValue,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pp := &ProcessPool{
@@ -234,7 +419,18 @@ func TestProcessPool_newProcessContext(t *testing.T) {
 		fields fields
 		want   *ProcessContext
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testNewProcessContext",
+			fields: fields{
+				ProcessTable: sync.Map{},
+				logger:       nil,
+			},
+
+			want: &ProcessContext{
+				processList: [protocol.CallContractDepth + 1]*Process{},
+				size:        0,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
