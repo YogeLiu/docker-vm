@@ -651,6 +651,9 @@ func (m *DockerManager) validateConfig(config *localconf.CMConfig) (bool, error)
 		m.Log.Errorf("doesn't set docker container path")
 		return false, nil
 	}
+
+	fmt.Println("current working directory------")
+	fmt.Println(os.Getwd())
 	dockerContainerDir = dockerConfig.DockerContainerDir
 
 	// host mount directory
