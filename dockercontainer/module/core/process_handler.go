@@ -15,9 +15,9 @@ import (
 
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/utils"
 
-	SDKProtogo "chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb_sdk/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
