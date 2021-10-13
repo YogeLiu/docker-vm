@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 
+	"chainmaker.org/chainmaker/protocol/v2"
+
 	client2 "chainmaker.org/chainmaker/vm-docker-go/client"
 
 	"chainmaker.org/chainmaker/localconf/v2"
@@ -137,7 +139,7 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 	return newDockerManager
 }
 
-func (m *DockerManager) NewRuntimeInstance(chainId string, logger *logger.CMLogger) (*RuntimeInstance, error) {
+func (m *DockerManager) NewRuntimeInstance(chainId string, logger protocol.Logger) (*RuntimeInstance, error) {
 	return &RuntimeInstance{
 		ChainId: chainId,
 		Client:  m.CDMClient,

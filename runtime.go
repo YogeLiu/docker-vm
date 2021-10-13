@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"chainmaker.org/chainmaker/localconf/v2"
-	"chainmaker.org/chainmaker/logger/v2"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
@@ -41,7 +40,7 @@ type CDMClient interface {
 type RuntimeInstance struct {
 	ChainId string // chain id
 	Client  CDMClient
-	Log     *logger.CMLogger
+	Log     protocol.Logger
 }
 
 // Invoke process one tx in docker and return result
