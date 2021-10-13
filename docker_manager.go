@@ -215,10 +215,6 @@ func (m *DockerManager) StartDockerVM() error {
 			return
 		}
 	}()
-
-	state := m.CDMClient.StartClient()
-	m.CDMState = state
-
 	return nil
 }
 
@@ -254,6 +250,10 @@ func (m *DockerManager) StartCDMClient() {
 	m.CDMState = state
 
 	m.Log.Debugf("cdm client state is: %v", state)
+}
+
+func (m *DockerManager) GetCDMState() bool {
+	return m.CDMState
 }
 
 // ------------------ image functions --------------
