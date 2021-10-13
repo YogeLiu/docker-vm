@@ -6,6 +6,7 @@
 package core
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
 	"fmt"
 	"math"
 	"strconv"
@@ -65,7 +66,7 @@ func NewProcessHandler(txRequest *protogo.TxRequest, scheduler protocol.Schedule
 	process ProcessInterface) *ProcessHandler {
 
 	handler := &ProcessHandler{
-		logger:        logger.NewDockerLogger(logger.MODULE_DMS_HANDLER),
+		logger:        logger.NewDockerLogger(logger.MODULE_DMS_HANDLER, config.DockerLogDir),
 		TxRequest:     txRequest,
 		state:         created,
 		scheduler:     scheduler,

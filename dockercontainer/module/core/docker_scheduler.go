@@ -6,6 +6,7 @@
 package core
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
 	"fmt"
 	"strconv"
 	"sync"
@@ -52,11 +53,11 @@ type DockerScheduler struct {
 // NewDockerScheduler new docker scheduler
 func NewDockerScheduler(userController protocol.UserController, processPool *ProcessPool) *DockerScheduler {
 
-	contractManager := NewContractManager()
+	contractManager := NewContractManager(config.DockerLogDir)
 
 	scheduler := &DockerScheduler{
 		userController:  userController,
-		logger:          logger.NewDockerLogger(logger.MODULE_SCHEDULER),
+		logger:          logger.NewDockerLogger(logger.MODULE_SCHEDULER, config.DockerLogDir),
 		processPool:     processPool,
 		contractManager: contractManager,
 

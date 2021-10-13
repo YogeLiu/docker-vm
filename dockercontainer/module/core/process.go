@@ -71,7 +71,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 		TxWaitingQueue:  make(chan *protogo.TxRequest, processWaitingQueueSize),
 		txTrigger:       make(chan bool),
 		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS),
+		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
 		Handler:              nil,
 		user:                 user,
@@ -98,7 +98,7 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 		TxWaitingQueue:  nil,
 		txTrigger:       nil,
 		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS),
+		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
 		Handler:              nil,
 		user:                 user,
@@ -145,7 +145,7 @@ func (p *Process) LaunchProcess() error {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.Uid),
 		},
-		Cloneflags: syscall.CLONE_NEWPID,
+		//Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
 
@@ -243,7 +243,7 @@ func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 
 // todo check need close after process end
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
-	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
+	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
 
 	rd := bufio.NewReader(contractPipe)
 	for {

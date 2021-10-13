@@ -5,6 +5,7 @@
 package core
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
 	"sync"
 
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -28,7 +29,7 @@ func NewProcessPool() *ProcessPool {
 
 	return &ProcessPool{
 		ProcessTable: sync.Map{},
-		logger:       logger.NewDockerLogger(logger.MODULE_PROCESS_POOL),
+		logger:       logger.NewDockerLogger(logger.MODULE_PROCESS_POOL, config.DockerLogDir),
 	}
 }
 

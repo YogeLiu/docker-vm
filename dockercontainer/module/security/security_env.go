@@ -32,7 +32,7 @@ type SecurityEnv struct {
 
 func NewSecurityEnv() *SecurityEnv {
 	return &SecurityEnv{
-		logger: logger.NewDockerLogger(logger.MODULE_SECURITY_ENV),
+		logger: logger.NewDockerLogger(logger.MODULE_SECURITY_ENV, config.DockerLogDir),
 	}
 }
 

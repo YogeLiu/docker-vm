@@ -39,7 +39,7 @@ func NewUsersManager() *UsersManager {
 
 	usersManager := &UsersManager{
 		userQueue: userQueue,
-		logger:    logger.NewDockerLogger(logger.MODULE_USERCONTROLLER),
+		logger:    logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, config.DockerLogDir),
 		userNum:   userNum,
 	}
 

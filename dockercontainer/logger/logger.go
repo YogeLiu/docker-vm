@@ -42,7 +42,7 @@ var (
 	showLineFromConfig         bool
 )
 
-func InitialConfig() {
+func InitialConfig(logPath string) {
 
 	// init show line config
 	showLineFromConfig = true
@@ -59,7 +59,7 @@ func InitialConfig() {
 	}
 
 	logName := config.LogFileName
-	logPathFromConfig = filepath.Join(config.DockerLogDir, logName)
+	logPathFromConfig = filepath.Join(logPath, logName)
 
 	logLevelFromConfig = os.Getenv("Log_Level")
 	if logLevelFromConfig == "" {
@@ -68,9 +68,9 @@ func InitialConfig() {
 	config.SandBoxLogLevel = logLevelFromConfig
 }
 
-func NewDockerLogger(name string) *zap.SugaredLogger {
+func NewDockerLogger(name ,logPath string) *zap.SugaredLogger {
 
-	InitialConfig()
+	InitialConfig(logPath)
 
 	var encoder zapcore.Encoder
 	if name == MODULE_CONTRACT {
