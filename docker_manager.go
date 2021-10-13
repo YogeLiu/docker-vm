@@ -220,8 +220,8 @@ func (m *DockerManager) StartDockerVM() error {
 	return nil
 }
 
-// StopAndRemoveVM stop docker vm and remove container, image
-func (m *DockerManager) StopAndRemoveVM() error {
+// StopAndRemoveDockerVM stop docker vm and remove container, image
+func (m *DockerManager) StopAndRemoveDockerVM() error {
 	var err error
 
 	err = m.stopContainer()
