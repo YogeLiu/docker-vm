@@ -145,8 +145,8 @@ func (m *DockerManager) NewRuntimeInstance(chainId string, logger *logger.CMLogg
 	}
 }
 
-// StartContainer Start Container
-func (m *DockerManager) StartContainer() error {
+// StartDockerVM Start Docker VM
+func (m *DockerManager) StartDockerVM() error {
 	m.Log.Info("start docker vm...")
 	var err error
 
