@@ -4,7 +4,7 @@ Copyright (C) BABEC. All rights reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package dockercontroller
+package docker_go
 
 import (
 	"bufio"
@@ -21,10 +21,11 @@ import (
 	"strings"
 	"sync"
 
+	client2 "chainmaker.org/chainmaker/vm-docker-go/client"
+
 	"chainmaker.org/chainmaker/localconf/v2"
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontroller/module"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -65,7 +66,7 @@ type DockerManager struct {
 	client *client.Client
 
 	Log       *logger.CMLogger
-	CDMClient *module.CDMClient
+	CDMClient *client2.CDMClient
 	CDMState  bool
 
 	config *localconf.CMConfig
@@ -115,7 +116,7 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 
 	newDockerManager.ctx = context.Background()
 	newDockerManager.client = cli
-	newDockerManager.CDMClient = module.NewCDMClient(chainId, chainmakerConfig)
+	newDockerManager.CDMClient = client2.NewCDMClient(chainId, chainmakerConfig)
 	newDockerManager.imageName = imageName
 	newDockerManager.containerName = containerName
 	newDockerManager.sourceDir = sourceDir
@@ -204,6 +205,9 @@ func (m *DockerManager) StartContainer() error {
 			return
 		}
 	}()
+
+	state := m.CDMClient.StartClient()
+	m.CDMState = state
 
 	return nil
 }

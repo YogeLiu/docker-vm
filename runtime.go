@@ -71,7 +71,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		return r.errorResult(contractResult, err, err.Error())
 	}
 
-	for key, _ := range parameters {
+	for key := range parameters {
 		if strings.Contains(key, "CONTRACT") {
 			delete(parameters, key)
 		}
