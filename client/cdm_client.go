@@ -62,6 +62,10 @@ func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessag
 	c.recvChMap[txId] = recvCh
 }
 
+func (c *CDMClient) GetCMConfig() *localconf.CMConfig {
+	return c.config
+}
+
 func (c *CDMClient) deleteRecvChan(txId string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()

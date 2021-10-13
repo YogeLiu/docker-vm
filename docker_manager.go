@@ -137,6 +137,14 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 	return newDockerManager
 }
 
+func (m *DockerManager) NewRuntimeInstance(chainId string, logger *logger.CMLogger) *RuntimeInstance {
+	return &RuntimeInstance{
+		ChainId: chainId,
+		Client:  m.CDMClient,
+		Log:     logger,
+	}
+}
+
 // StartContainer Start Container
 func (m *DockerManager) StartContainer() error {
 	m.Log.Info("start docker vm...")

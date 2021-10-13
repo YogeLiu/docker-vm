@@ -33,6 +33,8 @@ type CDMClient interface {
 	GetStateResponseSendCh() chan *protogo.CDMMessage
 
 	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage)
+
+	GetCMConfig() *localconf.CMConfig
 }
 
 // RuntimeInstance docker-go runtime
@@ -160,7 +162,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			//	return r.errorResult(contractResult, err, err.Error())
 			//}
 
-			dockerConfig := localconf.ChainMakerConfig.DockerConfig
+			dockerConfig := r.Client.GetCMConfig().DockerConfig
 			hostMountPath := dockerConfig.MountPath
 
 			contractDir := filepath.Join(hostMountPath, mountContractDir)
