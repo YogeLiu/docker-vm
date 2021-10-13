@@ -137,12 +137,12 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 	return newDockerManager
 }
 
-func (m *DockerManager) NewRuntimeInstance(chainId string, logger *logger.CMLogger) *RuntimeInstance {
+func (m *DockerManager) NewRuntimeInstance(chainId string, logger *logger.CMLogger) (*RuntimeInstance, error) {
 	return &RuntimeInstance{
 		ChainId: chainId,
 		Client:  m.CDMClient,
 		Log:     logger,
-	}
+	}, nil
 }
 
 // StartDockerVM Start Docker VM
