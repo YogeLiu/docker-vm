@@ -139,7 +139,7 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 	return newDockerManager
 }
 
-func (m *DockerManager) NewRuntimeInstance(chainId string, logger protocol.Logger) (*RuntimeInstance, error) {
+func (m *DockerManager) NewRuntimeInstance(chainId string, logger protocol.Logger) (protocol.RuntimeInstance, error) {
 	return &RuntimeInstance{
 		ChainId: chainId,
 		Client:  m.CDMClient,
