@@ -24,7 +24,10 @@ const (
 	contractValue   = "contractValue1"
 	contractVersion = "contractVersion1"
 	contractPath  = "contractPath1"
+	txId  = "0xb0ff781740fd5bc45f63c7d4f572384343c3c8e8a7e64d602d0c95651b804352"
+	payload  = "payload1"
 	sockPath  = "sockPath"
+	method  = "method1"
 	testPath = "/test"
 )
 
