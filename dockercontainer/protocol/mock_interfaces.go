@@ -7,7 +7,8 @@ package protocol
 import (
 	reflect "reflect"
 
-	protogo "chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
+	protogo "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb_sdk/protogo"
+
 	security "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/security"
 	protogo0 "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 	gomock "github.com/golang/mock/gomock"

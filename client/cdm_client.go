@@ -4,7 +4,7 @@ Copyright (C) BABEC. All rights reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package module
+package client
 
 import (
 	"context"
@@ -33,7 +33,7 @@ type CDMClient struct {
 
 func NewCDMClient(chainId string, config *localconf.CMConfig) *CDMClient {
 
-	dockerConfig := config.DockerConfig
+	dockerConfig := config.DockerVMConfig
 
 	return &CDMClient{
 		txSendCh:            make(chan *protogo.CDMMessage, dockerConfig.DockerVmConfig.TxSize),   // tx request
@@ -60,6 +60,10 @@ func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessag
 
 	c.logger.Debugf("register recv chan [%s]", txId[:5])
 	c.recvChMap[txId] = recvCh
+}
+
+func (c *CDMClient) GetCMConfig() *localconf.CMConfig {
+	return c.config
 }
 
 func (c *CDMClient) deleteRecvChan(txId string) {
@@ -199,7 +203,7 @@ func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
 // NewClientConn create client connection
 func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 
-	dockerConfig := c.config.DockerConfig
+	dockerConfig := c.config.DockerVMConfig
 
 	dialOpts := []grpc.DialOption{
 		grpc.WithInsecure(),

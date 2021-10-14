@@ -4,7 +4,7 @@ Copyright (C) BABEC. All rights reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package dockercontroller
+package docker_go
 
 import (
 	"bufio"
@@ -21,10 +21,13 @@ import (
 	"strings"
 	"sync"
 
+	"chainmaker.org/chainmaker/protocol/v2"
+
+	client2 "chainmaker.org/chainmaker/vm-docker-go/client"
+
 	"chainmaker.org/chainmaker/localconf/v2"
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontroller/module"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -34,16 +37,18 @@ import (
 )
 
 var (
-	dockerContainerDir string
+	dockerContainerDir = "../module/vm/docker-go/dockercontainer"
 	sourceDir          string
-	imageName          string
 	containerName      string
 	hostLogDir         string
 )
 
 const (
-	targetDir    = "/mount"
-	dockerLogDir = "/log"
+	targetDir            = "/mount"
+	dockerLogDir         = "/log"
+	imageName            = "chainmakerofficial/chainmaker-docker-go-vm:develop_dockervm"
+	defaultContainerName = "chainmaker-docker-go-vm-container"
+	dockerFilePath       = ""
 )
 
 type DockerManager struct {
@@ -65,22 +70,14 @@ type DockerManager struct {
 	client *client.Client
 
 	Log       *logger.CMLogger
-	CDMClient *module.CDMClient
+	CDMClient *client2.CDMClient
 	CDMState  bool
 
 	config *localconf.CMConfig
 }
 
 // NewDockerManager return docker manager and running a default container
-func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager {
-
-	// test enter point
-	var chainmakerConfig *localconf.CMConfig
-	if config != nil {
-		chainmakerConfig = config
-	} else {
-		chainmakerConfig = localconf.ChainMakerConfig
-	}
+func NewDockerManager(chainId string, chainConfig *localconf.CMConfig) *DockerManager {
 
 	dockerManagerLogger := logger.GetLoggerByChain("[Docker Manager]", chainId)
 	dockerManagerLogger.Debugf("init docker manager")
@@ -92,17 +89,18 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 		ShowStderr:   true,
 		Log:          dockerManagerLogger,
 		CDMState:     false,
+		config:       chainConfig,
 	}
 
 	// validate settings
-	valid, err := newDockerManager.validateConfig(chainmakerConfig)
+	valid, err := newDockerManager.validateConfig(chainConfig)
 	if err != nil || !valid {
 		dockerManagerLogger.Errorf("fail to init docker manager, please check the docker config, %s", err)
 		return nil
 	}
 
 	// if enable docker vm is false, docker manager is nil
-	startDockerVm := chainmakerConfig.DockerConfig.EnableDockerVM
+	startDockerVm := chainConfig.DockerVMConfig.EnableDockerVM
 	if !startDockerVm {
 		return nil
 	}
@@ -115,7 +113,7 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 
 	newDockerManager.ctx = context.Background()
 	newDockerManager.client = cli
-	newDockerManager.CDMClient = module.NewCDMClient(chainId, chainmakerConfig)
+	newDockerManager.CDMClient = client2.NewCDMClient(chainId, chainConfig)
 	newDockerManager.imageName = imageName
 	newDockerManager.containerName = containerName
 	newDockerManager.sourceDir = sourceDir
@@ -124,7 +122,6 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 
 	newDockerManager.hostLogDir = hostLogDir
 	newDockerManager.dockerLogDir = dockerLogDir
-	newDockerManager.config = chainmakerConfig
 
 	// init mount directory and subdirectory
 	err = newDockerManager.InitMountDirectory()
@@ -136,8 +133,16 @@ func NewDockerManager(chainId string, config *localconf.CMConfig) *DockerManager
 	return newDockerManager
 }
 
-// StartContainer Start Container
-func (m *DockerManager) StartContainer() error {
+func (m *DockerManager) NewRuntimeInstance(chainId string, logger protocol.Logger) (protocol.RuntimeInstance, error) {
+	return &RuntimeInstance{
+		ChainId: chainId,
+		Client:  m.CDMClient,
+		Log:     logger,
+	}, nil
+}
+
+// StartDockerVM Start Docker VM
+func (m *DockerManager) StartDockerVM() error {
 	m.Log.Info("start docker vm...")
 	var err error
 
@@ -176,11 +181,8 @@ func (m *DockerManager) StartContainer() error {
 	}
 
 	if !imageExisted {
-		m.Log.Debugf("Starting building image --- %s", m.imageName)
-		err = m.buildImage(m.dockerDir)
-		if err != nil {
-			return err
-		}
+		m.Log.Errorf("cannot find docker vm image, please pull the image")
+		return fmt.Errorf("cannot find docker vm image")
 	}
 
 	m.Log.Debugf("create container [%s]", m.containerName)
@@ -204,12 +206,11 @@ func (m *DockerManager) StartContainer() error {
 			return
 		}
 	}()
-
 	return nil
 }
 
-// StopAndRemoveVM stop docker vm and remove container, image
-func (m *DockerManager) StopAndRemoveVM() error {
+// StopAndRemoveDockerVM stop docker vm and remove container, image
+func (m *DockerManager) StopAndRemoveDockerVM() error {
 	var err error
 
 	err = m.stopContainer()
@@ -222,10 +223,10 @@ func (m *DockerManager) StopAndRemoveVM() error {
 		return err
 	}
 
-	err = m.removeImage()
-	if err != nil {
-		return err
-	}
+	//err = m.removeImage()
+	//if err != nil {
+	//	return err
+	//}
 
 	m.Log.Info("stop and remove docker vm [%s]", m.containerName)
 	return nil
@@ -240,6 +241,10 @@ func (m *DockerManager) StartCDMClient() {
 	m.CDMState = state
 
 	m.Log.Debugf("cdm client state is: %v", state)
+}
+
+func (m *DockerManager) GetCDMState() bool {
+	return m.CDMState
 }
 
 // ------------------ image functions --------------
@@ -296,10 +301,13 @@ func (m *DockerManager) imageExist() (bool, error) {
 
 	for _, v1 := range imageList {
 		for _, v2 := range v1.RepoTags {
-			currentImageName := strings.Split(v2, ":")
-			if currentImageName[0] == m.imageName {
+			if v2 == m.imageName {
 				return true, nil
 			}
+			//currentImageName := strings.Split(v2, ":")
+			//if currentImageName[0] == m.imageName {
+			//	return true, nil
+			//}
 		}
 	}
 	return false, nil
@@ -466,15 +474,13 @@ func (m *DockerManager) InitMountDirectory() error {
 // ------------------ utility functions --------------
 
 func (m *DockerManager) constructEnvs() []string {
-	dockerConfig := m.config.DockerConfig
+	dockerConfig := m.config.DockerVMConfig
 
 	configsMap := make(map[string]string)
 
 	m.convertConfigToMap(dockerConfig.DockerVmConfig, configsMap)
 
 	m.convertConfigToMap(dockerConfig.DockerRpcConfig, configsMap)
-
-	m.convertConfigToMap(dockerConfig.DockerPprofConfig, configsMap)
 
 	// set log level
 	configsMap["Log_Level"] = fmt.Sprintf("Log_Level=%s", m.config.LogConfig.SystemLog.LogLevels["vm"])
@@ -587,7 +593,7 @@ func (m *DockerManager) displayBuildProcess(rd io.Reader) error {
 		if strings.Contains(lastLine, "ux\":{\"ID\":\"sha256") {
 			continue
 		}
-		fmt.Println(lastLine)
+		//fmt.Println(lastLine)
 	}
 
 	errLine := &ErrorLine{}
@@ -630,14 +636,8 @@ func (m *DockerManager) exists(path string) (bool, error) {
 }
 
 func (m *DockerManager) validateConfig(config *localconf.CMConfig) (bool, error) {
-	dockerConfig := config.DockerConfig
+	dockerConfig := config.DockerVMConfig
 	var err error
-
-	if dockerConfig.DockerContainerDir == "" {
-		m.Log.Errorf("doesn't set docker container path")
-		return false, nil
-	}
-	dockerContainerDir = dockerConfig.DockerContainerDir
 
 	// host mount directory
 	sourceDir = dockerConfig.MountPath
@@ -659,16 +659,9 @@ func (m *DockerManager) validateConfig(config *localconf.CMConfig) (bool, error)
 		}
 	}
 
-	if dockerConfig.ImageName == "" {
-		m.Log.Infof("image name doesn't set, set as default: chainmaker-docker-go-image")
-		imageName = "chainmaker-docker-go-image"
-	} else {
-		imageName = dockerConfig.ImageName
-	}
-
 	if dockerConfig.ContainerName == "" {
-		m.Log.Infof("container name doesn't set, set as default: chainmaker-docker-go-container")
-		containerName = "chainmaker-docker-go-container"
+		m.Log.Infof("container name doesn't set, set as default: chainmaker-docker-go-vm-container")
+		containerName = defaultContainerName
 	} else {
 		containerName = dockerConfig.ContainerName
 	}

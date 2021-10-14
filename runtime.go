@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"chainmaker.org/chainmaker/localconf/v2"
-	"chainmaker.org/chainmaker/logger/v2"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
@@ -33,13 +32,15 @@ type CDMClient interface {
 	GetStateResponseSendCh() chan *protogo.CDMMessage
 
 	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage)
+
+	GetCMConfig() *localconf.CMConfig
 }
 
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
 	ChainId string // chain id
 	Client  CDMClient
-	Log     *logger.CMLogger
+	Log     protocol.Logger
 }
 
 // Invoke process one tx in docker and return result
@@ -47,6 +48,8 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
 	gasUsed uint64) (contractResult *commonPb.ContractResult) {
 	txId := txSimContext.GetTx().Payload.TxId
+
+	fmt.Println("wo qu")
 
 	// contract response
 	contractResult = &commonPb.ContractResult{
@@ -71,7 +74,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		return r.errorResult(contractResult, err, err.Error())
 	}
 
-	for key, _ := range parameters {
+	for key := range parameters {
 		if strings.Contains(key, "CONTRACT") {
 			delete(parameters, key)
 		}
@@ -160,7 +163,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			//	return r.errorResult(contractResult, err, err.Error())
 			//}
 
-			dockerConfig := localconf.ChainMakerConfig.DockerConfig
+			dockerConfig := r.Client.GetCMConfig().DockerVMConfig
 			hostMountPath := dockerConfig.MountPath
 
 			contractDir := filepath.Join(hostMountPath, mountContractDir)

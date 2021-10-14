@@ -7,14 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	SDKProtogo "chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
-	"go.uber.org/zap"
-	"golang.org/x/sync/singleflight"
 	"reflect"
 	"sync"
 	"testing"
+
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb_sdk/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
+	"go.uber.org/zap"
+	"golang.org/x/sync/singleflight"
 )
 
 func TestDockerScheduler_GetByteCodeReqCh(t *testing.T) {

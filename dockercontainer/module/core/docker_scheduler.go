@@ -14,7 +14,7 @@ import (
 
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/utils"
 
-	SDKProtogo "chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb_sdk/protogo"
 
 	"golang.org/x/sync/singleflight"
 

@@ -30,8 +30,8 @@ import (
 )
 
 const (
-	processWaitingTime      = 60
-	processWaitingQueueSize = 1000 //todo need change
+	processWaitingTime      = 60 * 10
+	processWaitingQueueSize = 1000
 )
 
 type ProcessPoolInterface interface {

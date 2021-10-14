@@ -28,7 +28,7 @@ const (
 	payload  = "payload1"
 	sockPath  = "sockPath"
 	method  = "method1"
-	testPath = "/test"
+	testPath = "/"
 )
 
 func TestContractManager_GetContract(t *testing.T) {

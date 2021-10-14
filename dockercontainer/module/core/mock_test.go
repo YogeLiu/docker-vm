@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	SDKProtogo "chainmaker.org/chainmaker-contract-sdk-docker-go/pb_sdk/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb_sdk/protogo"
 	"context"
 	"github.com/golang/mock/gomock"
 	"google.golang.org/grpc"
