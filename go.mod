@@ -7,7 +7,7 @@ go 1.15
 
 require (
 	chainmaker.org/chainmaker/common/v2 v2.0.1-0.20211011130949-b332c3193ef5 // indirect
-	chainmaker.org/chainmaker/localconf/v2 v2.0.0-20211012132541-cc29b98ee654
+	chainmaker.org/chainmaker/localconf/v2 v2.0.0-20211014032543-fcf87bf4db37
 	chainmaker.org/chainmaker/logger/v2 v2.0.1-0.20211012134336-19adbc1fd8d2
 	chainmaker.org/chainmaker/pb-go/v2 v2.0.1-0.20211011124513-b828aaef61ff
 	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20210927062046-68813f263c0b
@@ -29,7 +29,6 @@ require (
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20210608053304-ed9ce3a009e4 // indirect
-	golang.org/x/tools v0.1.5 // indirect
-	google.golang.org/grpc v1.39.0
+	google.golang.org/grpc v1.41.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )

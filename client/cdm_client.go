@@ -33,7 +33,7 @@ type CDMClient struct {
 
 func NewCDMClient(chainId string, config *localconf.CMConfig) *CDMClient {
 
-	dockerConfig := config.DockerConfig
+	dockerConfig := config.DockerVMConfig
 
 	return &CDMClient{
 		txSendCh:            make(chan *protogo.CDMMessage, dockerConfig.DockerVmConfig.TxSize),   // tx request
@@ -203,7 +203,7 @@ func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
 // NewClientConn create client connection
 func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 
-	dockerConfig := c.config.DockerConfig
+	dockerConfig := c.config.DockerVMConfig
 
 	dialOpts := []grpc.DialOption{
 		grpc.WithInsecure(),

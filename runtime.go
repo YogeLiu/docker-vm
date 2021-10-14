@@ -49,6 +49,8 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	gasUsed uint64) (contractResult *commonPb.ContractResult) {
 	txId := txSimContext.GetTx().Payload.TxId
 
+	fmt.Println("wo qu")
+
 	// contract response
 	contractResult = &commonPb.ContractResult{
 		Code:    uint32(1),
@@ -161,7 +163,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			//	return r.errorResult(contractResult, err, err.Error())
 			//}
 
-			dockerConfig := r.Client.GetCMConfig().DockerConfig
+			dockerConfig := r.Client.GetCMConfig().DockerVMConfig
 			hostMountPath := dockerConfig.MountPath
 
 			contractDir := filepath.Join(hostMountPath, mountContractDir)
