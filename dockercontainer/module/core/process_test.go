@@ -12,8 +12,10 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
+	"github.com/golang/mock/gomock"
 	"go.uber.org/zap"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -142,7 +144,7 @@ func TestNewProcess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewProcess(tt.args.user, tt.args.txRequest, tt.args.scheduler, tt.args.processName, tt.args.contractPath, tt.args.processPool);
+			got := NewProcess(tt.args.user, tt.args.txRequest, tt.args.scheduler, tt.args.processName, tt.args.contractPath, tt.args.processPool)
 			tt.want.expireTimer = got.expireTimer
 			tt.want.logger = got.logger
 			tt.want.TxWaitingQueue = got.TxWaitingQueue
@@ -156,7 +158,8 @@ func TestNewProcess(t *testing.T) {
 }
 
 func TestProcess_AddTxWaitingQueue(t *testing.T) {
-	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
+	basePath, _ := os.Getwd()
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
 	type fields struct {
 		processName          string
 		contractName         string
@@ -192,7 +195,7 @@ func TestProcess_AddTxWaitingQueue(t *testing.T) {
 				contractVersion:      "",
 				contractPath:         "",
 				cGroupPath:           "",
-				ProcessState:         0,
+				ProcessState:         protogo.ProcessState_PROCESS_STATE_CREATED,
 				TxWaitingQueue:       make(chan *protogo.TxRequest),
 				txTrigger:            nil,
 				expireTimer:          nil,
@@ -230,8 +233,8 @@ func TestProcess_AddTxWaitingQueue(t *testing.T) {
 			}
 
 			go func() {
-				for  {
-					_ = <- p.TxWaitingQueue
+				for {
+					_ = <-p.TxWaitingQueue
 				}
 			}()
 
@@ -241,7 +244,7 @@ func TestProcess_AddTxWaitingQueue(t *testing.T) {
 				ContractVersion: "",
 				Method:          "",
 				Parameters:      nil,
-				TxContext:       &protogo.TxContext{
+				TxContext: &protogo.TxContext{
 					CurrentHeight:       0,
 					WriteMap:            nil,
 					ReadMap:             nil,
@@ -253,6 +256,7 @@ func TestProcess_AddTxWaitingQueue(t *testing.T) {
 }
 
 func TestProcess_InvokeProcess(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
 	type fields struct {
 		processName          string
 		contractName         string
@@ -272,11 +276,85 @@ func TestProcess_InvokeProcess(t *testing.T) {
 		done                 uint32
 		mutex                sync.Mutex
 	}
+
+	requests := make(chan *protogo.TxRequest, 10)
+	go func() {
+		for {
+			requests <- &protogo.TxRequest{
+				TxId:            "0x8f0f3877af159da09bdbf3354e675495e29ee0193612e378bb43dabaa96c1cb8",
+				ContractName:    contractName,
+				ContractVersion: contractVersion,
+				Method:          "",
+				Parameters:      nil,
+				TxContext:       nil,
+			}
+		}
+	}()
+
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testInvokeProcessQueueEmpty",
+			fields: fields{
+				processName:     "",
+				contractName:    "",
+				contractVersion: "",
+				contractPath:    "",
+				cGroupPath:      "",
+				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
+				TxWaitingQueue:  make(chan *protogo.TxRequest),
+				txTrigger:       nil,
+				expireTimer:     nil,
+				logger:          log,
+				Handler: &ProcessHandler{
+					state:         "",
+					logger:        nil,
+					TxRequest:     nil,
+					stream:        nil,
+					scheduler:     nil,
+					process:       nil,
+					txExpireTimer: nil,
+				},
+				user:                 nil,
+				cmd:                  nil,
+				processPoolInterface: nil,
+				isCrossProcess:       false,
+				done:                 0,
+				mutex:                sync.Mutex{},
+			},
+		},
+		{
+			name: "testInvokeProcess",
+			fields: fields{
+				processName:     "",
+				contractName:    "",
+				contractVersion: "",
+				contractPath:    "",
+				cGroupPath:      "",
+				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
+				TxWaitingQueue:  requests,
+				txTrigger:       nil,
+				expireTimer:     nil,
+				logger:          log,
+				Handler: &ProcessHandler{
+					state:         "",
+					logger:        nil,
+					TxRequest:     nil,
+					stream:        nil,
+					scheduler:     nil,
+					process:       nil,
+					txExpireTimer: time.NewTimer(time.Second),
+				},
+				user:                 nil,
+				cmd:                  nil,
+				processPoolInterface: nil,
+				isCrossProcess:       false,
+				done:                 0,
+				mutex:                sync.Mutex{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -299,12 +377,15 @@ func TestProcess_InvokeProcess(t *testing.T) {
 				done:                 tt.fields.done,
 				mutex:                tt.fields.mutex,
 			}
+
 			p.InvokeProcess()
 		})
 	}
 }
 
 func TestProcess_LaunchProcess(t *testing.T) {
+	basePath, _ := os.Getwd()
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
 	type fields struct {
 		processName          string
 		contractName         string
@@ -329,7 +410,34 @@ func TestProcess_LaunchProcess(t *testing.T) {
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testLaunchProcessBad", //todo cmd
+			fields: fields{
+				processName:     "",
+				contractName:    "",
+				contractVersion: "",
+				contractPath:    "",
+				cGroupPath:      "",
+				ProcessState:    0,
+				TxWaitingQueue:  nil,
+				txTrigger:       nil,
+				expireTimer:     nil,
+				logger:          log,
+				Handler:         nil,
+				user: &security.User{
+					Uid:      0,
+					Gid:      0,
+					UserName: "",
+					SockPath: "",
+				},
+				cmd:                  nil,
+				processPoolInterface: nil,
+				isCrossProcess:       false,
+				done:                 0,
+				mutex:                sync.Mutex{},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -360,6 +468,21 @@ func TestProcess_LaunchProcess(t *testing.T) {
 }
 
 func TestProcess_StopProcess(t *testing.T) {
+	basePath, _ := os.Getwd()
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+	poolInterface := NewMockProcessPoolInterface(gomock.NewController(t))
+	poolInterface.EXPECT().RetrieveProcessContext(processName).Return(&ProcessContext{
+		processList: [6]*Process{
+			{
+				processName: processName,
+				cmd: &exec.Cmd{
+					Process: &os.Process{},
+				},
+			},
+		},
+		size: 0,
+	}).AnyTimes()
+
 	type fields struct {
 		processName          string
 		contractName         string
@@ -387,139 +510,76 @@ func TestProcess_StopProcess(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testStopProcess",
+			fields: fields{
+				processName:          processName,
+				logger:               log,
+				processPoolInterface: poolInterface,
+			},
+			args: args{processTimeout: true},
+		},
+		{
+			name: "testStopProcess",
+			fields: fields{
+				processName:          processName,
+				logger:               log,
+				processPoolInterface: poolInterface,
+			},
+			args: args{processTimeout: false},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Process{
 				processName:          tt.fields.processName,
-				contractName:         tt.fields.contractName,
-				contractVersion:      tt.fields.contractVersion,
-				contractPath:         tt.fields.contractPath,
-				cGroupPath:           tt.fields.cGroupPath,
-				ProcessState:         tt.fields.ProcessState,
-				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-				txTrigger:            tt.fields.txTrigger,
-				expireTimer:          tt.fields.expireTimer,
-				logger:               tt.fields.logger,
-				Handler:              tt.fields.Handler,
-				user:                 tt.fields.user,
-				cmd:                  tt.fields.cmd,
 				processPoolInterface: tt.fields.processPoolInterface,
-				isCrossProcess:       tt.fields.isCrossProcess,
-				done:                 tt.fields.done,
-				mutex:                tt.fields.mutex,
+				logger:               tt.fields.logger,
 			}
-			p.StopProcess(false)
+			p.StopProcess(tt.args.processTimeout)
 		})
 	}
 }
 
 func TestProcess_killCrossProcess(t *testing.T) {
+	basePath, _ := os.Getwd()
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
 	type fields struct {
-		processName          string
-		contractName         string
-		contractVersion      string
-		contractPath         string
-		cGroupPath           string
-		ProcessState         protogo.ProcessState
-		TxWaitingQueue       chan *protogo.TxRequest
-		txTrigger            chan bool
-		expireTimer          *time.Timer
-		logger               *zap.SugaredLogger
-		Handler              *ProcessHandler
-		user                 *security.User
-		cmd                  *exec.Cmd
-		processPoolInterface ProcessPoolInterface
-		isCrossProcess       bool
-		done                 uint32
-		mutex                sync.Mutex
+		logger *zap.SugaredLogger
+		cmd    *exec.Cmd
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testKillCrossProcess",
+			fields: fields{
+				logger: log,
+				cmd: &exec.Cmd{
+					Process: &os.Process{},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Process{
-				processName:          tt.fields.processName,
-				contractName:         tt.fields.contractName,
-				contractVersion:      tt.fields.contractVersion,
-				contractPath:         tt.fields.contractPath,
-				cGroupPath:           tt.fields.cGroupPath,
-				ProcessState:         tt.fields.ProcessState,
-				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-				txTrigger:            tt.fields.txTrigger,
-				expireTimer:          tt.fields.expireTimer,
-				logger:               tt.fields.logger,
-				Handler:              tt.fields.Handler,
-				user:                 tt.fields.user,
-				cmd:                  tt.fields.cmd,
-				processPoolInterface: tt.fields.processPoolInterface,
-				isCrossProcess:       tt.fields.isCrossProcess,
-				done:                 tt.fields.done,
-				mutex:                tt.fields.mutex,
+				logger: tt.fields.logger,
+				cmd:    tt.fields.cmd,
 			}
 			p.killCrossProcess()
 		})
 	}
 }
 
-func TestProcess_killProcess(t *testing.T) {
-	type fields struct {
-		processName          string
-		contractName         string
-		contractVersion      string
-		contractPath         string
-		cGroupPath           string
-		ProcessState         protogo.ProcessState
-		TxWaitingQueue       chan *protogo.TxRequest
-		txTrigger            chan bool
-		expireTimer          *time.Timer
-		logger               *zap.SugaredLogger
-		Handler              *ProcessHandler
-		user                 *security.User
-		cmd                  *exec.Cmd
-		processPoolInterface ProcessPoolInterface
-		isCrossProcess       bool
-		done                 uint32
-		mutex                sync.Mutex
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Process{
-				processName:          tt.fields.processName,
-				contractName:         tt.fields.contractName,
-				contractVersion:      tt.fields.contractVersion,
-				contractPath:         tt.fields.contractPath,
-				cGroupPath:           tt.fields.cGroupPath,
-				ProcessState:         tt.fields.ProcessState,
-				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-				txTrigger:            tt.fields.txTrigger,
-				expireTimer:          tt.fields.expireTimer,
-				logger:               tt.fields.logger,
-				Handler:              tt.fields.Handler,
-				user:                 tt.fields.user,
-				cmd:                  tt.fields.cmd,
-				processPoolInterface: tt.fields.processPoolInterface,
-				isCrossProcess:       tt.fields.isCrossProcess,
-				done:                 tt.fields.done,
-				mutex:                tt.fields.mutex,
-			}
-			p.killProcess()
-		})
-	}
-}
-
 func TestProcess_printContractLog(t *testing.T) {
+	cmd := exec.Cmd{
+		Path: contractPath,
+		Args: []string{sockPath, processName, contractName, contractVersion, config.SandBoxLogLevel},
+	}
+
+	contractOut, _ := cmd.StdoutPipe()
 	type fields struct {
 		processName          string
 		contractName         string
@@ -547,7 +607,29 @@ func TestProcess_printContractLog(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "printContractLog",
+			fields: fields{
+				processName:          "",
+				contractName:         "",
+				contractVersion:      "",
+				contractPath:         "",
+				cGroupPath:           "",
+				ProcessState:         0,
+				TxWaitingQueue:       nil,
+				txTrigger:            nil,
+				expireTimer:          nil,
+				logger:               nil,
+				Handler:              nil,
+				user:                 nil,
+				cmd:                  nil,
+				processPoolInterface: nil,
+				isCrossProcess:       false,
+				done:                 0,
+				mutex:                sync.Mutex{},
+			},
+			args: args{contractPipe: contractOut},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -571,173 +653,154 @@ func TestProcess_printContractLog(t *testing.T) {
 				mutex:                tt.fields.mutex,
 			}
 
-			cmd := exec.Cmd{
-				Path: p.contractPath,
-				Args: []string{p.user.SockPath, p.processName, p.contractName, p.contractVersion, config.SandBoxLogLevel},
-			}
-
-			contractOut, _ := cmd.StdoutPipe()
-			p.printContractLog(contractOut)
+			go p.printContractLog(contractOut)
 		})
 	}
 }
 
 func TestProcess_resetProcessTimer(t *testing.T) {
 	type fields struct {
-		processName          string
-		contractName         string
-		contractVersion      string
-		contractPath         string
-		cGroupPath           string
-		ProcessState         protogo.ProcessState
-		TxWaitingQueue       chan *protogo.TxRequest
-		txTrigger            chan bool
-		expireTimer          *time.Timer
-		logger               *zap.SugaredLogger
-		Handler              *ProcessHandler
-		user                 *security.User
-		cmd                  *exec.Cmd
-		processPoolInterface ProcessPoolInterface
-		isCrossProcess       bool
-		done                 uint32
-		mutex                sync.Mutex
+		expireTimer *time.Timer
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testTesetProcessTimer",
+			fields: fields{
+				expireTimer: time.NewTimer(time.Second),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Process{
-				processName:          tt.fields.processName,
-				contractName:         tt.fields.contractName,
-				contractVersion:      tt.fields.contractVersion,
-				contractPath:         tt.fields.contractPath,
-				cGroupPath:           tt.fields.cGroupPath,
-				ProcessState:         tt.fields.ProcessState,
-				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-				txTrigger:            tt.fields.txTrigger,
-				expireTimer:          tt.fields.expireTimer,
-				logger:               tt.fields.logger,
-				Handler:              tt.fields.Handler,
-				user:                 tt.fields.user,
-				cmd:                  tt.fields.cmd,
-				processPoolInterface: tt.fields.processPoolInterface,
-				isCrossProcess:       tt.fields.isCrossProcess,
-				done:                 tt.fields.done,
-				mutex:                tt.fields.mutex,
+				expireTimer: tt.fields.expireTimer,
 			}
+
+			go func() {
+				times := make(chan time.Time, 2)
+				for {
+					times <- time.Now()
+					p.expireTimer.C = times
+				}
+
+			}()
+
 			p.resetProcessTimer()
 		})
 	}
 }
 
 func TestProcess_triggerProcessState(t *testing.T) {
+	basePath, _ := os.Getwd()
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
 	type fields struct {
-		processName          string
-		contractName         string
-		contractVersion      string
-		contractPath         string
-		cGroupPath           string
-		ProcessState         protogo.ProcessState
-		TxWaitingQueue       chan *protogo.TxRequest
-		txTrigger            chan bool
-		expireTimer          *time.Timer
-		logger               *zap.SugaredLogger
-		Handler              *ProcessHandler
-		user                 *security.User
-		cmd                  *exec.Cmd
-		processPoolInterface ProcessPoolInterface
-		isCrossProcess       bool
-		done                 uint32
-		mutex                sync.Mutex
+		ProcessState protogo.ProcessState
+		txTrigger    chan bool
+		logger       *zap.SugaredLogger
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testTriggerProcessState",
+			fields: fields{
+				ProcessState: protogo.ProcessState_PROCESS_STATE_CREATED,
+				logger:       log,
+				txTrigger:    make(chan bool, 0),
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Process{
-				processName:          tt.fields.processName,
-				contractName:         tt.fields.contractName,
-				contractVersion:      tt.fields.contractVersion,
-				contractPath:         tt.fields.contractPath,
-				cGroupPath:           tt.fields.cGroupPath,
-				ProcessState:         tt.fields.ProcessState,
-				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-				txTrigger:            tt.fields.txTrigger,
-				expireTimer:          tt.fields.expireTimer,
-				logger:               tt.fields.logger,
-				Handler:              tt.fields.Handler,
-				user:                 tt.fields.user,
-				cmd:                  tt.fields.cmd,
-				processPoolInterface: tt.fields.processPoolInterface,
-				isCrossProcess:       tt.fields.isCrossProcess,
-				done:                 tt.fields.done,
-				mutex:                tt.fields.mutex,
+				ProcessState: tt.fields.ProcessState,
+				txTrigger:    tt.fields.txTrigger,
+				logger:       tt.fields.logger,
 			}
+			go func() {
+				for {
+					<-p.txTrigger
+				}
+			}()
 			p.triggerProcessState()
 		})
 	}
 }
 
 func TestProcess_updateProcessState(t *testing.T) {
+	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
 	type fields struct {
-		processName          string
-		contractName         string
-		contractVersion      string
-		contractPath         string
-		cGroupPath           string
-		ProcessState         protogo.ProcessState
-		TxWaitingQueue       chan *protogo.TxRequest
-		txTrigger            chan bool
-		expireTimer          *time.Timer
-		logger               *zap.SugaredLogger
-		Handler              *ProcessHandler
-		user                 *security.User
-		cmd                  *exec.Cmd
-		processPoolInterface ProcessPoolInterface
-		isCrossProcess       bool
-		done                 uint32
-		mutex                sync.Mutex
+		ProcessState protogo.ProcessState
+		logger       *zap.SugaredLogger
 	}
+
 	type args struct {
 		state protogo.ProcessState
 	}
+
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "testUpdateProcessState",
+			fields: fields{
+				ProcessState: 0,
+				logger:       log,
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Process{
-				processName:          tt.fields.processName,
-				contractName:         tt.fields.contractName,
-				contractVersion:      tt.fields.contractVersion,
-				contractPath:         tt.fields.contractPath,
-				cGroupPath:           tt.fields.cGroupPath,
-				ProcessState:         tt.fields.ProcessState,
-				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-				txTrigger:            tt.fields.txTrigger,
-				expireTimer:          tt.fields.expireTimer,
-				logger:               tt.fields.logger,
-				Handler:              tt.fields.Handler,
-				user:                 tt.fields.user,
-				cmd:                  tt.fields.cmd,
-				processPoolInterface: tt.fields.processPoolInterface,
-				isCrossProcess:       tt.fields.isCrossProcess,
-				done:                 tt.fields.done,
-				mutex:                tt.fields.mutex,
+				ProcessState: tt.fields.ProcessState,
+				logger:       tt.fields.logger,
 			}
 			p.updateProcessState(protogo.ProcessState_PROCESS_STATE_CREATED)
 		})
 	}
+}
+
+// MockProcessPoolInterface is a mock of ProcessPoolInterface interface.
+type MockProcessPoolInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockProcessPoolInterfaceMockRecorder
+}
+
+// MockProcessPoolInterfaceMockRecorder is the mock recorder for MockProcessPoolInterface.
+type MockProcessPoolInterfaceMockRecorder struct {
+	mock *MockProcessPoolInterface
+}
+
+// NewMockProcessPoolInterface creates a new mock instance.
+func NewMockProcessPoolInterface(ctrl *gomock.Controller) *MockProcessPoolInterface {
+	mock := &MockProcessPoolInterface{ctrl: ctrl}
+	mock.recorder = &MockProcessPoolInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockProcessPoolInterface) EXPECT() *MockProcessPoolInterfaceMockRecorder {
+	return m.recorder
+}
+
+// RetrieveProcessContext mocks base method.
+func (m *MockProcessPoolInterface) RetrieveProcessContext(initialProcessName string) *ProcessContext {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RetrieveProcessContext", initialProcessName)
+	ret0, _ := ret[0].(*ProcessContext)
+	return ret0
+}
+
+// RetrieveProcessContext indicates an expected call of RetrieveProcessContext.
+func (mr *MockProcessPoolInterfaceMockRecorder) RetrieveProcessContext(initialProcessName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetrieveProcessContext", reflect.TypeOf((*MockProcessPoolInterface)(nil).RetrieveProcessContext), initialProcessName)
 }

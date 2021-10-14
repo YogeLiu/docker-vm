@@ -22,6 +22,9 @@ const (
 	contractName    = "contractName1"
 	contractNameBad = "contractName2"
 	contractValue   = "contractValue1"
+	contractVersion = "contractVersion1"
+	contractPath  = "contractPath1"
+	sockPath  = "sockPath"
 	testPath = "/test"
 )
 
