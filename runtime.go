@@ -49,8 +49,6 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	gasUsed uint64) (contractResult *commonPb.ContractResult) {
 	txId := txSimContext.GetTx().Payload.TxId
 
-	fmt.Println("wo qu")
-
 	// contract response
 	contractResult = &commonPb.ContractResult{
 		Code:    uint32(1),
@@ -70,6 +68,13 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		gas.ContractParamBlockHeight,
 		gas.ContractParamTxId,
 	); err != nil {
+		contractResult.GasUsed = gasUsed
+		return r.errorResult(contractResult, err, err.Error())
+	}
+
+	//init contract gas used calc and check gas limit
+	gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode, txSimContext)
+	if err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
 	}
@@ -155,13 +160,6 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 			contractFullName := string(recvMsg.Payload)             // contract1#1.0.0
 			contractName := strings.Split(contractFullName, "#")[0] // contract1
-
-			// init contract gas used calc and check gas limit
-			//gasUsed, err = gas.ContractGasUsed(gasUsed, method, contractName, byteCode, txSimContext)
-			//if err != nil {
-			//	contractResult.GasUsed = gasUsed
-			//	return r.errorResult(contractResult, err, err.Error())
-			//}
 
 			dockerConfig := r.Client.GetCMConfig().DockerVMConfig
 			hostMountPath := dockerConfig.MountPath
