@@ -1,0 +1,1 @@
+../../vm_mgr/pb/protogo/cdm_message.pb.go

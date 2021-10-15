@@ -17,19 +17,19 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/mitchellh/mapstructure"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 
 	"chainmaker.org/chainmaker/protocol/v2"
 
-	client2 "chainmaker.org/chainmaker/vm-docker-go/client"
+	client2 "chainmaker.org/chainmaker/vm-docker-go/rpc"
 
-	"chainmaker.org/chainmaker/localconf/v2"
 	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -39,7 +39,7 @@ import (
 )
 
 var (
-	dockerContainerDir = "../module/vm/docker-go/dockercontainer"
+	dockerContainerDir = "../module/vm/docker-go/vm_mgr"
 	sourceDir          string
 	containerName      string
 	hostLogDir         string
@@ -50,7 +50,6 @@ const (
 	dockerLogDir         = "/log"
 	imageName            = "chainmakerofficial/chainmaker-docker-go-vm:develop_dockervm"
 	defaultContainerName = "chainmaker-docker-go-vm-container"
-	dockerFilePath       = ""
 )
 
 type DockerManager struct {
@@ -75,34 +74,37 @@ type DockerManager struct {
 	CDMClient *client2.CDMClient
 	CDMState  bool
 
-	config *localconf.CMConfig
+	dockerVMConfig *config.DockerVMConfig
 }
 
 // NewDockerManager return docker manager and running a default container
-func NewDockerManager(chainId string, chainConfig *localconf.CMConfig) *DockerManager {
+func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerManager {
 
 	dockerManagerLogger := logger.GetLoggerByChain("[Docker Manager]", chainId)
 	dockerManagerLogger.Debugf("init docker manager")
+
+	dockerVMConfig := &config.DockerVMConfig{}
+	_ = mapstructure.Decode(vmConfig, dockerVMConfig)
 	// init docker manager
 	newDockerManager := &DockerManager{
-		AttachStdOut: true,
-		AttachStderr: true,
-		ShowStdout:   true,
-		ShowStderr:   true,
-		Log:          dockerManagerLogger,
-		CDMState:     false,
-		config:       chainConfig,
+		AttachStdOut:   true,
+		AttachStderr:   true,
+		ShowStdout:     true,
+		ShowStderr:     true,
+		Log:            dockerManagerLogger,
+		CDMState:       false,
+		dockerVMConfig: dockerVMConfig,
 	}
 
 	// validate settings
-	valid, err := newDockerManager.validateConfig(chainConfig)
+	valid, err := newDockerManager.validateConfig(dockerVMConfig)
 	if err != nil || !valid {
 		dockerManagerLogger.Errorf("fail to init docker manager, please check the docker config, %s", err)
 		return nil
 	}
 
 	// if enable docker vm is false, docker manager is nil
-	startDockerVm := chainConfig.DockerVMConfig.EnableDockerVM
+	startDockerVm := dockerVMConfig.EnableDockerVM
 	if !startDockerVm {
 		return nil
 	}
@@ -115,7 +117,7 @@ func NewDockerManager(chainId string, chainConfig *localconf.CMConfig) *DockerMa
 
 	newDockerManager.ctx = context.Background()
 	newDockerManager.client = cli
-	newDockerManager.CDMClient = client2.NewCDMClient(chainId, chainConfig)
+	newDockerManager.CDMClient = client2.NewCDMClient(chainId, dockerVMConfig)
 	newDockerManager.imageName = imageName
 	newDockerManager.containerName = containerName
 	newDockerManager.sourceDir = sourceDir
@@ -145,7 +147,7 @@ func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, c
 }
 
 // StartDockerVM Start Docker VM
-func (m *DockerManager) StartDockerVM() error {
+func (m *DockerManager) StartVM() error {
 	m.Log.Info("start docker vm...")
 	var err error
 
@@ -213,7 +215,7 @@ func (m *DockerManager) StartDockerVM() error {
 }
 
 // StopAndRemoveDockerVM stop docker vm and remove container, image
-func (m *DockerManager) StopAndRemoveDockerVM() error {
+func (m *DockerManager) StopVM() error {
 	var err error
 
 	err = m.stopContainer()
@@ -235,7 +237,7 @@ func (m *DockerManager) StopAndRemoveDockerVM() error {
 	return nil
 }
 
-// StartCDMClient start CDM grpc client
+// StartCDMClient start CDM grpc rpc
 func (m *DockerManager) StartCDMClient() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -243,7 +245,7 @@ func (m *DockerManager) StartCDMClient() {
 
 	m.CDMState = state
 
-	m.Log.Debugf("cdm client state is: %v", state)
+	m.Log.Debugf("cdm rpc state is: %v", state)
 }
 
 func (m *DockerManager) GetCDMState() bool {
@@ -447,13 +449,13 @@ func (m *DockerManager) InitMountDirectory() error {
 	}
 	m.Log.Debug("set contract dir: ", contractDir)
 
-	shareDir := filepath.Join(mountDir, config.ShareDir)
-	err = m.createDir(shareDir)
-	if err != nil {
-		m.Log.Errorf("fail to display build process, err: [%s]", err)
-		return err
-	}
-	m.Log.Debug("set share dir: ", shareDir)
+	//shareDir := filepath.Join(mountDir, config.ShareDir)
+	//err = m.createDir(shareDir)
+	//if err != nil {
+	//	m.Log.Errorf("fail to display build process, err: [%s]", err)
+	//	return err
+	//}
+	//m.Log.Debug("set share dir: ", shareDir)
 
 	sockDir := filepath.Join(mountDir, config.SockDir)
 	err = m.createDir(sockDir)
@@ -477,30 +479,52 @@ func (m *DockerManager) InitMountDirectory() error {
 // ------------------ utility functions --------------
 
 func (m *DockerManager) constructEnvs() []string {
-	dockerConfig := m.config.DockerVMConfig
 
 	configsMap := make(map[string]string)
 
-	m.convertConfigToMap(dockerConfig.DockerVmConfig, configsMap)
+	//m.convertConfigToMap(dockerConfig.DockerTxConfig, configsMap)
+	//
+	//m.convertConfigToMap(dockerConfig.DockerRpcConfig, configsMap)
 
-	m.convertConfigToMap(dockerConfig.DockerRpcConfig, configsMap)
+	configsMap[""] = fmt.Sprintf("udsopen=%v", m.dockerVMConfig.DockerVMUDSOpen)
+
+	var containerConfig []string
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", config.ENV_ENABLE_UDS, m.dockerVMConfig.EnableDockerVM))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_MAX_RECV_MSG_SIZE, m.dockerVMConfig.DockerVMMaxRecvMessageSize))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_MAX_SEND_MSG_SIZE, m.dockerVMConfig.DockerVMMaxSendMessageSize))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_TX_SIZE, m.dockerVMConfig.TxSize))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_USER_NUM, m.dockerVMConfig.UserNum))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s", config.ENV_LOG_LEVEL, "DEBUG"))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", config.ENV_LOG_IN_CONSOLE, true))
+
+	return containerConfig
+
+	// udsopen
+	// maxsendmessagesize
+	// maxrecvmessagesize
+	// txsize
+	// usernum
+	// txtimelimit
+	// loglevel
+	// loginconsole
 
 	// set log level
-	configsMap["Log_Level"] = fmt.Sprintf("Log_Level=%s", m.config.LogConfig.SystemLog.LogLevels["vm"])
-
-	// set log in console
-	logInConsole := strconv.FormatBool(m.config.LogConfig.SystemLog.LogInConsole)
-	configsMap["Log_In_Console"] = fmt.Sprintf("Log_In_Console=%s", logInConsole)
-
-	// assembly envs
-	configs := make([]string, len(configsMap))
-	index := 0
-	for _, value := range configsMap {
-		configs[index] = value
-		index++
-	}
-
-	return configs
+	//configsMap["Log_Level"] = fmt.Sprintf("Log_Level=%s", "DEBUG")
+	//
+	//// set log in console
+	////logInConsole := strconv.FormatBool(m.config.LogConfig.SystemLog.LogInConsole)
+	//configsMap["Log_In_Console"] = fmt.Sprintf("Log_In_Console=%v", true)
+	//
+	//// assembly envs
+	//configs := make([]string, len(configsMap))
+	//index := 0
+	//for _, value := range configsMap {
+	//	configs[index] = value
+	//	index++
+	//}
+	//
+	//return configs
 }
 
 func (m *DockerManager) convertConfigToMap(config interface{}, configsMap map[string]string) {
@@ -638,12 +662,12 @@ func (m *DockerManager) exists(path string) (bool, error) {
 	return false, err
 }
 
-func (m *DockerManager) validateConfig(config *localconf.CMConfig) (bool, error) {
-	dockerConfig := config.DockerVMConfig
+func (m *DockerManager) validateConfig(config *config.DockerVMConfig) (bool, error) {
+
 	var err error
 
 	// host mount directory
-	sourceDir = dockerConfig.MountPath
+	sourceDir = config.DockerVMMountPath
 	if !filepath.IsAbs(sourceDir) {
 		sourceDir, err = filepath.Abs(sourceDir)
 		if err != nil {
@@ -653,7 +677,7 @@ func (m *DockerManager) validateConfig(config *localconf.CMConfig) (bool, error)
 	}
 
 	// host log directory
-	hostLogDir = config.LogConfig.SystemLog.DockerFilePath
+	hostLogDir = config.DockerVMLogPath
 	if !filepath.IsAbs(hostLogDir) {
 		hostLogDir, err = filepath.Abs(hostLogDir)
 		if err != nil {
@@ -662,11 +686,11 @@ func (m *DockerManager) validateConfig(config *localconf.CMConfig) (bool, error)
 		}
 	}
 
-	if dockerConfig.ContainerName == "" {
+	if config.DockerVMContainerName == "" {
 		m.Log.Infof("container name doesn't set, set as default: chainmaker-docker-go-vm-container")
 		containerName = defaultContainerName
 	} else {
-		containerName = dockerConfig.ContainerName
+		containerName = config.DockerVMContainerName
 	}
 
 	return true, nil

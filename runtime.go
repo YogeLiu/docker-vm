@@ -14,11 +14,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"chainmaker.org/chainmaker/localconf/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/config"
+
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/gas"
+	"chainmaker.org/chainmaker/vm-docker-go/pb/protogo"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -33,7 +34,7 @@ type CDMClient interface {
 
 	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage)
 
-	GetCMConfig() *localconf.CMConfig
+	GetCMConfig() *config.DockerVMConfig
 }
 
 // RuntimeInstance docker-go runtime
@@ -161,8 +162,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			contractFullName := string(recvMsg.Payload)             // contract1#1.0.0
 			contractName := strings.Split(contractFullName, "#")[0] // contract1
 
-			dockerConfig := r.Client.GetCMConfig().DockerVMConfig
-			hostMountPath := dockerConfig.MountPath
+			hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
 
 			contractDir := filepath.Join(hostMountPath, mountContractDir)
 			contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
