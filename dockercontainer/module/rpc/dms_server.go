@@ -69,7 +69,7 @@ func NewDMSServer() (*DMSServer, error) {
 	return &DMSServer{
 		Listener: listener,
 		Server:   server,
-		logger:   logger.NewDockerLogger(logger.MODULE_DMS_SERVER),
+		logger:   logger.NewDockerLogger(logger.MODULE_DMS_SERVER, config.DockerLogDir),
 	}, nil
 }
 
