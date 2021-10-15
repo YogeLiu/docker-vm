@@ -3,6 +3,8 @@ package main
 import (
 	"time"
 
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module"
 	"go.uber.org/zap"
@@ -12,7 +14,7 @@ var managerLogger *zap.SugaredLogger
 
 func main() {
 
-	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER)
+	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER, config.DockerLogDir)
 
 	manager, err := module.NewManager(managerLogger)
 	if err != nil {

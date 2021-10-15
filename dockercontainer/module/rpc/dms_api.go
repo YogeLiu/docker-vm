@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/core"
 
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
@@ -29,7 +31,7 @@ type DMSApi struct {
 
 func NewDMSApi(processPool ProcessPoolInterface) *DMSApi {
 	return &DMSApi{
-		logger:      logger.NewDockerLogger(logger.MODULE_CDM_SERVER),
+		logger:      logger.NewDockerLogger(logger.MODULE_CDM_SERVER, config.DockerLogDir),
 		processPool: processPool,
 	}
 }

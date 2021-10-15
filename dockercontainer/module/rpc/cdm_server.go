@@ -97,7 +97,7 @@ func NewCDMServer() (*CDMServer, error) {
 	return &CDMServer{
 		Listener: listener,
 		Server:   server,
-		logger:   logger.NewDockerLogger(logger.MODULE_CDM_SERVER),
+		logger:   logger.NewDockerLogger(logger.MODULE_CDM_SERVER, config.DockerLogDir),
 	}, nil
 }
 

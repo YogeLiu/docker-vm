@@ -11,6 +11,8 @@ import (
 	"io"
 	"sync"
 
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
@@ -29,7 +31,7 @@ type CDMApi struct {
 func NewCDMApi(scheduler protocol.Scheduler) *CDMApi {
 	return &CDMApi{
 		scheduler: scheduler,
-		logger:    logger.NewDockerLogger(logger.MODULE_CDM_API),
+		logger:    logger.NewDockerLogger(logger.MODULE_CDM_API, config.DockerLogDir),
 		stream:    nil,
 		stop:      nil,
 		wg:        new(sync.WaitGroup),
