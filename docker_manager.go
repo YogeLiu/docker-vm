@@ -39,7 +39,7 @@ var (
 const (
 	targetDir            = "/mount"
 	dockerLogDir         = "/log"
-	imageName            = "chainmakerofficial/chainmaker-docker-go-vm:develop_dockervm"
+	imageName            = "chainmakerofficial/chainmaker-docker-go-vm:develop"
 	defaultContainerName = "chainmaker-docker-go-vm-container"
 )
 
