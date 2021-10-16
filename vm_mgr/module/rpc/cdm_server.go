@@ -82,15 +82,10 @@ func NewCDMServer() (*CDMServer, error) {
 	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
 
 	//set default connection timeout
-	maxSendSizeConfig := os.Getenv(config.ENV_MAX_SEND_MSG_SIZE)
-	maxRecvSizeConfig := os.Getenv(config.ENV_MAX_RECV_MSG_SIZE)
-
-	maxSendSize, _ := strconv.Atoi(maxSendSizeConfig)
-	maxRecvSize, _ := strconv.Atoi(maxRecvSizeConfig)
 
 	serverOpts = append(serverOpts, grpc.ConnectionTimeout(ConnectionTimeout))
-	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(maxSendSize*1024*1024))
-	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(maxRecvSize*1024*1024))
+	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.MaxSendSize*1024*1024))
+	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.MaxRecvSize*1024*1024))
 
 	server := grpc.NewServer(serverOpts...)
 

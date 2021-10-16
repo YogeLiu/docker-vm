@@ -7,42 +7,33 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
-	"bufio"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"reflect"
-	"strings"
 	"sync"
+
+	"chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/protocol/v2"
 
 	"github.com/mitchellh/mapstructure"
 
-	"chainmaker.org/chainmaker/pb-go/v2/common"
-
-	"chainmaker.org/chainmaker/protocol/v2"
-
-	client2 "chainmaker.org/chainmaker/vm-docker-go/rpc"
+	"chainmaker.org/chainmaker/vm-docker-go/rpc"
 
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 )
 
 var (
 	dockerContainerDir = "../module/vm/docker-go/vm_mgr"
-	sourceDir          string
 	containerName      string
-	hostLogDir         string
 )
 
 const (
@@ -53,15 +44,15 @@ const (
 )
 
 type DockerManager struct {
-	AttachStdOut  bool
-	AttachStderr  bool
-	ShowStdout    bool
-	ShowStderr    bool
-	imageName     string
-	containerName string
-	sourceDir     string
-	targetDir     string
-	dockerDir     string
+	AttachStdOut       bool
+	AttachStderr       bool
+	ShowStdout         bool
+	ShowStderr         bool
+	imageName          string
+	containerName      string
+	hostMountPointPath string
+	targetDir          string
+	dockerDir          string
 
 	hostLogDir   string
 	dockerLogDir string
@@ -70,9 +61,10 @@ type DockerManager struct {
 	ctx    context.Context
 	client *client.Client
 
-	Log       *logger.CMLogger
-	CDMClient *client2.CDMClient
-	CDMState  bool
+	Log            *logger.CMLogger
+	CDMClient      *rpc.CDMClient
+	CDMState       bool
+	clientInitOnce sync.Once
 
 	dockerVMConfig *config.DockerVMConfig
 }
@@ -85,6 +77,7 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 
 	dockerVMConfig := &config.DockerVMConfig{}
 	_ = mapstructure.Decode(vmConfig, dockerVMConfig)
+
 	// init docker manager
 	newDockerManager := &DockerManager{
 		AttachStdOut:   true,
@@ -94,18 +87,19 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		Log:            dockerManagerLogger,
 		CDMState:       false,
 		dockerVMConfig: dockerVMConfig,
-	}
-
-	// validate settings
-	valid, err := newDockerManager.validateConfig(dockerVMConfig)
-	if err != nil || !valid {
-		dockerManagerLogger.Errorf("fail to init docker manager, please check the docker config, %s", err)
-		return nil
+		clientInitOnce: sync.Once{},
 	}
 
 	// if enable docker vm is false, docker manager is nil
 	startDockerVm := dockerVMConfig.EnableDockerVM
 	if !startDockerVm {
+		return nil
+	}
+
+	// validate settings
+	err := newDockerManager.validateVMSettings(dockerVMConfig)
+	if err != nil {
+		dockerManagerLogger.Errorf("fail to init docker manager, please check the docker config, %s", err)
 		return nil
 	}
 
@@ -117,18 +111,15 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 
 	newDockerManager.ctx = context.Background()
 	newDockerManager.client = cli
-	newDockerManager.CDMClient = client2.NewCDMClient(chainId, dockerVMConfig)
+	newDockerManager.CDMClient = rpc.NewCDMClient(chainId, dockerVMConfig)
 	newDockerManager.imageName = imageName
 	newDockerManager.containerName = containerName
-	newDockerManager.sourceDir = sourceDir
 	newDockerManager.targetDir = targetDir
 	newDockerManager.dockerDir = dockerContainerDir
-
-	newDockerManager.hostLogDir = hostLogDir
 	newDockerManager.dockerLogDir = dockerLogDir
 
 	// init mount directory and subdirectory
-	err = newDockerManager.InitMountDirectory()
+	err = newDockerManager.initMountDirectory()
 	if err != nil {
 		dockerManagerLogger.Errorf("fail to init mount directory: %s", err)
 		return nil
@@ -137,16 +128,7 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 	return newDockerManager
 }
 
-func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method, codePath string, contract *common.Contract,
-	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
-	return &RuntimeInstance{
-		ChainId: chainId,
-		Client:  m.CDMClient,
-		Log:     logger,
-	}, nil
-}
-
-// StartDockerVM Start Docker VM
+// StartVM Start Docker VM
 func (m *DockerManager) StartVM() error {
 	m.Log.Info("start docker vm...")
 	var err error
@@ -214,7 +196,7 @@ func (m *DockerManager) StartVM() error {
 	return nil
 }
 
-// StopAndRemoveDockerVM stop docker vm and remove container, image
+// StopVM stop docker vm and remove container, image
 func (m *DockerManager) StopVM() error {
 	var err error
 
@@ -233,69 +215,86 @@ func (m *DockerManager) StopVM() error {
 	//	return err
 	//}
 
+	m.CDMState = false
+	m.clientInitOnce = sync.Once{}
+
 	m.Log.Info("stop and remove docker vm [%s]", m.containerName)
 	return nil
 }
 
-// StartCDMClient start CDM grpc rpc
-func (m *DockerManager) StartCDMClient() {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	state := m.CDMClient.StartClient()
+func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method, codePath string, contract *common.Contract,
+	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
 
-	m.CDMState = state
+	// add client state logic
+	if !m.getCDMState() {
+		m.startCDMClient()
+	}
 
-	m.Log.Debugf("cdm rpc state is: %v", state)
+	return &RuntimeInstance{
+		ChainId: chainId,
+		Client:  m.CDMClient,
+		Log:     logger,
+	}, nil
 }
 
-func (m *DockerManager) GetCDMState() bool {
+// StartCDMClient start CDM grpc rpc
+func (m *DockerManager) startCDMClient() {
+
+	m.clientInitOnce.Do(func() {
+		state := m.CDMClient.StartClient()
+		m.CDMState = state
+		m.Log.Debugf("cdm rpc state is: %v", state)
+	})
+}
+
+func (m *DockerManager) getCDMState() bool {
 	return m.CDMState
 }
 
 // ------------------ image functions --------------
 
-// BuildImage build image based on Dockerfile
-func (m *DockerManager) buildImage(dockerFolderRelPath string) error {
-
-	// get absolute path for docker folder
-	dockerFolderPath, err := filepath.Abs(dockerFolderRelPath)
-	if err != nil {
-		return err
-	}
-
-	// tar whole directory
-	buildCtx, err := archive.TarWithOptions(dockerFolderPath, &archive.TarOptions{})
-	if err != nil {
-		return err
-	}
-
-	buildOpts := types.ImageBuildOptions{
-		Dockerfile: "Dockerfile",
-		Tags:       []string{m.imageName},
-		Remove:     true,
-	}
-
-	// build image
-	resp, err := m.client.ImageBuild(m.ctx, buildCtx, buildOpts)
-	if err != nil {
-		return err
-	}
-	defer func(body io.ReadCloser) {
-		err = body.Close()
-		if err != nil {
-			return
-		}
-	}(resp.Body)
-
-	err = m.displayBuildProcess(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	m.Log.Infof("build image [%s] success :)", m.imageName)
-
-	return nil
-}
+//// BuildImage build image based on Dockerfile
+//func (m *DockerManager) buildImage(dockerFolderRelPath string) error {
+//
+//	// get absolute path for docker folder
+//	dockerFolderPath, err := filepath.Abs(dockerFolderRelPath)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// tar whole directory
+//	buildCtx, err := archive.TarWithOptions(dockerFolderPath, &archive.TarOptions{})
+//	if err != nil {
+//		return err
+//	}
+//
+//	buildOpts := types.ImageBuildOptions{
+//		Dockerfile: "Dockerfile",
+//		Tags:       []string{m.imageName},
+//		Remove:     true,
+//	}
+//
+//	// build image
+//	resp, err := m.client.ImageBuild(m.ctx, buildCtx, buildOpts)
+//	if err != nil {
+//		return err
+//	}
+//	defer func(body io.ReadCloser) {
+//		err = body.Close()
+//		if err != nil {
+//			return
+//		}
+//	}(resp.Body)
+//
+//	err = m.displayBuildProcess(resp.Body)
+//	if err != nil {
+//		return err
+//	}
+//
+//	m.Log.Infof("build image [%s] success :)", m.imageName)
+//
+//	return nil
+//}
 
 // check docker m image exist or not
 func (m *DockerManager) imageExist() (bool, error) {
@@ -318,25 +317,26 @@ func (m *DockerManager) imageExist() (bool, error) {
 	return false, nil
 }
 
-// remove image
-func (m *DockerManager) removeImage() error {
-	imageExist, err := m.imageExist()
-	if !imageExist || err != nil {
-		return nil
-	}
-
-	m.Log.Infof("Removing image [%s] ...", m.imageName)
-	if _, err = m.client.ImageRemove(m.ctx, m.imageName,
-		types.ImageRemoveOptions{PruneChildren: true, Force: true}); err != nil {
-		return err
-	}
-
-	_, err = m.client.ImagesPrune(m.ctx, filters.Args{})
-	if err != nil {
-		return err
-	}
-	return nil
-}
+//
+//// remove image
+//func (m *DockerManager) removeImage() error {
+//	imageExist, err := m.imageExist()
+//	if !imageExist || err != nil {
+//		return nil
+//	}
+//
+//	m.Log.Infof("Removing image [%s] ...", m.imageName)
+//	if _, err = m.client.ImageRemove(m.ctx, m.imageName,
+//		types.ImageRemoveOptions{PruneChildren: true, Force: true}); err != nil {
+//		return err
+//	}
+//
+//	_, err = m.client.ImagesPrune(m.ctx, filters.Args{})
+//	if err != nil {
+//		return err
+//	}
+//	return nil
+//}
 
 // ------------------ container functions --------------
 
@@ -359,7 +359,7 @@ func (m *DockerManager) createContainer() error {
 		Mounts: []mount.Mount{
 			{
 				Type:        mount.TypeBind,
-				Source:      m.sourceDir,
+				Source:      m.hostMountPointPath,
 				Target:      m.targetDir,
 				ReadOnly:    false,
 				Consistency: mount.ConsistencyFull,
@@ -428,12 +428,12 @@ func (m *DockerManager) stopContainer() error {
 
 // InitMountDirectory init mount directory and sub directories
 // if not exist, create directories
-func (m *DockerManager) InitMountDirectory() error {
+func (m *DockerManager) initMountDirectory() error {
 
 	var err error
 
 	// create mount directory
-	mountDir := m.sourceDir
+	mountDir := m.hostMountPointPath
 	err = m.createDir(mountDir)
 	if err != nil {
 		return nil
@@ -448,14 +448,6 @@ func (m *DockerManager) InitMountDirectory() error {
 		return err
 	}
 	m.Log.Debug("set contract dir: ", contractDir)
-
-	//shareDir := filepath.Join(mountDir, config.ShareDir)
-	//err = m.createDir(shareDir)
-	//if err != nil {
-	//	m.Log.Errorf("fail to display build process, err: [%s]", err)
-	//	return err
-	//}
-	//m.Log.Debug("set share dir: ", shareDir)
 
 	sockDir := filepath.Join(mountDir, config.SockDir)
 	err = m.createDir(sockDir)
@@ -482,72 +474,41 @@ func (m *DockerManager) constructEnvs() []string {
 
 	configsMap := make(map[string]string)
 
-	//m.convertConfigToMap(dockerConfig.DockerTxConfig, configsMap)
-	//
-	//m.convertConfigToMap(dockerConfig.DockerRpcConfig, configsMap)
-
 	configsMap[""] = fmt.Sprintf("udsopen=%v", m.dockerVMConfig.DockerVMUDSOpen)
 
 	var containerConfig []string
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", config.ENV_ENABLE_UDS, m.dockerVMConfig.EnableDockerVM))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_MAX_RECV_MSG_SIZE, m.dockerVMConfig.DockerVMMaxRecvMessageSize))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_MAX_SEND_MSG_SIZE, m.dockerVMConfig.DockerVMMaxSendMessageSize))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_TX_SIZE, m.dockerVMConfig.TxSize))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_USER_NUM, m.dockerVMConfig.UserNum))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s", config.ENV_LOG_LEVEL, "DEBUG"))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", config.ENV_LOG_IN_CONSOLE, true))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s", config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
 
 	return containerConfig
 
-	// udsopen
-	// maxsendmessagesize
-	// maxrecvmessagesize
-	// txsize
-	// usernum
-	// txtimelimit
-	// loglevel
-	// loginconsole
-
-	// set log level
-	//configsMap["Log_Level"] = fmt.Sprintf("Log_Level=%s", "DEBUG")
-	//
-	//// set log in console
-	////logInConsole := strconv.FormatBool(m.config.LogConfig.SystemLog.LogInConsole)
-	//configsMap["Log_In_Console"] = fmt.Sprintf("Log_In_Console=%v", true)
-	//
-	//// assembly envs
-	//configs := make([]string, len(configsMap))
-	//index := 0
-	//for _, value := range configsMap {
-	//	configs[index] = value
-	//	index++
-	//}
-	//
-	//return configs
 }
 
-func (m *DockerManager) convertConfigToMap(config interface{}, configsMap map[string]string) {
-	v := reflect.ValueOf(config)
-	typeOfS := v.Type()
+//func (m *DockerManager) convertConfigToMap(config interface{}, configsMap map[string]string) {
+//	v := reflect.ValueOf(config)
+//	typeOfS := v.Type()
+//
+//	for i := 0; i < v.NumField(); i++ {
+//		fieldName := typeOfS.Field(i).Name
+//		value := v.Field(i).Interface()
+//
+//		env := fmt.Sprintf("%s=%v", fieldName, value)
+//		configsMap[fieldName] = env
+//	}
+//}
 
-	for i := 0; i < v.NumField(); i++ {
-		fieldName := typeOfS.Field(i).Name
-		value := v.Field(i).Interface()
-
-		env := fmt.Sprintf("%s=%v", fieldName, value)
-		configsMap[fieldName] = env
-	}
-}
-
-type ErrorLine struct {
-	Error       string      `json:"error"`
-	ErrorDetail ErrorDetail `json:"errorDetail"`
-}
-
-type ErrorDetail struct {
-	Message string `json:"message"`
-}
+//type ErrorLine struct {
+//	Error       string      `json:"error"`
+//	ErrorDetail ErrorDetail `json:"errorDetail"`
+//}
+//
+//type ErrorDetail struct {
+//	Message string `json:"message"`
+//}
 
 // display container std out in host std out -- need finish loop accept
 func (m *DockerManager) displayInConsole(containerID string) error {
@@ -595,42 +556,42 @@ func (m *DockerManager) displayInConsole(containerID string) error {
 	return nil
 }
 
-// display build process
-func (m *DockerManager) displayBuildProcess(rd io.Reader) error {
-	var lastLine string
-
-	scanner := bufio.NewScanner(rd)
-	for scanner.Scan() {
-
-		lastLine = scanner.Text()
-		lastLine = strings.TrimLeft(lastLine, "{stream\":")
-		lastLine = strings.TrimRight(lastLine, "\"}")
-		lastLine = strings.TrimRight(lastLine, "\\n")
-		if len(lastLine) == 0 {
-			continue
-		}
-		if strings.Contains(lastLine, "---\\u003e") {
-			continue
-		}
-
-		if strings.Contains(lastLine, "Removing intermediate") {
-			continue
-		}
-
-		if strings.Contains(lastLine, "ux\":{\"ID\":\"sha256") {
-			continue
-		}
-		//fmt.Println(lastLine)
-	}
-
-	errLine := &ErrorLine{}
-	_ = json.Unmarshal([]byte(lastLine), errLine)
-	if errLine.Error != "" {
-		return errors.New(errLine.Error)
-	}
-
-	return scanner.Err()
-}
+//// display build process
+//func (m *DockerManager) displayBuildProcess(rd io.Reader) error {
+//	var lastLine string
+//
+//	scanner := bufio.NewScanner(rd)
+//	for scanner.Scan() {
+//
+//		lastLine = scanner.Text()
+//		lastLine = strings.TrimLeft(lastLine, "{stream\":")
+//		lastLine = strings.TrimRight(lastLine, "\"}")
+//		lastLine = strings.TrimRight(lastLine, "\\n")
+//		if len(lastLine) == 0 {
+//			continue
+//		}
+//		if strings.Contains(lastLine, "---\\u003e") {
+//			continue
+//		}
+//
+//		if strings.Contains(lastLine, "Removing intermediate") {
+//			continue
+//		}
+//
+//		if strings.Contains(lastLine, "ux\":{\"ID\":\"sha256") {
+//			continue
+//		}
+//		//fmt.Println(lastLine)
+//	}
+//
+//	errLine := &ErrorLine{}
+//	_ = json.Unmarshal([]byte(lastLine), errLine)
+//	if errLine.Error != "" {
+//		return errors.New(errLine.Error)
+//	}
+//
+//	return scanner.Err()
+//}
 
 func (m *DockerManager) createDir(directory string) error {
 	exist, err := m.exists(directory)
@@ -662,36 +623,34 @@ func (m *DockerManager) exists(path string) (bool, error) {
 	return false, err
 }
 
-func (m *DockerManager) validateConfig(config *config.DockerVMConfig) (bool, error) {
+func (m *DockerManager) validateVMSettings(config *config.DockerVMConfig) error {
 
-	var err error
+	if len(config.DockerVMMountPath) == 0 {
+		return errors.New("doesn't set host mount directory path correctly")
+	}
 
-	// host mount directory
-	sourceDir = config.DockerVMMountPath
-	if !filepath.IsAbs(sourceDir) {
-		sourceDir, err = filepath.Abs(sourceDir)
-		if err != nil {
-			m.Log.Errorf("doesn't set host mount directory path correctly")
-			return false, err
-		}
+	if len(config.DockerVMLogPath) == 0 {
+		return errors.New("doesn't set host log directory path correctly")
+	}
+
+	// host mount directory path
+	if !filepath.IsAbs(config.DockerVMMountPath) {
+		hostMountPointPath, _ := filepath.Abs(config.DockerVMMountPath)
+		m.hostMountPointPath = hostMountPointPath
 	}
 
 	// host log directory
-	hostLogDir = config.DockerVMLogPath
-	if !filepath.IsAbs(hostLogDir) {
-		hostLogDir, err = filepath.Abs(hostLogDir)
-		if err != nil {
-			m.Log.Errorf("doesn't set host log directory path correctly")
-			return false, err
-		}
+	if !filepath.IsAbs(config.DockerVMLogPath) {
+		hostLogPointPath, _ := filepath.Abs(config.DockerVMLogPath)
+		m.hostLogDir = hostLogPointPath
 	}
 
-	if config.DockerVMContainerName == "" {
+	if len(config.DockerVMContainerName) == 0 {
 		m.Log.Infof("container name doesn't set, set as default: chainmaker-docker-go-vm-container")
 		containerName = defaultContainerName
 	} else {
 		containerName = config.DockerVMContainerName
 	}
 
-	return true, nil
+	return nil
 }

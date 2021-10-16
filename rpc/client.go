@@ -204,8 +204,8 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 		grpc.WithInsecure(),
 		grpc.FailOnNonTempDialError(true),
 		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(int(c.config.DockerVMMaxRecvMessageSize*1024*1024)),
-			grpc.MaxCallSendMsgSize(int(c.config.DockerVMMaxSendMessageSize*1024*1024)),
+			grpc.MaxCallRecvMsgSize(config.MaxRecvSize*1024*1024),
+			grpc.MaxCallSendMsgSize(config.MaxSendSize*1024*1024),
 		),
 	}
 

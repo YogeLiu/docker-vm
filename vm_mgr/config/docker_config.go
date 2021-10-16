@@ -37,6 +37,9 @@ const (
 	SockDir = "sock"
 	// SockName domain socket file name
 	SockName = "cdm.sock"
+
+	MaxSendSize = 10
+	MaxRecvSize = 10
 )
 
 var (
