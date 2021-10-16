@@ -1,1 +1,124 @@
-../../vm_mgr/pb/proto/cdm_message.proto
+syntax = "proto3";
+
+package proto;
+
+option go_package = "chainmaker.org/chainmaker/vm-docker-go/pb/protogo";
+
+service CDMRpc {
+    rpc CDMCommunicate(stream CDMMessage) returns(stream CDMMessage) {};
+}
+
+//CMMessage means message between chainmaker and docker manager
+message CDMMessage {
+
+    string tx_id = 1;
+
+    CDMType type = 2;
+
+    bytes payload = 3;
+}
+
+enum CDMType {
+    CDM_TYPE_UNDEFINED = 0;
+
+    CDM_TYPE_TX_REQUEST = 1;
+
+    CDM_TYPE_TX_RESPONSE = 2;
+
+    CDM_TYPE_GET_STATE = 3;
+
+    CDM_TYPE_GET_STATE_RESPONSE = 4;
+
+    CDM_TYPE_GET_BYTECODE = 5;
+
+    CDM_TYPE_GET_BYTECODE_RESPONSE = 6;
+}
+
+
+
+
+
+// TX_REQUEST
+message TxRequest {
+
+    string tx_id = 1;
+
+    string contract_name = 2;
+
+    string contract_version = 3;
+
+    string method = 4;
+
+    map<string, bytes> parameters = 5;
+
+    // cross contract in use
+    TxContext tx_context = 6;
+}
+
+message TxContext {
+
+    uint32 current_height = 1;
+
+    map<string, bytes> write_map = 2;
+
+    map<string, bytes> read_map = 3;
+
+    string original_process_name = 4;
+}
+
+// TX_RESPONSE
+message TxResponse {
+
+    string tx_id = 1;
+
+    ContractResultCode code = 2;
+
+    bytes result = 3;
+
+    string message = 4;
+
+    map<string, bytes> write_map = 5;
+
+    repeated DockerContractEvent events = 6;
+
+}
+
+message DockerContractEvent {
+    // Event topic
+    string topic = 1;
+    // Event contract name
+    string contract_name = 2;
+    // Event contract version
+    string contract_version = 3;
+    // Event payload
+    repeated string data = 4;
+}
+
+
+enum ContractResultCode {
+    OK = 0;
+    FAIL = 1;
+}
+
+
+enum ProcessState {
+
+    PROCESS_STATE_CREATED = 0;
+
+    PROCESS_STATE_RUNNING = 1;
+
+    PROCESS_STATE_READY = 2;
+
+    PROCESS_STATE_EXPIRE = 3;
+
+    PROCESS_STATE_TX_TIMEOUT = 4;
+
+    PROCESS_STATE_WAITING = 5;
+
+    PROCESS_STATE_CROSS_FINISHED = 6;
+
+    PROCESS_STATE_CROSS_FAIL = 7;
+}
+
+
+
