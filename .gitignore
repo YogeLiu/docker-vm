@@ -3,4 +3,4 @@ bin
 *.log
 *.log.*
 cover.out
-./vm_mgr/vendor
+./vm_mgr/vendor/
