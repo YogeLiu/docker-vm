@@ -2,13 +2,13 @@ module chainmaker.org/chainmaker/vm-docker-go
 
 go 1.15
 
-// logger - develop_dockervm
-// localconf - develop_dockervm
+// logger - develop_docker_go_refactor
+// localconf - develop_docker_go_refactor
 
 require (
-	chainmaker.org/chainmaker/logger/v2 v2.0.1-0.20211014131951-892d098049bc
+	chainmaker.org/chainmaker/logger/v2 v2.0.1-0.20211016082827-76679717463c
 	chainmaker.org/chainmaker/pb-go/v2 v2.0.1-0.20211014120010-525e2ffaf04d
-	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211014144951-97323532a236
+	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211016082203-db89bab442ef
 	chainmaker.org/chainmaker/utils/v2 v2.0.0-20211014131421-43de8d9fe869
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/containerd/containerd v1.5.2 // indirect
