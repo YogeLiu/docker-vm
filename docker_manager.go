@@ -39,8 +39,8 @@ var (
 const (
 	targetDir            = "/mount"
 	dockerLogDir         = "/log"
-	imageName            = "chainmakerofficial/chainmaker-docker-go-vm:develop"
-	defaultContainerName = "chainmaker-docker-go-vm-container"
+	imageName            = "chainmakerofficial/chainmaker-vm-docker-go:develop"
+	defaultContainerName = "chainmaker-vm-docker-go-container"
 )
 
 type DockerManager struct {

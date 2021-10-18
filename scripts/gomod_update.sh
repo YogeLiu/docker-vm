@@ -5,6 +5,7 @@
 set -x
 BRANCH=develop
 
+cd ../
 go get chainmaker.org/chainmaker/logger/v2@${BRANCH}
 go get chainmaker.org/chainmaker/pb-go/v2@${BRANCH}
 go get chainmaker.org/chainmaker/protocol/v2@${BRANCH}

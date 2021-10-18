@@ -10,8 +10,11 @@ build-vendor:
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-docker-go-vm:develop -f Dockerfile ./
-	docker images | grep chainmaker-docker-go-vm
+	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:develop -f Dockerfile ./
+	docker images | grep chainmaker-vm-docker-go
+
+image-push:
+	docker push chainmakerofficial/chainmaker-vm-docker-go:develop
 
 gomod:
 	cd scripts && ./gomod_scripts.sh
