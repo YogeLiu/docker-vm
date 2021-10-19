@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 
+	"chainmaker.org/chainmaker/pb-go/v2/common"
+
 	"chainmaker.org/chainmaker/protocol/v2"
 
 	client2 "chainmaker.org/chainmaker/vm-docker-go/client"
@@ -133,7 +135,8 @@ func NewDockerManager(chainId string, chainConfig *localconf.CMConfig) *DockerMa
 	return newDockerManager
 }
 
-func (m *DockerManager) NewRuntimeInstance(chainId string, logger protocol.Logger) (protocol.RuntimeInstance, error) {
+func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method, codePath string, contract *common.Contract,
+	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
 	return &RuntimeInstance{
 		ChainId: chainId,
 		Client:  m.CDMClient,
