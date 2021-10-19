@@ -38,6 +38,8 @@ const (
 	DockerLogDir = "/log"
 	// LogFileName log name
 	LogFileName = "docker-go.log"
+	// TestPath docker log dir for test
+    TestPath = "/"
 )
 
 var (

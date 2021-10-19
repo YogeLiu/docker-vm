@@ -8,26 +8,17 @@ package core
 
 import (
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb_sdk/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/utils"
 
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
 	"github.com/golang/mock/gomock"
 	"go.uber.org/zap"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 )
 
-func GetTestLogPath() string {
-	basePath, _ := os.Getwd()
-	return basePath + testPath
-}
-
-func getLogHandler() *zap.SugaredLogger {
-	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
-}
 
 func TestNewProcessHandler(t *testing.T) {
 	type args struct {
@@ -86,7 +77,7 @@ func TestProcessHandler_HandleContract(t *testing.T) {
 			name: "testHandleContractInitContract",
 			fields: fields{
 				state:  "",
-				logger: getLogHandler(),
+				logger: utils.GetLogHandler(),
 				TxRequest: &protogo.TxRequest{
 					TxId:            txId,
 					ContractName:    contractName,
@@ -106,7 +97,7 @@ func TestProcessHandler_HandleContract(t *testing.T) {
 			name: "testHandleContractInvokeContract",
 			fields: fields{
 				state:  "",
-				logger: getLogHandler(),
+				logger: utils.GetLogHandler(),
 				TxRequest: &protogo.TxRequest{
 					TxId:            txId,
 					ContractName:    contractName,
@@ -129,7 +120,7 @@ func TestProcessHandler_HandleContract(t *testing.T) {
 			name: "testHandleContractUpgradeContract",
 			fields: fields{
 				state:  "",
-				logger: getLogHandler(),
+				logger: utils.GetLogHandler(),
 				TxRequest: &protogo.TxRequest{
 					TxId:            txId,
 					ContractName:    contractName,
@@ -149,7 +140,7 @@ func TestProcessHandler_HandleContract(t *testing.T) {
 			name: "testHandleContractDefault",
 			fields: fields{
 				state:  "",
-				logger: getLogHandler(),
+				logger: utils.GetLogHandler(),
 				TxRequest: &protogo.TxRequest{
 					TxId:            txId,
 					ContractName:    contractName,
@@ -212,7 +203,7 @@ func TestProcessHandler_HandleMessage(t *testing.T) {
 			name: "testHandleMessageCreated",
 			fields: fields{
 				state:         created,
-				logger:        getLogHandler(),
+				logger:        utils.GetLogHandler(),
 				TxRequest:     nil,
 				stream:        server,
 				scheduler:     nil,
@@ -404,7 +395,7 @@ func TestProcessHandler_handleCreated(t *testing.T) {
 			name: "testHandleCreated",
 			fields: fields{
 				state:         created,
-				logger:        getLogHandler(),
+				logger:        utils.GetLogHandler(),
 				TxRequest:     nil,
 				stream:        server,
 				scheduler:     nil,
@@ -426,7 +417,7 @@ func TestProcessHandler_handleCreated(t *testing.T) {
 			name: "testHandleCreated",
 			fields: fields{
 				state:         created,
-				logger:        getLogHandler(),
+				logger:        utils.GetLogHandler(),
 				TxRequest:     nil,
 				stream:        server,
 				scheduler:     nil,
@@ -512,7 +503,7 @@ func TestProcessHandler_handleGetState(t *testing.T) {
 		//	name: "testHandleGetState",
 		//	fields: fields{
 		//		state:  created,
-		//		logger: getLogHandler(),
+		//		logger: utils.GetLogHandler(),
 		//		TxRequest: &protogo.TxRequest{
 		//			TxId:            txId,
 		//			ContractName:    contractName,
@@ -691,7 +682,7 @@ func TestProcessHandler_sendInit(t *testing.T) {
 			name: "testSendInit",
 			fields: fields{
 				state:  "",
-				logger: getLogHandler(),
+				logger: utils.GetLogHandler(),
 				TxRequest: &protogo.TxRequest{
 					TxId:            txId,
 					ContractName:    contractName,
@@ -750,7 +741,7 @@ func TestProcessHandler_sendInvoke(t *testing.T) {
 			name: "testSendInvoke",
 			fields: fields{
 				state:  "",
-				logger: getLogHandler(),
+				logger: utils.GetLogHandler(),
 				TxRequest: &protogo.TxRequest{
 					TxId:            txId,
 					ContractName:    contractName,
@@ -815,7 +806,7 @@ func TestProcessHandler_sendMessage(t *testing.T) {
 			name: "testSendMessage",
 			fields: fields{
 				state:         created,
-				logger:        getLogHandler(),
+				logger:        utils.GetLogHandler(),
 				TxRequest:     nil,
 				stream:        server,
 				scheduler:     nil,

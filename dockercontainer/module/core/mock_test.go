@@ -7,12 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb_sdk/protogo"
 	"context"
+	"reflect"
+
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb_sdk/protogo"
 	"github.com/golang/mock/gomock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"reflect"
 )
 
 // MockDMSRpcClient is a mock of DMSRpcClient interface.
@@ -365,8 +366,6 @@ func (mr *MockDMSRpc_DMSCommunicateServerMockRecorder) SetTrailer(arg0 interface
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTrailer", reflect.TypeOf((*MockDMSRpc_DMSCommunicateServer)(nil).SetTrailer), arg0)
 }
-
-
 
 // MockProcessPoolInterface is a mock of ProcessPoolInterface interface.
 type MockProcessPoolInterface struct {

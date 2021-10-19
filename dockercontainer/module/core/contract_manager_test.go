@@ -8,7 +8,9 @@ package core
 
 import (
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/utils"
 	"github.com/golang/mock/gomock"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
@@ -23,17 +25,20 @@ const (
 	contractNameBad = "contractName2"
 	contractValue   = "contractValue1"
 	contractVersion = "contractVersion1"
-	contractPath  = "contractPath1"
-	txId  = "0xb0ff781740fd5bc45f63c7d4f572384343c3c8e8a7e64d602d0c95651b804352"
-	payload  = "payload1"
-	sockPath  = "sockPath"
-	method  = "method1"
-	testPath = "/"
+	contractPath    = "contractPath1"
+	txId            = "0xb0ff781740fd5bc45f63c7d4f572384343c3c8e8a7e64d602d0c95651b804352"
+	payload         = "payload1"
+	sockPath        = "sockPath"
+	method          = "method1"
+	testPath        = "/"
 )
 
 func TestContractManager_GetContract(t *testing.T) {
-	currentPath, _ := os.Getwd()
-	logPath := currentPath + testPath
+	c := gomock.NewController(t)
+	defer c.Finish()
+	responseChan := make(chan *protogo.CDMMessage)
+	scheduler := protocol.NewMockScheduler(c)
+	scheduler.EXPECT().RegisterResponseCh(txId, responseChan).Return().AnyTimes()
 	type fields struct {
 		lock            sync.RWMutex
 		getContractLock singleflight.Group
@@ -62,8 +67,8 @@ func TestContractManager_GetContract(t *testing.T) {
 				contractsMap: map[string]string{
 					contractName: contractValue,
 				},
-				logger:    logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath),
-				scheduler: protocol.NewMockScheduler(gomock.NewController(t)),
+				logger:    utils.GetLogHandler(),
+				scheduler: scheduler,
 			},
 			args: args{
 				txId:         "txId",
@@ -81,15 +86,15 @@ func TestContractManager_GetContract(t *testing.T) {
 		//		contractsMap: map[string]string{
 		//			contractName: contractValue,
 		//		},
-		//		logger:    logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, currentPath),
-		//		scheduler: protocol.NewMockScheduler(gomock.NewController(t)),
+		//		logger:    utils.GetLogHandler(),
+		//		scheduler: scheduler,
 		//	},
 		//	args: args{
-		//		txId:         "111",
+		//		txId:         txId,
 		//		contractName: contractNameBad,
 		//	},
 		//	want:    contractValue,
-		//	wantErr: true,
+		//	wantErr: false,
 		//},
 	}
 

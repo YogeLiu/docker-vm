@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
 	"fmt"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -44,4 +47,13 @@ func RunCmd(command string) error {
 func ProcessLoggerName(processName string) string {
 	loggerName := "[ " + processName + " ]"
 	return loggerName
+}
+
+func GetTestLogPath() string {
+	basePath, _ := os.Getwd()
+	return basePath + config.TestPath
+}
+
+func GetLogHandler() *zap.SugaredLogger {
+	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
 }
