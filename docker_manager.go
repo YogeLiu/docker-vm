@@ -48,7 +48,7 @@ const (
 	dockerLogDir         = "/log"
 	imageName            = "chainmakerofficial/chainmaker-docker-go-vm:develop_dockervm"
 	defaultContainerName = "chainmaker-docker-go-vm-container"
-	dockerFilePath       = ""
+	//dockerFilePath       = ""
 )
 
 type DockerManager struct {

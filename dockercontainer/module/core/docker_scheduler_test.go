@@ -37,7 +37,7 @@ func TestDockerScheduler_GetByteCodeReqCh(t *testing.T) {
 
 	for _, tt := range tests {
 		go func() {
-			for true {
+			for {
 				tt.fields.getByteCodeReqCh <- &protogo.CDMMessage{
 					TxId:    "txId",
 					Type:    0,
@@ -74,7 +74,7 @@ func TestDockerScheduler_GetCrossContractReqCh(t *testing.T) {
 	}
 	for _, tt := range tests {
 		go func() {
-			for true {
+			for {
 				tt.fields.crossContractsCh <- &protogo.TxRequest{
 					TxId:            "txId",
 					ContractName:    contractName,
@@ -150,7 +150,7 @@ func TestDockerScheduler_GetGetStateReqCh(t *testing.T) {
 	}
 	for _, tt := range tests {
 		go func() {
-			for true {
+			for {
 				tt.fields.getStateReqCh <- &protogo.CDMMessage{
 					TxId:    "txId",
 					Type:    0,
@@ -226,7 +226,7 @@ func TestDockerScheduler_GetTxReqCh(t *testing.T) {
 
 	for _, tt := range tests {
 		go func() {
-			for true {
+			for  {
 				tt.fields.txReqCh <- &protogo.TxRequest{
 					TxId:            "txId",
 					ContractName:    contractName,
@@ -263,7 +263,7 @@ func TestDockerScheduler_GetTxResponseCh(t *testing.T) {
 
 	for _, tt := range tests {
 		go func() {
-			for true {
+			for  {
 				tt.fields.txResponseCh <- &protogo.TxResponse{
 					TxId: "txId",
 				}

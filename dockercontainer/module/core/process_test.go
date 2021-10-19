@@ -7,13 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/security"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
-	"github.com/golang/mock/gomock"
-	"go.uber.org/zap"
 	"io"
 	"os"
 	"os/exec"
@@ -22,6 +15,15 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/config"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/dockercontainer/utils"
+	"github.com/golang/mock/gomock"
+	"go.uber.org/zap"
 )
 
 func TestNewCrossProcess(t *testing.T) {
@@ -234,7 +236,7 @@ func TestProcess_AddTxWaitingQueue(t *testing.T) {
 
 			go func() {
 				for {
-					_ = <-p.TxWaitingQueue
+					<-p.TxWaitingQueue
 				}
 			}()
 
@@ -256,7 +258,7 @@ func TestProcess_AddTxWaitingQueue(t *testing.T) {
 }
 
 func TestProcess_InvokeProcess(t *testing.T) {
-	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
+	log := utils.GetLogHandler()
 	type fields struct {
 		processName          string
 		contractName         string

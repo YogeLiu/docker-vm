@@ -287,7 +287,7 @@ func TestCDMApi_handleGetStateResponse(t *testing.T) {
 }
 
 func TestCDMApi_handleTxRequest(t *testing.T) {
-	requests := make(chan *protogo.TxRequest, 0)
+	requests := make(chan *protogo.TxRequest)
 	s := newMockScheduler(t)
 	defer s.finish()
 	scheduler := s.getScheduler()
