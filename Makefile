@@ -20,5 +20,6 @@ gomod:
 	cd scripts && ./gomod_scripts.sh
 
 clean:
-	docker image rm chainmakerofficial/chainmaker-docker-go-vm:develop
+	docker image rm chainmakerofficial/chainmaker-vm-docker-go:develop
 	docker image prune -f
+	docker images | grep chainmaker-vm-docker-go
