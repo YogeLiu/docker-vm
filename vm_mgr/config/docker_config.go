@@ -40,6 +40,8 @@ const (
 
 	MaxSendSize = 10
 	MaxRecvSize = 10
+	// TestPath docker log dir for test
+    TestPath = "/"
 )
 
 var (

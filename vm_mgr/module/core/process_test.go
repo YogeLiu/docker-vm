@@ -21,6 +21,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
 	"github.com/golang/mock/gomock"
 	"go.uber.org/zap"
 )
@@ -235,7 +236,7 @@ func TestProcess_AddTxWaitingQueue(t *testing.T) {
 
 			go func() {
 				for {
-					_ = <-p.TxWaitingQueue
+					<-p.TxWaitingQueue
 				}
 			}()
 
@@ -257,7 +258,7 @@ func TestProcess_AddTxWaitingQueue(t *testing.T) {
 }
 
 func TestProcess_InvokeProcess(t *testing.T) {
-	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
+	log := utils.GetLogHandler()
 	type fields struct {
 		processName          string
 		contractName         string

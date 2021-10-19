@@ -6,6 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
+	"go.uber.org/zap"
 )
 
 // WriteToFile WriteFile write value to file
@@ -44,4 +48,13 @@ func RunCmd(command string) error {
 func ProcessLoggerName(processName string) string {
 	loggerName := "[ " + processName + " ]"
 	return loggerName
+}
+
+func GetTestLogPath() string {
+	basePath, _ := os.Getwd()
+	return basePath + config.TestPath
+}
+
+func GetLogHandler() *zap.SugaredLogger {
+	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
 }

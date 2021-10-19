@@ -200,7 +200,7 @@ func TestUsersManager_GetAvailableUser(t *testing.T) {
 
 			go func() {
 				for {
-					u.userQueue.Enqueue(&security.User{
+					_ = u.userQueue.Enqueue(&security.User{
 						Uid: userNum,
 					})
 				}

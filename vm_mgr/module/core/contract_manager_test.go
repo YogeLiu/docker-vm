@@ -12,16 +12,19 @@ import (
 	"sync"
 	"testing"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
 	"github.com/golang/mock/gomock"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
+
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
 )
 
 const (
-	contractName    = "contractName1"
-	contractNameBad = "contractName2"
+	contractName = "contractName1"
+	//contractNameBad = "contractName2"
 	contractValue   = "contractValue1"
 	contractVersion = "contractVersion1"
 	contractPath    = "contractPath1"
@@ -33,8 +36,11 @@ const (
 )
 
 func TestContractManager_GetContract(t *testing.T) {
-	currentPath, _ := os.Getwd()
-	logPath := currentPath + testPath
+	c := gomock.NewController(t)
+	defer c.Finish()
+	responseChan := make(chan *protogo.CDMMessage)
+	scheduler := protocol.NewMockScheduler(c)
+	scheduler.EXPECT().RegisterResponseCh(txId, responseChan).Return().AnyTimes()
 	type fields struct {
 		lock            sync.RWMutex
 		getContractLock singleflight.Group
@@ -63,8 +69,8 @@ func TestContractManager_GetContract(t *testing.T) {
 				contractsMap: map[string]string{
 					contractName: contractValue,
 				},
-				logger:    logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath),
-				scheduler: protocol.NewMockScheduler(gomock.NewController(t)),
+				logger:    utils.GetLogHandler(),
+				scheduler: scheduler,
 			},
 			args: args{
 				txId:         "txId",
@@ -82,15 +88,15 @@ func TestContractManager_GetContract(t *testing.T) {
 		//		contractsMap: map[string]string{
 		//			contractName: contractValue,
 		//		},
-		//		logger:    logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, currentPath),
-		//		scheduler: protocol.NewMockScheduler(gomock.NewController(t)),
+		//		logger:    utils.GetLogHandler(),
+		//		scheduler: scheduler,
 		//	},
 		//	args: args{
-		//		txId:         "111",
+		//		txId:         txId,
 		//		contractName: contractNameBad,
 		//	},
 		//	want:    contractValue,
-		//	wantErr: true,
+		//	wantErr: false,
 		//},
 	}
 
