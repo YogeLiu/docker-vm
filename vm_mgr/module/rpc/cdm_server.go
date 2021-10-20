@@ -111,7 +111,7 @@ func (cdm *CDMServer) StartCDMServer(apiInstance *CDMApi) error {
 
 	protogo.RegisterCDMRpcServer(cdm.Server, apiInstance)
 
-	cdm.logger.Infof("start cdm server")
+	cdm.logger.Debugf("start cdm server")
 
 	go func() {
 		err = cdm.Server.Serve(cdm.Listener)

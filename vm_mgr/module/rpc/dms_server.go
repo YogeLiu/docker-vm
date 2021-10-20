@@ -103,7 +103,7 @@ func (dms *DMSServer) StartDMSServer(dmsApi *DMSApi) error {
 
 	protogo.RegisterDMSRpcServer(dms.Server, dmsApi)
 
-	dms.logger.Infof("start dms server")
+	dms.logger.Debugf("start dms server")
 
 	go func() {
 		err := dms.Server.Serve(dms.Listener)

@@ -51,7 +51,7 @@ func (s *SecurityEnv) InitSecurityEnv() error {
 		return err
 	}
 
-	s.logger.Infof("init security env completed")
+	s.logger.Debugf("init security env completed")
 
 	return nil
 }

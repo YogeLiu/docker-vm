@@ -163,6 +163,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			contractName := strings.Split(contractFullName, "#")[0] // contract1
 
 			hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
+			hostMountPath = filepath.Join(hostMountPath, r.ChainId)
 
 			contractDir := filepath.Join(hostMountPath, mountContractDir)
 			contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z

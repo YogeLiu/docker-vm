@@ -71,7 +71,7 @@ func (u *UsersManager) CreateNewUsers() error {
 	}
 
 	wg.Wait()
-	u.logger.Infof("created user time: [%s]", time.Since(startTime))
+	u.logger.Infof("init uids time: [%s]", time.Since(startTime))
 
 	return nil
 }

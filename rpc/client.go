@@ -20,6 +20,7 @@ import (
 )
 
 type CDMClient struct {
+	chainId             string
 	txSendCh            chan *protogo.CDMMessage // channel receive tx from docker-go instance
 	stateResponseSendCh chan *protogo.CDMMessage // channel receive state response
 	lock                sync.RWMutex
@@ -33,6 +34,7 @@ type CDMClient struct {
 func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 
 	return &CDMClient{
+		chainId:             chainId,
 		txSendCh:            make(chan *protogo.CDMMessage, vmConfig.TxSize),   // tx request
 		stateResponseSendCh: make(chan *protogo.CDMMessage, vmConfig.TxSize*8), // get_state response and bytecode response
 		recvChMap:           make(map[string]chan *protogo.CDMMessage),
@@ -215,7 +217,7 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 		return conn, err
 	}))
 
-	sockAddress := filepath.Join(c.config.DockerVMMountPath, config.SockDir, config.SockName)
+	sockAddress := filepath.Join(c.config.DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
 
 	return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
 

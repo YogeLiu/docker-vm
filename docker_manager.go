@@ -44,6 +44,7 @@ const (
 )
 
 type DockerManager struct {
+	chainId            string
 	AttachStdOut       bool
 	AttachStderr       bool
 	ShowStdout         bool
@@ -72,14 +73,21 @@ type DockerManager struct {
 // NewDockerManager return docker manager and running a default container
 func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerManager {
 
-	dockerManagerLogger := logger.GetLoggerByChain("[Docker Manager]", chainId)
-	dockerManagerLogger.Debugf("init docker manager")
-
 	dockerVMConfig := &config.DockerVMConfig{}
 	_ = mapstructure.Decode(vmConfig, dockerVMConfig)
 
+	// if enable docker vm is false, docker manager is nil
+	startDockerVm := dockerVMConfig.EnableDockerVM
+	if !startDockerVm {
+		return nil
+	}
+
+	dockerManagerLogger := logger.GetLoggerByChain("[Docker Manager]", chainId)
+	dockerManagerLogger.Debugf("init docker manager")
+
 	// init docker manager
 	newDockerManager := &DockerManager{
+		chainId:        chainId,
 		AttachStdOut:   true,
 		AttachStderr:   true,
 		ShowStdout:     true,
@@ -88,12 +96,6 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		CDMState:       false,
 		dockerVMConfig: dockerVMConfig,
 		clientInitOnce: sync.Once{},
-	}
-
-	// if enable docker vm is false, docker manager is nil
-	startDockerVm := dockerVMConfig.EnableDockerVM
-	if !startDockerVm {
-		return nil
 	}
 
 	// validate settings
@@ -130,6 +132,9 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 
 // StartVM Start Docker VM
 func (m *DockerManager) StartVM() error {
+	if m == nil {
+		return nil
+	}
 	m.Log.Info("start docker vm...")
 	var err error
 
@@ -184,7 +189,7 @@ func (m *DockerManager) StartVM() error {
 		return err
 	}
 
-	m.Log.Info("docker vm start success :)")
+	m.Log.Debugf("docker vm start success :)")
 
 	// display container info in the console
 	go func() {
@@ -198,6 +203,9 @@ func (m *DockerManager) StartVM() error {
 
 // StopVM stop docker vm and remove container, image
 func (m *DockerManager) StopVM() error {
+	if m == nil {
+		return nil
+	}
 	var err error
 
 	err = m.stopContainer()
@@ -636,20 +644,20 @@ func (m *DockerManager) validateVMSettings(config *config.DockerVMConfig) error 
 	// host mount directory path
 	if !filepath.IsAbs(config.DockerVMMountPath) {
 		hostMountPointPath, _ := filepath.Abs(config.DockerVMMountPath)
-		m.hostMountPointPath = hostMountPointPath
+		m.hostMountPointPath = filepath.Join(hostMountPointPath, m.chainId)
 	}
 
 	// host log directory
 	if !filepath.IsAbs(config.DockerVMLogPath) {
 		hostLogPointPath, _ := filepath.Abs(config.DockerVMLogPath)
-		m.hostLogDir = hostLogPointPath
+		m.hostLogDir = filepath.Join(hostLogPointPath, m.chainId)
 	}
 
 	if len(config.DockerVMContainerName) == 0 {
 		m.Log.Infof("container name doesn't set, set as default: chainmaker-docker-go-vm-container")
-		containerName = defaultContainerName
+		containerName = fmt.Sprintf("%s-%s", m.chainId, defaultContainerName)
 	} else {
-		containerName = config.DockerVMContainerName
+		containerName = fmt.Sprintf("%s-%s", m.chainId, config.DockerVMContainerName)
 	}
 
 	return nil

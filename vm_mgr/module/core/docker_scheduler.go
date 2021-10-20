@@ -129,7 +129,7 @@ func (s *DockerScheduler) GetCrossContractResponseCh(responseId string) chan *SD
 // StartScheduler start docker scheduler
 func (s *DockerScheduler) StartScheduler() {
 
-	s.logger.Infof("start docker scheduler")
+	s.logger.Debugf("start docker scheduler")
 
 	go s.listenIncomingTxRequest()
 

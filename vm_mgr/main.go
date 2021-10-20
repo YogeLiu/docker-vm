@@ -22,11 +22,11 @@ func main() {
 		return
 	}
 
-	managerLogger.Infof("docker manager created")
+	managerLogger.Debugf("docker manager created")
 
 	go manager.InitContainer()
 
-	managerLogger.Infof("docker manager init...")
+	managerLogger.Debugf("docker manager init...")
 
 	// infinite loop
 	for i := 0; ; i++ {
