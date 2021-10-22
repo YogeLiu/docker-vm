@@ -46,8 +46,11 @@ const (
 	initContract    = "init_contract"
 	upgradeContract = "upgrade"
 
-	//
-	CalcBaseGas uint64 = 1000
+	// upgrade contract base gas used
+	calcBaseGas uint64 = 1000
+
+	// invoke contract base gas used
+	invokeBaseGas uint64 = 10000
 )
 
 func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
@@ -136,7 +139,7 @@ func ContractGasUsed(gasUsed uint64, method string, contractName string, byteCod
 func upgradeContractGasUsed(gasUsed uint64, byteCode, oldByteCode []byte) uint64 {
 	diff := len(byteCode) - len(oldByteCode)
 	if diff < 0 {
-		gasUsed += CalcBaseGas
+		gasUsed += calcBaseGas
 	} else {
 		gasUsed += uint64(diff) * PutStateGasPrice
 	}
@@ -154,6 +157,7 @@ func checkKeys(args map[string][]byte, keys ...string) bool {
 
 func getInitFuncGasUsed(gasUsed uint64, args map[string][]byte) uint64 {
 	return gasUsed +
+		invokeBaseGas +
 		uint64(len(args[ContractParamCreatorOrgId]))*GetCreatorOrgIdGasPrice +
 		uint64(len(args[ContractParamBlockHeight]))*GetBlockHeightGasPrice +
 		uint64(len(args[ContractParamCreatorPk]))*GetCreatorPkGasPrice +
