@@ -58,7 +58,7 @@ type DockerManager struct {
 	hostLogDir   string
 	dockerLogDir string
 
-	lock   sync.Mutex
+	//lock   sync.Mutex
 	ctx    context.Context
 	client *client.Client
 
@@ -230,7 +230,8 @@ func (m *DockerManager) StopVM() error {
 	return nil
 }
 
-func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method, codePath string, contract *common.Contract,
+func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method,
+	codePath string, contract *common.Contract,
 	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
 
 	// add client state logic

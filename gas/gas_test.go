@@ -49,7 +49,7 @@ func TestInitFuncGasUsed(t *testing.T) {
 					ContractParamTxId,
 				},
 			},
-			want:    78,
+			want:    10078,
 			wantErr: false,
 		},
 	}
