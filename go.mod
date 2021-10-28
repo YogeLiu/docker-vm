@@ -6,9 +6,9 @@ go 1.15
 // localconf - develop_docker_go_refactor
 
 require (
-	chainmaker.org/chainmaker/logger/v2 v2.0.1-0.20211016082827-76679717463c
+	chainmaker.org/chainmaker/logger/v2 v2.0.1-0.20211028023218-a135022358ac
 	chainmaker.org/chainmaker/pb-go/v2 v2.0.1-0.20211014120010-525e2ffaf04d
-	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211016082203-db89bab442ef
+	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211027075849-81a3dc04cdd7
 	chainmaker.org/chainmaker/utils/v2 v2.0.0-20211014131421-43de8d9fe869
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/containerd/containerd v1.5.2 // indirect

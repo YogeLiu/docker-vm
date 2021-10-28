@@ -2,8 +2,8 @@ chainmaker.org/chainmaker/common/v2 v2.0.1-0.20211014122130-4ba9d85a64f8 h1:ixgO
 chainmaker.org/chainmaker/common/v2 v2.0.1-0.20211014122130-4ba9d85a64f8/go.mod h1:jedib7j/RzHzLk0Z4axQ8jZX5gRCdtnRf1WYAMGzYL0=
 chainmaker.org/chainmaker/pb-go/v2 v2.0.1-0.20211014120010-525e2ffaf04d h1:YwcGWY1EbNA9QO8qLYcrnpvh1qgnrOalzJRpqnljO/s=
 chainmaker.org/chainmaker/pb-go/v2 v2.0.1-0.20211014120010-525e2ffaf04d/go.mod h1:gDZodc1Kp6snzGXugS/REqfCqNNizhniQmjeOKUVf64=
-chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211016082203-db89bab442ef h1:rfu9k9Wf/OC+fwQyWZZW95FHMoU8Kt99nGUmQwmknTI=
-chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211016082203-db89bab442ef/go.mod h1:1evh6Hf5L3SGyeyOxmZtqZDm9HGnD2zApx+kpYFQKjA=
+chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211027075849-81a3dc04cdd7 h1:Gouz7NWtANZKtCXbm2cbdb1wsz+SdP3hS14/fKS9cqc=
+chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211027075849-81a3dc04cdd7/go.mod h1:1evh6Hf5L3SGyeyOxmZtqZDm9HGnD2zApx+kpYFQKjA=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
