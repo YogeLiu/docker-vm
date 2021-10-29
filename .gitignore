@@ -4,3 +4,4 @@ bin
 *.log.*
 cover.out
 vm_mgr/vendor
+test/testdata/org1

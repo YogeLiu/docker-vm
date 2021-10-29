@@ -8,6 +8,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"path/filepath"
@@ -209,6 +210,13 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 			grpc.MaxCallRecvMsgSize(config.MaxRecvSize*1024*1024),
 			grpc.MaxCallSendMsgSize(config.MaxSendSize*1024*1024),
 		),
+	}
+
+	// just for mac development and pprof testing
+	if !c.config.DockerVMUDSOpen {
+		ip := "0.0.0.0"
+		url := fmt.Sprintf("%s:%s", ip, config.TestPort)
+		return grpc.Dial(url, dialOpts...)
 	}
 
 	dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {

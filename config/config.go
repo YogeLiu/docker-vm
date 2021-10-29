@@ -1,5 +1,6 @@
 package config
 
+// DockerVMConfig match vm settings in chain maker yml
 type DockerVMConfig struct {
 	EnableDockerVM        bool   `mapstructure:"enable_dockervm"`
 	DockerVMContainerName string `mapstructure:"dockervm_container_name"`
@@ -11,6 +12,23 @@ type DockerVMConfig struct {
 	TxSize                uint32 `mapstructure:"tx_size"`
 	UserNum               uint32 `mapstructure:"user_num"`
 	TxTimeLimit           uint32 `mapstructure:"tx_time_limit"`
+}
+
+// DockerContainerConfig docker container settings
+type DockerContainerConfig struct {
+	AttachStdOut bool
+	AttachStderr bool
+	ShowStdout   bool
+	ShowStderr   bool
+
+	ImageName     string
+	ContainerName string
+	VMMgrDir      string
+
+	DockerMountDir string
+	DockerLogDir   string
+	HostMountDir   string
+	HostLogDir     string
 }
 
 const (
@@ -30,4 +48,6 @@ const (
 
 	MaxSendSize = 10
 	MaxRecvSize = 10
+
+	TestPort = "22356"
 )

@@ -8,6 +8,7 @@ package rpc
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -43,7 +44,8 @@ func NewCDMServer() (*CDMServer, error) {
 			return nil, errors.New("server listen port not provided")
 		}
 
-		listener, err = net.Listen("tcp", ":"+port)
+		endPoint := fmt.Sprintf(":%s", port)
+		listener, err = net.Listen("tcp", endPoint)
 		if err != nil {
 			return nil, err
 		}
