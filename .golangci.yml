@@ -7,7 +7,7 @@ run:
   skip-dirs-use-default: true
   #  skip-files:
   skip-dirs:
-#    - p2p #from libp2p
+    - test
 #    - mock #from gomock
 #    - protogo #from pb generate
 #    - sqldbprovider #will remove

@@ -121,36 +121,6 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		recvMsg := <-responseCh
 
 		switch recvMsg.Type {
-		case protogo.CDMType_CDM_TYPE_GET_STATE:
-
-			getStateResponse := &protogo.CDMMessage{
-				TxId:    txId,
-				Type:    protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE,
-				Payload: nil,
-			}
-			keyList := strings.Split(string(recvMsg.Payload), "#")
-			calledContractName := keyList[0]
-			calledContractKey := keyList[1]
-			value, err := txSimContext.Get(calledContractName, []byte(calledContractKey))
-			if err != nil {
-				// if it has error, return payload is nil
-				r.Log.Errorf("fail to get state from sim context: %s", err)
-				r.Client.GetStateResponseSendCh() <- getStateResponse
-				continue
-			}
-
-			r.Log.Debug("get value: ", string(value))
-			getStateResponse.Payload = value
-
-			// get state gas used calc and check gas limit
-			gasUsed, err = gas.GetStateGasUsed(gasUsed, value)
-			if err != nil {
-				contractResult.GasUsed = gasUsed
-				return r.errorResult(contractResult, err, err.Error())
-			}
-
-			r.Client.GetStateResponseSendCh() <- getStateResponse
-
 		case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
 
 			getBytecodeResponse := &protogo.CDMMessage{
@@ -171,7 +141,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			contractPathWithVersion := filepath.Join(contractDir, contractFullName)
 
 			// save bytecode to disk
-			err := r.saveBytesToDisk(byteCode, contractZipPath)
+			err = r.saveBytesToDisk(byteCode, contractZipPath)
 			if err != nil {
 				r.Log.Errorf("fail to save bytecode to disk: %s", err)
 				r.Client.GetStateResponseSendCh() <- getBytecodeResponse
@@ -208,7 +178,36 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			getBytecodeResponse.Payload = []byte(contractFullName)
 
 			r.Client.GetStateResponseSendCh() <- getBytecodeResponse
+		case protogo.CDMType_CDM_TYPE_GET_STATE:
 
+			getStateResponse := &protogo.CDMMessage{
+				TxId:    txId,
+				Type:    protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE,
+				Payload: nil,
+			}
+			keyList := strings.Split(string(recvMsg.Payload), "#")
+			calledContractName := keyList[0]
+			calledContractKey := keyList[1]
+			var value []byte
+			value, err = txSimContext.Get(calledContractName, []byte(calledContractKey))
+			if err != nil {
+				// if it has error, return payload is nil
+				r.Log.Errorf("fail to get state from sim context: %s", err)
+				r.Client.GetStateResponseSendCh() <- getStateResponse
+				continue
+			}
+
+			r.Log.Debug("get value: ", string(value))
+			getStateResponse.Payload = value
+
+			// get state gas used calc and check gas limit
+			gasUsed, err = gas.GetStateGasUsed(gasUsed, value)
+			if err != nil {
+				contractResult.GasUsed = gasUsed
+				return r.errorResult(contractResult, err, err.Error())
+			}
+
+			r.Client.GetStateResponseSendCh() <- getStateResponse
 		case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
 
 			// construct response
@@ -241,7 +240,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					return r.errorResult(contractResult, err, err.Error())
 				}
 
-				err := txSimContext.Put(calledContractName, []byte(calledContractKey), value)
+				err = txSimContext.Put(calledContractName, []byte(calledContractKey), value)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
 					return r.errorResult(contractResult, err, "fail to put in sim context")
@@ -252,7 +251,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			var contractEvents []*commonPb.ContractEvent
 
 			if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
-				err := fmt.Errorf("too many event data")
+				err = fmt.Errorf("too many event data")
 				return r.errorResult(contractResult, err, "fail to put event data")
 			}
 

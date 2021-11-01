@@ -172,7 +172,8 @@ func (m *DockerManager) StartVM() error {
 
 	// running container
 	m.mgrLogger.Infof("start running container [%s]", m.dockerContainerConfig.ContainerName)
-	if err = m.dockerAPIClient.ContainerStart(m.ctx, m.dockerContainerConfig.ContainerName, types.ContainerStartOptions{}); err != nil {
+	if err = m.dockerAPIClient.ContainerStart(m.ctx, m.dockerContainerConfig.ContainerName,
+		types.ContainerStartOptions{}); err != nil {
 		return err
 	}
 
@@ -400,12 +401,18 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 	configsMap[""] = fmt.Sprintf("udsopen=%v", m.dockerVMConfig.DockerVMUDSOpen)
 
 	var containerConfig []string
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", config.ENV_ENABLE_UDS, m.dockerVMConfig.DockerVMUDSOpen))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_TX_SIZE, m.dockerVMConfig.TxSize))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_USER_NUM, m.dockerVMConfig.UserNum))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d", config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s", config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
+		config.ENV_ENABLE_UDS, m.dockerVMConfig.DockerVMUDSOpen))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
+		config.ENV_TX_SIZE, m.dockerVMConfig.TxSize))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
+		config.ENV_USER_NUM, m.dockerVMConfig.UserNum))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
+		config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s",
+		config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
+		config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
 
 	// add test port just for mac development and pprof
 	// if using this feature, make sure close enable_uds in yml
@@ -559,7 +566,8 @@ func (m *DockerManager) createTestContainer() error {
 	return nil
 }
 
-func validateVMSettings(config *config.DockerVMConfig, dockerContainerConfig *config.DockerContainerConfig, chainId string) error {
+func validateVMSettings(config *config.DockerVMConfig,
+	dockerContainerConfig *config.DockerContainerConfig, chainId string) error {
 
 	var hostMountDir string
 	var hostLogDir string

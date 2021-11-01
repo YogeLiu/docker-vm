@@ -13,13 +13,13 @@ import (
 - invoke user contract
 */
 
-const (
-	maxRecvMessageSize = 100 * 1024 * 1024 // 100 MiB
-	maxSendMessageSize = 100 * 1024 * 1024 // 100 MiB
-	port               = ":12355"
-	chanSize           = 1000
-	//stateChanSize      = 1000
-)
+//const (
+//	maxRecvMessageSize = 100 * 1024 * 1024 // 100 MiB
+//	maxSendMessageSize = 100 * 1024 * 1024 // 100 MiB
+//	port               = ":12355"
+//	chanSize           = 1000
+//	//stateChanSize      = 1000
+//)
 
 var (
 	contractPath  = ""

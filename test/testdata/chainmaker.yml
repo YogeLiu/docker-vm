@@ -124,7 +124,7 @@ vm:
   dockervm_log_path: ./testdata/org1/dockervm
   log_in_console: true
   log_level: INFO
-  uds_open: false                             # default is unix domain socket connection
+  uds_open: true                             # default is unix domain socket connection
   tx_size: 1000
   user_num: 100
   time_limit: 20

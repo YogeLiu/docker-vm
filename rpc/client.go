@@ -25,11 +25,12 @@ type CDMClient struct {
 	txSendCh            chan *protogo.CDMMessage // channel receive tx from docker-go instance
 	stateResponseSendCh chan *protogo.CDMMessage // channel receive state response
 	lock                sync.RWMutex
-	recvChMap           map[string]chan *protogo.CDMMessage // store tx_id to chan, retrieve chan to send tx response back to docker-go instance
-	stream              protogo.CDMRpc_CDMCommunicateClient
-	logger              *logger.CMLogger
-	stop                chan struct{}
-	config              *config.DockerVMConfig
+	// store tx_id to chan, retrieve chan to send tx response back to docker-go instance
+	recvChMap map[string]chan *protogo.CDMMessage
+	stream    protogo.CDMRpc_CDMCommunicateClient
+	logger    *logger.CMLogger
+	stop      chan struct{}
+	config    *config.DockerVMConfig
 }
 
 func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {

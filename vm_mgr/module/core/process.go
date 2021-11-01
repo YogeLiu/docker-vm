@@ -145,7 +145,7 @@ func (p *Process) LaunchProcess() error {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.Uid),
 		},
-		//Cloneflags: syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
 
