@@ -17,7 +17,11 @@ message DMSMessage {
 
     uint32 current_height = 3;
 
-    bytes payload = 4;
+    int32 result_code = 4;
+
+    bytes payload = 5;
+
+    string message = 6;
 }
 
 enum DMSMessageType {
@@ -76,17 +80,6 @@ message Response {
     bytes payload = 3;
 }
 
-message Event {
-    // Event topic
-    string topic = 1;
-    // Event contract name
-    string contract_name = 2;
-    // Event contract version
-    string contract_version = 3;
-    // Event payload
-    repeated string data = 4;
-}
-
 // real user contract response
 message ContractResponse {
 
@@ -102,6 +95,21 @@ message ContractResponse {
     // always has events
     repeated Event events = 4;
 }
+
+message Event {
+    // Event topic
+    string topic = 1;
+    // Event contract name
+    string contract_name = 2;
+    // Event contract version
+    string contract_version = 3;
+    // Event payload
+    repeated string data = 4;
+}
+
+
+
+
 
 
 

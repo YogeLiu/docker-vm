@@ -13,7 +13,7 @@ import (
 
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
 
-	protocol2 "chainmaker.org/chainmaker/protocol/v2"
+	chainProtocol "chainmaker.org/chainmaker/protocol/v2"
 
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
 
@@ -179,7 +179,7 @@ func (h *ProcessHandler) HandleContract() error {
 	}
 }
 
-// todo check init can be called or not
+// todo change init can be called only once
 func (h *ProcessHandler) sendInit() error {
 
 	input := &SDKProtogo.Input{Args: h.TxRequest.Parameters}
@@ -232,7 +232,9 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 		TxId:          getStateMsg.TxId,
 		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE_RESPONSE,
 		CurrentHeight: getStateMsg.CurrentHeight,
+		ResultCode:    getStateResponse.ResultCode,
 		Payload:       getStateResponse.Payload,
+		Message:       getStateResponse.Message,
 	}
 
 	return h.sendMessage(responseMsg)
@@ -285,7 +287,7 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 		return h.sendMessage(errorResponse)
 	}
 
-	if callContractMsg.CurrentHeight > protocol2.CallContractDepth {
+	if callContractMsg.CurrentHeight > chainProtocol.CallContractDepth {
 		h.logger.Errorf(utils.ExceedMaxDepthError.Error())
 		errorResponse := constructCallContractErrorResponse(utils.ExceedMaxDepthError.Error(), callContractMsg.TxId, callContractMsg.CurrentHeight)
 		return h.sendMessage(errorResponse)

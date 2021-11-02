@@ -184,20 +184,36 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				TxId:    txId,
 				Type:    protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE,
 				Payload: nil,
+				Message: "",
 			}
 			keyList := strings.Split(string(recvMsg.Payload), "#")
 			calledContractName := keyList[0]
 			calledContractKey := keyList[1]
 			var value []byte
 			value, err = txSimContext.Get(calledContractName, []byte(calledContractKey))
+
+			if len(value) == 0 {
+				r.Log.Errorf("fail to get state from sim context: %s", "value is empty")
+				getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
+				getStateResponse.Message = "value is empty"
+				r.Client.GetStateResponseSendCh() <- getStateResponse
+
+				fmt.Println("--------------")
+				fmt.Println(getStateResponse)
+				continue
+			}
 			if err != nil {
 				// if it has error, return payload is nil
 				r.Log.Errorf("fail to get state from sim context: %s", err)
+
+				getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
+				getStateResponse.Message = err.Error()
 				r.Client.GetStateResponseSendCh() <- getStateResponse
 				continue
 			}
 
 			r.Log.Debug("get value: ", string(value))
+			getStateResponse.ResultCode = protocol.ContractSdkSignalResultSuccess
 			getStateResponse.Payload = value
 
 			// get state gas used calc and check gas limit

@@ -15,7 +15,11 @@ message CDMMessage {
 
     CDMType type = 2;
 
-    bytes payload = 3;
+    int32 result_code = 3;
+
+    bytes payload = 4;
+
+    string message = 5;
 }
 
 enum CDMType {
@@ -99,7 +103,6 @@ enum ContractResultCode {
     OK = 0;
     FAIL = 1;
 }
-
 
 enum ProcessState {
 
