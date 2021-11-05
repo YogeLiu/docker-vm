@@ -24,4 +24,3 @@ clean:
 	cd vm_mgr && rm -rf vendor
 	docker image rm chainmakerofficial/chainmaker-vm-docker-go:develop
 	docker image prune -f
-	docker images | grep chainmaker-vm-docker-go

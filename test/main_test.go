@@ -1,9 +1,7 @@
 package test
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
 	"testing"
 
 	"chainmaker.org/chainmaker/protocol/v2/mock"
@@ -11,7 +9,7 @@ import (
 	"chainmaker.org/chainmaker/protocol/v2"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-	docker_go "chainmaker.org/chainmaker/vm-docker-go"
+	dockergo "chainmaker.org/chainmaker/vm-docker-go"
 )
 
 /*
@@ -20,7 +18,7 @@ import (
 */
 
 var (
-	mockDockerManager   *docker_go.DockerManager
+	mockDockerManager   *dockergo.DockerManager
 	mockContractId      *commonPb.Contract
 	mockTxContext       *mock.MockTxSimContext
 	mockRuntimeInstance protocol.RuntimeInstance
@@ -28,19 +26,11 @@ var (
 
 func TestMain(m *testing.M) {
 
-	//command := "echo hello"
-	cmd := exec.Command("/bin/bash", "-c", "echo hello")
-	_, _ = cmd.Output()
-
-	fmt.Println("image init successful")
-	fmt.Println(os.Getwd())
+	execCommand("./scripts/prepare.sh")
 
 	dockerGo := m.Run()
 
-	//cmd = exec.Command("./test/testdata/clean.sh")
-	//_ = cmd.Run()
-
-	fmt.Println("end")
+	execCommand("./scripts/clean.sh")
 
 	os.Exit(dockerGo)
 }
