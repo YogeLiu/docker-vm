@@ -26,11 +26,11 @@ var (
 
 func TestMain(m *testing.M) {
 
-	execCommand("./scripts/prepare.sh")
+	//execCommand("./scripts/prepare.sh")
 
 	dockerGo := m.Run()
 
-	execCommand("./scripts/clean.sh")
+	//execCommand("./scripts/clean.sh")
 
 	os.Exit(dockerGo)
 }
