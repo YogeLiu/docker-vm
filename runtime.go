@@ -68,6 +68,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		gas.ContractParamSenderPk,
 		gas.ContractParamBlockHeight,
 		gas.ContractParamTxId,
+		gas.ContractParamTxTimeStamp,
 	); err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
@@ -100,9 +101,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			ReadMap:             nil,
 		},
 	}
-
 	txRequestPayload, _ := proto.Marshal(txRequest)
-
 	cdmMessage := &protogo.CDMMessage{
 		TxId:    txId,
 		Type:    protogo.CDMType_CDM_TYPE_TX_REQUEST,
@@ -123,109 +122,25 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		switch recvMsg.Type {
 		case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
 
-			getBytecodeResponse := &protogo.CDMMessage{
-				TxId:    txId,
-				Type:    protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE,
-				Payload: nil,
-			}
+			getByteCodeResponse := r.handleGetByteCodeRequest(txId, recvMsg, byteCode)
+			r.Client.GetStateResponseSendCh() <- getByteCodeResponse
 
-			contractFullName := string(recvMsg.Payload)             // contract1#1.0.0
-			contractName := strings.Split(contractFullName, "#")[0] // contract1
-
-			hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
-			hostMountPath = filepath.Join(hostMountPath, r.ChainId)
-
-			contractDir := filepath.Join(hostMountPath, mountContractDir)
-			contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
-			contractPathWithoutVersion := filepath.Join(contractDir, contractName)
-			contractPathWithVersion := filepath.Join(contractDir, contractFullName)
-
-			// save bytecode to disk
-			err = r.saveBytesToDisk(byteCode, contractZipPath)
-			if err != nil {
-				r.Log.Errorf("fail to save bytecode to disk: %s", err)
-				r.Client.GetStateResponseSendCh() <- getBytecodeResponse
-				continue
-			}
-			r.Log.Debug("write zip file: ", contractZipPath)
-
-			// extract 7z file
-			unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
-			err = r.runCmd(unzipCommand)
-			if err != nil {
-				r.Log.Errorf("fail to extract contract: %s", err)
-				r.Client.GetStateResponseSendCh() <- getBytecodeResponse
-				continue
-			}
-			r.Log.Debug("extract zip file: ", contractZipPath)
-
-			// remove 7z file
-			err = os.Remove(contractZipPath)
-			if err != nil {
-				contractResult.GasUsed = gasUsed
-				return r.errorResult(contractResult, err, "fail to remove zipped file")
-			}
-
-			// replace contract name to contractName:version
-			err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
-			if err != nil {
-				r.Log.Errorf("fail to rename original file name: %s, "+
-					"please make sure contract name should be same as zipped file", err)
-				r.Client.GetStateResponseSendCh() <- getBytecodeResponse
-				continue
-			}
-
-			getBytecodeResponse.Payload = []byte(contractFullName)
-
-			r.Client.GetStateResponseSendCh() <- getBytecodeResponse
 		case protogo.CDMType_CDM_TYPE_GET_STATE:
 
-			getStateResponse := &protogo.CDMMessage{
-				TxId:    txId,
-				Type:    protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE,
-				Payload: nil,
-				Message: "",
-			}
-			keyList := strings.Split(string(recvMsg.Payload), "#")
-			calledContractName := keyList[0]
-			calledContractKey := keyList[1]
-			var value []byte
-			value, err = txSimContext.Get(calledContractName, []byte(calledContractKey))
+			getStateResponse, pass := r.handleGetStateRequest(txId, recvMsg, txSimContext)
 
-			if len(value) == 0 {
-				r.Log.Errorf("fail to get state from sim context: %s", "value is empty")
-				getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
-				getStateResponse.Message = "value is empty"
-				r.Client.GetStateResponseSendCh() <- getStateResponse
-
-				fmt.Println("--------------")
-				fmt.Println(getStateResponse)
-				continue
-			}
-			if err != nil {
-				// if it has error, return payload is nil
-				r.Log.Errorf("fail to get state from sim context: %s", err)
-
-				getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
-				getStateResponse.Message = err.Error()
-				r.Client.GetStateResponseSendCh() <- getStateResponse
-				continue
-			}
-
-			r.Log.Debug("get value: ", string(value))
-			getStateResponse.ResultCode = protocol.ContractSdkSignalResultSuccess
-			getStateResponse.Payload = value
-
-			// get state gas used calc and check gas limit
-			gasUsed, err = gas.GetStateGasUsed(gasUsed, value)
-			if err != nil {
-				contractResult.GasUsed = gasUsed
-				return r.errorResult(contractResult, err, err.Error())
+			if pass {
+				gasUsed, err = gas.GetStateGasUsed(gasUsed, getStateResponse.Payload)
+				if err != nil {
+					getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
+					getStateResponse.Payload = nil
+					getStateResponse.Message = err.Error()
+				}
 			}
 
 			r.Client.GetStateResponseSendCh() <- getStateResponse
-		case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
 
+		case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
 			// construct response
 			var txResponse protogo.TxResponse
 			_ = proto.UnmarshalMerge(recvMsg.Payload, &txResponse)
@@ -294,16 +209,112 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			contractResult.ContractEvent = contractEvents
 
 			close(responseCh)
-
 			return contractResult
 		default:
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(contractResult, fmt.Errorf("unknow type"), "fail to receive request")
-
 		}
 
 	}
 
+}
+
+func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType) *protogo.CDMMessage {
+	return &protogo.CDMMessage{
+		TxId:       txId,
+		Type:       msgType,
+		ResultCode: protocol.ContractSdkSignalResultFail,
+		Payload:    nil,
+		Message:    "",
+	}
+}
+
+func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo.CDMMessage,
+	byteCode []byte) *protogo.CDMMessage {
+
+	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE)
+
+	contractFullName := string(recvMsg.Payload)             // contract1#1.0.0
+	contractName := strings.Split(contractFullName, "#")[0] // contract1
+
+	hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
+	hostMountPath = filepath.Join(hostMountPath, r.ChainId)
+
+	contractDir := filepath.Join(hostMountPath, mountContractDir)
+	contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
+	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
+	contractPathWithVersion := filepath.Join(contractDir, contractFullName)
+
+	// save bytecode to disk
+	err := r.saveBytesToDisk(byteCode, contractZipPath)
+	if err != nil {
+		r.Log.Errorf("fail to save bytecode to disk: %s", err)
+		response.Message = err.Error()
+		return response
+	}
+
+	// extract 7z file
+	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
+	err = r.runCmd(unzipCommand)
+	if err != nil {
+		r.Log.Errorf("fail to extract contract: %s", err)
+		response.Message = err.Error()
+		return response
+	}
+
+	// remove 7z file
+	err = os.Remove(contractZipPath)
+	if err != nil {
+		r.Log.Errorf("fail to remove zipped file: %s", err)
+		response.Message = err.Error()
+		return response
+	}
+
+	// replace contract name to contractName:version
+	err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
+	if err != nil {
+		r.Log.Errorf("fail to rename original file name: %s, "+
+			"please make sure contract name should be same as zipped file", err)
+		response.Message = err.Error()
+		return response
+	}
+
+	response.ResultCode = protocol.ContractSdkSignalResultSuccess
+	response.Payload = []byte(contractFullName)
+
+	return response
+}
+
+func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.CDMMessage,
+	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, bool) {
+
+	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE)
+
+	keyList := strings.Split(string(recvMsg.Payload), "#")
+	calledContractName := keyList[0]
+	calledContractKey := keyList[1]
+
+	var value []byte
+	var err error
+
+	value, err = txSimContext.Get(calledContractName, []byte(calledContractKey))
+
+	if err != nil {
+		r.Log.Errorf("fail to get state from sim context: %s", err)
+		response.Message = err.Error()
+		return response, false
+	}
+
+	if len(value) == 0 {
+		r.Log.Errorf("fail to get state from sim context: %s", "value is empty")
+		response.Message = "value is empty"
+		return response, false
+	}
+
+	r.Log.Debug("get value: ", string(value))
+	response.ResultCode = protocol.ContractSdkSignalResultSuccess
+	response.Payload = value
+	return response, true
 }
 
 func (r *RuntimeInstance) errorResult(contractResult *commonPb.ContractResult,
@@ -341,7 +352,7 @@ func (r *RuntimeInstance) saveBytesToDisk(bytes []byte, newFilePath string) erro
 // RunCmd exec cmd
 func (r *RuntimeInstance) runCmd(command string) error {
 	commands := strings.Split(command, " ")
-	cmd := exec.Command(commands[0], commands[1:]...)
+	cmd := exec.Command(commands[0], commands[1:]...) // #nosec
 
 	if err := cmd.Start(); err != nil {
 		return err

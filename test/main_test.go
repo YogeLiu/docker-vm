@@ -1,11 +1,17 @@
 package test
 
 import (
+	"fmt"
 	"os"
-	"sync"
+	"os/exec"
 	"testing"
 
-	"chainmaker.org/chainmaker/vm-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/protocol/v2/mock"
+
+	"chainmaker.org/chainmaker/protocol/v2"
+
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	docker_go "chainmaker.org/chainmaker/vm-docker-go"
 )
 
 /*
@@ -13,37 +19,28 @@ import (
 - invoke user contract
 */
 
-//const (
-//	maxRecvMessageSize = 100 * 1024 * 1024 // 100 MiB
-//	maxSendMessageSize = 100 * 1024 * 1024 // 100 MiB
-//	port               = ":12355"
-//	chanSize           = 1000
-//	//stateChanSize      = 1000
-//)
-
 var (
-	contractPath  = ""
-	contractName  = ""
-	mountSockPath = ""
-	min           int
-	max           int
-	totalTime     int
+	mockDockerManager   *docker_go.DockerManager
+	mockContractId      *commonPb.Contract
+	mockTxContext       *mock.MockTxSimContext
+	mockRuntimeInstance protocol.RuntimeInstance
 )
 
-type CDMClient struct {
-	txSendCh chan *protogo.CDMMessage // channel receive tx from docker-go instance
-
-	lock sync.Mutex
-	// store tx_id to chan, retrieve chan to send tx response back to docker-go instance
-	recvChMap map[string]chan *protogo.CDMMessage
-
-	stream protogo.CDMRpc_CDMCommunicateClient
-
-	stop chan bool
-}
-
 func TestMain(m *testing.M) {
-	//os.cmd(go mod vendor)
+
+	//command := "echo hello"
+	cmd := exec.Command("/bin/bash", "-c", "echo hello")
+	_, _ = cmd.Output()
+
+	fmt.Println("image init successful")
+	fmt.Println(os.Getwd())
+
 	dockerGo := m.Run()
+
+	//cmd = exec.Command("./test/testdata/clean.sh")
+	//_ = cmd.Run()
+
+	fmt.Println("end")
+
 	os.Exit(dockerGo)
 }

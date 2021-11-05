@@ -165,7 +165,6 @@ func (c *CDMClient) recvMsgRoutine() {
 			}
 
 			if recvErr != nil {
-				c.logger.Errorf("fail to recv msg in rpc: %v", recvErr)
 				c.closeConnection()
 				continue
 			}

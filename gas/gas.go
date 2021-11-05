@@ -29,6 +29,7 @@ const (
 	GetSenderPkGasPrice     uint64 = 1
 	GetBlockHeightGasPrice  uint64 = 1
 	GetTxIdGasPrice         uint64 = 1
+	GetTimeStampPrice       uint64 = 1
 	EmitEventGasPrice       uint64 = 5
 	LogGasPrice             uint64 = 5
 
@@ -41,6 +42,7 @@ const (
 	ContractParamSenderPk     = "__sender_pk__"
 	ContractParamBlockHeight  = "__block_height__"
 	ContractParamTxId         = "__tx_id__"
+	ContractParamTxTimeStamp  = "__tx_time_stamp__"
 
 	// method
 	initContract    = "init_contract"
@@ -165,7 +167,8 @@ func getInitFuncGasUsed(gasUsed uint64, args map[string][]byte) uint64 {
 		uint64(len(args[ContractParamSenderOrgId]))*GetSenderOrgIdGasPrice +
 		uint64(len(args[ContractParamTxId]))*GetTxIdGasPrice +
 		uint64(len(args[ContractParamSenderRole]))*GetSenderRoleGasPrice +
-		uint64(len(args[ContractParamSenderPk]))*GetSenderPkGasPrice
+		uint64(len(args[ContractParamSenderPk]))*GetSenderPkGasPrice +
+		uint64(len(args[ContractParamTxTimeStamp]))*GetTimeStampPrice
 }
 
 func CheckGasLimit(gasUsed uint64) bool {
