@@ -1,5 +1,5 @@
-vm-docker-go:
-	make build-image
+build:
+	cd test/scripts && ./prepare.sh
 
 gen-cdm:
 	cd pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative cdm_message.proto
@@ -7,7 +7,6 @@ gen-cdm:
 
 gen-dms:
 	cd vm_mgr/pb_sdk/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dms_message.proto
-
 
 build-vendor:
 	cd vm_mgr && go mod vendor
@@ -27,3 +26,7 @@ clean:
 	cd vm_mgr && rm -rf vendor
 	docker image rm chainmakerofficial/chainmaker-vm-docker-go:develop
 	docker image prune -f
+
+
+
+

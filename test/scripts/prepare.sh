@@ -8,5 +8,6 @@ if [ ${docker_image_name} ]; then
 fi
 
 echo "create new one"
-cd ../vm_mgr && go mod vendor
+echo ${PWD}
+cd ../../vm_mgr && go mod vendor
 docker build -t chainmakerofficial/chainmaker-vm-docker-go:develop -f Dockerfile ./
