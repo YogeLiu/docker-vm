@@ -15,7 +15,6 @@ import (
 
 	"chainmaker.org/chainmaker/localconf/v2"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -107,7 +106,7 @@ func getMockedCMConfig() (map[string]interface{}, error) {
 	}
 
 	// 2. load the config file
-	cmViper.SetConfigFile(ymlFile)
+	cmViper.SetConfigFile(mockedConfigration)
 	if err = cmViper.ReadInConfig(); err != nil {
 		return nil, err
 	}
@@ -119,9 +118,9 @@ func getMockedCMConfig() (map[string]interface{}, error) {
 			return nil, err
 		}
 	}
-	flagSets := make([]*pflag.FlagSet, 0)
+	//flagSets := make([]*pflag.FlagSet, 0)
 	for _, command := range cmd.Commands() {
-		flagSets = append(flagSets, command.PersistentFlags())
+		//flagSets = append(flagSets, command.PersistentFlags())
 		err = cmViper.BindPFlags(command.PersistentFlags())
 		if err != nil {
 			return nil, err
