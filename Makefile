@@ -1,4 +1,4 @@
-build:
+build-test:
 	cd test/scripts && ./prepare.sh
 
 gen-cdm:
@@ -26,6 +26,14 @@ clean:
 	cd vm_mgr && rm -rf vendor
 	docker image rm chainmakerofficial/chainmaker-vm-docker-go:develop
 	docker image prune -f
+	cd test/scripts && ./dockerclean.sh
+
+ci:
+	make build-test
+	golangci-lint run ./...
+	go test ./...
+	make clean
+
 
 
 
