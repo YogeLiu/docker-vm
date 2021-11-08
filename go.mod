@@ -3,11 +3,11 @@ module chainmaker.org/chainmaker/vm-docker-go
 go 1.15
 
 require (
-	chainmaker.org/chainmaker/localconf/v2 v2.0.0-20211028031244-890bc29453d2
-	chainmaker.org/chainmaker/logger/v2 v2.0.1-0.20211028023218-a135022358ac
-	chainmaker.org/chainmaker/pb-go/v2 v2.0.1-0.20211014120010-525e2ffaf04d
-	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211027075849-81a3dc04cdd7
-	chainmaker.org/chainmaker/utils/v2 v2.0.0-20211014131421-43de8d9fe869
+	chainmaker.org/chainmaker/localconf/v2 v2.1.0
+	chainmaker.org/chainmaker/logger/v2 v2.1.0
+	chainmaker.org/chainmaker/pb-go/v2 v2.1.0
+	chainmaker.org/chainmaker/protocol/v2 v2.1.0
+	chainmaker.org/chainmaker/utils/v2 v2.1.0
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/containerd/containerd v1.5.2 // indirect
 	github.com/docker/distribution v2.7.1+incompatible
@@ -22,7 +22,6 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cobra v1.1.1
-	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
