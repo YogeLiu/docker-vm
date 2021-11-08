@@ -20,7 +20,7 @@ import (
 4 mock TxSimContext(interaction with chain)
 5 mock docker-go RuntimeInstace
 6 create a user contract
-7 invoke method
+7 deploy user contract
 */
 
 func setupTest(t *testing.T) {
