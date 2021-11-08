@@ -75,8 +75,8 @@ func GetStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
 	return gasUsed, nil
 }
 
-func PutStateGasUsed(gasUsed uint64, contractName, key string, value []byte) (uint64, error) {
-	gasUsed += (uint64(len(value)) + uint64(len([]byte(contractName+key)))) * PutStateGasPrice
+func PutStateGasUsed(gasUsed uint64, contractName, key, field string, value []byte) (uint64, error) {
+	gasUsed += (uint64(len(value)) + uint64(len([]byte(contractName+key+field)))) * PutStateGasPrice
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}

@@ -184,6 +184,7 @@ func TestPutStateGasUsed(t *testing.T) {
 		gasUsed      uint64
 		contractName string
 		key          string
+		field        string
 		value        []byte
 	}
 	tests := []struct {
@@ -198,15 +199,16 @@ func TestPutStateGasUsed(t *testing.T) {
 				gasUsed:      0,
 				contractName: "contractName1",
 				key:          "key1",
+				field:        "field1",
 				value:        []byte("value1"),
 			},
-			want:    230,
+			want:    290,
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := PutStateGasUsed(tt.args.gasUsed, tt.args.contractName, tt.args.key, tt.args.value)
+			got, err := PutStateGasUsed(tt.args.gasUsed, tt.args.contractName, tt.args.key, tt.args.field, tt.args.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PutStateGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return

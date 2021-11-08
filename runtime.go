@@ -160,18 +160,25 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			contractResult.Message = txResponse.Message
 
 			// merge the sim context write map
+
 			for key, value := range txResponse.WriteMap {
+				var contractName string
+				var contractKey string
+				var contractField string
 				keyList := strings.Split(key, "#")
-				calledContractName := keyList[0]
-				calledContractKey := keyList[1]
+				contractName = keyList[0]
+				contractKey = keyList[1]
+				if len(keyList) == 3 {
+					contractField = keyList[2]
+				}
 				// put state gas used calc and check gas limit
-				gasUsed, err = gas.PutStateGasUsed(gasUsed, calledContractName, calledContractKey, value)
+				gasUsed, err = gas.PutStateGasUsed(gasUsed, contractName, contractKey, contractField, value)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
 					return r.errorResult(contractResult, err, err.Error())
 				}
 
-				err = txSimContext.Put(calledContractName, []byte(calledContractKey), value)
+				err = txSimContext.Put(contractName, protocol.GetKeyStr(contractKey, contractField), value)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
 					return r.errorResult(contractResult, err, "fail to put in sim context")
@@ -290,14 +297,20 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.CD
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE)
 
-	keyList := strings.Split(string(recvMsg.Payload), "#")
-	calledContractName := keyList[0]
-	calledContractKey := keyList[1]
-
+	var contractName string
+	var contractKey string
+	var contractField string
 	var value []byte
 	var err error
 
-	value, err = txSimContext.Get(calledContractName, []byte(calledContractKey))
+	keyList := strings.Split(string(recvMsg.Payload), "#")
+	contractName = keyList[0]
+	contractKey = keyList[1]
+	if len(keyList) == 3 {
+		contractField = keyList[2]
+	}
+
+	value, err = txSimContext.Get(contractName, protocol.GetKeyStr(contractKey, contractField))
 
 	if err != nil {
 		r.Log.Errorf("fail to get state from sim context: %s", err)
