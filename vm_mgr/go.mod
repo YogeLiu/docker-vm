@@ -2,10 +2,8 @@ module chainmaker.org/chainmaker/vm-docker-go/vm_mgr
 
 go 1.15
 
-// protocol -> develop_docker_go_refactor
-
 require (
-	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211027075849-81a3dc04cdd7
+	chainmaker.org/chainmaker/protocol/v2 v2.1.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
