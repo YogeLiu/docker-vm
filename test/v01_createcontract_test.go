@@ -47,7 +47,7 @@ func setupTest(t *testing.T) {
 	fmt.Printf("======step4 mock contractId and txContext=======\n")
 	mockContractId = initContractId(commonPb.RuntimeType_DOCKER_GO)
 	mockTxContext = initMockSimContext(t)
-	contractBin, contractFileErr := ioutil.ReadFile("./testdata/contract_test.7z")
+	contractBin, contractFileErr := ioutil.ReadFile("./testdata/contract_fvt.7z")
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))
 	}
@@ -94,4 +94,9 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 	assert.Equal(t, []byte("unknown method"), result.Result)
 
 	tearDownTest()
+}
+
+func TestTmp(t *testing.T) {
+	a := []uint8{116, 101, 115, 116, 95, 107, 101, 121, 49}
+	fmt.Println(string(a))
 }
