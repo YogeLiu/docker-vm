@@ -6,7 +6,7 @@ require (
 	chainmaker.org/chainmaker/localconf/v2 v2.1.0
 	chainmaker.org/chainmaker/logger/v2 v2.1.0
 	chainmaker.org/chainmaker/pb-go/v2 v2.1.0
-	chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211109115316-91d7fbce3fe7
+	chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211110022918-9516552c201a
 	chainmaker.org/chainmaker/utils/v2 v2.1.0
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/containerd/containerd v1.5.2 // indirect

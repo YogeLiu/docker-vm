@@ -15,20 +15,22 @@ build-vendor:
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:develop -f Dockerfile ./
+	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:v2.1.0 -f Dockerfile ./
 	docker images | grep chainmaker-vm-docker-go
 
 image-push:
-	docker push chainmakerofficial/chainmaker-vm-docker-go:develop
+	docker push chainmakerofficial/chainmaker-vm-docker-go:v2.1.0
 
 update-gomod:
-	cd scripts && ./gomod_scripts.sh
+	cd vm_mgr && rm -rf vendor
+	cd scripts && ./gomod_update.sh
 
 clean:
 	cd vm_mgr && rm -rf vendor
-	docker image rm chainmakerofficial/chainmaker-vm-docker-go:develop
+	docker image rm chainmakerofficial/chainmaker-vm-docker-go:v2.1.0
 	docker image prune -f
 	cd test/scripts && ./dockerclean.sh
+
 
 ci:
 	make build-test
@@ -36,14 +38,6 @@ ci:
 	go test ./...
 	make clean
 
-gomod:
-	go get chainmaker.org/chainmaker/localconf/v2@$(VERSION)
-	go get chainmaker.org/chainmaker/logger/v2@$(VERSION)
-	go get chainmaker.org/chainmaker/pb-go/v2@$(VERSION)
-	go get chainmaker.org/chainmaker/protocol/v2@v2.1.0_alpha_fix
-	go get chainmaker.org/chainmaker/utils/v2@$(VERSION)
-	go mod tidy
-	cat go.mod|grep chainmaker
 
 
 
