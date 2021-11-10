@@ -56,8 +56,6 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	}
 
 	simContext.EXPECT().GetTx().Return(tx).AnyTimes()
-	mockPut(simContext, ContractNameTest, []byte("test_key1"), []byte("100"))
-
 	return simContext
 
 }
