@@ -20,7 +20,8 @@ image-push:
 	docker push chainmakerofficial/chainmaker-vm-docker-go:develop
 
 update-gomod:
-	cd scripts && ./gomod_scripts.sh
+	cd vm_mgr && rm -rf vendor
+	cd scripts && ./gomod_update.sh
 
 clean:
 	cd vm_mgr && rm -rf vendor
