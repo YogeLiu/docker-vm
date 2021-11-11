@@ -37,8 +37,12 @@ const (
 	dockerMountDir       = "/mount"
 	dockerLogDir         = "/log"
 	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
-	imageName            = "chainmakerofficial/chainmaker-vm-docker-go:develop"
 	defaultContainerName = "chainmaker-vm-docker-go-container"
+	imageVersion         = "develop"
+)
+
+var (
+	imageName = fmt.Sprintf("chainmakerofficial/chainmaker-vm-docker-go:%s", imageVersion)
 )
 
 type DockerManager struct {
