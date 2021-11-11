@@ -37,8 +37,8 @@ const (
 
 var (
 	iteratorWSets map[string]*common.TxWrite
-	kvIndex       int32 = 0 // nolint: deadcode, unused
-	kvRowCache          = make(map[int32]protocol.StateIterator)
+	//kvIndex       int32 = 0
+	kvRowCache = make(map[int32]protocol.StateIterator)
 )
 
 var tmpSimContextMap map[string][]byte
