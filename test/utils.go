@@ -37,11 +37,17 @@ const (
 
 var (
 	iteratorWSets map[string]*common.TxWrite
-	//kvIndex       int32 = 0
+	kvSetIndex    int32
+	//kvGetIndex    int32
 	kvRowCache = make(map[int32]protocol.StateIterator)
 )
 
 var tmpSimContextMap map[string][]byte
+
+func resetKvIteratorCacheAndIndex() {
+	kvSetIndex = 0
+	kvRowCache = make(map[int32]protocol.StateIterator)
+}
 
 func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 	return &commonPb.Contract{

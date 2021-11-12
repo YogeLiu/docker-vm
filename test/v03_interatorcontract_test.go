@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"chainmaker.org/chainmaker/common/v2/serialize"
@@ -26,6 +27,8 @@ func TestDockerGoKvIterator1(t *testing.T) {
 	// consume iter with next
 	testConsumeKvIteratorWithNext(t)
 
+	resetKvIteratorCacheAndIndex()
+
 	tearDownTest()
 }
 
@@ -41,6 +44,8 @@ func TestDockerGoKvIterator2(t *testing.T) {
 	// consume iter with nextRow
 	testConsumeKvIteratorWithNextRow(t)
 
+	resetKvIteratorCacheAndIndex()
+
 	tearDownTest()
 }
 
@@ -49,9 +54,9 @@ func testCreateKvIterator(t *testing.T) {
 	startKey1 := protocol.GetKeyStr("key2", "")
 	limit1 := protocol.GetKeyStr("key4", "")
 	mockSelect(mockTxContext, ContractNameTest, startKey1, limit1)
-	mockTxContext.EXPECT().SetStateKvHandle(gomock.Eq(int32(1)), gomock.Any()).DoAndReturn(
+	mockTxContext.EXPECT().SetStateKvHandle(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(iteratorIndex int32, iterator protocol.StateIterator) {
-			kvRowCache[iteratorIndex] = iterator
+			kvRowCache[atomic.AddInt32(&kvSetIndex, int32(1))] = iterator
 		},
 	).AnyTimes()
 
@@ -71,11 +76,6 @@ func testCreateKvIterator(t *testing.T) {
 	startKey2 := protocol.GetKeyStr("key1", "field1")
 	limit2 := protocol.GetKeyStr("key1", "field3")
 	mockSelect(mockTxContext, ContractNameTest, startKey2, limit2)
-	mockTxContext.EXPECT().SetStateKvHandle(gomock.Eq(int32(2)), gomock.Any()).DoAndReturn(
-		func(iteratorIndex int32, iterator protocol.StateIterator) {
-			kvRowCache[iteratorIndex] = iterator
-		},
-	).AnyTimes()
 
 	parameters2 := generateInitParams()
 	parameters2["method"] = []byte("new_iterator_with_field")
@@ -93,11 +93,6 @@ func testCreateKvIterator(t *testing.T) {
 	limitLast3 := keyStr3[len(keyStr3)-1] + 1
 	limit3 := keyStr3[:len(keyStr3)-1] + string(limitLast3)
 	mockSelect(mockTxContext, ContractNameTest, startKey3, []byte(limit3))
-	mockTxContext.EXPECT().SetStateKvHandle(gomock.Eq(int32(3)), gomock.Any()).DoAndReturn(
-		func(iteratorIndex int32, iterator protocol.StateIterator) {
-			kvRowCache[iteratorIndex] = iterator
-		},
-	).AnyTimes()
 
 	parameters3 := generateInitParams()
 	parameters3["method"] = []byte("new_iterator_prefix_with_key")
@@ -113,11 +108,6 @@ func testCreateKvIterator(t *testing.T) {
 	limitLast4 := keyStr4[len(keyStr4)-1] + 1
 	limit4 := keyStr4[:len(keyStr4)-1] + string(limitLast4)
 	mockSelect(mockTxContext, ContractNameTest, startKey4, []byte(limit4))
-	mockTxContext.EXPECT().SetStateKvHandle(gomock.Eq(int32(4)), gomock.Any()).DoAndReturn(
-		func(iteratorIndex int32, iterator protocol.StateIterator) {
-			kvRowCache[iteratorIndex] = iterator
-		},
-	).AnyTimes()
 
 	parameters4 := generateInitParams()
 	parameters4["method"] = []byte("new_iterator_prefix_with_key_field")
@@ -146,9 +136,9 @@ func testConsumeKvIteratorWithNext(t *testing.T) {
 		}
 	*/
 	for index := int32(1); index < 5; index++ {
-		fmt.Printf("===")
-		fmt.Printf("=== iterator [%d] start", index)
-		fmt.Printf("===")
+		fmt.Println("===")
+		fmt.Printf("=== iterator [%d] start\n", index)
+		fmt.Println("===")
 		for {
 			// HasNext
 			parameters5 := generateInitParams()
@@ -157,6 +147,7 @@ func testConsumeKvIteratorWithNext(t *testing.T) {
 			result5 := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 				parameters5, mockTxContext, uint64(123))
 			assert.Equal(t, uint32(0), result5.Code)
+			fmt.Printf("=== result: %+v\n", *result5)
 
 			has, err := bytehelper.BytesToInt(result5.Result)
 			fmt.Printf("=== HasNext: %d\n", has)
@@ -179,7 +170,7 @@ func testConsumeKvIteratorWithNext(t *testing.T) {
 			result6 := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 				parameters6, mockTxContext, uint64(123))
 			assert.Equal(t, uint32(0), result6.Code)
-			fmt.Printf("Next key, field, value : [%s]", result6.Result)
+			fmt.Printf("Next key, field, value : [%s]\n", result6.Result)
 		}
 	}
 }
@@ -195,9 +186,9 @@ func testConsumeKvIteratorWithNextRow(t *testing.T) {
 		}
 	*/
 	for index := int32(1); index < 5; index++ {
-		fmt.Printf("===")
-		fmt.Printf("=== iterator [%d] start", index)
-		fmt.Printf("===")
+		fmt.Println("===")
+		fmt.Printf("=== iterator [%d] start\n", index)
+		fmt.Println("===")
 		for {
 			// HasNext
 			parameters5 := generateInitParams()
@@ -206,6 +197,7 @@ func testConsumeKvIteratorWithNextRow(t *testing.T) {
 			result5 := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 				parameters5, mockTxContext, uint64(123))
 			assert.Equal(t, uint32(0), result5.Code)
+			fmt.Printf("=== result: %+v\n", *result5)
 
 			has, err := bytehelper.BytesToInt(result5.Result)
 			fmt.Printf("=== HasNext: %d\n", has)
