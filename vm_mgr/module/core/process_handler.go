@@ -445,11 +445,9 @@ func (h *ProcessHandler) handleConsumeKvIterator(consumeKvIteratorMsg *SDKProtog
 		Payload: KeyList,
 	}
 
-	// 注册channel用于接收来自CDM的响应
 	consumeKvIteratorResponseCh := make(chan *protogo.CDMMessage)
 	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, consumeKvIteratorResponseCh)
 
-	// 发送request到CDM的接收channel，CDM和runtimeInstance通信，结果回写到上面的channel中
 	h.scheduler.GetGetStateReqCh() <- consumeKvIteratorReqMsg
 	consumeKvIteratorResponse := <-consumeKvIteratorResponseCh
 
