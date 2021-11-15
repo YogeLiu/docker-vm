@@ -155,6 +155,11 @@ func (h *ProcessHandler) handleReady(readyMsg *SDKProtogo.DMSMessage) error {
 		return h.handleCallContract(readyMsg)
 	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
 		return h.handleCompleted(readyMsg)
+	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KV_ITERATOR_REQUEST:
+		return h.handleCreateKvIterator(readyMsg)
+	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KV_ITERATOR_REQUEST:
+		return h.handleConsumeKvIterator(readyMsg)
+
 	default:
 		return fmt.Errorf("handler cannot handle ready message (%s) while in state: %s",
 			readyMsg.Type, h.state)
@@ -401,6 +406,61 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 	h.process.triggerProcessState()
 
 	return nil
+}
+
+func (h *ProcessHandler) handleCreateKvIterator(createKvIteratorMsg *SDKProtogo.DMSMessage) error {
+	keyList := createKvIteratorMsg.Payload
+
+	createKvIteratorReqMsg := &protogo.CDMMessage{
+		TxId:    createKvIteratorMsg.TxId,
+		Type:    protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR,
+		Payload: keyList,
+	}
+
+	createKvIteratorResponseCh := make(chan *protogo.CDMMessage)
+	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, createKvIteratorResponseCh)
+
+	h.scheduler.GetGetStateReqCh() <- createKvIteratorReqMsg
+
+	createKvIteratorResponse := <-createKvIteratorResponseCh
+
+	responseMsg := &SDKProtogo.DMSMessage{
+		TxId:          createKvIteratorMsg.TxId,
+		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KV_ITERATOR_RESPONSE,
+		CurrentHeight: createKvIteratorMsg.CurrentHeight,
+		ResultCode:    createKvIteratorResponse.ResultCode,
+		Payload:       createKvIteratorResponse.Payload,
+		Message:       createKvIteratorResponse.Message,
+	}
+
+	return h.sendMessage(responseMsg)
+}
+
+func (h *ProcessHandler) handleConsumeKvIterator(consumeKvIteratorMsg *SDKProtogo.DMSMessage) error {
+	KeyList := consumeKvIteratorMsg.Payload
+
+	consumeKvIteratorReqMsg := &protogo.CDMMessage{
+		TxId:    consumeKvIteratorMsg.TxId,
+		Type:    protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
+		Payload: KeyList,
+	}
+
+	consumeKvIteratorResponseCh := make(chan *protogo.CDMMessage)
+	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, consumeKvIteratorResponseCh)
+
+	h.scheduler.GetGetStateReqCh() <- consumeKvIteratorReqMsg
+	consumeKvIteratorResponse := <-consumeKvIteratorResponseCh
+
+	responseMsg := &SDKProtogo.DMSMessage{
+		TxId:          consumeKvIteratorMsg.TxId,
+		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KV_ITERATOR_RESPONSE,
+		CurrentHeight: consumeKvIteratorMsg.CurrentHeight,
+		ResultCode:    consumeKvIteratorResponse.ResultCode,
+		Payload:       consumeKvIteratorResponse.Payload,
+		Message:       consumeKvIteratorResponse.Message,
+	}
+
+	return h.sendMessage(responseMsg)
 }
 
 func (h *ProcessHandler) resetHandler() {

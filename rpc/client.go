@@ -180,6 +180,12 @@ func (c *CDMClient) recvMsgRoutine() {
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
 				waitCh := c.getRecvChan(recvMsg.TxId)
 				waitCh <- recvMsg
+			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
+				waitCh := c.getRecvChan(recvMsg.TxId)
+				waitCh <- recvMsg
+			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
+				waitCh := c.getRecvChan(recvMsg.TxId)
+				waitCh <- recvMsg
 			default:
 				c.logger.Errorf("unknown message type")
 			}
