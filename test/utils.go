@@ -22,7 +22,7 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_fvt"
+	ContractNameTest    = "contract_test"
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"

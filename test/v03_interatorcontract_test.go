@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"sync/atomic"
 	"testing"
 
@@ -56,9 +55,6 @@ func TestDockerGoKvIterator(t *testing.T) {
 	result := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
-	fmt.Printf("%s\n", result.Result)
-	fmt.Printf("%d\n", result.Code)
-	fmt.Printf("%s\n", result.Message)
 
 	resetKvIteratorCacheAndIndex()
 

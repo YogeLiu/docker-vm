@@ -398,7 +398,8 @@ func kvIteratorClose(kvIterator protocol.StateIterator, gasUsed uint64,
 	return response, gasUsed
 }
 
-func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimContext, writeMap map[string][]byte, gasUsed uint64) (uint64, error) {
+func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimContext,
+	writeMap map[string][]byte, gasUsed uint64) (uint64, error) {
 	// merge the sim context write map
 
 	for key, value := range writeMap {
@@ -425,6 +426,27 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 	}
 
 	return gasUsed, nil
+}
+
+func kvIteratorCreate(txSimContext protocol.TxSimContext, calledContractName string,
+	key []byte, limitKey, limitField string, gasUsed uint64) (protocol.StateIterator, uint64, error) {
+	var err error
+	gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	if err = protocol.CheckKeyFieldStr(limitKey, limitField); err != nil {
+		return nil, gasUsed, err
+	}
+	limit := protocol.GetKeyStr(limitKey, limitField)
+	var iter protocol.StateIterator
+	iter, err = txSimContext.Select(calledContractName, key, limit)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	return iter, gasUsed, err
 }
 
 func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.CDMMessage,
@@ -475,7 +497,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 		}
 	}
 
-	if err := protocol.CheckKeyFieldStr(startKey, startField); err != nil {
+	if err = protocol.CheckKeyFieldStr(startKey, startField); err != nil {
 		r.Log.Errorf("invalid key field str, %s", err.Error())
 		createKvIteratorResponse.Message = err.Error()
 		gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
@@ -491,24 +513,9 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 	var iter protocol.StateIterator
 	switch createFunc {
 	case FuncKvIteratorCreate:
-		gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
-		if err != nil {
-			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			createKvIteratorResponse.Message = err.Error()
-			createKvIteratorResponse.Payload = nil
-			return createKvIteratorResponse, gasUsed
-		}
 		limitKey := keyList[4]
 		limitField := keyList[5]
-		if err = protocol.CheckKeyFieldStr(limitKey, limitField); err != nil {
-			r.Log.Errorf("invalid key field str, %s", err.Error())
-			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			createKvIteratorResponse.Message = err.Error()
-			createKvIteratorResponse.Payload = nil
-			return createKvIteratorResponse, gasUsed
-		}
-		limit := protocol.GetKeyStr(limitKey, limitField)
-		iter, err = txSimContext.Select(calledContractName, key, limit)
+		iter, gasUsed, err = kvIteratorCreate(txSimContext, calledContractName, key, limitKey, limitField, gasUsed)
 		if err != nil {
 			r.Log.Errorf("failed to create kv iterator, %s", err.Error())
 			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
@@ -516,7 +523,6 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 			createKvIteratorResponse.Payload = nil
 			return createKvIteratorResponse, gasUsed
 		}
-
 	case FuncKvPreIteratorCreate:
 		gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
 		if err != nil {
