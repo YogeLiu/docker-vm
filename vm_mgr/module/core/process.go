@@ -152,6 +152,7 @@ func (p *Process) LaunchProcess() error {
 	// start process
 	if err = cmd.Start(); err != nil {
 		p.logger.Errorf("fail to start process: %s", err)
+		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_FAIL)
 		return err
 	}
 

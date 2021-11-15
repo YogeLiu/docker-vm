@@ -129,6 +129,8 @@ enum ProcessState {
     PROCESS_STATE_CROSS_FINISHED = 6;
 
     PROCESS_STATE_CROSS_FAIL = 7;
+
+    PROCESS_STATE_FAIL = 8;
 }
 
 

@@ -25,6 +25,9 @@ update-gomod:
 	cd vm_mgr && rm -rf vendor
 	cd scripts && ./gomod_update.sh
 
+clean-test:
+	cd test/scripts && ./dockerclean.sh
+
 clean:
 	cd vm_mgr && rm -rf vendor
 	cd test/scripts && ./dockerclean.sh
@@ -33,7 +36,7 @@ clean:
 
 ci:
 	make build-test
-	golangci-lint run ./...
+	golangci-lint run -v ./...
 	go test ./...
 	make clean
 
