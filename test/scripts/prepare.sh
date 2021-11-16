@@ -6,6 +6,9 @@ docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-docke
 
 if [ ${docker_image_name} ]; then
   docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+  rm -fr ../testdata/org1
+  rm -fr ../testdata/log
+  rm -fr ../default.log*
 fi
 
 cd ../../vm_mgr && go mod vendor

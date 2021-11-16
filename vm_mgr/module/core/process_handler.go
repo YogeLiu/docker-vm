@@ -292,7 +292,7 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 		return h.sendMessage(errorResponse)
 	}
 
-	if callContractMsg.CurrentHeight > chainProtocol.CallContractDepth {
+	if callContractMsg.CurrentHeight >= chainProtocol.CallContractDepth {
 		h.logger.Errorf(utils.ExceedMaxDepthError.Error())
 		errorResponse := constructCallContractErrorResponse(utils.ExceedMaxDepthError.Error(), callContractMsg.TxId, callContractMsg.CurrentHeight)
 		return h.sendMessage(errorResponse)
