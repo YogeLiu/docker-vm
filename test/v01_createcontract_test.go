@@ -97,8 +97,3 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 
 	tearDownTest()
 }
-
-func TestTmp(t *testing.T) {
-	a := []uint8{116, 101, 115, 116, 95, 107, 101, 121, 49}
-	fmt.Println(string(a))
-}
