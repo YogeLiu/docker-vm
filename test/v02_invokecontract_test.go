@@ -22,7 +22,6 @@ func TestDockerGoPutState(t *testing.T) {
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1")), []byte("500"))
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters, mockTxContext, uint64(123))
-	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
 	assert.Contains(t, tmpSimContextMap, fmt.Sprintf("%s::key1#field1", ContractNameTest))
 
