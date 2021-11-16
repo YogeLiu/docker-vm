@@ -64,7 +64,7 @@ func setupTest(t *testing.T) {
 	//step6: invoke user contract --- create user contract
 	fmt.Printf("=== step 6 init user contract ===\n")
 	parameters := generateInitParams()
-	result := mockRuntimeInstance.Invoke(mockContractId, initMethod, contractBin, parameters,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, initMethod, contractBin, parameters,
 		mockTxContext, uint64(123))
 	if result.Code == 0 {
 		fmt.Printf("deploy user contract successfully\n")
@@ -83,12 +83,12 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 
 	parameters := generateInitParams()
 	parameters["method"] = []byte("display")
-	result := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil, parameters,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil, parameters,
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 
 	parameters["method"] = []byte("not existed method")
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil, parameters,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil, parameters,
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Equal(t, []byte("unknown method"), result.Result)
