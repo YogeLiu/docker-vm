@@ -3,7 +3,7 @@ module chainmaker.org/chainmaker/vm-docker-go/vm_mgr
 go 1.15
 
 require (
-	chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211110022918-9516552c201a
+	chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211116063435-570b375a296a
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
