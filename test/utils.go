@@ -22,7 +22,7 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_fvt"
+	ContractNameTest    = "contract_test"
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"
@@ -30,9 +30,6 @@ const (
 	chainId = "chain1"
 
 	txType = commonPb.TxType_INVOKE_CONTRACT
-
-	boolTrue  int32 = 1
-	boolFalse int32 = 0
 )
 
 var (
@@ -152,6 +149,18 @@ func getMockedCMConfig() (map[string]interface{}, error) {
 
 // ========== Mock Kv Iterator ==========
 
+/*
+	| Key   | Field   | Value |
+	| ---   | ---     | ---   |
+	| key1  | field1  | val   |
+	| key1  | field2  | val   |
+	| key1  | field23 | val   |
+	| ey1   | field3  | val   |
+	| key2  | field1  | val   |
+	| key3  | field2  | val   |
+	| key33 | field2  | val   |
+	| key4  | field3  | val   |
+*/
 func makeStringKeyMap() (map[string]*common.TxWrite, []*store.KV) {
 	stringKeyMap := make(map[string]*common.TxWrite)
 	kvs := []*store.KV{
