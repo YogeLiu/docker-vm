@@ -48,7 +48,8 @@ func setupTest(t *testing.T) {
 	mockContractId = initContractId(commonPb.RuntimeType_DOCKER_GO)
 	mockTxContext = initMockSimContext(t)
 
-	contractBin, contractFileErr := ioutil.ReadFile("./testdata/contract_fvt.7z")
+	filePath := fmt.Sprintf("./testdata/%s.7z", ContractNameTest)
+	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))
 	}
