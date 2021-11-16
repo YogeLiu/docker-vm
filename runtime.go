@@ -47,7 +47,7 @@ type RuntimeInstance struct {
 // Invoke process one tx in docker and return result
 func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
-	gasUsed uint64) (contractResult *commonPb.ContractResult) {
+	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
 	txId := txSimContext.GetTx().Payload.TxId
 
 	// contract response
@@ -152,7 +152,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				contractResult.Message = txResponse.Message
 				contractResult.GasUsed = gasUsed
 
-				return contractResult
+				return contractResult, protocol.ExecOrderTxTypeNormal
 			}
 
 			contractResult.Code = 0
@@ -216,7 +216,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			contractResult.ContractEvent = contractEvents
 
 			close(responseCh)
-			return contractResult
+			return contractResult, protocol.ExecOrderTxTypeNormal
 		default:
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(contractResult, fmt.Errorf("unknow type"), "fail to receive request")
@@ -331,14 +331,14 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.CD
 }
 
 func (r *RuntimeInstance) errorResult(contractResult *commonPb.ContractResult,
-	err error, errMsg string) *commonPb.ContractResult {
+	err error, errMsg string) (*commonPb.ContractResult, protocol.ExecOrderTxType) {
 	contractResult.Code = uint32(1)
 	if err != nil {
 		errMsg += ", " + err.Error()
 	}
 	contractResult.Message = errMsg
 	r.Log.Error(errMsg)
-	return contractResult
+	return contractResult, protocol.ExecOrderTxTypeNormal
 }
 
 func (r *RuntimeInstance) saveBytesToDisk(bytes []byte, newFilePath string) error {
