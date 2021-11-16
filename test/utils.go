@@ -1,16 +1,19 @@
 package test
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
+	"chainmaker.org/chainmaker/common/v2/sortedmap"
+	"chainmaker.org/chainmaker/localconf/v2"
+	"chainmaker.org/chainmaker/pb-go/v2/common"
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/pb-go/v2/store"
+	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/protocol/v2/mock"
 	"github.com/docker/distribution/uuid"
 	"github.com/golang/mock/gomock"
-
-	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-
-	"chainmaker.org/chainmaker/localconf/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -19,15 +22,29 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_fvt"
+	ContractNameTest    = "contract_test"
 	ContractVersionTest = "v1.0.0"
+
+	constructKeySeparator = "#"
 
 	chainId = "chain1"
 
 	txType = commonPb.TxType_INVOKE_CONTRACT
 )
 
+var (
+	iteratorWSets map[string]*common.TxWrite
+	kvSetIndex    int32
+	//kvGetIndex    int32
+	kvRowCache = make(map[int32]protocol.StateIterator)
+)
+
 var tmpSimContextMap map[string][]byte
+
+func resetKvIteratorCacheAndIndex() {
+	kvSetIndex = 0
+	kvRowCache = make(map[int32]protocol.StateIterator)
+}
 
 func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 	return &commonPb.Contract{
@@ -129,3 +146,144 @@ func getMockedCMConfig() (map[string]interface{}, error) {
 	}
 	return cmConfig.VMConfig, nil
 }
+
+// ========== Mock Kv Iterator ==========
+
+/*
+	| Key   | Field   | Value |
+	| ---   | ---     | ---   |
+	| key1  | field1  | val   |
+	| key1  | field2  | val   |
+	| key1  | field23 | val   |
+	| ey1   | field3  | val   |
+	| key2  | field1  | val   |
+	| key3  | field2  | val   |
+	| key33 | field2  | val   |
+	| key4  | field3  | val   |
+*/
+func makeStringKeyMap() (map[string]*common.TxWrite, []*store.KV) {
+	stringKeyMap := make(map[string]*common.TxWrite)
+	kvs := []*store.KV{
+		{
+			ContractName: ContractNameTest,
+			Key:          protocol.GetKeyStr("key1", "field1"),
+			Value:        []byte("val"),
+		},
+		{
+			ContractName: ContractNameTest,
+			Key:          protocol.GetKeyStr("key1", "field2"),
+			Value:        []byte("val"),
+		},
+		{
+			ContractName: ContractNameTest,
+			Key:          protocol.GetKeyStr("key1", "field23"),
+			Value:        []byte("val"),
+		},
+		{
+			ContractName: ContractNameTest,
+			Key:          protocol.GetKeyStr("key1", "field3"),
+			Value:        []byte("val"),
+		},
+		{
+			ContractName: ContractNameTest,
+			Key:          protocol.GetKeyStr("key2", "field1"),
+			Value:        []byte("val"),
+		},
+		{
+			ContractName: ContractNameTest,
+			Key:          protocol.GetKeyStr("key3", "field2"),
+			Value:        []byte("val"),
+		},
+		{
+			ContractName: ContractNameTest,
+			Key:          protocol.GetKeyStr("key33", "field2"),
+			Value:        []byte("val"),
+		},
+		{
+			ContractName: ContractNameTest,
+			Key:          protocol.GetKeyStr("key4", "field3"),
+			Value:        []byte("val"),
+		},
+	}
+
+	for _, kv := range kvs {
+		stringKeyMap[constructKey(kv.ContractName, kv.Key)] = &common.TxWrite{
+			Key:          kv.Key,
+			Value:        kv.Value,
+			ContractName: kv.ContractName,
+		}
+	}
+	return stringKeyMap, kvs
+}
+
+func constructKey(contractName string, key []byte) string {
+	return contractName + constructKeySeparator + string(key)
+}
+
+func mockGetStateKvHandle(simContext *mock.MockTxSimContext, iteratorIndex int32) {
+	simContext.EXPECT().GetStateKvHandle(gomock.Eq(iteratorIndex)).DoAndReturn(
+		func(iteratorIndex int32) (protocol.StateIterator, bool) {
+			iterator, ok := kvRowCache[iteratorIndex]
+			if ok {
+				return iterator, true
+			}
+			return nil, false
+		},
+	).AnyTimes()
+}
+
+func mockSelect(simContext *mock.MockTxSimContext, name string, key, value []byte) {
+	simContext.EXPECT().Select(name, key, value).DoAndReturn(
+		mockTxSimContextSelect,
+	).AnyTimes()
+}
+
+func mockTxSimContextSelect(contractName string, startKey, limit []byte) (protocol.StateIterator, error) {
+	wsetsMap := make(map[string]interface{})
+
+	for _, txWrite := range iteratorWSets {
+		if string(txWrite.Key) >= string(startKey) && string(txWrite.Key) < string(limit) {
+			wsetsMap[string(txWrite.Key)] = &store.KV{
+				Key:          txWrite.Key,
+				Value:        txWrite.Value,
+				ContractName: contractName,
+			}
+		}
+	}
+	wsetIterator := mockNewSimContextIterator(wsetsMap)
+
+	return wsetIterator, nil
+}
+
+func mockNewSimContextIterator(wsets map[string]interface{}) protocol.StateIterator {
+	return &mockStateIterator{
+		stringKeySortedMap: sortedmap.NewStringKeySortedMapWithInterfaceData(wsets),
+	}
+}
+
+type mockStateIterator struct {
+	stringKeySortedMap *sortedmap.StringKeySortedMap
+}
+
+func (iter *mockStateIterator) Next() bool {
+	return iter.stringKeySortedMap.Length() > 0
+}
+
+func (iter *mockStateIterator) Value() (*store.KV, error) {
+	var kv *store.KV
+	var keyStr string
+	ok := true
+	// get the first row
+	iter.stringKeySortedMap.Range(func(key string, val interface{}) (isContinue bool) {
+		keyStr = key
+		kv, ok = val.(*store.KV)
+		return false
+	})
+	if !ok {
+		return nil, fmt.Errorf("get value from wsetIterator failed, value type error")
+	}
+	iter.stringKeySortedMap.Remove(keyStr)
+	return kv, nil
+}
+
+func (iter *mockStateIterator) Release() {}

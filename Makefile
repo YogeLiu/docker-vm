@@ -3,16 +3,6 @@ VERSION=v2.1.0
 build-test:
 	cd test/scripts && ./prepare.sh
 
-gen-cdm:
-	cd pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative cdm_message.proto
-	cd vm_mgr/pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative cdm_message.proto
-
-gen-dms:
-	cd vm_mgr/pb_sdk/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dms_message.proto
-
-build-vendor:
-	cd vm_mgr && go mod vendor
-
 build-image:
 	cd vm_mgr && go mod vendor
 	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} -f Dockerfile ./
@@ -25,6 +15,16 @@ update-gomod:
 	cd vm_mgr && rm -rf vendor
 	cd scripts && ./gomod_update.sh
 
+gen-cdm:
+	cd pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative cdm_message.proto
+	cd vm_mgr/pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative cdm_message.proto
+
+gen-dms:
+	cd vm_mgr/pb_sdk/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dms_message.proto
+
+clean-test:
+	cd test/scripts && ./dockerclean.sh
+
 clean:
 	cd vm_mgr && rm -rf vendor
 	cd test/scripts && ./dockerclean.sh
@@ -34,7 +34,7 @@ clean:
 ci:
 	make build-test
 	golangci-lint run ./...
-	go test ./...
+	go test -v ./...
 	make clean
 
 

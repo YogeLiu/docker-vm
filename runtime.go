@@ -8,16 +8,19 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
-	"chainmaker.org/chainmaker/vm-docker-go/config"
-
+	"chainmaker.org/chainmaker/common/v2/bytehelper"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/pb-go/v2/store"
 	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/config"
 	"chainmaker.org/chainmaker/vm-docker-go/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/pb/protogo"
 	"github.com/gogo/protobuf/proto"
@@ -39,12 +42,14 @@ type CDMClient interface {
 
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
-	ChainId string // chain id
-	Client  CDMClient
-	Log     protocol.Logger
+	rowIndex int32  // iterator index
+	ChainId  string // chain id
+	Client   CDMClient
+	Log      protocol.Logger
 }
 
 // Invoke process one tx in docker and return result
+// nolint: gocyclo, revive
 func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
 	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
@@ -160,29 +165,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			contractResult.Message = txResponse.Message
 
 			// merge the sim context write map
-
-			for key, value := range txResponse.WriteMap {
-				var contractName string
-				var contractKey string
-				var contractField string
-				keyList := strings.Split(key, "#")
-				contractName = keyList[0]
-				contractKey = keyList[1]
-				if len(keyList) == 3 {
-					contractField = keyList[2]
-				}
-				// put state gas used calc and check gas limit
-				gasUsed, err = gas.PutStateGasUsed(gasUsed, contractName, contractKey, contractField, value)
-				if err != nil {
-					contractResult.GasUsed = gasUsed
-					return r.errorResult(contractResult, err, err.Error())
-				}
-
-				err = txSimContext.Put(contractName, protocol.GetKeyStr(contractKey, contractField), value)
-				if err != nil {
-					contractResult.GasUsed = gasUsed
-					return r.errorResult(contractResult, err, "fail to put in sim context")
-				}
+			gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
+			if err != nil {
+				contractResult.GasUsed = gasUsed
+				return r.errorResult(contractResult, err, "fail to put in sim context")
 			}
 
 			// merge events
@@ -217,9 +203,26 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 			close(responseCh)
 			return contractResult, protocol.ExecOrderTxTypeNormal
+
+		case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
+			var createKvIteratorResponse *protogo.CDMMessage
+			createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(txId, recvMsg, txSimContext, gasUsed)
+
+			r.Client.GetStateResponseSendCh() <- createKvIteratorResponse
+
+		case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
+			var consumeKvIteratorResponse *protogo.CDMMessage
+			consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(txId, recvMsg, txSimContext, gasUsed)
+
+			r.Client.GetStateResponseSendCh() <- consumeKvIteratorResponse
+
 		default:
 			contractResult.GasUsed = gasUsed
-			return r.errorResult(contractResult, fmt.Errorf("unknow type"), "fail to receive request")
+			return r.errorResult(
+				contractResult,
+				fmt.Errorf("unknow type"),
+				"fail to receive request",
+			)
 		}
 
 	}
@@ -234,6 +237,322 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType)
 		Payload:    nil,
 		Message:    "",
 	}
+}
+
+type Bool int32
+
+const (
+	FuncKvIteratorCreate    = "createKvIterator"
+	FuncKvPreIteratorCreate = "createKvPreIterator"
+	FuncKvIteratorHasNext   = "kvIteratorHasNext"
+	FuncKvIteratorNext      = "kvIteratorNext"
+	FuncKvIteratorClose     = "kvIteratorClose"
+
+	boolTrue  Bool = 1
+	boolFalse Bool = 0
+)
+
+func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.CDMMessage,
+	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.CDMMessage, uint64) {
+
+	consumeKvIteratorResponse := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR_RESPONSE)
+
+	/*
+		|	index	|			desc				|
+		|	----	|			----  				|
+		|	 0  	|	consumeKvIteratorFunc		|
+		|	 1  	|		rsIndex					|
+	*/
+
+	keyList := strings.Split(string(recvMsg.Payload), "#")
+	consumeKvIteratorFunc := keyList[0]
+	kvIteratorIndex, err := bytehelper.BytesToInt([]byte(keyList[1]))
+	if err != nil {
+		r.Log.Errorf("failed to get iterator index, %s", err.Error())
+		gasUsed, err = gas.KvIteratorConsumeGasUsed(gasUsed)
+		if err != nil {
+			consumeKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			consumeKvIteratorResponse.Message = err.Error()
+			consumeKvIteratorResponse.Payload = nil
+			return consumeKvIteratorResponse, gasUsed
+		}
+		return consumeKvIteratorResponse, gasUsed
+	}
+
+	kvIterator, ok := txSimContext.GetStateKvHandle(kvIteratorIndex)
+	if !ok {
+		r.Log.Errorf("GetStateKvHandle failed, %s", err.Error())
+		consumeKvIteratorResponse.Message = fmt.Sprintf(
+			"[kv iterator has next] can not found rs_index[%d]", kvIteratorIndex,
+		)
+		gasUsed, err = gas.KvIteratorConsumeGasUsed(gasUsed)
+		if err != nil {
+			consumeKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			consumeKvIteratorResponse.Message = err.Error()
+			consumeKvIteratorResponse.Payload = nil
+			return consumeKvIteratorResponse, gasUsed
+		}
+		return consumeKvIteratorResponse, gasUsed
+	}
+
+	switch consumeKvIteratorFunc {
+	case FuncKvIteratorHasNext:
+		return kvIteratorHasNext(kvIterator, gasUsed, consumeKvIteratorResponse)
+
+	case FuncKvIteratorNext:
+		return kvIteratorNext(kvIterator, gasUsed, consumeKvIteratorResponse)
+
+	case FuncKvIteratorClose:
+		return kvIteratorClose(kvIterator, gasUsed, consumeKvIteratorResponse)
+
+	default:
+		consumeKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+		consumeKvIteratorResponse.Message = fmt.Sprintf("%s not found", consumeKvIteratorFunc)
+		consumeKvIteratorResponse.Payload = nil
+		return consumeKvIteratorResponse, gasUsed
+	}
+}
+
+func kvIteratorHasNext(kvIterator protocol.StateIterator, gasUsed uint64,
+	response *protogo.CDMMessage) (*protogo.CDMMessage, uint64) {
+	var err error
+	gasUsed, err = gas.KvIteratorConsumeGasUsed(gasUsed)
+	if err != nil {
+		response.ResultCode = protocol.ContractSdkSignalResultFail
+		response.Message = err.Error()
+		response.Payload = nil
+		return response, gasUsed
+	}
+
+	hasNext := boolFalse
+	if kvIterator.Next() {
+		hasNext = boolTrue
+	}
+
+	response.ResultCode = protocol.ContractSdkSignalResultSuccess
+	response.Payload = bytehelper.IntToBytes(int32(hasNext))
+
+	return response, gasUsed
+}
+
+func kvIteratorNext(kvIterator protocol.StateIterator, gasUsed uint64,
+	response *protogo.CDMMessage) (*protogo.CDMMessage, uint64) {
+	var err error
+	gasUsed, err = gas.KvIteratorConsumeGasUsed(gasUsed)
+	if err != nil {
+		response.ResultCode = protocol.ContractSdkSignalResultFail
+		response.Message = err.Error()
+		response.Payload = nil
+		return response, gasUsed
+	}
+
+	if kvIterator == nil {
+		response.ResultCode = protocol.ContractSdkSignalResultFail
+		response.Message = "iterator is nil"
+		response.Payload = nil
+		return response, gasUsed
+	}
+
+	var kvRow *store.KV
+	kvRow, err = kvIterator.Value()
+	if err != nil {
+		response.ResultCode = protocol.ContractSdkSignalResultFail
+		response.Message = err.Error()
+		response.Payload = nil
+		return response, gasUsed
+	}
+
+	arrKey := strings.Split(string(kvRow.Key), "#")
+	key := arrKey[0]
+	field := ""
+	if len(arrKey) > 1 {
+		field = arrKey[1]
+	}
+
+	value := kvRow.Value
+
+	response.ResultCode = protocol.ContractSdkSignalResultSuccess
+	response.Payload = func() []byte {
+		str := key + "#" + field + "#" + string(value)
+		return []byte(str)
+	}()
+
+	return response, gasUsed
+}
+
+func kvIteratorClose(kvIterator protocol.StateIterator, gasUsed uint64,
+	response *protogo.CDMMessage) (*protogo.CDMMessage, uint64) {
+	var err error
+	gasUsed, err = gas.KvIteratorConsumeGasUsed(gasUsed)
+	if err != nil {
+		response.ResultCode = protocol.ContractSdkSignalResultFail
+		response.Message = err.Error()
+		response.Payload = nil
+		return response, gasUsed
+	}
+
+	kvIterator.Release()
+	response.ResultCode = protocol.ContractSdkSignalResultSuccess
+	response.Payload = nil
+
+	return response, gasUsed
+}
+
+func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimContext,
+	writeMap map[string][]byte, gasUsed uint64) (uint64, error) {
+	// merge the sim context write map
+
+	for key, value := range writeMap {
+		var contractName string
+		var contractKey string
+		var contractField string
+		keyList := strings.Split(key, "#")
+		contractName = keyList[0]
+		contractKey = keyList[1]
+		if len(keyList) == 3 {
+			contractField = keyList[2]
+		}
+		// put state gas used calc and check gas limit
+		var err error
+		gasUsed, err = gas.PutStateGasUsed(gasUsed, contractName, contractKey, contractField, value)
+		if err != nil {
+			return gasUsed, err
+		}
+
+		err = txSimContext.Put(contractName, protocol.GetKeyStr(contractKey, contractField), value)
+		if err != nil {
+			return gasUsed, err
+		}
+	}
+
+	return gasUsed, nil
+}
+
+func kvIteratorCreate(txSimContext protocol.TxSimContext, calledContractName string,
+	key []byte, limitKey, limitField string, gasUsed uint64) (protocol.StateIterator, uint64, error) {
+	var err error
+	gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	if err = protocol.CheckKeyFieldStr(limitKey, limitField); err != nil {
+		return nil, gasUsed, err
+	}
+	limit := protocol.GetKeyStr(limitKey, limitField)
+	var iter protocol.StateIterator
+	iter, err = txSimContext.Select(calledContractName, key, limit)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	return iter, gasUsed, err
+}
+
+func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.CDMMessage,
+	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.CDMMessage, uint64) {
+
+	createKvIteratorResponse := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR_RESPONSE)
+
+	/*
+		|	index	|			desc			|
+		|	----	|			----			|
+		|	 0  	|		contractName		|
+		|	 1  	|	createKvIteratorFunc	|
+		|	 2  	|		startKey			|
+		|	 3  	|		startField			|
+		|	 4  	|		limitKey			|
+		|	 5  	|		limitField			|
+		|	 6  	|	  writeMapCache			|
+	*/
+	keyList := strings.Split(string(recvMsg.Payload), "#")
+	calledContractName := keyList[0]
+	createFunc := keyList[1]
+	startKey := keyList[2]
+	startField := keyList[3]
+	writeMapBytes := keyList[6]
+
+	writeMap := make(map[string][]byte)
+	var err error
+	if err = json.Unmarshal([]byte(writeMapBytes), &writeMap); err != nil {
+		r.Log.Errorf("get WriteMap failed, %s", err.Error())
+		createKvIteratorResponse.Message = err.Error()
+		gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
+		if err != nil {
+			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			createKvIteratorResponse.Payload = nil
+			return createKvIteratorResponse, gasUsed
+		}
+	}
+
+	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed)
+	if err != nil {
+		r.Log.Errorf("merge the sim context write map failed, %s", err.Error())
+		createKvIteratorResponse.Message = err.Error()
+		gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
+		if err != nil {
+			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			createKvIteratorResponse.Payload = nil
+			return createKvIteratorResponse, gasUsed
+		}
+	}
+
+	if err = protocol.CheckKeyFieldStr(startKey, startField); err != nil {
+		r.Log.Errorf("invalid key field str, %s", err.Error())
+		createKvIteratorResponse.Message = err.Error()
+		gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
+		if err != nil {
+			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			createKvIteratorResponse.Payload = nil
+			return createKvIteratorResponse, gasUsed
+		}
+	}
+
+	key := protocol.GetKeyStr(startKey, startField)
+
+	var iter protocol.StateIterator
+	switch createFunc {
+	case FuncKvIteratorCreate:
+		limitKey := keyList[4]
+		limitField := keyList[5]
+		iter, gasUsed, err = kvIteratorCreate(txSimContext, calledContractName, key, limitKey, limitField, gasUsed)
+		if err != nil {
+			r.Log.Errorf("failed to create kv iterator, %s", err.Error())
+			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			createKvIteratorResponse.Message = err.Error()
+			createKvIteratorResponse.Payload = nil
+			return createKvIteratorResponse, gasUsed
+		}
+	case FuncKvPreIteratorCreate:
+		gasUsed, err = gas.KvIteratorCreateGasUsed(gasUsed)
+		if err != nil {
+			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			createKvIteratorResponse.Message = err.Error()
+			createKvIteratorResponse.Payload = nil
+			return createKvIteratorResponse, gasUsed
+		}
+
+		keyStr := string(key)
+		limitLast := keyStr[len(keyStr)-1] + 1
+		limit := keyStr[:len(keyStr)-1] + string(limitLast)
+		iter, err = txSimContext.Select(calledContractName, key, []byte(limit))
+		if err != nil {
+			r.Log.Errorf("failed to create kv pre iterator, %s", err.Error())
+			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			createKvIteratorResponse.Message = err.Error()
+			createKvIteratorResponse.Payload = nil
+			return createKvIteratorResponse, gasUsed
+		}
+	}
+
+	index := atomic.AddInt32(&r.rowIndex, 1)
+	txSimContext.SetStateKvHandle(index, iter)
+
+	r.Log.Debug("create kv iterator: ", index)
+	createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultSuccess
+	createKvIteratorResponse.Payload = bytehelper.IntToBytes(index)
+
+	return createKvIteratorResponse, gasUsed
 }
 
 func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo.CDMMessage,

@@ -234,8 +234,12 @@ runProcess:
 		} else {
 			s.returnErrorTxResponse(currentTx.TxId, err.Error())
 		}
-		// restart process and trigger next
-		goto runProcess
+
+		if process.ProcessState != protogo.ProcessState_PROCESS_STATE_FAIL {
+			// restart process and trigger next
+			goto runProcess
+		}
+
 	}
 
 	// when process timeout, release resources
