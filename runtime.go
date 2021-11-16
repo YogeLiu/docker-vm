@@ -47,7 +47,7 @@ type RuntimeInstance struct {
 // Invoke process one tx in docker and return result
 func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
-	gasUsed uint64) (contractResult *commonPb.ContractResult, ExecOrderTxType protocol.ExecOrderTxType) {
+	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
 	txId := txSimContext.GetTx().Payload.TxId
 
 	// contract response
