@@ -36,14 +36,14 @@ var (
 	iteratorWSets map[string]*common.TxWrite
 	kvSetIndex    int32
 	//kvGetIndex    int32
-	kvRowCache = make(map[int32]protocol.StateIterator)
+	kvRowCache = make(map[int32]interface{})
 )
 
 var tmpSimContextMap map[string][]byte
 
 func resetKvIteratorCacheAndIndex() {
 	kvSetIndex = 0
-	kvRowCache = make(map[int32]protocol.StateIterator)
+	kvRowCache = make(map[int32]interface{})
 }
 
 func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
@@ -221,13 +221,18 @@ func constructKey(contractName string, key []byte) string {
 }
 
 func mockGetStateKvHandle(simContext *mock.MockTxSimContext, iteratorIndex int32) {
-	simContext.EXPECT().GetStateKvHandle(gomock.Eq(iteratorIndex)).DoAndReturn(
+	simContext.EXPECT().GetIterHandle(gomock.Eq(iteratorIndex)).DoAndReturn(
 		func(iteratorIndex int32) (protocol.StateIterator, bool) {
 			iterator, ok := kvRowCache[iteratorIndex]
-			if ok {
-				return iterator, true
+			if !ok {
+				return nil, false
 			}
-			return nil, false
+
+			kvIterator, ok := iterator.(protocol.StateIterator)
+			if !ok {
+				return nil, false
+			}
+			return kvIterator, true
 		},
 	).AnyTimes()
 }

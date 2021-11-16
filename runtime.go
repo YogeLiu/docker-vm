@@ -279,11 +279,27 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 		return consumeKvIteratorResponse, gasUsed
 	}
 
-	kvIterator, ok := txSimContext.GetStateKvHandle(kvIteratorIndex)
+	iter, ok := txSimContext.GetIterHandle(kvIteratorIndex)
 	if !ok {
 		r.Log.Errorf("GetStateKvHandle failed, %s", err.Error())
 		consumeKvIteratorResponse.Message = fmt.Sprintf(
-			"[kv iterator has next] can not found rs_index[%d]", kvIteratorIndex,
+			"[kv iterator consume] can not found rs_index[%d]", kvIteratorIndex,
+		)
+		gasUsed, err = gas.KvIteratorConsumeGasUsed(gasUsed)
+		if err != nil {
+			consumeKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			consumeKvIteratorResponse.Message = err.Error()
+			consumeKvIteratorResponse.Payload = nil
+			return consumeKvIteratorResponse, gasUsed
+		}
+		return consumeKvIteratorResponse, gasUsed
+	}
+
+	kvIterator, ok := iter.(protocol.StateIterator)
+	if !ok {
+		r.Log.Errorf("assertion failed")
+		consumeKvIteratorResponse.Message = fmt.Sprintf(
+			"[kv iterator consume] failed, iterator %d assertion failed", kvIteratorIndex,
 		)
 		gasUsed, err = gas.KvIteratorConsumeGasUsed(gasUsed)
 		if err != nil {
@@ -546,7 +562,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 	}
 
 	index := atomic.AddInt32(&r.rowIndex, 1)
-	txSimContext.SetStateKvHandle(index, iter)
+	txSimContext.SetIterHandle(index, iter)
 
 	r.Log.Debug("create kv iterator: ", index)
 	createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultSuccess
