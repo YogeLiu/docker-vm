@@ -653,12 +653,6 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.CD
 		return response, false
 	}
 
-	if len(value) == 0 {
-		r.Log.Errorf("fail to get state from sim context: %s", "value is empty")
-		response.Message = "value is empty"
-		return response, false
-	}
-
 	r.Log.Debug("get value: ", string(value))
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
 	response.Payload = value

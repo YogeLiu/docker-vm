@@ -117,8 +117,8 @@ func TestDockerGoGetState(t *testing.T) {
 		Return([]byte(""), nil)
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters7, mockTxContext, uint64(123))
-	assert.Equal(t, uint32(1), result.Code)
-	assert.Equal(t, "Fail", result.Message)
+	assert.Equal(t, uint32(0), result.Code)
+	assert.Nil(t, result.Result)
 
 	parameters8 := generateInitParams()
 	parameters8["method"] = []byte("get_state")
@@ -127,8 +127,8 @@ func TestDockerGoGetState(t *testing.T) {
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte(""), []byte("field1"))).Return([]byte(""), nil)
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters8, mockTxContext, uint64(123))
-	assert.Equal(t, uint32(1), result.Code)
-	assert.Equal(t, "Fail", result.Message)
+	assert.Equal(t, uint32(0), result.Code)
+	assert.Nil(t, result.Result)
 
 	parameters9 := generateInitParams()
 	parameters9["method"] = []byte("get_state")
