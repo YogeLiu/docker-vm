@@ -107,6 +107,10 @@ func (cdm *CDMApi) recvMsgRoutine() {
 				err = cdm.handleCreateKvIteratorResponse(recvMsg)
 			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR_RESPONSE:
 				err = cdm.handleConsumeKvIteratorResponse(recvMsg)
+			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_TER_RESPONSE:
+				err = cdm.handleCreateKeyHistoryKvIterResponse(recvMsg)
+			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE:
+				err = cdm.handleConsumeKeyHistoryKvIterResponse(recvMsg)
 			default:
 				err = errors.New("unknown message type")
 			}
@@ -208,6 +212,22 @@ func (cdm *CDMApi) handleCreateKvIteratorResponse(cdmMessage *protogo.CDMMessage
 }
 
 func (cdm *CDMApi) handleConsumeKvIteratorResponse(cdmMessage *protogo.CDMMessage) error {
+	responseCh := cdm.scheduler.GetResponseChByTxId(cdmMessage.TxId)
+
+	responseCh <- cdmMessage
+
+	return nil
+}
+
+func (cdm *CDMApi) handleCreateKeyHistoryKvIterResponse(cdmMessage *protogo.CDMMessage) error {
+	responseCh := cdm.scheduler.GetResponseChByTxId(cdmMessage.TxId)
+
+	responseCh <- cdmMessage
+
+	return nil
+}
+
+func (cdm *CDMApi) handleConsumeKeyHistoryKvIterResponse(cdmMessage *protogo.CDMMessage) error {
 	responseCh := cdm.scheduler.GetResponseChByTxId(cdmMessage.TxId)
 
 	responseCh <- cdmMessage
