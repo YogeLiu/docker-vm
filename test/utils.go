@@ -60,19 +60,20 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 
 	tmpSimContextMap = make(map[string][]byte)
 
-	// getTx
-	tx := &commonPb.Transaction{
-		Payload: &commonPb.Payload{
-			ChainId:        chainId,
-			TxType:         txType,
-			TxId:           uuid.Generate().String(),
-			Timestamp:      0,
-			ExpirationTime: 0,
-		},
-		Result: nil,
-	}
-
-	simContext.EXPECT().GetTx().Return(tx).AnyTimes()
+	simContext.EXPECT().GetTx().DoAndReturn(
+		func() *commonPb.Transaction {
+			tx := &commonPb.Transaction{
+				Payload: &commonPb.Payload{
+					ChainId:        chainId,
+					TxType:         txType,
+					TxId:           uuid.Generate().String(),
+					Timestamp:      0,
+					ExpirationTime: 0,
+				},
+				Result: nil,
+			}
+			return tx
+		}).AnyTimes()
 	return simContext
 
 }

@@ -39,6 +39,8 @@ const (
 	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
 	defaultContainerName = "chainmaker-vm-docker-go-container"
 	imageVersion         = "v2.1.0"
+
+	enablePProf = true // switch for enable pprof, just for testing
 )
 
 var (
@@ -163,7 +165,11 @@ func (m *DockerManager) StartVM() error {
 	m.mgrLogger.Debugf("create container [%s]", m.dockerContainerConfig.ContainerName)
 
 	if m.dockerVMConfig.DockerVMUDSOpen {
-		err = m.createContainer()
+		if enablePProf {
+			err = m.createPProfContainer()
+		} else {
+			err = m.createContainer()
+		}
 		if err != nil {
 			return err
 		}
@@ -511,6 +517,74 @@ func (m *DockerManager) createTestContainer() error {
 	openPort := nat.Port(hostPort + "/tcp")
 
 	envs := m.constructEnvs(false)
+
+	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
+		Cmd:          nil,
+		Image:        m.dockerContainerConfig.ImageName,
+		Env:          envs,
+		AttachStdout: m.dockerContainerConfig.AttachStdOut,
+		AttachStderr: m.dockerContainerConfig.AttachStderr,
+		ExposedPorts: nat.PortSet{
+			openPort: struct{}{},
+		},
+	}, &container.HostConfig{
+		Privileged: true,
+		Mounts: []mount.Mount{
+			{
+				Type:        mount.TypeBind,
+				Source:      m.dockerContainerConfig.HostMountDir,
+				Target:      m.dockerContainerConfig.DockerMountDir,
+				ReadOnly:    false,
+				Consistency: mount.ConsistencyFull,
+				BindOptions: &mount.BindOptions{
+					Propagation:  mount.PropagationRPrivate,
+					NonRecursive: false,
+				},
+				VolumeOptions: nil,
+				TmpfsOptions:  nil,
+			},
+			{
+				Type:        mount.TypeBind,
+				Source:      m.dockerContainerConfig.HostLogDir,
+				Target:      m.dockerContainerConfig.DockerLogDir,
+				ReadOnly:    false,
+				Consistency: mount.ConsistencyFull,
+				BindOptions: &mount.BindOptions{
+					Propagation:  mount.PropagationRPrivate,
+					NonRecursive: false,
+				},
+				VolumeOptions: nil,
+				TmpfsOptions:  nil,
+			},
+		},
+		PortBindings: nat.PortMap{
+			openPort: []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			},
+		},
+	}, nil, nil, m.dockerContainerConfig.ContainerName)
+
+	if err != nil {
+		m.mgrLogger.Errorf("create container [%s] failed", m.dockerContainerConfig.ContainerName)
+		return err
+	}
+
+	m.mgrLogger.Infof("create container [%s] success :)", m.dockerContainerConfig.ContainerName)
+	return nil
+}
+
+// create container with pprof feature
+// which is open network and open an ip port in docker container
+func (m *DockerManager) createPProfContainer() error {
+	hostPort := config.PProfPort
+	openPort := nat.Port(hostPort + "/tcp")
+
+	envs := m.constructEnvs(true)
+	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, config.PProfPort))
+	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvEnablePprof, true))
 
 	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
 		Cmd:          nil,

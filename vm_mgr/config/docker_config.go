@@ -41,7 +41,7 @@ const (
 	MaxSendSize = 10
 	MaxRecvSize = 10
 	// TestPath docker log dir for test
-    TestPath = "/"
+	TestPath = "/"
 )
 
 var (
@@ -66,4 +66,7 @@ const (
 	ENV_TX_TIME_LIMIT     = "ENV_TX_TIME_LIMIT"
 	ENV_LOG_LEVEL         = "ENV_LOG_LEVEL"
 	ENV_LOG_IN_CONSOLE    = "ENV_LOG_IN_CONSOLE"
+
+	EnvEnablePprof = "ENV_ENABLE_PPROF"
+	EnvPprofPort   = "ENV_PPROF_PORT"
 )
