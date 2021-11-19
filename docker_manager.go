@@ -40,7 +40,7 @@ const (
 	defaultContainerName = "chainmaker-vm-docker-go-container"
 	imageVersion         = "v2.1.0"
 
-	enablePProf = true // switch for enable pprof, just for testing
+	enablePProf = false // switch for enable pprof, just for testing
 )
 
 var (
