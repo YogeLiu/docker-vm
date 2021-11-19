@@ -1,9 +1,12 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"chainmaker.org/chainmaker/common/v2/sortedmap"
 	"chainmaker.org/chainmaker/localconf/v2"
@@ -22,7 +25,7 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_test01"
+	ContractNameTest    = "contract_test02"
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"
@@ -33,15 +36,16 @@ const (
 )
 
 var (
-	iteratorWSets map[string]*common.TxWrite
-	kvSetIndex    int32
+	iteratorWSets  map[string]*common.TxWrite
+	keyHistoryData map[string]*store.KeyModification
+	kvSetIndex     int32
 	//kvGetIndex    int32
 	kvRowCache = make(map[int32]interface{})
 )
 
 var tmpSimContextMap map[string][]byte
 
-func resetKvIteratorCacheAndIndex() {
+func resetIterCacheAndIndex() {
 	kvSetIndex = 0
 	kvRowCache = make(map[int32]interface{})
 }
@@ -216,6 +220,151 @@ func makeStringKeyMap() (map[string]*common.TxWrite, []*store.KV) {
 	return stringKeyMap, kvs
 }
 
+const (
+	keyHistoryPrefix = "k"
+	splitChar        = "#"
+)
+
+var TxIds = []string{
+	uuid.Generate().String(),
+	uuid.Generate().String(),
+	uuid.Generate().String(),
+	uuid.Generate().String(),
+	uuid.Generate().String(),
+	uuid.Generate().String(),
+	uuid.Generate().String(),
+}
+
+// k+ContractName+StateKey+BlockHeight+TxId
+func constructHistoryKey(contractName string, key []byte, blockHeight uint64, txId string) []byte {
+	dbkey := fmt.Sprintf(keyHistoryPrefix+"%s"+splitChar+"%s"+splitChar+"%d"+splitChar+"%s",
+		contractName, key, blockHeight, txId)
+	return []byte(dbkey)
+}
+func constructHistoryKeyPrefix(contractName string, key []byte) []byte {
+	dbkey := fmt.Sprintf(keyHistoryPrefix+"%s"+splitChar+"%s"+splitChar, contractName, key)
+	return []byte(dbkey)
+}
+
+func makeKeyModificationMap() map[string]*store.KeyModification {
+	const testKey = "key1"
+	const testField = "field1"
+	key := protocol.GetKeyStr(testKey, testField)
+
+	timestamp := time.Now().Unix()
+	keyModifications := []*store.KeyModification{
+		{
+			TxId:        TxIds[0],
+			Value:       []byte("value1-1"),
+			Timestamp:   timestamp,
+			IsDelete:    false,
+			BlockHeight: 2,
+		},
+		{
+			TxId:        TxIds[1],
+			Value:       []byte("value1-2"),
+			Timestamp:   timestamp,
+			IsDelete:    false,
+			BlockHeight: 3,
+		},
+		{
+			TxId:        TxIds[2],
+			Value:       []byte("value1-3"),
+			Timestamp:   timestamp,
+			IsDelete:    false,
+			BlockHeight: 4,
+		},
+		{
+			TxId:        TxIds[3],
+			Value:       []byte("value1-4"),
+			Timestamp:   timestamp,
+			IsDelete:    false,
+			BlockHeight: 5,
+		},
+		{
+			TxId:        TxIds[4],
+			Value:       []byte("value1-5"),
+			Timestamp:   timestamp,
+			IsDelete:    false,
+			BlockHeight: 6,
+		},
+		{
+			TxId:        TxIds[5],
+			Value:       []byte("value1-6"),
+			Timestamp:   timestamp,
+			IsDelete:    false,
+			BlockHeight: 7,
+		},
+		{
+			TxId:        TxIds[6],
+			Value:       []byte("value1-7"),
+			Timestamp:   timestamp,
+			IsDelete:    false,
+			BlockHeight: 8,
+		},
+	}
+
+	keyModificationMap := map[string]*store.KeyModification{
+		string(
+			constructHistoryKey(
+				ContractNameTest,
+				key,
+				keyModifications[0].BlockHeight,
+				keyModifications[0].TxId),
+		): keyModifications[0],
+		string(
+			constructHistoryKey(
+				ContractNameTest,
+				key,
+				keyModifications[1].BlockHeight,
+				keyModifications[1].TxId),
+		): keyModifications[1],
+		string(
+			constructHistoryKey(
+				ContractNameTest,
+				key,
+				keyModifications[2].BlockHeight,
+				keyModifications[2].TxId),
+		): keyModifications[2],
+		string(
+			constructHistoryKey(
+				ContractNameTest,
+				key,
+				keyModifications[3].BlockHeight,
+				keyModifications[3].TxId),
+		): keyModifications[3],
+		string(
+			constructHistoryKey(
+				ContractNameTest,
+				key,
+				keyModifications[4].BlockHeight,
+				keyModifications[4].TxId),
+		): keyModifications[4],
+		string(
+			constructHistoryKey(
+				ContractNameTest,
+				key,
+				keyModifications[5].BlockHeight,
+				keyModifications[5].TxId),
+		): keyModifications[5],
+		string(
+			constructHistoryKey(
+				ContractNameTest,
+				key,
+				keyModifications[5].BlockHeight,
+				keyModifications[5].TxId),
+		): keyModifications[5],
+		string(
+			constructHistoryKey(
+				ContractNameTest,
+				key,
+				keyModifications[6].BlockHeight,
+				keyModifications[6].TxId),
+		): keyModifications[6],
+	}
+	return keyModificationMap
+}
+
 func constructKey(contractName string, key []byte) string {
 	return contractName + constructKeySeparator + string(key)
 }
@@ -235,6 +384,58 @@ func mockGetStateKvHandle(simContext *mock.MockTxSimContext, iteratorIndex int32
 			return kvIterator, true
 		},
 	).AnyTimes()
+}
+
+func mockGetKeyHistoryKVHandle(simContext *mock.MockTxSimContext, iteratorIndex int32) {
+	simContext.EXPECT().GetIterHandle(gomock.Eq(iteratorIndex)).DoAndReturn(
+		func(iteratorIndex int32) (protocol.KeyHistoryIterator, bool) {
+			iterator, ok := kvRowCache[iteratorIndex]
+			if !ok {
+				return nil, false
+			}
+
+			keyHistoryKvIter, ok := iterator.(protocol.KeyHistoryIterator)
+			if !ok {
+				return nil, false
+			}
+
+			return keyHistoryKvIter, true
+		},
+	).AnyTimes()
+}
+
+func mockGetHistoryIterForKey(simContext *mock.MockTxSimContext, contractName string, key []byte) {
+	simContext.EXPECT().GetHistoryIterForKey(contractName, key).DoAndReturn(
+		mockTxSimContextGetHistoryIterForKey,
+	).AnyTimes()
+}
+
+func mockTxSimContextGetHistoryIterForKey(contractName string, key []byte) (protocol.KeyHistoryIterator, error) {
+	// 1. 构造迭代器
+	historyMap := make(map[string]interface{})
+	prefixKey := constructHistoryKeyPrefix(contractName, key)
+
+	for historyDataKey, historyData := range keyHistoryData {
+		splitHistoryKey := strings.Split(historyDataKey, splitChar)
+		historyContractName := splitHistoryKey[0]
+		historyKey := splitHistoryKey[1]
+		historyField := splitHistoryKey[2]
+		if strings.EqualFold(
+			string(prefixKey),
+			string(constructHistoryKeyPrefix(historyContractName, protocol.GetKeyStr(historyKey, historyField))),
+		) {
+			historyMap[historyDataKey] = historyData
+		}
+	}
+
+	iter := mockNewHistoryIteratorForKey(historyMap)
+	return iter, nil
+}
+
+func mockNewHistoryIteratorForKey(historyMap map[string]interface{}) protocol.KeyHistoryIterator {
+	return &mockHistoryKeyIterator{
+		stringKeySortedMap: sortedmap.NewStringKeySortedMapWithInterfaceData(historyMap),
+	}
 }
 
 func mockSelect(simContext *mock.MockTxSimContext, name string, key, value []byte) {
@@ -292,3 +493,32 @@ func (iter *mockStateIterator) Value() (*store.KV, error) {
 }
 
 func (iter *mockStateIterator) Release() {}
+
+type mockHistoryKeyIterator struct {
+	stringKeySortedMap *sortedmap.StringKeySortedMap
+}
+
+func (iter *mockHistoryKeyIterator) Next() bool {
+	return iter.stringKeySortedMap.Length() > 0
+}
+
+func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
+	var km *store.KeyModification
+	var keyStr string
+	ok := true
+	iter.stringKeySortedMap.Range(func(key string, val interface{}) (isContinue bool) {
+		keyStr = key
+		km, ok = val.(*store.KeyModification)
+		return false
+
+	})
+
+	if !ok {
+		return nil, errors.New("get value from historyIterator failed, value type error")
+	}
+
+	iter.stringKeySortedMap.Remove(keyStr)
+	return km, nil
+}
+
+func (iter *mockHistoryKeyIterator) Release() {}

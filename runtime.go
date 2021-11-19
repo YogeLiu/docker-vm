@@ -29,6 +29,7 @@ import (
 
 const (
 	mountContractDir = "contracts"
+	msgIterIsNil     = "iterator is nil"
 )
 
 type CDMClient interface {
@@ -250,24 +251,6 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType)
 	}
 }
 
-type Bool int32
-
-const (
-	FuncKvIteratorCreate    = "createKvIterator"
-	FuncKvPreIteratorCreate = "createKvPreIterator"
-	FuncKvIteratorHasNext   = "kvIteratorHasNext"
-	FuncKvIteratorNext      = "kvIteratorNext"
-	FuncKvIteratorClose     = "kvIteratorClose"
-
-	FuncKeyHistoryIterCreate  = "createKeyHistoryIter"
-	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
-	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
-	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
-
-	boolTrue  Bool = 1
-	boolFalse Bool = 0
-)
-
 func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *protogo.CDMMessage,
 	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.CDMMessage, uint64) {
 
@@ -396,13 +379,13 @@ func (r *RuntimeInstance) handleConsumeKeyHistoryIterator(txId string, recvMsg *
 	}
 
 	switch consumeKeyHistoryIteratorFunc {
-	case FuncKeyHistoryIterHasNext:
+	case config.FuncKeyHistoryIterHasNext:
 		return keyHistoryIterHasNext(keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
 
-	case FuncKeyHistoryIterNext:
+	case config.FuncKeyHistoryIterNext:
 		return keyHistoryIterNext(keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
 
-	case FuncKeyHistoryIterClose:
+	case config.FuncKeyHistoryIterClose:
 		return keyHistoryIterClose(keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
 	default:
 		consumeKeyHistoryIterResponse.ResultCode = protocol.ContractSdkSignalResultFail
@@ -423,9 +406,9 @@ func keyHistoryIterHasNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
 		return response, gasUsed
 	}
 
-	hasNext := boolFalse
+	hasNext := config.BoolFalse
 	if iter.Next() {
-		hasNext = boolTrue
+		hasNext = config.BoolTrue
 	}
 
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
@@ -447,7 +430,7 @@ func keyHistoryIterNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
 
 	if iter == nil {
 		response.ResultCode = protocol.ContractSdkSignalResultFail
-		response.Message = "iterator is nil"
+		response.Message = msgIterIsNil
 		response.Payload = nil
 		return response, gasUsed
 	}
@@ -464,9 +447,9 @@ func keyHistoryIterNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
 	blockHeight := bytehelper.IntToBytes(int32(historyValue.BlockHeight))
 	timestampStr := strconv.FormatInt(historyValue.Timestamp, 10)
-	isDelete := boolTrue
+	isDelete := config.BoolTrue
 	if !historyValue.IsDelete {
-		isDelete = boolFalse
+		isDelete = config.BoolFalse
 	}
 
 	/*
@@ -568,13 +551,13 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 	}
 
 	switch consumeKvIteratorFunc {
-	case FuncKvIteratorHasNext:
+	case config.FuncKvIteratorHasNext:
 		return kvIteratorHasNext(kvIterator, gasUsed, consumeKvIteratorResponse)
 
-	case FuncKvIteratorNext:
+	case config.FuncKvIteratorNext:
 		return kvIteratorNext(kvIterator, gasUsed, consumeKvIteratorResponse)
 
-	case FuncKvIteratorClose:
+	case config.FuncKvIteratorClose:
 		return kvIteratorClose(kvIterator, gasUsed, consumeKvIteratorResponse)
 
 	default:
@@ -596,9 +579,9 @@ func kvIteratorHasNext(kvIterator protocol.StateIterator, gasUsed uint64,
 		return response, gasUsed
 	}
 
-	hasNext := boolFalse
+	hasNext := config.BoolFalse
 	if kvIterator.Next() {
-		hasNext = boolTrue
+		hasNext = config.BoolTrue
 	}
 
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
@@ -620,7 +603,7 @@ func kvIteratorNext(kvIterator protocol.StateIterator, gasUsed uint64,
 
 	if kvIterator == nil {
 		response.ResultCode = protocol.ContractSdkSignalResultFail
-		response.Message = "iterator is nil"
+		response.Message = msgIterIsNil
 		response.Payload = nil
 		return response, gasUsed
 	}
@@ -784,7 +767,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 
 	var iter protocol.StateIterator
 	switch createFunc {
-	case FuncKvIteratorCreate:
+	case config.FuncKvIteratorCreate:
 		limitKey := keyList[4]
 		limitField := keyList[5]
 		iter, gasUsed, err = kvIteratorCreate(txSimContext, calledContractName, key, limitKey, limitField, gasUsed)
@@ -795,7 +778,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 			createKvIteratorResponse.Payload = nil
 			return createKvIteratorResponse, gasUsed
 		}
-	case FuncKvPreIteratorCreate:
+	case config.FuncKvPreIteratorCreate:
 		gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
 		if err != nil {
 			createKvIteratorResponse.ResultCode = protocol.ContractSdkSignalResultFail

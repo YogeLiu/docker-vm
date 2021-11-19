@@ -31,6 +31,8 @@ type DockerContainerConfig struct {
 	HostLogDir     string
 }
 
+type Bool int32
+
 const (
 	ENV_ENABLE_UDS     = "ENV_ENABLE_UDS"
 	ENV_TX_SIZE        = "ENV_TX_SIZE"
@@ -50,4 +52,17 @@ const (
 	MaxRecvSize = 10
 
 	TestPort = "22356"
+
+	FuncKvIteratorCreate    = "createKvIterator"
+	FuncKvPreIteratorCreate = "createKvPreIterator"
+	FuncKvIteratorHasNext   = "kvIteratorHasNext"
+	FuncKvIteratorNext      = "kvIteratorNext"
+	FuncKvIteratorClose     = "kvIteratorClose"
+
+	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
+	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
+	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
+
+	BoolTrue  Bool = 1
+	BoolFalse Bool = 0
 )
