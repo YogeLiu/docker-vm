@@ -56,7 +56,7 @@ func TestDockerGoKvIterator(t *testing.T) {
 		parameters, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 
-	resetKvIteratorCacheAndIndex()
+	resetIterCacheAndIndex()
 
 	tearDownTest()
 }
