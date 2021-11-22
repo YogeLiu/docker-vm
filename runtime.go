@@ -264,7 +264,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 		| 2     | field         |
 		| 3     | writeMapCache |
 	*/
-	keyList := strings.Split(string(recvMsg.Payload), "#")
+	keyList := strings.SplitN(string(recvMsg.Payload), "#", 4)
 	calledContractName := keyList[0]
 	keyStr := keyList[1]
 	field := keyList[2]
@@ -720,7 +720,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 		|	 5  	|		limitField			|
 		|	 6  	|	  writeMapCache			|
 	*/
-	keyList := strings.Split(string(recvMsg.Payload), "#")
+	keyList := strings.SplitN(string(recvMsg.Payload), "#", 7)
 	calledContractName := keyList[0]
 	createFunc := keyList[1]
 	startKey := keyList[2]

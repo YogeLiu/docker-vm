@@ -56,16 +56,19 @@ const (
 	TestPort  = "22356"
 	PProfPort = "23356"
 
+	// stateKvIterator method
 	FuncKvIteratorCreate    = "createKvIterator"
 	FuncKvPreIteratorCreate = "createKvPreIterator"
 	FuncKvIteratorHasNext   = "kvIteratorHasNext"
 	FuncKvIteratorNext      = "kvIteratorNext"
 	FuncKvIteratorClose     = "kvIteratorClose"
 
+	// keyHistoryKvIterator method
 	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
 	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
 	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
 
+	// int32 representation of bool
 	BoolTrue  Bool = 1
 	BoolFalse Bool = 0
 )
