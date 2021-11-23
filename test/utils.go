@@ -33,6 +33,9 @@ const (
 	chainId = "chain1"
 
 	txType = commonPb.TxType_INVOKE_CONTRACT
+
+	keyHistoryPrefix = "k"
+	splitChar        = "#"
 )
 
 var (
@@ -220,11 +223,6 @@ func makeStringKeyMap() (map[string]*common.TxWrite, []*store.KV) {
 	}
 	return stringKeyMap, kvs
 }
-
-const (
-	keyHistoryPrefix = "k"
-	splitChar        = "#"
-)
 
 var TxIds = []string{
 	uuid.Generate().String(),
