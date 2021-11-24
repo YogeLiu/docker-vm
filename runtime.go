@@ -63,6 +63,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		Result:  nil,
 		Message: "",
 	}
+	specialTxType := protocol.ExecOrderTxTypeNormal
 
 	var err error
 	// init func gas used calc and check gas limit
@@ -204,10 +205,11 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			contractResult.ContractEvent = contractEvents
 
 			close(responseCh)
-			return contractResult, protocol.ExecOrderTxTypeNormal
+			return contractResult, specialTxType
 
 		case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
 			var createKvIteratorResponse *protogo.CDMMessage
+			specialTxType = protocol.ExecOrderTxTypeIterator
 			createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(txId, recvMsg, txSimContext, gasUsed)
 
 			r.Client.GetStateResponseSendCh() <- createKvIteratorResponse
@@ -220,6 +222,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 		case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
 			var createKeyHistoryIterResp *protogo.CDMMessage
+			specialTxType = protocol.ExecOrderTxTypeIterator
 			createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(txId, recvMsg, txSimContext, gasUsed)
 			r.Client.GetStateResponseSendCh() <- createKeyHistoryIterResp
 
