@@ -163,6 +163,8 @@ func (h *ProcessHandler) handleReady(readyMsg *SDKProtogo.DMSMessage) error {
 		return h.handleCreateKeyHistoryIter(readyMsg)
 	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KEY_HISTORY_ITER_REQUEST:
 		return h.handleConsumeKeyHistoryIter(readyMsg)
+	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_REQUEST:
+		return h.handleGetSenderAddr(readyMsg)
 
 	default:
 		return fmt.Errorf("handler cannot handle ready message (%s) while in state: %s",
@@ -515,6 +517,31 @@ func (h *ProcessHandler) handleConsumeKeyHistoryIter(consumeKeyHistoryIterMsg *S
 		TxId:          consumeKeyHistoryIterMsg.TxId,
 		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE,
 		CurrentHeight: consumeKeyHistoryIterMsg.CurrentHeight,
+		ResultCode:    resp.ResultCode,
+		Payload:       resp.Payload,
+		Message:       resp.Message,
+	}
+
+	return h.sendMessage(respMsg)
+}
+
+func (h *ProcessHandler) handleGetSenderAddr(msg *SDKProtogo.DMSMessage) error {
+	getSenderAddrReqMsg := &protogo.CDMMessage{
+		TxId:    msg.TxId,
+		Type:    protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS,
+		Payload: nil,
+	}
+
+	respCh := make(chan *protogo.CDMMessage)
+	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, respCh)
+	h.scheduler.GetGetStateReqCh() <- getSenderAddrReqMsg
+
+	resp := <-respCh
+
+	respMsg := &SDKProtogo.DMSMessage{
+		TxId:          getSenderAddrReqMsg.TxId,
+		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_RESPONSE,
+		CurrentHeight: msg.CurrentHeight,
 		ResultCode:    resp.ResultCode,
 		Payload:       resp.Payload,
 		Message:       resp.Message,
