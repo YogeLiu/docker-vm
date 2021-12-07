@@ -14,6 +14,13 @@ func TestDockerGoKvIterator(t *testing.T) {
 
 	// test data
 	iteratorWSets, _ = makeStringKeyMap()
+	mockTxContext.EXPECT().Put(ContractNameTest, gomock.Any(), gomock.Any()).DoAndReturn(
+		func(name string, key, value []byte) error {
+			final := name + "::" + string(key)
+			tmpSimContextMap[final] = value
+			return nil
+		},
+	).AnyTimes()
 
 	// NewIterator 1
 	startKey1 := protocol.GetKeyStr("key2", "")

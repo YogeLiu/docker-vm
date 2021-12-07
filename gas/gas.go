@@ -41,6 +41,7 @@ const (
 	KeyHistoryIterHasNextGasPrice uint64 = 1
 	KeyHistoryIterNextGasPrice    uint64 = 1
 	KeyHistoryIterCloseGasPrice   uint64 = 1
+	GetSenderAddressGasPrice      uint64 = 1
 
 	// special parameters passed to contract
 	ContractParamCreatorOrgId = "__creator_org_id__"
@@ -72,6 +73,14 @@ func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
 	gasUsed += uint64(len(argsBytes)) * GetArgsGasPrice
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
+	}
+	return gasUsed, nil
+}
+
+func GetSenderAddressGasUsed(gasUsed uint64) (uint64, error) {
+	gasUsed += 10 * GetSenderAddressGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
 	}
 	return gasUsed, nil
 }
