@@ -5,8 +5,14 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
+
+	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
+	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 
 	"chainmaker.org/chainmaker/common/v2/sortedmap"
 	"chainmaker.org/chainmaker/localconf/v2"
@@ -25,7 +31,7 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_test02"
+	ContractNameTest    = "contract_test03"
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"
@@ -36,6 +42,34 @@ const (
 
 	keyHistoryPrefix = "k"
 	splitChar        = "#"
+
+	pkPEM = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAESkwkzwN7DHoCfmNLmUpf280PqnGM
+6QU+P3X8uahlUjpgWv+Stfmeco9RqSTU8Y1YGcQvm2Jr327qkRlG7+dELQ==
+-----END PUBLIC KEY-----`
+	zxlPKAddress = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
+	cmPKAddress  = "438537700181274713695763857518314651542142438174"
+
+	certPEM = `-----BEGIN CERTIFICATE-----
+MIICzjCCAi+gAwIBAgIDCzLUMAoGCCqGSM49BAMCMGoxCzAJBgNVBAYTAkNOMRAw
+DgYDVQQIEwdCZWlqaW5nMRAwDgYDVQQHEwdCZWlqaW5nMRAwDgYDVQQKEwd3eC1v
+cmcxMRAwDgYDVQQLEwdyb290LWNhMRMwEQYDVQQDEwp3eC1vcmcxLWNhMB4XDTIw
+MTAyOTEzMzgxMFoXDTMwMTAyNzEzMzgxMFowcDELMAkGA1UEBhMCQ04xEDAOBgNV
+BAgTB0JlaWppbmcxEDAOBgNVBAcTB0JlaWppbmcxEDAOBgNVBAoTB3d4LW9yZzEx
+EzARBgNVBAsTCkNoYWluTWFrZXIxFjAUBgNVBAMTDXVzZXIxLnd4LW9yZzEwgZsw
+EAYHKoZIzj0CAQYFK4EEACMDgYYABAGLEJZriYzK9Se/vMGfkwjhU55eEZsM2iKM
+emSZICh/HY37uR0BFAVUjMYEj84tJBzEEzlpD+AUAe44/b11b+GCMwDXPKcsjHK0
+jsAPrN5LH7uptXsjMFpN2bbOqvj6sAIDfTV9chuF91LxCjYnh+Lya0ikextGkpbp
+HOvi5eQ/yUHSQaN7MHkwDgYDVR0PAQH/BAQDAgGmMA8GA1UdJQQIMAYGBFUdJQAw
+KQYDVR0OBCIEIAp+6tWmoiE0KmdtpLFBZpBj1Ni7JH8g2XPgoQwhQS8qMCsGA1Ud
+IwQkMCKAIMsnP+UWEyGuyEHBn7JkJzb+tfBqsRCBUIPyMZH4h1HPMAoGCCqGSM49
+BAMCA4GMADCBiAJCAIENc8ip2BP4yJpj9SdR9pvZc4/qbBzKucZQaD/GT2sj0FxH
+hp8YLjSflgw1+uWlMb/WCY60MyxZr/RRsTYpHu7FAkIBSMAVxw5RYySsf4J3bpM0
+CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
+8H8=
+-----END CERTIFICATE-----`
+	zxlCertAddressFromCert = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
+	cmCertAddressFromCert  = "276163396529059566124041165851202392707607138552"
 )
 
 var (
@@ -44,6 +78,9 @@ var (
 	kvSetIndex     int32
 	//kvGetIndex    int32
 	kvRowCache = make(map[int32]interface{})
+
+	senderCounter      int32
+	chainConfigCounter int32
 )
 
 var tmpSimContextMap map[string][]byte
@@ -521,3 +558,95 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 }
 
 func (iter *mockHistoryKeyIterator) Release() {}
+
+// 获取sender公钥
+func mockGetSender(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetSender().DoAndReturn(
+		mockTxSimContextGetSender,
+	).AnyTimes()
+}
+
+func mockTxSimContextGetSender() *accesscontrol.Member {
+	atomic.AddInt32(&senderCounter, 1)
+	switch senderCounter % 3 {
+	case 1:
+		return &accesscontrol.Member{
+			OrgId:      chainId,
+			MemberType: accesscontrol.MemberType_CERT,
+			MemberInfo: []byte(certPEM),
+		}
+	case 2:
+		return &accesscontrol.Member{
+			OrgId:      chainId,
+			MemberType: accesscontrol.MemberType_CERT_HASH,
+			MemberInfo: nil,
+		}
+	case 0:
+		return &accesscontrol.Member{
+			OrgId:      chainId,
+			MemberType: accesscontrol.MemberType_PUBLIC_KEY,
+			MemberInfo: []byte(pkPEM),
+		}
+
+	default:
+		return nil
+	}
+}
+
+func mockTxQueryCertFromChain(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().Get(syscontract.SystemContract_CERT_MANAGE.String(), gomock.Any()).DoAndReturn(
+		mockQueryCert,
+	).AnyTimes()
+}
+
+func mockQueryCert(name string, nothing interface{}) ([]byte, error) {
+	return []byte(certPEM), nil
+}
+
+// 获取链配置，读取地址格式
+func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().Get(
+		syscontract.SystemContract_CHAIN_CONFIG.String(),
+		[]byte(syscontract.SystemContract_CHAIN_CONFIG.String()),
+	).DoAndReturn(
+		mockGetChainConf,
+	).AnyTimes()
+}
+
+func mockGetChainConf(name string, key []byte) ([]byte, error) {
+	atomic.AddInt32(&chainConfigCounter, 1)
+
+	switch chainConfigCounter % 6 {
+	case 1, 2, 3:
+		zxConfig := configPb.ChainConfig{
+			Vm: &configPb.Vm{
+				AddrType: configPb.AddrType_ZXL,
+			},
+			Crypto: &configPb.CryptoConfig{
+				Hash: "SHA256",
+			},
+		}
+
+		bytes, err := zxConfig.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		return bytes, nil
+	case 4, 5, 0:
+		ethConfig := configPb.ChainConfig{
+			Vm: &configPb.Vm{
+				AddrType: configPb.AddrType_ETHEREUM,
+			},
+			Crypto: &configPb.CryptoConfig{
+				Hash: "SHA256",
+			},
+		}
+		bytes, err := ethConfig.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		return bytes, nil
+	default:
+		return nil, nil
+	}
+}
