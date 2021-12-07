@@ -40,7 +40,7 @@ const (
 	defaultContainerName = "chainmaker-vm-docker-go-container"
 	imageVersion         = "v2.1.0"
 
-	enablePProf = false // switch for enable pprof, just for testing
+	enablePProf = true // switch for enable pprof, just for testing
 )
 
 var (
@@ -582,6 +582,9 @@ func (m *DockerManager) createPProfContainer() error {
 	hostPort := config.PProfPort
 	openPort := nat.Port(hostPort + "/tcp")
 
+	sdkHostPort := config.SDKPort
+	sdkOpenPort := nat.Port(sdkHostPort + "/tcp")
+
 	envs := m.constructEnvs(true)
 	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, config.PProfPort))
 	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvEnablePprof, true))
@@ -593,7 +596,8 @@ func (m *DockerManager) createPProfContainer() error {
 		AttachStdout: m.dockerContainerConfig.AttachStdOut,
 		AttachStderr: m.dockerContainerConfig.AttachStderr,
 		ExposedPorts: nat.PortSet{
-			openPort: struct{}{},
+			openPort:    struct{}{},
+			sdkOpenPort: struct{}{},
 		},
 	}, &container.HostConfig{
 		Privileged: true,
@@ -630,6 +634,12 @@ func (m *DockerManager) createPProfContainer() error {
 				{
 					HostIP:   "0.0.0.0",
 					HostPort: hostPort,
+				},
+			},
+			sdkOpenPort: []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: sdkHostPort,
 				},
 			},
 		},

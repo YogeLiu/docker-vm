@@ -55,6 +55,7 @@ const (
 
 	TestPort  = "22356"
 	PProfPort = "23356"
+	SDKPort   = "24356"
 
 	FuncKvIteratorCreate    = "createKvIterator"
 	FuncKvPreIteratorCreate = "createKvPreIterator"
