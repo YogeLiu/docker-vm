@@ -11,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/security"
+
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
 
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
@@ -32,6 +34,10 @@ const (
 	ResponseChanSize = 1000
 
 	crossContractsChanSize = 50
+)
+
+const (
+	maxProcess = 10
 )
 
 type DockerScheduler struct {
@@ -159,11 +165,14 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 
 func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
-	var err error
-	var process *Process
+	var (
+		err     error
+		process *Process
+		exist   bool
+	)
 
 	processName := s.constructProcessName(txRequest)
-	process, exist := s.processPool.CheckProcessExist(processName)
+	process, exist = s.processPool.CheckProcessExist(processName)
 
 	// process exist, put current tx into process waiting queue and return
 	// only one goroutine can init process for same contract
@@ -176,7 +185,12 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	proc, err, _ := s.singleFlight.Do(processName, func() (interface{}, error) {
 		defer s.singleFlight.Forget(processName)
 
-		user, err := s.userController.GetAvailableUser()
+		var (
+			user         *security.User
+			contractPath string
+		)
+
+		user, err = s.userController.GetAvailableUser()
 		if err != nil {
 			s.logger.Errorf("fail to get available user: %s", err)
 			return nil, err
@@ -184,7 +198,7 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
 		// get contract deploy path
 		contractKey := s.constructContractKey(txRequest.ContractName, txRequest.ContractVersion)
-		contractPath, err := s.contractManager.GetContract(txRequest.TxId, contractKey)
+		contractPath, err = s.contractManager.GetContract(txRequest.TxId, contractKey)
 		if err != nil || len(contractPath) == 0 {
 			s.logger.Errorf("fail to get contract path, contractName is [%s], err is [%s]", contractKey, err)
 			return nil, err

@@ -39,21 +39,28 @@ type ProcessPoolInterface interface {
 }
 
 type Process struct {
-	processName          string
-	contractName         string
-	contractVersion      string
-	contractPath         string
-	cGroupPath           string
-	ProcessState         protogo.ProcessState
-	TxWaitingQueue       chan *protogo.TxRequest
-	txTrigger            chan bool
-	expireTimer          *time.Timer // process waiting time
-	logger               *zap.SugaredLogger
-	Handler              *ProcessHandler
-	user                 *security.User
-	cmd                  *exec.Cmd
+	id             int32
+	processName    string
+	isCrossProcess bool
+
+	contractName    string
+	contractVersion string
+	contractPath    string
+
+	cGroupPath string
+	user       *security.User
+	cmd        *exec.Cmd
+
+	ProcessState     protogo.ProcessState
+	TxWaitingQueue   chan *protogo.TxRequest
+	waitingQueueSize int32
+	txTrigger        chan bool
+	expireTimer      *time.Timer // process waiting time
+	Handler          *ProcessHandler
+
+	logger *zap.SugaredLogger
+
 	processPoolInterface ProcessPoolInterface
-	isCrossProcess       bool
 	done                 uint32
 	mutex                sync.Mutex
 }
@@ -63,15 +70,16 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 	processName, contractPath string, processPool ProcessPoolInterface) *Process {
 
 	process := &Process{
-		isCrossProcess:  false,
-		processName:     processName,
-		contractName:    txRequest.ContractName,
-		contractVersion: txRequest.ContractVersion,
-		ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-		TxWaitingQueue:  make(chan *protogo.TxRequest, processWaitingQueueSize),
-		txTrigger:       make(chan bool),
-		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		isCrossProcess:   false,
+		processName:      processName,
+		contractName:     txRequest.ContractName,
+		contractVersion:  txRequest.ContractVersion,
+		ProcessState:     protogo.ProcessState_PROCESS_STATE_CREATED,
+		TxWaitingQueue:   make(chan *protogo.TxRequest, processWaitingQueueSize),
+		waitingQueueSize: 0,
+		txTrigger:        make(chan bool),
+		expireTimer:      time.NewTimer(processWaitingTime * time.Second),
+		logger:           logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
 		Handler:              nil,
 		user:                 user,
@@ -90,15 +98,16 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 	processName, contractPath string, processPool ProcessPoolInterface) *Process {
 
 	process := &Process{
-		isCrossProcess:  true,
-		processName:     processName,
-		contractName:    txRequest.ContractName,
-		contractVersion: txRequest.ContractVersion,
-		ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-		TxWaitingQueue:  nil,
-		txTrigger:       nil,
-		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		isCrossProcess:   true,
+		processName:      processName,
+		contractName:     txRequest.ContractName,
+		contractVersion:  txRequest.ContractVersion,
+		ProcessState:     protogo.ProcessState_PROCESS_STATE_CREATED,
+		TxWaitingQueue:   nil,
+		waitingQueueSize: 0,
+		txTrigger:        nil,
+		expireTimer:      time.NewTimer(processWaitingTime * time.Second),
+		logger:           logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
 		Handler:              nil,
 		user:                 user,
@@ -209,13 +218,14 @@ func (p *Process) LaunchProcess() error {
 // InvokeProcess handle next tx
 func (p *Process) InvokeProcess() {
 
-	if len(p.TxWaitingQueue) == 0 {
+	if p.waitingQueueSize == 0 {
 		p.logger.Debugf("empty waiting queue")
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_WAITING)
 		return
 	}
 
 	nextTx := <-p.TxWaitingQueue
+	p.waitingQueueSize--
 	p.logger.Debugf("handle tx [%s]", nextTx.TxId[:5])
 
 	// update tx in handler
@@ -236,13 +246,13 @@ func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 
 	tx.TxContext.OriginalProcessName = p.processName
 	p.TxWaitingQueue <- tx
+	p.waitingQueueSize++
 
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_WAITING {
 		p.triggerProcessState()
 	}
 }
 
-// todo check need close after process end
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
 

@@ -1,4 +1,4 @@
-VERSION=v2.1.0
+VERSION=v2.1.0.zxl
 
 build-test:
 	cd test/scripts && ./prepare.sh

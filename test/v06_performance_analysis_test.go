@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	performContractName    = "contract_cut_pprof"
+	performContractName    = "contract_cut"
 	performContractVersion = "1.0.0"
 
 	timeFormat = "2006-01-02 15:04:05"

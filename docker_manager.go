@@ -38,9 +38,9 @@ const (
 	dockerLogDir         = "/log"
 	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
 	defaultContainerName = "chainmaker-vm-docker-go-container"
-	imageVersion         = "v2.1.0"
+	imageVersion         = "v2.1.0.zxl"
 
-	enablePProf = true // switch for enable pprof, just for testing
+	enablePProf = false // switch for enable pprof, just for testing
 )
 
 var (

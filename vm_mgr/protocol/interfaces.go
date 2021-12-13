@@ -37,7 +37,24 @@ type Scheduler interface {
 type UserController interface {
 	// GetAvailableUser get available user
 	GetAvailableUser() (*security.User, error)
-
 	// FreeUser free user
 	FreeUser(user *security.User) error
+}
+
+type Peer interface {
+	// IsAlive get peer alive state
+	IsAlive() bool
+	// Size get peer waiting queue size
+	Size() int
+	// AddTx add new tx into peer waiting queue
+	AddTx(tx int)
+}
+
+type Balancer interface {
+	// SetStrategy set balancer strategy
+	SetStrategy(_strategy int)
+	// AddPeer add new peer into balancer
+	AddPeer(key string, peer Peer) error
+	// GetPeer get avaiable peer
+	GetPeer(key string) Peer
 }
