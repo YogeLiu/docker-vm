@@ -1,4 +1,4 @@
-VERSION=develop
+VERSION=v2.1.0
 
 build-test:
 	cd test/scripts && ./prepare.sh
@@ -36,7 +36,6 @@ ci:
 	golangci-lint run ./...
 	go test -v ./...
 	make clean
-
 
 
 

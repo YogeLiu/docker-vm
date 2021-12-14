@@ -14,12 +14,19 @@ func TestDockerGoKvIterator(t *testing.T) {
 
 	// test data
 	iteratorWSets, _ = makeStringKeyMap()
+	mockTxContext.EXPECT().Put(ContractNameTest, gomock.Any(), gomock.Any()).DoAndReturn(
+		func(name string, key, value []byte) error {
+			final := name + "::" + string(key)
+			tmpSimContextMap[final] = value
+			return nil
+		},
+	).AnyTimes()
 
 	// NewIterator 1
 	startKey1 := protocol.GetKeyStr("key2", "")
 	limit1 := protocol.GetKeyStr("key4", "")
 	mockSelect(mockTxContext, ContractNameTest, startKey1, limit1)
-	mockTxContext.EXPECT().SetStateKvHandle(gomock.Any(), gomock.Any()).DoAndReturn(
+	mockTxContext.EXPECT().SetIterHandle(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(iteratorIndex int32, iterator protocol.StateIterator) {
 			kvRowCache[atomic.AddInt32(&kvSetIndex, int32(1))] = iterator
 		},
@@ -52,11 +59,11 @@ func TestDockerGoKvIterator(t *testing.T) {
 
 	parameters := generateInitParams()
 	parameters["method"] = []byte("kv_iterator_test")
-	result := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 
-	resetKvIteratorCacheAndIndex()
+	resetIterCacheAndIndex()
 
 	tearDownTest()
 }

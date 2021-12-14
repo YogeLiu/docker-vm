@@ -3,12 +3,12 @@ module chainmaker.org/chainmaker/vm-docker-go
 go 1.15
 
 require (
-	chainmaker.org/chainmaker/common/v2 v2.1.0
+	chainmaker.org/chainmaker/common/v2 v2.1.1-0.20211108032042-88ed7467a15c
 	chainmaker.org/chainmaker/localconf/v2 v2.1.0
 	chainmaker.org/chainmaker/logger/v2 v2.1.0
-	chainmaker.org/chainmaker/pb-go/v2 v2.1.0
-	chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211110022918-9516552c201a
-	chainmaker.org/chainmaker/utils/v2 v2.1.0
+	chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20211130072802-e9d8fae57083
+	chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211130023410-5df7eb63bfb8
+	chainmaker.org/chainmaker/utils/v2 v2.1.1-0.20211130112814-b3126608050b
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/containerd/containerd v1.5.2 // indirect
 	github.com/docker/distribution v2.7.1+incompatible

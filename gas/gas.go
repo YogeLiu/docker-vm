@@ -17,26 +17,31 @@ import (
 
 const (
 	// function list gas price
-	GetArgsGasPrice             uint64 = 1
-	GetStateGasPrice            uint64 = 1
-	PutStateGasPrice            uint64 = 10
-	DelStateGasPrice            uint64 = 10
-	GetCreatorOrgIdGasPrice     uint64 = 1
-	GetCreatorRoleGasPrice      uint64 = 1
-	GetCreatorPkGasPrice        uint64 = 1
-	GetSenderOrgIdGasPrice      uint64 = 1
-	GetSenderRoleGasPrice       uint64 = 1
-	GetSenderPkGasPrice         uint64 = 1
-	GetBlockHeightGasPrice      uint64 = 1
-	GetTxIdGasPrice             uint64 = 1
-	GetTimeStampPrice           uint64 = 1
-	EmitEventGasPrice           uint64 = 5
-	LogGasPrice                 uint64 = 5
-	KvIteratorCreateGasPrice    uint64 = 1
-	KvPreIteratorCreateGasPrice uint64 = 1
-	KvIteratorHasNextGasPrice   uint64 = 1
-	KvIteratorNextGasPrice      uint64 = 1
-	KvIteratorCloseGasPrice     uint64 = 1
+	GetArgsGasPrice               uint64 = 1
+	GetStateGasPrice              uint64 = 1
+	PutStateGasPrice              uint64 = 10
+	DelStateGasPrice              uint64 = 10
+	GetCreatorOrgIdGasPrice       uint64 = 1
+	GetCreatorRoleGasPrice        uint64 = 1
+	GetCreatorPkGasPrice          uint64 = 1
+	GetSenderOrgIdGasPrice        uint64 = 1
+	GetSenderRoleGasPrice         uint64 = 1
+	GetSenderPkGasPrice           uint64 = 1
+	GetBlockHeightGasPrice        uint64 = 1
+	GetTxIdGasPrice               uint64 = 1
+	GetTimeStampPrice             uint64 = 1
+	EmitEventGasPrice             uint64 = 5
+	LogGasPrice                   uint64 = 5
+	KvIteratorCreateGasPrice      uint64 = 1
+	KvPreIteratorCreateGasPrice   uint64 = 1
+	KvIteratorHasNextGasPrice     uint64 = 1
+	KvIteratorNextGasPrice        uint64 = 1
+	KvIteratorCloseGasPrice       uint64 = 1
+	KeyHistoryIterCreateGasPrice  uint64 = 1
+	KeyHistoryIterHasNextGasPrice uint64 = 1
+	KeyHistoryIterNextGasPrice    uint64 = 1
+	KeyHistoryIterCloseGasPrice   uint64 = 1
+	GetSenderAddressGasPrice      uint64 = 1
 
 	// special parameters passed to contract
 	ContractParamCreatorOrgId = "__creator_org_id__"
@@ -72,7 +77,31 @@ func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
 	return gasUsed, nil
 }
 
-func KvIteratorCreateGasUsed(gasUsed uint64) (uint64, error) {
+func GetSenderAddressGasUsed(gasUsed uint64) (uint64, error) {
+	gasUsed += 10 * GetSenderAddressGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+func CreateKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
+	gasUsed += 10 * KeyHistoryIterCreateGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+func ConsumeKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
+	gasUsed += 10 * KeyHistoryIterHasNextGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+func CreateKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
 	gasUsed += 10 * KvIteratorCreateGasPrice
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited")
@@ -80,7 +109,7 @@ func KvIteratorCreateGasUsed(gasUsed uint64) (uint64, error) {
 	return gasUsed, nil
 }
 
-func KvIteratorConsumeGasUsed(gasUsed uint64) (uint64, error) {
+func ConsumeKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
 	gasUsed += 10 * KvIteratorNextGasPrice
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited")

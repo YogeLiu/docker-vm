@@ -159,6 +159,12 @@ func (h *ProcessHandler) handleReady(readyMsg *SDKProtogo.DMSMessage) error {
 		return h.handleCreateKvIterator(readyMsg)
 	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KV_ITERATOR_REQUEST:
 		return h.handleConsumeKvIterator(readyMsg)
+	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KEY_HISTORY_ITER_REQUEST:
+		return h.handleCreateKeyHistoryIter(readyMsg)
+	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KEY_HISTORY_ITER_REQUEST:
+		return h.handleConsumeKeyHistoryIter(readyMsg)
+	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_REQUEST:
+		return h.handleGetSenderAddr(readyMsg)
 
 	default:
 		return fmt.Errorf("handler cannot handle ready message (%s) while in state: %s",
@@ -292,7 +298,7 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 		return h.sendMessage(errorResponse)
 	}
 
-	if callContractMsg.CurrentHeight > chainProtocol.CallContractDepth {
+	if callContractMsg.CurrentHeight >= chainProtocol.CallContractDepth {
 		h.logger.Errorf(utils.ExceedMaxDepthError.Error())
 		errorResponse := constructCallContractErrorResponse(utils.ExceedMaxDepthError.Error(), callContractMsg.TxId, callContractMsg.CurrentHeight)
 		return h.sendMessage(errorResponse)
@@ -461,6 +467,87 @@ func (h *ProcessHandler) handleConsumeKvIterator(consumeKvIteratorMsg *SDKProtog
 	}
 
 	return h.sendMessage(responseMsg)
+}
+
+func (h *ProcessHandler) handleCreateKeyHistoryIter(createKeyHistoryIterMsg *SDKProtogo.DMSMessage) error {
+	keyList := createKeyHistoryIterMsg.Payload
+
+	createKeyHistoryIterReqMsg := &protogo.CDMMessage{
+		TxId:    createKeyHistoryIterMsg.TxId,
+		Type:    protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER,
+		Payload: keyList,
+	}
+
+	respCh := make(chan *protogo.CDMMessage)
+	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, respCh)
+
+	h.scheduler.GetGetStateReqCh() <- createKeyHistoryIterReqMsg
+
+	resp := <-respCh
+
+	respMsg := &SDKProtogo.DMSMessage{
+		TxId:          createKeyHistoryIterMsg.TxId,
+		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KEY_HISTORY_ITER_RESPONSE,
+		CurrentHeight: createKeyHistoryIterMsg.CurrentHeight,
+		ResultCode:    resp.ResultCode,
+		Payload:       resp.Payload,
+		Message:       resp.Message,
+	}
+
+	return h.sendMessage(respMsg)
+}
+
+func (h *ProcessHandler) handleConsumeKeyHistoryIter(consumeKeyHistoryIterMsg *SDKProtogo.DMSMessage) error {
+	keyList := consumeKeyHistoryIterMsg.Payload
+
+	consumeKeyHistoryIterReqMsg := &protogo.CDMMessage{
+		TxId:    consumeKeyHistoryIterMsg.TxId,
+		Type:    protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
+		Payload: keyList,
+	}
+
+	respCh := make(chan *protogo.CDMMessage)
+	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, respCh)
+
+	h.scheduler.GetGetStateReqCh() <- consumeKeyHistoryIterReqMsg
+
+	resp := <-respCh
+
+	respMsg := &SDKProtogo.DMSMessage{
+		TxId:          consumeKeyHistoryIterMsg.TxId,
+		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE,
+		CurrentHeight: consumeKeyHistoryIterMsg.CurrentHeight,
+		ResultCode:    resp.ResultCode,
+		Payload:       resp.Payload,
+		Message:       resp.Message,
+	}
+
+	return h.sendMessage(respMsg)
+}
+
+func (h *ProcessHandler) handleGetSenderAddr(msg *SDKProtogo.DMSMessage) error {
+	getSenderAddrReqMsg := &protogo.CDMMessage{
+		TxId:    msg.TxId,
+		Type:    protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS,
+		Payload: nil,
+	}
+
+	respCh := make(chan *protogo.CDMMessage)
+	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, respCh)
+	h.scheduler.GetGetStateReqCh() <- getSenderAddrReqMsg
+
+	resp := <-respCh
+
+	respMsg := &SDKProtogo.DMSMessage{
+		TxId:          getSenderAddrReqMsg.TxId,
+		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_RESPONSE,
+		CurrentHeight: msg.CurrentHeight,
+		ResultCode:    resp.ResultCode,
+		Payload:       resp.Payload,
+		Message:       resp.Message,
+	}
+
+	return h.sendMessage(respMsg)
 }
 
 func (h *ProcessHandler) resetHandler() {

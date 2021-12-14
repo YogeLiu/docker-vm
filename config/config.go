@@ -31,6 +31,8 @@ type DockerContainerConfig struct {
 	HostLogDir     string
 }
 
+type Bool int32
+
 const (
 	ENV_ENABLE_UDS     = "ENV_ENABLE_UDS"
 	ENV_TX_SIZE        = "ENV_TX_SIZE"
@@ -38,6 +40,8 @@ const (
 	ENV_TX_TIME_LIMIT  = "ENV_TX_TIME_LIMIT"
 	ENV_LOG_LEVEL      = "ENV_LOG_LEVEL"
 	ENV_LOG_IN_CONSOLE = "ENV_LOG_IN_CONSOLE"
+	EnvEnablePprof     = "ENV_ENABLE_PPROF"
+	EnvPprofPort       = "ENV_PPROF_PORT"
 
 	// ContractsDir dir save executable contract
 	ContractsDir = "contracts"
@@ -49,5 +53,22 @@ const (
 	MaxSendSize = 10
 	MaxRecvSize = 10
 
-	TestPort = "22356"
+	TestPort  = "22356"
+	PProfPort = "23356"
+
+	// stateKvIterator method
+	FuncKvIteratorCreate    = "createKvIterator"
+	FuncKvPreIteratorCreate = "createKvPreIterator"
+	FuncKvIteratorHasNext   = "kvIteratorHasNext"
+	FuncKvIteratorNext      = "kvIteratorNext"
+	FuncKvIteratorClose     = "kvIteratorClose"
+
+	// keyHistoryKvIterator method
+	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
+	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
+	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
+
+	// int32 representation of bool
+	BoolTrue  Bool = 1
+	BoolFalse Bool = 0
 )

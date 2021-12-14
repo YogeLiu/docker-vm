@@ -20,9 +20,8 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters["value"] = []byte("500")
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1")), []byte("500"))
-	result := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters, mockTxContext, uint64(123))
-	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
 	assert.Contains(t, tmpSimContextMap, fmt.Sprintf("%s::key1#field1", ContractNameTest))
 
@@ -33,7 +32,7 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters1["value"] = []byte("500")
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key2"), []byte("field2")), []byte("500"))
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters1, mockTxContext, uint64(123))
 	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
@@ -45,7 +44,7 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters2["value"] = []byte("300")
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key3"), nil), []byte("300"))
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters2, mockTxContext, uint64(123))
 	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
@@ -60,7 +59,7 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters3["value"] = []byte("400")
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key4"), nil), []byte("400"))
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters3, mockTxContext, uint64(123))
 	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
@@ -74,7 +73,7 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters4["field"] = []byte("")
 	parameters4["value"] = []byte("500")
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte(""), []byte("")), []byte("500"))
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters4, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 	value, ok = tmpSimContextMap[fmt.Sprintf("%s::", ContractNameTest)]
@@ -93,7 +92,7 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters["value"] = []byte("500")
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1")), []byte("500"))
-	result := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters, mockTxContext, uint64(123))
 	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
@@ -105,7 +104,7 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters6["field"] = []byte("field1")
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1"))).
 		Return([]byte("500"), nil)
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters6, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 	assert.Equal(t, []byte("500"), result.Result)
@@ -116,20 +115,20 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters7["field"] = []byte("field1")
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte("key11111"), []byte("field1"))).
 		Return([]byte(""), nil)
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters7, mockTxContext, uint64(123))
-	assert.Equal(t, uint32(1), result.Code)
-	assert.Equal(t, "Fail", result.Message)
+	assert.Equal(t, uint32(0), result.Code)
+	assert.Nil(t, result.Result)
 
 	parameters8 := generateInitParams()
 	parameters8["method"] = []byte("get_state")
 	parameters8["key"] = []byte("")
 	parameters8["field"] = []byte("field1")
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte(""), []byte("field1"))).Return([]byte(""), nil)
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters8, mockTxContext, uint64(123))
-	assert.Equal(t, uint32(1), result.Code)
-	assert.Equal(t, "Fail", result.Message)
+	assert.Equal(t, uint32(0), result.Code)
+	assert.Nil(t, result.Result)
 
 	parameters9 := generateInitParams()
 	parameters9["method"] = []byte("get_state")
@@ -137,7 +136,7 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters9["field"] = []byte("field4")
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte("key4"), []byte("field4"))).
 		Return([]byte(""), errors.New("simContext fail"))
-	result = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters9, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Equal(t, []byte("simContext fail"), result.Result)
@@ -150,7 +149,7 @@ func TestDockerGoTimeout(t *testing.T) {
 
 	parameters0 := generateInitParams()
 	parameters0["method"] = []byte("time_out")
-	result := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters0, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Nil(t, result.Result)
@@ -164,7 +163,7 @@ func TestDockerGoOutRange(t *testing.T) {
 
 	parameters0 := generateInitParams()
 	parameters0["method"] = []byte("out_of_range")
-	result := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters0, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Nil(t, result.Result)
