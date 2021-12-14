@@ -34,12 +34,14 @@ const (
 	processWaitingQueueSize = 1000
 )
 
-type ProcessPoolInterface interface {
-	RetrieveProcessContext(initialProcessName string) *ProcessContext
+type ProcessMgrInterface interface {
+	getPeerDepth(initialProcessName string) *PeerDepth
 }
 
+// Process id of process is index of process in process list
+// processName: contractName:contractVersion:index
+// crossProcessName: txId:currentHeight
 type Process struct {
-	id             int32
 	processName    string
 	isCrossProcess bool
 
@@ -53,39 +55,43 @@ type Process struct {
 
 	ProcessState     protogo.ProcessState
 	TxWaitingQueue   chan *protogo.TxRequest
-	waitingQueueSize int32
+	waitingQueueSize int
 	txTrigger        chan bool
 	expireTimer      *time.Timer // process waiting time
 	Handler          *ProcessHandler
 
 	logger *zap.SugaredLogger
 
-	processPoolInterface ProcessPoolInterface
-	done                 uint32
-	mutex                sync.Mutex
+	processMgr ProcessMgrInterface
+	done       uint32
+	mutex      sync.Mutex
 }
 
 // NewProcess new process, process working on main contract which is not called cross contract
 func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	processName, contractPath string, processPool ProcessPoolInterface) *Process {
+	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
-		isCrossProcess:   false,
-		processName:      processName,
-		contractName:     txRequest.ContractName,
-		contractVersion:  txRequest.ContractVersion,
+		processName:    processName,
+		isCrossProcess: false,
+
+		contractName:    txRequest.ContractName,
+		contractVersion: txRequest.ContractVersion,
+		contractPath:    contractPath,
+
+		cGroupPath: filepath.Join(config.CGroupRoot, config.ProcsFile),
+		user:       user,
+
 		ProcessState:     protogo.ProcessState_PROCESS_STATE_CREATED,
 		TxWaitingQueue:   make(chan *protogo.TxRequest, processWaitingQueueSize),
 		waitingQueueSize: 0,
 		txTrigger:        make(chan bool),
 		expireTimer:      time.NewTimer(processWaitingTime * time.Second),
-		logger:           logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		Handler:          nil,
 
-		Handler:              nil,
-		user:                 user,
-		contractPath:         contractPath,
-		cGroupPath:           filepath.Join(config.CGroupRoot, config.ProcsFile),
-		processPoolInterface: processPool,
+		logger: logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+
+		processMgr: processPool,
 	}
 
 	processHandler := NewProcessHandler(txRequest, scheduler, process)
@@ -95,7 +101,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 
 // NewCrossProcess new cross process, process working on called cross process
 func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	processName, contractPath string, processPool ProcessPoolInterface) *Process {
+	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
 		isCrossProcess:   true,
@@ -109,11 +115,11 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 		expireTimer:      time.NewTimer(processWaitingTime * time.Second),
 		logger:           logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
-		Handler:              nil,
-		user:                 user,
-		contractPath:         contractPath,
-		cGroupPath:           filepath.Join(config.CGroupRoot, config.ProcsFile),
-		processPoolInterface: processPool,
+		Handler:      nil,
+		user:         user,
+		contractPath: contractPath,
+		cGroupPath:   filepath.Join(config.CGroupRoot, config.ProcsFile),
+		processMgr:   processPool,
 	}
 
 	processHandler := NewProcessHandler(txRequest, scheduler, process)
@@ -253,6 +259,10 @@ func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 	}
 }
 
+func (p *Process) Size() int {
+	return p.waitingQueueSize
+}
+
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
 
@@ -287,9 +297,9 @@ func (p *Process) killCrossProcess() {
 // kill main process when process encounter error
 func (p *Process) killProcess() {
 
-	processContext := p.processPoolInterface.RetrieveProcessContext(p.processName)
+	processContext := p.processMgr.getPeerDepth(p.processName)
 
-	for _, process := range processContext.processList {
+	for _, process := range processContext.peers {
 		if process != nil {
 			p.logger.Debugf("kill process: %s", process.processName)
 			_ = process.cmd.Process.Kill()

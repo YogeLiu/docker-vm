@@ -34,19 +34,18 @@ const (
 	ResponseChanSize = 1000
 
 	crossContractsChanSize = 50
-)
 
-const (
-	maxProcess = 10
+	queueLimitFactor = 0.6
 )
 
 type DockerScheduler struct {
-	lock            sync.Mutex
-	logger          *zap.SugaredLogger
-	singleFlight    singleflight.Group
-	userController  protocol.UserController
+	lock           sync.Mutex
+	logger         *zap.SugaredLogger
+	singleFlight   singleflight.Group
+	userController protocol.UserController
+	//processPool     *ProcessPool
+	processManager  *ProcessManager
 	contractManager *ContractManager
-	processPool     *ProcessPool
 
 	txReqCh          chan *protogo.TxRequest
 	txResponseCh     chan *protogo.TxResponse
@@ -58,14 +57,14 @@ type DockerScheduler struct {
 }
 
 // NewDockerScheduler new docker scheduler
-func NewDockerScheduler(userController protocol.UserController, processPool *ProcessPool) *DockerScheduler {
+func NewDockerScheduler(userController protocol.UserController, processManager *ProcessManager) *DockerScheduler {
 
 	contractManager := NewContractManager(config.DockerLogDir)
 
 	scheduler := &DockerScheduler{
 		userController:  userController,
 		logger:          logger.NewDockerLogger(logger.MODULE_SCHEDULER, config.DockerLogDir),
-		processPool:     processPool,
+		processManager:  processManager,
 		contractManager: contractManager,
 
 		txReqCh:          make(chan *protogo.TxRequest, ReqChanSize),
@@ -168,20 +167,61 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	var (
 		err     error
 		process *Process
-		exist   bool
 	)
 
-	processName := s.constructProcessName(txRequest)
-	process, exist = s.processPool.CheckProcessExist(processName)
+	// processNamePrefix: contractName:contractVersion
+	processNamePrefix := s.constructProcessName(txRequest)
 
-	// process exist, put current tx into process waiting queue and return
-	// only one goroutine can init process for same contract
-	if exist {
-		process.AddTxWaitingQueue(txRequest)
+	// get proper process from process manager
+	process = s.processManager.GetAvailableProcess(processNamePrefix)
+
+	// -----  process doesn't exist, init new process  ----
+	if process == nil {
+		process, err = s.createNewProcess(processNamePrefix, txRequest)
+		if err != nil {
+			s.returnErrorTxResponse(txRequest.TxId, err.Error())
+			return
+		}
+		s.initProcess(process)
 		return
 	}
 
-	// -----  process doesn't exist, init new process  ----
+	// process exist, put current tx into process waiting queue and return
+	peerBalance := s.processManager.getPeerBalance(processNamePrefix)
+
+	if peerBalance.strategy == SLeast {
+
+		if process.Size() <= processWaitingQueueSize*queueLimitFactor {
+			process.AddTxWaitingQueue(txRequest)
+			return
+		}
+
+		if process.Size() > processWaitingQueueSize*queueLimitFactor &&
+			s.processManager.getPeerBalance(processNamePrefix).size < maxPeer {
+
+			s.logger.Infof("before create new process")
+			process, err = s.createNewProcess(processNamePrefix, txRequest)
+			s.logger.Infof("after create new process")
+			if err != nil {
+				s.returnErrorTxResponse(txRequest.TxId, err.Error())
+				return
+			}
+			s.initProcess(process)
+			return
+		}
+	}
+
+	process = s.processManager.GetAvailableProcess(processNamePrefix)
+	process.AddTxWaitingQueue(txRequest)
+
+}
+
+// using single flight to create new process
+func (s *DockerScheduler) createNewProcess(processName string, txRequest *protogo.TxRequest) (*Process, error) {
+
+	s.logger.Infof("start in create process")
+	var err error
+
 	proc, err, _ := s.singleFlight.Do(processName, func() (interface{}, error) {
 		defer s.singleFlight.Forget(processName)
 
@@ -204,33 +244,42 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 			return nil, err
 		}
 
-		newProcess := NewProcess(user, txRequest, s, processName, contractPath, s.processPool)
-		s.processPool.RegisterNewProcess(processName, newProcess)
+		newProcess := NewProcess(user, txRequest, s, processName, contractPath, s.processManager)
+
+		s.processManager.RegisterNewProcess(processName, newProcess)
+		s.logger.Infof("-- register new process [%s]", newProcess.processName)
 
 		return newProcess, nil
 	})
+
 	if err != nil {
-		s.returnErrorTxResponse(txRequest.TxId, err.Error())
-		return
+		return nil, err
 	}
 
-	process = proc.(*Process)
+	process := proc.(*Process)
+
+	s.logger.Infof("back in create process")
 	process.AddTxWaitingQueue(txRequest)
 
-	// only one goroutine can launch process
-	// reset will return
-	if atomic.LoadUint32(&process.done) == 0 {
-		process.mutex.Lock()
-		defer process.mutex.Unlock()
-		if process.done == 0 {
-			atomic.StoreUint32(&process.done, 1)
-			go s.initProcess(process)
-		}
-	}
-
+	return process, nil
 }
 
-func (s *DockerScheduler) initProcess(process *Process) {
+// start process
+// only one goroutine can launch process
+// reset will return
+func (s *DockerScheduler) initProcess(newProcess *Process) {
+
+	if atomic.LoadUint32(&newProcess.done) == 0 {
+		newProcess.mutex.Lock()
+		defer newProcess.mutex.Unlock()
+		if newProcess.done == 0 {
+			atomic.StoreUint32(&newProcess.done, 1)
+			go s.runningProcess(newProcess)
+		}
+	}
+}
+
+func (s *DockerScheduler) runningProcess(process *Process) {
 	// execute contract method, including init, invoke
 	go s.listenProcessInvoke(process)
 	// launch process wait block until process finished
@@ -240,9 +289,9 @@ runProcess:
 	if err != nil && process.ProcessState != protogo.ProcessState_PROCESS_STATE_EXPIRE {
 		currentTx := process.Handler.TxRequest
 
-		processContext := s.processPool.RetrieveProcessContext(process.processName)
-		if processContext.size > 1 {
-			lastContractName := processContext.processList[processContext.size-1].contractName
+		peerDepth := s.processManager.getPeerDepth(process.processName)
+		if peerDepth.size > 1 {
+			lastContractName := peerDepth.peers[peerDepth.size-1].contractName
 			errMsg := fmt.Sprintf("%s fail: %s", lastContractName, err.Error())
 			s.returnErrorTxResponse(currentTx.TxId, errMsg)
 		} else {
@@ -259,7 +308,7 @@ runProcess:
 	// when process timeout, release resources
 	s.logger.Debugf("release process: [%s]", process.processName)
 
-	s.processPool.ReleaseProcess(process.processName)
+	s.processManager.ReleaseProcess(process.processName)
 	_ = s.userController.FreeUser(process.user)
 
 }
@@ -303,11 +352,13 @@ func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxReq
 
 	processName := s.constructCrossContractProcessName(crossContractTx)
 
-	newProcess := NewCrossProcess(user, crossContractTx, s, processName, contractPath, s.processPool)
-	s.processPool.RegisterNewProcess(processName, newProcess)
+	newProcess := NewCrossProcess(user, crossContractTx, s, processName, contractPath, s.processManager)
+	// todo delete register new process here
+	// todo and validate cross process
+	//s.processManager.RegisterNewProcess(processName, newProcess)
 
 	// register cross process
-	s.processPool.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newProcess)
+	s.processManager.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newProcess)
 
 	err = newProcess.LaunchProcess()
 	if err != nil {
@@ -316,7 +367,7 @@ func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxReq
 	}
 
 	txContext := newProcess.Handler.TxRequest.TxContext
-	s.processPool.ReleaseCrossProcess(txContext.OriginalProcessName, txContext.CurrentHeight)
+	s.processManager.ReleaseCrossProcess(txContext.OriginalProcessName, txContext.CurrentHeight)
 	_ = s.userController.FreeUser(newProcess.user)
 }
 

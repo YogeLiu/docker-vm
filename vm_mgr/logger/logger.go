@@ -25,6 +25,7 @@ const (
 	MODULE_SCHEDULER        = "[Docker Scheduler]"
 	MODULE_USERCONTROLLER   = "[Docker User Controller]"
 	MODULE_PROCESS_POOL     = "[Docker Process Pool]"
+	MODULE_PROCESS_MANAGER  = "[Docker Process Manager]"
 	MODULE_PROCESS          = "[Docker Process]"
 	MODULE_DMS_HANDLER      = "[Docker DMS Handler]"
 	MODULE_DMS_SERVER       = "[Docker DMS Server]"

@@ -20,13 +20,13 @@ import (
 )
 
 const (
-	performContractName    = "contract_cut"
+	performContractName    = "contract_zxl"
 	performContractVersion = "1.0.0"
 
 	timeFormat = "2006-01-02 15:04:05"
 
 	loopNum   = 200
-	threadNum = 1000
+	threadNum = 1500
 )
 
 var (
@@ -68,8 +68,9 @@ func TestDockerGoPerformance(t *testing.T) {
 	performTxContext = InitContextTest()
 	mockLogger = logger.GetLogger(logger.MODULE_VM)
 
-	testDeployCut()
-	testCutSave()
+	//testDeployCut()
+	//testCutSave()
+	testDeployZXL()
 
 	performMultipleTxs(loopNum, threadNum)
 
@@ -110,8 +111,9 @@ func performMultipleTxs(loopNum, threadNum int) {
 
 				startTimeCh <- time.Now().UnixNano()
 
-				testCutFindByHash()
+				//testCutFindByHash()
 				//testCutSave()
+				testZXLAddPoint()
 
 				endTimeCh <- time.Now().UnixNano()
 

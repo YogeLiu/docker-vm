@@ -41,20 +41,29 @@ type UserController interface {
 	FreeUser(user *security.User) error
 }
 
+// Peer two types of peer, one is main peer, another is cross peer
 type Peer interface {
+	// IsOriginal is peer original or not
+	IsOriginal() bool
 	// IsAlive get peer alive state
 	IsAlive() bool
 	// Size get peer waiting queue size
 	Size() int
-	// AddTx add new tx into peer waiting queue
-	AddTx(tx int)
+	// AddTxWaitingQueue add new tx into peer waiting queue
+	AddTxWaitingQueue(tx *protogo.TxRequest)
+	// Prev previous peer
+	Prev() Peer
+	// Next peer
+	Next() Peer
+	// Index get peer index
+	Index() int
 }
 
 type Balancer interface {
 	// SetStrategy set balancer strategy
 	SetStrategy(_strategy int)
 	// AddPeer add new peer into balancer
-	AddPeer(key string, peer Peer) error
+	AddPeer(key string, peer Peer, isOriginal bool) error
 	// GetPeer get avaiable peer
 	GetPeer(key string) Peer
 }
