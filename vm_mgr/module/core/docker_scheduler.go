@@ -39,11 +39,10 @@ const (
 )
 
 type DockerScheduler struct {
-	lock           sync.Mutex
-	logger         *zap.SugaredLogger
-	singleFlight   singleflight.Group
-	userController protocol.UserController
-	//processPool     *ProcessPool
+	lock            sync.Mutex
+	logger          *zap.SugaredLogger
+	singleFlight    singleflight.Group
+	userController  protocol.UserController
 	processManager  *ProcessManager
 	contractManager *ContractManager
 
@@ -175,7 +174,7 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	// get proper process from process manager
 	process = s.processManager.GetAvailableProcess(processNamePrefix)
 
-	// -----  process doesn't exist, init new process  ----
+	// process doesn't exist, init new process
 	if process == nil {
 		process, err = s.createNewProcess(processNamePrefix, txRequest)
 		if err != nil {
@@ -194,14 +193,14 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 		if process.Size() <= processWaitingQueueSize*queueLimitFactor {
 			process.AddTxWaitingQueue(txRequest)
 			return
-		}
-
-		if process.Size() > processWaitingQueueSize*queueLimitFactor &&
-			s.processManager.getPeerBalance(processNamePrefix).size < maxPeer {
-
-			s.logger.Infof("before create new process")
+		} else {
 			process, err = s.createNewProcess(processNamePrefix, txRequest)
-			s.logger.Infof("after create new process")
+
+			if err == utils.RegisterProcessError {
+				s.txReqCh <- txRequest
+				return
+			}
+
 			if err != nil {
 				s.returnErrorTxResponse(txRequest.TxId, err.Error())
 				return
@@ -213,13 +212,11 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
 	process = s.processManager.GetAvailableProcess(processNamePrefix)
 	process.AddTxWaitingQueue(txRequest)
-
 }
 
-// using single flight to create new process
+// using single flight to create new process and register into process manager
 func (s *DockerScheduler) createNewProcess(processName string, txRequest *protogo.TxRequest) (*Process, error) {
 
-	s.logger.Infof("start in create process")
 	var err error
 
 	proc, err, _ := s.singleFlight.Do(processName, func() (interface{}, error) {
@@ -246,10 +243,13 @@ func (s *DockerScheduler) createNewProcess(processName string, txRequest *protog
 
 		newProcess := NewProcess(user, txRequest, s, processName, contractPath, s.processManager)
 
-		s.processManager.RegisterNewProcess(processName, newProcess)
-		s.logger.Infof("-- register new process [%s]", newProcess.processName)
+		registered := s.processManager.RegisterNewProcess(processName, newProcess)
 
-		return newProcess, nil
+		if registered {
+			return newProcess, nil
+		}
+
+		return nil, utils.RegisterProcessError
 	})
 
 	if err != nil {
@@ -257,10 +257,7 @@ func (s *DockerScheduler) createNewProcess(processName string, txRequest *protog
 	}
 
 	process := proc.(*Process)
-
-	s.logger.Infof("back in create process")
 	process.AddTxWaitingQueue(txRequest)
-
 	return process, nil
 }
 

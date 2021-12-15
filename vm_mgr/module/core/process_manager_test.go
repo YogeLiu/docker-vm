@@ -17,21 +17,18 @@ func TestProcessManager_SetStrategy(t *testing.T) {
 	process0 := newProcess(processNamePrefix, false)
 	processManager.RegisterNewProcess(processNamePrefix, process0)
 
-	b0, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance0 := b0.(*PeerBalance)
-	assert.Equal(t, SLeast, balance0.strategy)
+	b0, _ := processManager.balanceTable[processNamePrefix]
+	assert.Equal(t, SLeast, b0.strategy)
 
-	processManager.SetStrategy(processNamePrefix, SRoundRobin)
+	processManager.setStrategy(processNamePrefix, SRoundRobin)
 
-	b1, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance1 := b1.(*PeerBalance)
-	assert.Equal(t, SRoundRobin, balance1.strategy)
+	b1, _ := processManager.balanceTable[processNamePrefix]
+	assert.Equal(t, SRoundRobin, b1.strategy)
 
-	processManager.SetStrategy(processNamePrefix, SLeast)
+	processManager.setStrategy(processNamePrefix, SLeast)
 
-	b2, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance2 := b2.(*PeerBalance)
-	assert.Equal(t, SLeast, balance2.strategy)
+	b2, _ := processManager.balanceTable[processNamePrefix]
+	assert.Equal(t, SLeast, b2.strategy)
 }
 
 func TestProcessManager_RegisterNewProcess(t *testing.T) {
@@ -44,13 +41,11 @@ func TestProcessManager_RegisterNewProcess(t *testing.T) {
 
 	processManager.RegisterNewProcess(processNamePrefix, process0)
 
-	b, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance := b.(*PeerBalance)
+	balance, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 1, balance.size)
 	assert.Equal(t, "contract:1.0#0", balance.peers[0].processName)
 
-	p, _ := processManager.depthTable.Load("contract:1.0#0")
-	peerDepth := p.(*PeerDepth)
+	peerDepth, _ := processManager.depthTable["contract:1.0#0"]
 	assert.Equal(t, 1, peerDepth.size)
 	assert.Equal(t, "contract:1.0#0", peerDepth.peers[0].processName)
 
@@ -58,14 +53,12 @@ func TestProcessManager_RegisterNewProcess(t *testing.T) {
 	process1 := newProcess(processNamePrefix, false)
 
 	processManager.RegisterNewProcess(processNamePrefix, process1)
-	b1, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance1 := b1.(*PeerBalance)
+	balance1, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 2, balance1.size)
 	assert.Equal(t, "contract:1.0#0", balance1.peers[0].processName)
 	assert.Equal(t, "contract:1.0#1", balance1.peers[1].processName)
 
-	p1, _ := processManager.depthTable.Load("contract:1.0#1")
-	peerDepth1 := p1.(*PeerDepth)
+	peerDepth1, _ := processManager.depthTable["contract:1.0#1"]
 	assert.Equal(t, 1, peerDepth1.size)
 	assert.Equal(t, "contract:1.0#1", peerDepth1.peers[0].processName)
 }
@@ -84,23 +77,21 @@ func TestProcessManager_ReleaseProcess(t *testing.T) {
 
 	processManager.ReleaseProcess("contract:1.0#0")
 
-	b0, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance0 := b0.(*PeerBalance)
+	balance0, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 1, balance0.size)
 	assert.Equal(t, "contract:1.0#1", balance0.peers[1].processName)
 	assert.Nil(t, balance0.peers[0])
-	_, ok := processManager.depthTable.Load("contract:1.0#0")
+	_, ok := processManager.depthTable["contract:1.0#0"]
 	assert.False(t, ok)
-	p0, ok := processManager.depthTable.Load("contract:1.0#1")
+	peerDepth0, ok := processManager.depthTable["contract:1.0#1"]
 	assert.True(t, ok)
-	peerDepth0 := p0.(*PeerDepth)
 	assert.Equal(t, 1, peerDepth0.size)
 	assert.Equal(t, "contract:1.0#1", peerDepth0.peers[0].processName)
 
 	processManager.ReleaseProcess("contract:1.0#1")
-	_, ok = processManager.balanceTable.Load(processNamePrefix)
+	_, ok = processManager.balanceTable[processNamePrefix]
 	assert.False(t, ok)
-	_, ok = processManager.depthTable.Load("contract:1.0#1")
+	_, ok = processManager.depthTable["contract:1.0#1"]
 	assert.False(t, ok)
 }
 
@@ -116,14 +107,12 @@ func TestProcessManager_RegisterCrossProcess(t *testing.T) {
 	crossProcess0 := newProcess("cross0", true)
 	processManager.RegisterCrossProcess("contract:1.0#0", crossProcess0)
 
-	b0, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance0 := b0.(*PeerBalance)
+	balance0, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 1, balance0.size)
 	assert.Equal(t, "contract:1.0#0", balance0.peers[0].processName)
 
-	p0, ok := processManager.depthTable.Load("contract:1.0#0")
+	peerDepth0, ok := processManager.depthTable["contract:1.0#0"]
 	assert.True(t, ok)
-	peerDepth0 := p0.(*PeerDepth)
 	assert.Equal(t, 2, peerDepth0.size)
 	assert.Equal(t, "contract:1.0#0", peerDepth0.peers[0].processName)
 	assert.Equal(t, "cross0", peerDepth0.peers[1].processName)
@@ -132,14 +121,12 @@ func TestProcessManager_RegisterCrossProcess(t *testing.T) {
 	crossProcess1 := newProcess("cross1", true)
 	processManager.RegisterCrossProcess("contract:1.0#0", crossProcess1)
 
-	b1, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance1 := b1.(*PeerBalance)
+	balance1, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 1, balance1.size)
 	assert.Equal(t, "contract:1.0#0", balance1.peers[0].processName)
 
-	p1, ok := processManager.depthTable.Load("contract:1.0#0")
+	peerDepth1, ok := processManager.depthTable["contract:1.0#0"]
 	assert.True(t, ok)
-	peerDepth1 := p1.(*PeerDepth)
 	assert.Equal(t, 3, peerDepth1.size)
 	assert.Equal(t, "contract:1.0#0", peerDepth1.peers[0].processName)
 	assert.Equal(t, "cross0", peerDepth1.peers[1].processName)
@@ -164,28 +151,24 @@ func TestProcessManager_ReleaseCrossProcess(t *testing.T) {
 
 	processManager.ReleaseCrossProcess("contract:1.0#0", 2)
 
-	b0, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance0 := b0.(*PeerBalance)
+	balance0, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 1, balance0.size)
 	assert.Equal(t, "contract:1.0#0", balance0.peers[0].processName)
 
-	p0, ok := processManager.depthTable.Load("contract:1.0#0")
+	peerDepth0, ok := processManager.depthTable["contract:1.0#0"]
 	assert.True(t, ok)
-	peerDepth0 := p0.(*PeerDepth)
 	assert.Equal(t, 2, peerDepth0.size)
 	assert.Equal(t, "contract:1.0#0", peerDepth0.peers[0].processName)
 	assert.Equal(t, "cross0", peerDepth0.peers[1].processName)
 
 	processManager.ReleaseCrossProcess("contract:1.0#0", 1)
 
-	b1, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance1 := b1.(*PeerBalance)
+	balance1, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 1, balance1.size)
 	assert.Equal(t, "contract:1.0#0", balance1.peers[0].processName)
 
-	p1, ok := processManager.depthTable.Load("contract:1.0#0")
+	peerDepth1, ok := processManager.depthTable["contract:1.0#0"]
 	assert.True(t, ok)
-	peerDepth1 := p1.(*PeerDepth)
 	assert.Equal(t, 1, peerDepth1.size)
 	assert.Equal(t, "contract:1.0#0", peerDepth1.peers[0].processName)
 
@@ -214,56 +197,49 @@ func TestProcessManager_GetAvailableProcess(t *testing.T) {
 
 	result = processManager.GetAvailableProcess(processNamePrefix)
 	assert.Equal(t, "contract:1.0#0", result.processName)
-	b0, _ := processManager.balanceTable.Load(processNamePrefix)
-	balance0 := b0.(*PeerBalance)
+	balance0, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, uint64(0), balance0.curIdx)
 
 	result = processManager.GetAvailableProcess(processNamePrefix)
 	assert.Equal(t, "contract:1.0#0", result.processName)
-	b0, _ = processManager.balanceTable.Load(processNamePrefix)
-	balance0 = b0.(*PeerBalance)
+	balance0, _ = processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, uint64(0), balance0.curIdx)
-
+	//
 	process0.waitingQueueSize = 100
 	result = processManager.GetAvailableProcess(processNamePrefix)
 	assert.Equal(t, "contract:1.0#1", result.processName)
-	b0, _ = processManager.balanceTable.Load(processNamePrefix)
-	balance0 = b0.(*PeerBalance)
+	balance0, _ = processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, uint64(1), balance0.curIdx)
-
+	//
 	process1.waitingQueueSize = 200
 	result = processManager.GetAvailableProcess(processNamePrefix)
 	assert.Equal(t, "contract:1.0#0", result.processName)
-	b0, _ = processManager.balanceTable.Load(processNamePrefix)
-	balance0 = b0.(*PeerBalance)
+	balance0, _ = processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, uint64(0), balance0.curIdx)
-
+	//
 	process0.waitingQueueSize = 200
 	result = processManager.GetAvailableProcess(processNamePrefix)
 	assert.Equal(t, "contract:1.0#0", result.processName)
-	b0, _ = processManager.balanceTable.Load(processNamePrefix)
-	balance0 = b0.(*PeerBalance)
+	balance0, _ = processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, uint64(0), balance0.curIdx)
-
+	//
 	processManager.RegisterNewProcess(processNamePrefix, process2)
-	processManager.SetStrategy(processNamePrefix, SRoundRobin)
-
+	//processManager.SetStrategy(processNamePrefix, SRoundRobin)
+	//
 	result = processManager.GetAvailableProcess(processNamePrefix)
 	assert.Equal(t, "contract:1.0#1", result.processName)
-	b0, _ = processManager.balanceTable.Load(processNamePrefix)
-	balance0 = b0.(*PeerBalance)
+	balance0, _ = processManager.balanceTable[processNamePrefix]
+	assert.Equal(t, SRoundRobin, balance0.strategy)
 	assert.Equal(t, uint64(1), balance0.curIdx)
-
+	//
 	result = processManager.GetAvailableProcess(processNamePrefix)
 	assert.Equal(t, "contract:1.0#2", result.processName)
-	b0, _ = processManager.balanceTable.Load(processNamePrefix)
-	balance0 = b0.(*PeerBalance)
+	balance0, _ = processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, uint64(2), balance0.curIdx)
 
 	result = processManager.GetAvailableProcess(processNamePrefix)
 	assert.Equal(t, "contract:1.0#0", result.processName)
-	b0, _ = processManager.balanceTable.Load(processNamePrefix)
-	balance0 = b0.(*PeerBalance)
+	balance0, _ = processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, uint64(0), balance0.curIdx)
 
 }
