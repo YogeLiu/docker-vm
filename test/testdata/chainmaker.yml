@@ -125,7 +125,7 @@ vm:
   log_in_console: false
   log_level: INFO
   uds_open: true                             # default is unix domain socket connection
-  tx_size: 1000
   user_num: 100
   time_limit: 20
+  max_concurrency: 20
 

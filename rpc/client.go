@@ -20,6 +20,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	txSize = 1000
+)
+
 type CDMClient struct {
 	chainId             string
 	txSendCh            chan *protogo.CDMMessage // channel receive tx from docker-go instance
@@ -37,8 +41,8 @@ func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 
 	return &CDMClient{
 		chainId:             chainId,
-		txSendCh:            make(chan *protogo.CDMMessage, vmConfig.TxSize),   // tx request
-		stateResponseSendCh: make(chan *protogo.CDMMessage, vmConfig.TxSize*8), // get_state response and bytecode response
+		txSendCh:            make(chan *protogo.CDMMessage, txSize),   // tx request
+		stateResponseSendCh: make(chan *protogo.CDMMessage, txSize*8), // get_state response and bytecode response
 		recvChMap:           make(map[string]chan *protogo.CDMMessage),
 		stream:              nil,
 		logger:              logger.GetLoggerByChain("[CDM Client]", chainId),

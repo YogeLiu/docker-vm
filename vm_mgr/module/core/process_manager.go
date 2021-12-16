@@ -6,6 +6,8 @@ package core
 
 import (
 	"fmt"
+	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,8 +31,16 @@ const (
 	SLeast
 )
 
+const (
+	defaultMaxPeer = 10
+	minPeerLimit   = 5
+)
+
 var (
-	maxPeer = 10
+	// max process num for same contract
+	maxPeer int
+	// increase process condition: when reach limit, add new process
+	peerLimit int
 )
 
 // PeerBalance control load balance of process which related to same contract
@@ -60,8 +70,14 @@ type ProcessManager struct {
 }
 
 func NewProcessManager() *ProcessManager {
+	pmLogger := logger.NewDockerLogger(logger.MODULE_PROCESS_MANAGER, config.DockerLogDir)
+
+	maxPeer = getMaxPeer()
+	peerLimit = getProcessLimitSize()
+	pmLogger.Infof("init process manager with max concurrency [%d], limit size [%d]", maxPeer, peerLimit)
+
 	return &ProcessManager{
-		logger:       logger.NewDockerLogger(logger.MODULE_PROCESS_MANAGER, config.DockerLogDir),
+		logger:       pmLogger,
 		balanceTable: make(map[string]*PeerBalance),
 		depthTable:   make(map[string]*PeerDepth),
 	}
@@ -336,4 +352,22 @@ func (pm *ProcessManager) getNextPeerLeastSize(group *PeerBalance) *Process {
 
 func (pm *ProcessManager) nextIndex(group *PeerBalance) int {
 	return int(atomic.AddUint64(&group.curIdx, uint64(1)) % uint64(group.size))
+}
+
+func getMaxPeer() int {
+	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
+	maxConcurrency, err := strconv.Atoi(mc)
+	if err != nil {
+		maxConcurrency = defaultMaxPeer
+	}
+	return maxConcurrency
+}
+
+func getProcessLimitSize() int {
+	batchSize := runtime.NumCPU() * 4
+	processLimitSize := batchSize / maxPeer
+	if processLimitSize < minPeerLimit {
+		return minPeerLimit
+	}
+	return processLimitSize
 }

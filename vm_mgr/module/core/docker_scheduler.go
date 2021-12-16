@@ -188,7 +188,7 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
 	if peerBalance.strategy == SLeast {
 
-		if process.Size() <= processWaitingQueueLimitSize {
+		if process.Size() <= peerLimit {
 			process.AddTxWaitingQueue(txRequest)
 			return
 		} else {

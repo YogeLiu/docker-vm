@@ -9,9 +9,9 @@ type DockerVMConfig struct {
 	LogInConsole          bool   `mapstructure:"log_in_console"`
 	LogLevel              string `mapstructure:"log_level"`
 	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
-	TxSize                uint32 `mapstructure:"tx_size"`
 	UserNum               uint32 `mapstructure:"user_num"`
 	TxTimeLimit           uint32 `mapstructure:"tx_time_limit"`
+	MaxConcurrency        uint32 `mapstructure:"max_concurrency"`
 }
 
 // DockerContainerConfig docker container settings
@@ -34,14 +34,14 @@ type DockerContainerConfig struct {
 type Bool int32
 
 const (
-	ENV_ENABLE_UDS     = "ENV_ENABLE_UDS"
-	ENV_TX_SIZE        = "ENV_TX_SIZE"
-	ENV_USER_NUM       = "ENV_USER_NUM"
-	ENV_TX_TIME_LIMIT  = "ENV_TX_TIME_LIMIT"
-	ENV_LOG_LEVEL      = "ENV_LOG_LEVEL"
-	ENV_LOG_IN_CONSOLE = "ENV_LOG_IN_CONSOLE"
-	EnvEnablePprof     = "ENV_ENABLE_PPROF"
-	EnvPprofPort       = "ENV_PPROF_PORT"
+	ENV_ENABLE_UDS      = "ENV_ENABLE_UDS"
+	ENV_USER_NUM        = "ENV_USER_NUM"
+	ENV_TX_TIME_LIMIT   = "ENV_TX_TIME_LIMIT"
+	ENV_LOG_LEVEL       = "ENV_LOG_LEVEL"
+	ENV_LOG_IN_CONSOLE  = "ENV_LOG_IN_CONSOLE"
+	ENV_MAX_CONCURRENCY = "ENV_MAX_CONCURRENCY"
+	EnvEnablePprof      = "ENV_ENABLE_PPROF"
+	EnvPprofPort        = "ENV_PPROF_PORT"
 
 	// ContractsDir dir save executable contract
 	ContractsDir = "contracts"

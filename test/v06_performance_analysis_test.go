@@ -25,8 +25,8 @@ const (
 
 	timeFormat = "2006-01-02 15:04:05"
 
-	loopNum   = 200
-	threadNum = 2500
+	loopNum   = 100
+	threadNum = 2000
 )
 
 var (
@@ -68,9 +68,9 @@ func TestDockerGoPerformance(t *testing.T) {
 	performTxContext = InitContextTest()
 	mockLogger = logger.GetLogger(logger.MODULE_VM)
 
-	//testDeployCut()
+	testDeployCut()
 	//testCutSave()
-	testDeployZXL()
+	//testDeployZXL()
 
 	performMultipleTxs(loopNum, threadNum)
 
@@ -112,8 +112,8 @@ func performMultipleTxs(loopNum, threadNum int) {
 				startTimeCh <- time.Now().UnixNano()
 
 				//testCutFindByHash()
-				//testCutSave()
-				testZXLAddPoint()
+				testCutSave()
+				//testZXLAddPoint()
 
 				endTimeCh <- time.Now().UnixNano()
 
@@ -155,10 +155,10 @@ func performMultipleTxs(loopNum, threadNum int) {
 
 	fmt.Println("--------- Finished analysis --------------")
 
-	resultFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_result.log", performContractName, loopNum, threadNum)
-	chartFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_chart.html", performContractName, loopNum, threadNum)
-	PrintGroupRunResultAndDraw("result", groupResultList, resultFileName, chartFileName)
-	time.Sleep(3 * time.Second)
+	//resultFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_result.log", performContractName, loopNum, threadNum)
+	//chartFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_chart.html", performContractName, loopNum, threadNum)
+	//PrintGroupRunResultAndDraw("result", groupResultList, resultFileName, chartFileName)
+	//time.Sleep(3 * time.Second)
 }
 
 // ============================= contract_cut functions ===============================

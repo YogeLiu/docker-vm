@@ -414,8 +414,6 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
 		config.ENV_ENABLE_UDS, m.dockerVMConfig.DockerVMUDSOpen))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_TX_SIZE, m.dockerVMConfig.TxSize))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
 		config.ENV_USER_NUM, m.dockerVMConfig.UserNum))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
 		config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
@@ -423,6 +421,8 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 		config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
 		config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
+		config.ENV_MAX_CONCURRENCY, m.dockerVMConfig.MaxConcurrency))
 
 	// add test port just for mac development and pprof
 	// if using this feature, make sure close enable_uds in yml
