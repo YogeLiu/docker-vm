@@ -35,7 +35,7 @@ const (
 
 	crossContractsChanSize = 50
 
-	queueLimitFactor = 0.6
+	queueLimitFactor = 3 / 4
 )
 
 type DockerScheduler struct {

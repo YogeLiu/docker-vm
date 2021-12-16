@@ -31,7 +31,7 @@ import (
 
 const (
 	processWaitingTime      = 60 * 10
-	processWaitingQueueSize = 1000
+	processWaitingQueueSize = 30
 )
 
 type ProcessMgrInterface interface {
