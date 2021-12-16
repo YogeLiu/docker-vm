@@ -10,6 +10,7 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -30,8 +31,11 @@ import (
 )
 
 const (
-	processWaitingTime      = 60 * 10
-	processWaitingQueueSize = 30
+	processWaitingTime = 60 * 10
+)
+
+var (
+	processWaitingQueueSize, processWaitingQueueLimitSize = getProcessCapacity()
 )
 
 type ProcessMgrInterface interface {
@@ -324,4 +328,15 @@ func (p *Process) resetProcessTimer() {
 		<-p.expireTimer.C
 	}
 	p.expireTimer.Reset(processWaitingTime * time.Second)
+}
+
+func getProcessCapacity() (int, int) {
+	batchSize := runtime.NumCPU() * 4
+	maxProcessNum := 8
+	factor := 2
+
+	processLimitSize := batchSize / maxProcessNum
+	processMaxSize := processLimitSize * factor
+
+	return processMaxSize, processLimitSize
 }

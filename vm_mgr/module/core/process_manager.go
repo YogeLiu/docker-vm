@@ -241,6 +241,7 @@ func (pm *ProcessManager) removePeerFromBalance(key string, idx int) {
 // ============================== Peer Depth functions ================================
 
 func (pm *ProcessManager) addFirstPeerIntoDepth(processName string, process *Process) {
+	pm.logger.Debugf("add first peer into depth [%s]", process.processName)
 	newPeerDepth := &PeerDepth{
 		peers: [protocol2.CallContractDepth + 1]*Process{},
 		size:  0,
@@ -251,6 +252,7 @@ func (pm *ProcessManager) addFirstPeerIntoDepth(processName string, process *Pro
 }
 
 func (pm *ProcessManager) removeFirstPeerFromDepth(processName string) {
+	pm.logger.Debugf("remove first peer from depth [%s]", processName)
 	delete(pm.depthTable, processName)
 }
 

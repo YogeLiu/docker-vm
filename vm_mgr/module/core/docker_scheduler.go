@@ -34,8 +34,6 @@ const (
 	ResponseChanSize = 1000
 
 	crossContractsChanSize = 50
-
-	queueLimitFactor = 3 / 4
 )
 
 type DockerScheduler struct {
@@ -190,7 +188,7 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
 	if peerBalance.strategy == SLeast {
 
-		if process.Size() <= processWaitingQueueSize*queueLimitFactor {
+		if process.Size() <= processWaitingQueueLimitSize {
 			process.AddTxWaitingQueue(txRequest)
 			return
 		} else {
