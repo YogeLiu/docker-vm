@@ -37,8 +37,6 @@ ci:
 	go test -v ./...
 	make clean
 
-	
-
 
 
 
