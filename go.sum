@@ -1,12 +1,13 @@
 bazil.org/fuse v0.0.0-20160811212531-371fbbdaa898/go.mod h1:Xbm+BRKSBEpa4q4hTSxohYNQpsxXPbPry4JJWOB3LB8=
 chainmaker.org/chainmaker/common/v2 v2.1.1-0.20211214041159-fe0b2240f08c h1:inlbotB3aXVMuXebMpvaH5mbUWMRVbcvikBTronbD2Y=
 chainmaker.org/chainmaker/common/v2 v2.1.1-0.20211214041159-fe0b2240f08c/go.mod h1:mxLliE20J5mML421llb1T8vj9VtULEMGDA88TITgl68=
-chainmaker.org/chainmaker/localconf/v2 v2.1.1-0.20211214124610-bb7620382194 h1:dAJ7ZvgbReH7KzzFLkOnN4cbHzijXR2QiqFJzg0Uj4s=
-chainmaker.org/chainmaker/localconf/v2 v2.1.1-0.20211214124610-bb7620382194/go.mod h1:ylpW9ir14psujTtKb6qQW81aKhnhjzWW3n9XpjD9S0A=
+chainmaker.org/chainmaker/localconf/v2 v2.1.1-0.20211216112331-2bee015483d0 h1:2RiDq8NNVYodCQy9PL6NwqYWqHJVSDV+090vBkHqZPE=
+chainmaker.org/chainmaker/localconf/v2 v2.1.1-0.20211216112331-2bee015483d0/go.mod h1:ylpW9ir14psujTtKb6qQW81aKhnhjzWW3n9XpjD9S0A=
 chainmaker.org/chainmaker/logger/v2 v2.1.1-0.20211214124250-621f11b35ab0 h1:62Lqj463DA9D9g+B8Ciy9RgVf9KmP+4Ayyu0MHiGIJs=
 chainmaker.org/chainmaker/logger/v2 v2.1.1-0.20211214124250-621f11b35ab0/go.mod h1:pGuJzxvh/JywvHX2+ezy+Xts/Pajw4PGspKGc27U1ow=
-chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20211214073209-1288f39035e8 h1:9GhdNu4qQW8UawoSEoLwDJfHIb3j9n5DcgcKGJQCH3A=
 chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20211214073209-1288f39035e8/go.mod h1:gDZodc1Kp6snzGXugS/REqfCqNNizhniQmjeOKUVf64=
+chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20211215062821-d83f1382c35e h1:mcfOdLbFFci8QmegxJcw+AfXYe1qQm+PXRFoHYfL/vs=
+chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20211215062821-d83f1382c35e/go.mod h1:gDZodc1Kp6snzGXugS/REqfCqNNizhniQmjeOKUVf64=
 chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211214124103-9512460ad844 h1:VvNMvKSHxel5y2dxbB9TR6Cz6N7S3kXMm2SsAhrI9sE=
 chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211214124103-9512460ad844/go.mod h1:D3B4Ss0Ii1ga1TWBteOuxtOeDZkh4ccExvzZsGK1Mj0=
 chainmaker.org/chainmaker/utils/v2 v2.1.1-0.20211214124429-d110e27a8fa2 h1:CCZAJuiCyNBYAUxP9aNcOX0Rk1xlT8HHC9FDqTcNJj8=

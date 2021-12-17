@@ -4,9 +4,9 @@ go 1.15
 
 require (
 	chainmaker.org/chainmaker/common/v2 v2.1.1-0.20211214041159-fe0b2240f08c
-	chainmaker.org/chainmaker/localconf/v2 v2.1.1-0.20211214124610-bb7620382194
+	chainmaker.org/chainmaker/localconf/v2 v2.1.1-0.20211216112331-2bee015483d0
 	chainmaker.org/chainmaker/logger/v2 v2.1.1-0.20211214124250-621f11b35ab0
-	chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20211214073209-1288f39035e8
+	chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20211215062821-d83f1382c35e
 	chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211214124103-9512460ad844
 	chainmaker.org/chainmaker/utils/v2 v2.1.1-0.20211214124429-d110e27a8fa2
 	github.com/Microsoft/go-winio v0.5.0 // indirect
