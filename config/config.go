@@ -16,7 +16,7 @@ type DockerVMConfig struct {
 	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
 	TxSize                uint32 `mapstructure:"tx_size"`
 	UserNum               uint32 `mapstructure:"user_num"`
-	TxTimeLimit           uint32 `mapstructure:"tx_time_limit"`
+	TxTimeLimit           uint32 `mapstructure:"time_limit"`
 }
 
 // DockerContainerConfig docker container settings
