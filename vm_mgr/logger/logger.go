@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"

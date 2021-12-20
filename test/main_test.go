@@ -9,7 +9,7 @@ import (
 	"chainmaker.org/chainmaker/protocol/v2"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-	dockergo "chainmaker.org/chainmaker/vm-docker-go"
+	dockergo "chainmaker.org/chainmaker/vm-docker-go/v2"
 )
 
 /*

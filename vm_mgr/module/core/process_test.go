@@ -16,12 +16,12 @@ import (
 	"testing"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/security"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"github.com/golang/mock/gomock"
 	"go.uber.org/zap"
 )

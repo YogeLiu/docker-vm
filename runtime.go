@@ -21,9 +21,9 @@ import (
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/config"
-	"chainmaker.org/chainmaker/vm-docker-go/gas"
-	"chainmaker.org/chainmaker/vm-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"github.com/gogo/protobuf/proto"
 )
 

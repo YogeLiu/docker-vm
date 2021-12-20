@@ -11,11 +11,11 @@ import (
 	"io"
 	"sync"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 )

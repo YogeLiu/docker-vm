@@ -11,17 +11,17 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb_sdk/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
 
 	"golang.org/x/sync/singleflight"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"go.uber.org/zap"
 )
 

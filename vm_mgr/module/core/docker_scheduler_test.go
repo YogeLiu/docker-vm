@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb_sdk/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 )
@@ -226,7 +226,7 @@ func TestDockerScheduler_GetTxReqCh(t *testing.T) {
 
 	for _, tt := range tests {
 		go func() {
-			for  {
+			for {
 				tt.fields.txReqCh <- &protogo.TxRequest{
 					TxId:            "txId",
 					ContractName:    contractName,
@@ -263,7 +263,7 @@ func TestDockerScheduler_GetTxResponseCh(t *testing.T) {
 
 	for _, tt := range tests {
 		go func() {
-			for  {
+			for {
 				tt.fields.txResponseCh <- &protogo.TxResponse{
 					TxId: "txId",
 				}

@@ -7,11 +7,11 @@ package core
 import (
 	"sync"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 
 	"chainmaker.org/chainmaker/protocol/v2"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 
 	"go.uber.org/zap"
 )
