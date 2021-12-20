@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
 	commonCrt "chainmaker.org/chainmaker/common/v2/cert"
@@ -41,6 +42,7 @@ import (
 const (
 	mountContractDir = "contracts"
 	msgIterIsNil     = "iterator is nil"
+	timeout          = 5000 // tx execution timeout(milliseconds)
 )
 
 var (
@@ -139,128 +141,136 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	// send message to tx chan
 	r.Client.GetTxSendCh() <- cdmMessage
 
+	timeoutC := time.After(timeout * time.Millisecond)
 	// wait this chan
 	for {
-		recvMsg := <-responseCh
+		select {
+		case recvMsg := <-responseCh:
+			switch recvMsg.Type {
+			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
 
-		switch recvMsg.Type {
-		case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
+				getByteCodeResponse := r.handleGetByteCodeRequest(txId, recvMsg, byteCode)
+				r.Client.GetStateResponseSendCh() <- getByteCodeResponse
 
-			getByteCodeResponse := r.handleGetByteCodeRequest(txId, recvMsg, byteCode)
-			r.Client.GetStateResponseSendCh() <- getByteCodeResponse
+			case protogo.CDMType_CDM_TYPE_GET_STATE:
 
-		case protogo.CDMType_CDM_TYPE_GET_STATE:
+				getStateResponse, pass := r.handleGetStateRequest(txId, recvMsg, txSimContext)
 
-			getStateResponse, pass := r.handleGetStateRequest(txId, recvMsg, txSimContext)
-
-			if pass {
-				gasUsed, err = gas.GetStateGasUsed(gasUsed, getStateResponse.Payload)
-				if err != nil {
-					getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
-					getStateResponse.Payload = nil
-					getStateResponse.Message = err.Error()
+				if pass {
+					gasUsed, err = gas.GetStateGasUsed(gasUsed, getStateResponse.Payload)
+					if err != nil {
+						getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
+						getStateResponse.Payload = nil
+						getStateResponse.Message = err.Error()
+					}
 				}
-			}
 
-			r.Client.GetStateResponseSendCh() <- getStateResponse
+				r.Client.GetStateResponseSendCh() <- getStateResponse
 
-		case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-			// construct response
-			var txResponse protogo.TxResponse
-			_ = proto.UnmarshalMerge(recvMsg.Payload, &txResponse)
+			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
+				// construct response
+				var txResponse protogo.TxResponse
+				_ = proto.UnmarshalMerge(recvMsg.Payload, &txResponse)
 
-			// tx fail, just return without merge read write map and events
-			if txResponse.Code != 0 {
-				contractResult.Code = 1
+				// tx fail, just return without merge read write map and events
+				if txResponse.Code != 0 {
+					contractResult.Code = 1
+					contractResult.Result = txResponse.Result
+					contractResult.Message = txResponse.Message
+					contractResult.GasUsed = gasUsed
+
+					return contractResult, protocol.ExecOrderTxTypeNormal
+				}
+
+				contractResult.Code = 0
 				contractResult.Result = txResponse.Result
 				contractResult.Message = txResponse.Message
-				contractResult.GasUsed = gasUsed
 
-				return contractResult, protocol.ExecOrderTxTypeNormal
-			}
-
-			contractResult.Code = 0
-			contractResult.Result = txResponse.Result
-			contractResult.Message = txResponse.Message
-
-			// merge the sim context write map
-			gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
-			if err != nil {
-				contractResult.GasUsed = gasUsed
-				return r.errorResult(contractResult, err, "fail to put in sim context")
-			}
-
-			// merge events
-			var contractEvents []*commonPb.ContractEvent
-
-			if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
-				err = fmt.Errorf("too many event data")
-				return r.errorResult(contractResult, err, "fail to put event data")
-			}
-
-			for _, event := range txResponse.Events {
-				contractEvent := &commonPb.ContractEvent{
-					Topic:           event.Topic,
-					TxId:            txId,
-					ContractName:    event.ContractName,
-					ContractVersion: event.ContractVersion,
-					EventData:       event.Data,
-				}
-
-				// emit event gas used calc and check gas limit
-				gasUsed, err = gas.EmitEventGasUsed(gasUsed, contractEvent)
+				// merge the sim context write map
+				gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
-					return r.errorResult(contractResult, err, err.Error())
+					return r.errorResult(contractResult, err, "fail to put in sim context")
 				}
 
-				contractEvents = append(contractEvents, contractEvent)
+				// merge events
+				var contractEvents []*commonPb.ContractEvent
+
+				if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
+					err = fmt.Errorf("too many event data")
+					return r.errorResult(contractResult, err, "fail to put event data")
+				}
+
+				for _, event := range txResponse.Events {
+					contractEvent := &commonPb.ContractEvent{
+						Topic:           event.Topic,
+						TxId:            txId,
+						ContractName:    event.ContractName,
+						ContractVersion: event.ContractVersion,
+						EventData:       event.Data,
+					}
+
+					// emit event gas used calc and check gas limit
+					gasUsed, err = gas.EmitEventGasUsed(gasUsed, contractEvent)
+					if err != nil {
+						contractResult.GasUsed = gasUsed
+						return r.errorResult(contractResult, err, err.Error())
+					}
+
+					contractEvents = append(contractEvents, contractEvent)
+				}
+
+				contractResult.GasUsed = gasUsed
+				contractResult.ContractEvent = contractEvents
+
+				close(responseCh)
+				return contractResult, specialTxType
+
+			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
+				var createKvIteratorResponse *protogo.CDMMessage
+				specialTxType = protocol.ExecOrderTxTypeIterator
+				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(txId, recvMsg, txSimContext, gasUsed)
+
+				r.Client.GetStateResponseSendCh() <- createKvIteratorResponse
+
+			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
+				var consumeKvIteratorResponse *protogo.CDMMessage
+				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(txId, recvMsg, txSimContext, gasUsed)
+
+				r.Client.GetStateResponseSendCh() <- consumeKvIteratorResponse
+
+			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
+				var createKeyHistoryIterResp *protogo.CDMMessage
+				specialTxType = protocol.ExecOrderTxTypeIterator
+				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(txId, recvMsg, txSimContext, gasUsed)
+				r.Client.GetStateResponseSendCh() <- createKeyHistoryIterResp
+
+			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER:
+				var consumeKeyHistoryResp *protogo.CDMMessage
+				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(txId, recvMsg, txSimContext, gasUsed)
+				r.Client.GetStateResponseSendCh() <- consumeKeyHistoryResp
+
+			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
+				var getSenderAddressResp *protogo.CDMMessage
+				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(txId, txSimContext, gasUsed)
+				r.Client.GetStateResponseSendCh() <- getSenderAddressResp
+
+			default:
+				contractResult.GasUsed = gasUsed
+				return r.errorResult(
+					contractResult,
+					fmt.Errorf("unknow type"),
+					"fail to receive request",
+				)
 			}
-
-			contractResult.GasUsed = gasUsed
-			contractResult.ContractEvent = contractEvents
-
-			close(responseCh)
-			return contractResult, specialTxType
-
-		case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
-			var createKvIteratorResponse *protogo.CDMMessage
-			specialTxType = protocol.ExecOrderTxTypeIterator
-			createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(txId, recvMsg, txSimContext, gasUsed)
-
-			r.Client.GetStateResponseSendCh() <- createKvIteratorResponse
-
-		case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
-			var consumeKvIteratorResponse *protogo.CDMMessage
-			consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(txId, recvMsg, txSimContext, gasUsed)
-
-			r.Client.GetStateResponseSendCh() <- consumeKvIteratorResponse
-
-		case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
-			var createKeyHistoryIterResp *protogo.CDMMessage
-			specialTxType = protocol.ExecOrderTxTypeIterator
-			createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(txId, recvMsg, txSimContext, gasUsed)
-			r.Client.GetStateResponseSendCh() <- createKeyHistoryIterResp
-
-		case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER:
-			var consumeKeyHistoryResp *protogo.CDMMessage
-			consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(txId, recvMsg, txSimContext, gasUsed)
-			r.Client.GetStateResponseSendCh() <- consumeKeyHistoryResp
-
-		case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-			var getSenderAddressResp *protogo.CDMMessage
-			getSenderAddressResp, gasUsed = r.handleGetSenderAddress(txId, txSimContext, gasUsed)
-			r.Client.GetStateResponseSendCh() <- getSenderAddressResp
-
-		default:
+		case <-timeoutC:
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(
 				contractResult,
-				fmt.Errorf("unknow type"),
+				fmt.Errorf("docker-vm-go timeout"),
 				"fail to receive request",
 			)
 		}
-
 	}
 
 }
