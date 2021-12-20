@@ -1,4 +1,4 @@
-VERSION=develop
+VERSION=v2.2.0_alpha_qc
 
 build-test:
 	cd test/scripts && ./prepare.sh
