@@ -1,3 +1,4 @@
+# same as imageVersion in docker_manager.go
 VERSION=v2.1.0.zxl
 
 build-test:

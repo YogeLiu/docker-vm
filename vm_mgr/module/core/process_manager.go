@@ -66,6 +66,7 @@ type ProcessManager struct {
 	logger       *zap.SugaredLogger
 	balanceTable map[string]*PeerBalance
 	depthTable   map[string]*PeerDepth
+	crossTable   sync.Map
 	mutex        sync.Mutex
 }
 
@@ -80,10 +81,11 @@ func NewProcessManager() *ProcessManager {
 		logger:       pmLogger,
 		balanceTable: make(map[string]*PeerBalance),
 		depthTable:   make(map[string]*PeerDepth),
+		crossTable:   sync.Map{},
 	}
 }
 
-// SetStrategy todo change info to debug
+// SetStrategy
 func (pm *ProcessManager) setStrategy(key string, _strategy int) {
 
 	pm.logger.Infof("set process manager strategy [%d]", _strategy)
@@ -128,11 +130,32 @@ func (pm *ProcessManager) ReleaseProcess(processName string) {
 }
 
 func (pm *ProcessManager) RegisterCrossProcess(initialProcessName string, calledProcess *Process) {
+	pm.logger.Debugf("register cross process [%s]", calledProcess.processName)
+	pm.crossTable.Store(calledProcess.processName, calledProcess)
 	pm.addPeerIntoDepth(initialProcessName, calledProcess)
 }
 
-func (pm *ProcessManager) ReleaseCrossProcess(initialProcessName string, currentHeight uint32) {
+func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, initialProcessName string, currentHeight uint32) {
+	pm.logger.Debugf("release cross process [%s]", crossProcessName)
+	pm.crossTable.Delete(crossProcessName)
 	pm.removePeerFromDepth(initialProcessName, currentHeight)
+}
+
+func (pm *ProcessManager) GetPeer(processName string) *Process {
+	pm.logger.Debugf("get process [%s]", processName)
+	nameList := strings.Split(processName, "#")
+
+	if len(nameList) == 1 {
+		cp, _ := pm.crossTable.Load(processName)
+		crossProcess := cp.(*Process)
+		return crossProcess
+	}
+
+	key := nameList[0]
+	idx, _ := strconv.Atoi(nameList[1])
+
+	peerBalance := pm.getPeerBalance(key)
+	return peerBalance.peers[idx]
 }
 
 // GetAvailableProcess return one process from peer balance based on current strategy
@@ -220,17 +243,6 @@ func (pm *ProcessManager) getPeerFromBalance(key string) *Process {
 
 }
 
-func (pm *ProcessManager) GetPeer(processName string) *Process {
-	nameList := strings.Split(processName, "#")
-
-	key := nameList[0]
-	idx, _ := strconv.Atoi(nameList[1])
-
-	peerBalance := pm.getPeerBalance(key)
-	return peerBalance.peers[idx]
-
-}
-
 func (pm *ProcessManager) getPeerBalance(key string) *PeerBalance {
 	peerBalance, ok := pm.balanceTable[key]
 	if ok {
@@ -274,7 +286,7 @@ func (pm *ProcessManager) removeFirstPeerFromDepth(processName string) {
 
 func (pm *ProcessManager) addPeerIntoDepth(initialProcessName string, calledProcess *Process) {
 
-	pm.logger.Debugf("register cross process %s with initial process name %s",
+	pm.logger.Debugf("add cross process %s with initial process name %s",
 		calledProcess.processName, initialProcessName)
 
 	peerDepth, ok := pm.depthTable[initialProcessName]

@@ -149,7 +149,7 @@ func TestProcessManager_ReleaseCrossProcess(t *testing.T) {
 	crossProcess1 := newProcess("cross1", true)
 	processManager.RegisterCrossProcess("contract:1.0#0", crossProcess1)
 
-	processManager.ReleaseCrossProcess("contract:1.0#0", 2)
+	processManager.ReleaseCrossProcess("cross1", "contract:1.0#0", 2)
 
 	balance0, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 1, balance0.size)
@@ -161,7 +161,7 @@ func TestProcessManager_ReleaseCrossProcess(t *testing.T) {
 	assert.Equal(t, "contract:1.0#0", peerDepth0.peers[0].processName)
 	assert.Equal(t, "cross0", peerDepth0.peers[1].processName)
 
-	processManager.ReleaseCrossProcess("contract:1.0#0", 1)
+	processManager.ReleaseCrossProcess("cross0", "contract:1.0#0", 1)
 
 	balance1, _ := processManager.balanceTable[processNamePrefix]
 	assert.Equal(t, 1, balance1.size)

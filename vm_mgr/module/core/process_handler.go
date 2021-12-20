@@ -317,6 +317,9 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 		},
 	}
 
+	h.logger.Infof("===================")
+	h.logger.Infof("call contract tx: %v", callContractTx)
+
 	// register response chan, key = txID + contract height
 	responseChId := crossContractChKey(callContractTx.TxId, callContractTx.TxContext.CurrentHeight)
 	responseCh := make(chan *SDKProtogo.DMSMessage)

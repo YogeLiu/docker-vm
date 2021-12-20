@@ -161,6 +161,11 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 
 func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
+	s.logger.Infof("============")
+	s.logger.Infof("txrequest: %v", txRequest)
+
+	fmt.Println("===========hahaha================")
+
 	var (
 		err     error
 		process *Process
@@ -348,9 +353,6 @@ func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxReq
 	processName := s.constructCrossContractProcessName(crossContractTx)
 
 	newProcess := NewCrossProcess(user, crossContractTx, s, processName, contractPath, s.processManager)
-	// todo delete register new process here
-	// todo and validate cross process
-	//s.processManager.RegisterNewProcess(processName, newProcess)
 
 	// register cross process
 	s.processManager.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newProcess)
@@ -362,7 +364,7 @@ func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxReq
 	}
 
 	txContext := newProcess.Handler.TxRequest.TxContext
-	s.processManager.ReleaseCrossProcess(txContext.OriginalProcessName, txContext.CurrentHeight)
+	s.processManager.ReleaseCrossProcess(newProcess.processName, txContext.OriginalProcessName, txContext.CurrentHeight)
 	_ = s.userController.FreeUser(newProcess.user)
 }
 
@@ -389,13 +391,16 @@ func (s *DockerScheduler) returnErrorCrossContractResponse(crossContractTx *prot
 }
 
 // processName: contractName:contractVersion
+// real processName: contractName:contractVersion#index
 func (s *DockerScheduler) constructProcessName(tx *protogo.TxRequest) string {
 	handlerName := tx.ContractName + ":" + tx.ContractVersion
 	return handlerName
 }
 
+// cross processName: txId:height
 func (s *DockerScheduler) constructCrossContractProcessName(tx *protogo.TxRequest) string {
-	return tx.TxId + ":" + strconv.FormatUint(uint64(tx.TxContext.CurrentHeight), 10)
+	return tx.TxId + ":" +
+		strconv.FormatUint(uint64(tx.TxContext.CurrentHeight), 10)
 }
 
 // constructContractKey contractKey: contractName:contractVersion
