@@ -42,7 +42,7 @@ import (
 const (
 	mountContractDir = "contracts"
 	msgIterIsNil     = "iterator is nil"
-	timeout          = 1000 // tx execution timeout(milliseconds)
+	timeout          = 5000 // tx execution timeout(milliseconds)
 )
 
 var (
@@ -268,7 +268,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			return r.errorResult(
 				contractResult,
 				fmt.Errorf("docker-vm-go timeout"),
-				"waiting docker-vm-go response timeout",
+				"fail to receive request",
 			)
 		}
 	}
