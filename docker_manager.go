@@ -560,7 +560,7 @@ func (m *DockerManager) createTestContainer() error {
 		PortBindings: nat.PortMap{
 			openPort: []nat.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP:   "127.0.0.1",
 					HostPort: hostPort,
 				},
 			},

@@ -161,11 +161,6 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 
 func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
-	s.logger.Infof("============")
-	s.logger.Infof("txrequest: %v", txRequest)
-
-	fmt.Println("===========hahaha================")
-
 	var (
 		err     error
 		process *Process

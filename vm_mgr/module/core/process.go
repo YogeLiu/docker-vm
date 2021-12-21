@@ -201,7 +201,7 @@ func (p *Process) LaunchProcess() error {
 		if p.isCrossProcess {
 			p.logger.Errorf("cross process fail: [%s], [%s]", stderr.String(), err)
 		} else {
-			p.logger.Errorf("tx fail: [%s], [%s]", stderr.String(), err)
+			p.logger.Errorf("tx [%s] fail: [%s], [%s]", p.Handler.TxRequest.TxId, stderr.String(), err)
 		}
 
 		// process fail because exceed main process max waiting time

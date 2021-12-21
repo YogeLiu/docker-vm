@@ -534,7 +534,7 @@ func (h *ProcessHandler) startTimer() {
 	if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
 		<-h.txExpireTimer.C
 	}
-	h.txExpireTimer.Reset(txDuration * time.Second)
+	h.txExpireTimer.Reset(time.Duration(config.SandBoxTimeout) * time.Second)
 }
 
 func (h *ProcessHandler) stopTimer() {

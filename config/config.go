@@ -10,7 +10,7 @@ type DockerVMConfig struct {
 	LogLevel              string `mapstructure:"log_level"`
 	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
 	UserNum               uint32 `mapstructure:"user_num"`
-	TxTimeLimit           uint32 `mapstructure:"tx_time_limit"`
+	TxTimeLimit           uint32 `mapstructure:"time_limit"`
 	MaxConcurrency        uint32 `mapstructure:"max_concurrency"`
 }
 
