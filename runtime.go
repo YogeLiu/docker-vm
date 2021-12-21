@@ -99,7 +99,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	}
 
 	//init contract gas used calc and check gas limit
-	gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode, txSimContext)
+	gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode)
 	if err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
