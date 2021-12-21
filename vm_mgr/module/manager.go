@@ -19,7 +19,7 @@ type ManagerImpl struct {
 	scheduler      *core.DockerScheduler
 	userController *core.UsersManager
 	securityEnv    *security2.SecurityEnv
-	processPool    *core.ProcessPool
+	processManager *core.ProcessManager
 	logger         *zap.SugaredLogger
 }
 
@@ -37,10 +37,10 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	userController := core.NewUsersManager()
 
 	// new process pool
-	processPool := core.NewProcessPool()
+	processManager := core.NewProcessManager()
 
 	// new scheduler
-	scheduler := core.NewDockerScheduler(userController, processPool)
+	scheduler := core.NewDockerScheduler(userController, processManager)
 
 	// new docker manager to sandbox server
 	dmsRpcServer, err := rpc.NewDMSServer()
@@ -62,7 +62,7 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 		scheduler:      scheduler,
 		userController: userController,
 		securityEnv:    securityEnv,
-		processPool:    processPool,
+		processManager: processManager,
 		logger:         managerLogger,
 	}
 
@@ -83,7 +83,7 @@ func (m *ManagerImpl) InitContainer() {
 	}
 
 	// start dms server
-	dmsApiInstance := rpc.NewDMSApi(m.processPool)
+	dmsApiInstance := rpc.NewDMSApi(m.processManager)
 	if err = m.dmsRpcServer.StartDMSServer(dmsApiInstance); err != nil {
 		errorC <- err
 	}

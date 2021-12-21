@@ -37,7 +37,6 @@ type Scheduler interface {
 type UserController interface {
 	// GetAvailableUser get available user
 	GetAvailableUser() (*security.User, error)
-
 	// FreeUser free user
 	FreeUser(user *security.User) error
 }

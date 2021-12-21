@@ -44,7 +44,7 @@ func TestDockerGoCrossCall(t *testing.T) {
 		parameters2, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Equal(t, []byte("missing contract name"), result.Result)
-
+	//
 	// missing contract version
 	parameters3 := generateInitParams()
 	parameters3["method"] = []byte("cross_contract")
@@ -88,7 +88,7 @@ func TestDockerGoCrossCall(t *testing.T) {
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters6, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
-	//assert.Equal(t, []byte("exceed max depth"), result.Result)
+	assert.Equal(t, []byte("exceed max depth"), result.Result)
 
 	tearDownTest()
 

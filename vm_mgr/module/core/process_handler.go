@@ -319,6 +319,9 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 		},
 	}
 
+	h.logger.Infof("===================")
+	h.logger.Infof("call contract tx: %v", callContractTx)
+
 	// register response chan, key = txID + contract height
 	responseChId := crossContractChKey(callContractTx.TxId, callContractTx.TxContext.CurrentHeight)
 	responseCh := make(chan *SDKProtogo.DMSMessage)
@@ -558,7 +561,7 @@ func (h *ProcessHandler) startTimer() {
 	if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
 		<-h.txExpireTimer.C
 	}
-	h.txExpireTimer.Reset(txDuration * time.Second)
+	h.txExpireTimer.Reset(time.Duration(config.SandBoxTimeout) * time.Second)
 }
 
 func (h *ProcessHandler) stopTimer() {

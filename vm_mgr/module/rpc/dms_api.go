@@ -20,19 +20,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type ProcessPoolInterface interface {
-	RetrieveHandlerFromProcess(processName string) *core.ProcessHandler
+type ProcessManager interface {
+	GetPeer(processName string) *core.Process
 }
 
 type DMSApi struct {
-	logger      *zap.SugaredLogger
-	processPool ProcessPoolInterface
+	logger         *zap.SugaredLogger
+	processManager ProcessManager
 }
 
-func NewDMSApi(processPool ProcessPoolInterface) *DMSApi {
+func NewDMSApi(processManager ProcessManager) *DMSApi {
 	return &DMSApi{
-		logger:      logger.NewDockerLogger(logger.MODULE_CDM_SERVER, config.DockerLogDir),
-		processPool: processPool,
+		logger:         logger.NewDockerLogger(logger.MODULE_CDM_SERVER, config.DockerLogDir),
+		processManager: processManager,
 	}
 }
 
@@ -45,7 +45,11 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 		return err
 	}
 	processName := string(registerMsg.Payload)
-	handler := s.processPool.RetrieveHandlerFromProcess(processName)
+
+	// check cross contract or original contract
+	// todo
+	process := s.processManager.GetPeer(processName)
+	handler := process.Handler
 	handler.SetStream(stream)
 	s.logger.Debugf("get handler: %s", processName)
 

@@ -34,50 +34,64 @@ const (
 	processWaitingQueueSize = 1000
 )
 
-type ProcessPoolInterface interface {
-	RetrieveProcessContext(initialProcessName string) *ProcessContext
+type ProcessMgrInterface interface {
+	getPeerDepth(initialProcessName string) *PeerDepth
 }
 
+// Process id of process is index of process in process list
+// processName: contractName:contractVersion:index
+// crossProcessName: txId:currentHeight
 type Process struct {
-	processName          string
-	contractName         string
-	contractVersion      string
-	contractPath         string
-	cGroupPath           string
-	ProcessState         protogo.ProcessState
-	TxWaitingQueue       chan *protogo.TxRequest
-	txTrigger            chan bool
-	expireTimer          *time.Timer // process waiting time
-	logger               *zap.SugaredLogger
-	Handler              *ProcessHandler
-	user                 *security.User
-	cmd                  *exec.Cmd
-	processPoolInterface ProcessPoolInterface
-	isCrossProcess       bool
-	done                 uint32
-	mutex                sync.Mutex
+	processName    string
+	isCrossProcess bool
+
+	contractName    string
+	contractVersion string
+	contractPath    string
+
+	cGroupPath string
+	user       *security.User
+	cmd        *exec.Cmd
+
+	ProcessState     protogo.ProcessState
+	TxWaitingQueue   chan *protogo.TxRequest
+	waitingQueueSize int
+	txTrigger        chan bool
+	expireTimer      *time.Timer // process waiting time
+	Handler          *ProcessHandler
+
+	logger *zap.SugaredLogger
+
+	processMgr ProcessMgrInterface
+	done       uint32
+	mutex      sync.Mutex
 }
 
 // NewProcess new process, process working on main contract which is not called cross contract
 func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	processName, contractPath string, processPool ProcessPoolInterface) *Process {
+	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
-		isCrossProcess:  false,
-		processName:     processName,
+		processName:    processName,
+		isCrossProcess: false,
+
 		contractName:    txRequest.ContractName,
 		contractVersion: txRequest.ContractVersion,
-		ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-		TxWaitingQueue:  make(chan *protogo.TxRequest, processWaitingQueueSize),
-		txTrigger:       make(chan bool),
-		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		contractPath:    contractPath,
 
-		Handler:              nil,
-		user:                 user,
-		contractPath:         contractPath,
-		cGroupPath:           filepath.Join(config.CGroupRoot, config.ProcsFile),
-		processPoolInterface: processPool,
+		cGroupPath: filepath.Join(config.CGroupRoot, config.ProcsFile),
+		user:       user,
+
+		ProcessState:     protogo.ProcessState_PROCESS_STATE_CREATED,
+		TxWaitingQueue:   make(chan *protogo.TxRequest, processWaitingQueueSize),
+		waitingQueueSize: 0,
+		txTrigger:        make(chan bool),
+		expireTimer:      time.NewTimer(processWaitingTime * time.Second),
+		Handler:          nil,
+
+		logger: logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+
+		processMgr: processPool,
 	}
 
 	processHandler := NewProcessHandler(txRequest, scheduler, process)
@@ -87,24 +101,25 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 
 // NewCrossProcess new cross process, process working on called cross process
 func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	processName, contractPath string, processPool ProcessPoolInterface) *Process {
+	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
-		isCrossProcess:  true,
-		processName:     processName,
-		contractName:    txRequest.ContractName,
-		contractVersion: txRequest.ContractVersion,
-		ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-		TxWaitingQueue:  nil,
-		txTrigger:       nil,
-		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		isCrossProcess:   true,
+		processName:      processName,
+		contractName:     txRequest.ContractName,
+		contractVersion:  txRequest.ContractVersion,
+		ProcessState:     protogo.ProcessState_PROCESS_STATE_CREATED,
+		TxWaitingQueue:   nil,
+		waitingQueueSize: 0,
+		txTrigger:        nil,
+		expireTimer:      time.NewTimer(processWaitingTime * time.Second),
+		logger:           logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
-		Handler:              nil,
-		user:                 user,
-		contractPath:         contractPath,
-		cGroupPath:           filepath.Join(config.CGroupRoot, config.ProcsFile),
-		processPoolInterface: processPool,
+		Handler:      nil,
+		user:         user,
+		contractPath: contractPath,
+		cGroupPath:   filepath.Join(config.CGroupRoot, config.ProcsFile),
+		processMgr:   processPool,
 	}
 
 	processHandler := NewProcessHandler(txRequest, scheduler, process)
@@ -186,7 +201,7 @@ func (p *Process) LaunchProcess() error {
 		if p.isCrossProcess {
 			p.logger.Errorf("cross process fail: [%s], [%s]", stderr.String(), err)
 		} else {
-			p.logger.Errorf("tx fail: [%s], [%s]", stderr.String(), err)
+			p.logger.Errorf("tx [%s] fail: [%s], [%s]", p.Handler.TxRequest.TxId, stderr.String(), err)
 		}
 
 		// process fail because exceed main process max waiting time
@@ -209,13 +224,14 @@ func (p *Process) LaunchProcess() error {
 // InvokeProcess handle next tx
 func (p *Process) InvokeProcess() {
 
-	if len(p.TxWaitingQueue) == 0 {
+	if p.waitingQueueSize == 0 {
 		p.logger.Debugf("empty waiting queue")
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_WAITING)
 		return
 	}
 
 	nextTx := <-p.TxWaitingQueue
+	p.waitingQueueSize--
 	p.logger.Debugf("handle tx [%s]", nextTx.TxId[:5])
 
 	// update tx in handler
@@ -236,13 +252,17 @@ func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 
 	tx.TxContext.OriginalProcessName = p.processName
 	p.TxWaitingQueue <- tx
+	p.waitingQueueSize++
 
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_WAITING {
 		p.triggerProcessState()
 	}
 }
 
-// todo check need close after process end
+func (p *Process) Size() int {
+	return p.waitingQueueSize
+}
+
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
 
@@ -277,9 +297,9 @@ func (p *Process) killCrossProcess() {
 // kill main process when process encounter error
 func (p *Process) killProcess() {
 
-	processContext := p.processPoolInterface.RetrieveProcessContext(p.processName)
+	processContext := p.processMgr.getPeerDepth(p.processName)
 
-	for _, process := range processContext.processList {
+	for _, process := range processContext.peers {
 		if process != nil {
 			p.logger.Debugf("kill process: %s", process.processName)
 			_ = process.cmd.Process.Kill()
@@ -305,3 +325,5 @@ func (p *Process) resetProcessTimer() {
 	}
 	p.expireTimer.Reset(processWaitingTime * time.Second)
 }
+
+// todo: enable cross process retrieve

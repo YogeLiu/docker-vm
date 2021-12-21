@@ -391,15 +391,15 @@ func (m *MockProcessPoolInterface) EXPECT() *MockProcessPoolInterfaceMockRecorde
 }
 
 // RetrieveProcessContext mocks base method.
-func (m *MockProcessPoolInterface) RetrieveProcessContext(initialProcessName string) *ProcessContext {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetrieveProcessContext", initialProcessName)
-	ret0, _ := ret[0].(*ProcessContext)
-	return ret0
-}
+//func (m *MockProcessPoolInterface) RetrieveProcessContext(initialProcessName string) *ProcessContext {
+//	m.ctrl.T.Helper()
+//	ret := m.ctrl.Call(m, "RetrieveProcessContext", initialProcessName)
+//	ret0, _ := ret[0].(*ProcessContext)
+//	return ret0
+//}
 
-// RetrieveProcessContext indicates an expected call of RetrieveProcessContext.
-func (mr *MockProcessPoolInterfaceMockRecorder) RetrieveProcessContext(initialProcessName interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetrieveProcessContext", reflect.TypeOf((*MockProcessPoolInterface)(nil).RetrieveProcessContext), initialProcessName)
-}
+//// RetrieveProcessContext indicates an expected call of RetrieveProcessContext.
+//func (mr *MockProcessPoolInterfaceMockRecorder) RetrieveProcessContext(initialProcessName interface{}) *gomock.Call {
+//	mr.mock.ctrl.T.Helper()
+//	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetrieveProcessContext", reflect.TypeOf((*MockProcessPoolInterface)(nil).RetrieveProcessContext), initialProcessName)
+//}

@@ -94,6 +94,7 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Equal(t, []byte("unknown method"), result.Result)
+	fmt.Println(result)
 
-	tearDownTest()
+	//tearDownTest()
 }
