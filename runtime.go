@@ -142,6 +142,8 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	r.Client.GetTxSendCh() <- cdmMessage
 
 	timeoutC := time.After(timeout * time.Millisecond)
+
+	r.Log.Debugf("start tx [%s] in runtime", txRequest.TxId)
 	// wait this chan
 	for {
 		select {
@@ -224,6 +226,8 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				contractResult.ContractEvent = contractEvents
 
 				close(responseCh)
+
+				r.Log.Debugf("end tx [%s] in runtime", txResponse.TxId)
 				return contractResult, specialTxType
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:

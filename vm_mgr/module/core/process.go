@@ -232,7 +232,7 @@ func (p *Process) InvokeProcess() {
 
 	nextTx := <-p.TxWaitingQueue
 	p.waitingQueueSize--
-	p.logger.Debugf("handle tx [%s]", nextTx.TxId[:5])
+	p.logger.Debugf("start handle tx [%s] in process [%s]", nextTx.TxId, p.processName)
 
 	// update tx in handler
 	p.Handler.TxRequest = nextTx
