@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=v2.1.0
+VERSION=v2.2.0_alpha_qc
 
 docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`)
 
