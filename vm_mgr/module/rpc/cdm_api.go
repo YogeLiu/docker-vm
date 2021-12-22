@@ -184,6 +184,8 @@ func (cdm *CDMApi) handleTxRequest(cdmMessage *protogo.CDMMessage) error {
 		return err
 	}
 
+	cdm.logger.Debugf("cdm server receive tx [%s]", txRequest.TxId)
+
 	cdm.scheduler.GetTxReqCh() <- &txRequest
 
 	return nil

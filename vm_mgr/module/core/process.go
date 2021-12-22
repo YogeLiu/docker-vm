@@ -245,7 +245,7 @@ func (p *Process) InvokeProcess() {
 
 // AddTxWaitingQueue add tx with same contract to process waiting queue
 func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
-	p.logger.Debugf("add tx to waiting queue")
+	p.logger.Debugf("add tx [%s] to waiting queue in process [%s]", tx.TxId, p.processName)
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
