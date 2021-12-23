@@ -109,6 +109,7 @@ func (pm *ProcessManager) RegisterNewProcess(processNamePrefix string, process *
 	if success {
 		pm.addFirstPeerIntoDepth(process.processName, process)
 	}
+	process.Handler.processName = process.processName
 
 	return success
 }

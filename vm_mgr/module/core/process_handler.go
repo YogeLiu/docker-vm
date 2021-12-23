@@ -66,10 +66,9 @@ type ProcessHandler struct {
 }
 
 func NewProcessHandler(txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	process ProcessInterface, processName string) *ProcessHandler {
+	process ProcessInterface) *ProcessHandler {
 
 	handler := &ProcessHandler{
-		processName:   processName,
 		logger:        logger.NewDockerLogger(logger.MODULE_DMS_HANDLER, config.DockerLogDir),
 		TxRequest:     txRequest,
 		state:         created,
