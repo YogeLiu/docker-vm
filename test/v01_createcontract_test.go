@@ -1,3 +1,8 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 package test
 
 import (
@@ -6,7 +11,7 @@ import (
 	"log"
 	"testing"
 
-	docker_go "chainmaker.org/chainmaker/vm-docker-go"
+	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 	"github.com/stretchr/testify/assert"
 
 	"chainmaker.org/chainmaker/logger/v2"

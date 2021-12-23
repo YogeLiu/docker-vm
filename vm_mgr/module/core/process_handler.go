@@ -11,16 +11,16 @@ import (
 	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 
 	chainProtocol "chainmaker.org/chainmaker/protocol/v2"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb_sdk/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 )
@@ -558,7 +558,7 @@ func (h *ProcessHandler) startTimer() {
 	if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
 		<-h.txExpireTimer.C
 	}
-	h.txExpireTimer.Reset(txDuration * time.Second)
+	h.txExpireTimer.Reset(time.Duration(config.SandBoxTimeout) * time.Second)
 }
 
 func (h *ProcessHandler) stopTimer() {

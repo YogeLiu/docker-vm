@@ -1,3 +1,8 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 package config
 
 // DockerVMConfig match vm settings in chain maker yml
@@ -11,7 +16,7 @@ type DockerVMConfig struct {
 	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
 	TxSize                uint32 `mapstructure:"tx_size"`
 	UserNum               uint32 `mapstructure:"user_num"`
-	TxTimeLimit           uint32 `mapstructure:"tx_time_limit"`
+	TxTimeLimit           uint32 `mapstructure:"time_limit"`
 }
 
 // DockerContainerConfig docker container settings

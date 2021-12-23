@@ -1,4 +1,7 @@
-#!/bin/bash
+#
+# Copyright (C) BABEC. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 
 docker stop chain1-chainmaker-vm-docker-go-container
 docker rm chain1-chainmaker-vm-docker-go-container

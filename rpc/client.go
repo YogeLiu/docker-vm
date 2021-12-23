@@ -15,8 +15,8 @@ import (
 	"sync"
 
 	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/config"
-	"chainmaker.org/chainmaker/vm-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"google.golang.org/grpc"
 )
 

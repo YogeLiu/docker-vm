@@ -127,5 +127,5 @@ vm:
   uds_open: true                             # default is unix domain socket connection
   tx_size: 1000
   user_num: 100
-  time_limit: 20
+  time_limit: 2
 

@@ -1,4 +1,7 @@
-#!/bin/bash
+#
+# Copyright (C) BABEC. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 
 VERSION=v2.2.0_alpha_qc
 

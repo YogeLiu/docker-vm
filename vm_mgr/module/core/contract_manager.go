@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 )
