@@ -95,7 +95,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 		processMgr: processPool,
 	}
 
-	processHandler := NewProcessHandler(txRequest, scheduler, process)
+	processHandler := NewProcessHandler(txRequest, scheduler, process, processName)
 	process.Handler = processHandler
 	return process
 }
@@ -123,7 +123,7 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 		processMgr:   processPool,
 	}
 
-	processHandler := NewProcessHandler(txRequest, scheduler, process)
+	processHandler := NewProcessHandler(txRequest, scheduler, process, processName)
 	process.Handler = processHandler
 	return process
 }
@@ -189,6 +189,8 @@ func (p *Process) LaunchProcess() error {
 	// 2. process timeout: do nothing
 	// 3. tx timeout: return timeout error
 	if err = cmd.Wait(); err != nil {
+
+		p.logger.Warn("process [%s] stopped for tx [%s], err is [%s]", p.processName, p.Handler.TxRequest.TxId, err)
 
 		// process exceed max process waiting time, exit process, we assume it as normal exit
 		if p.ProcessState == protogo.ProcessState_PROCESS_STATE_EXPIRE {

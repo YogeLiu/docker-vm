@@ -11,13 +11,14 @@ import (
 	"strconv"
 	"time"
 
+	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
+
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
 
 	chainProtocol "chainmaker.org/chainmaker/protocol/v2"
 
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb_sdk/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
@@ -54,6 +55,7 @@ type ProcessInterface interface {
 // ProcessHandler used to handle each contract's message
 // to deal with each contract message
 type ProcessHandler struct {
+	processName   string
 	state         state
 	logger        *zap.SugaredLogger
 	TxRequest     *protogo.TxRequest
@@ -64,9 +66,10 @@ type ProcessHandler struct {
 }
 
 func NewProcessHandler(txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	process ProcessInterface) *ProcessHandler {
+	process ProcessInterface, processName string) *ProcessHandler {
 
 	handler := &ProcessHandler{
+		processName:   processName,
 		logger:        logger.NewDockerLogger(logger.MODULE_DMS_HANDLER, config.DockerLogDir),
 		TxRequest:     txRequest,
 		state:         created,
@@ -89,7 +92,7 @@ func (h *ProcessHandler) sendMessage(msg *SDKProtogo.DMSMessage) error {
 
 // HandleMessage handle incoming message from contract
 func (h *ProcessHandler) HandleMessage(msg *SDKProtogo.DMSMessage) error {
-	h.logger.Debugf("handle msg [%s]\n in state [%s]", msg, h.state)
+	h.logger.Debugf("process [%s] handle msg [%s]\n in state [%s]", h.processName, msg, h.state)
 
 	switch h.state {
 	case created:
@@ -406,12 +409,12 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		txResponse.Events = nil
 	}
 
-	h.logger.Debugf("ready to send response back for tx [%s]", txResponse.TxId)
+	h.logger.Debugf("ready to send response back for tx [%s] in process [%s]", txResponse.TxId, h.processName)
 
 	// give back result to scheduler  -- for multiple tx incoming
 	h.scheduler.GetTxResponseCh() <- txResponse
 
-	h.logger.Debugf("end handle tx [%s] in process", txResponse.TxId)
+	h.logger.Debugf("end handle tx [%s] in process [%s]", txResponse.TxId, h.processName)
 
 	h.stopTimer()
 	h.process.resetProcessTimer()

@@ -286,6 +286,8 @@ runProcess:
 	if err != nil && process.ProcessState != protogo.ProcessState_PROCESS_STATE_EXPIRE {
 		currentTx := process.Handler.TxRequest
 
+		s.logger.Warn("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName, process.Handler.TxRequest.TxId, err)
+
 		peerDepth := s.processManager.getPeerDepth(process.processName)
 		if peerDepth.size > 1 {
 			lastContractName := peerDepth.peers[peerDepth.size-1].contractName
