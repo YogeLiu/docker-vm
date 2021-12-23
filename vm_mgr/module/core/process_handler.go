@@ -89,7 +89,7 @@ func (h *ProcessHandler) sendMessage(msg *SDKProtogo.DMSMessage) error {
 
 // HandleMessage handle incoming message from contract
 func (h *ProcessHandler) HandleMessage(msg *SDKProtogo.DMSMessage) error {
-	h.logger.Debugf("handle msg [%s]\n", msg)
+	h.logger.Debugf("handle msg [%s]\n in state [%s]", msg, h.state)
 
 	switch h.state {
 	case created:
@@ -405,6 +405,8 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		txResponse.WriteMap = nil
 		txResponse.Events = nil
 	}
+
+	h.logger.Debugf("ready to send response back for tx [%s]", txResponse.TxId)
 
 	// give back result to scheduler  -- for multiple tx incoming
 	h.scheduler.GetTxResponseCh() <- txResponse

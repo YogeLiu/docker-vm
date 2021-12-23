@@ -170,7 +170,7 @@ func (cdm *CDMApi) constructCDMMessage(txResponseMsg *protogo.TxResponse) *proto
 }
 
 func (cdm *CDMApi) sendMessage(msg *protogo.CDMMessage) error {
-	cdm.logger.Debugf("send message [%s]", msg)
+	cdm.logger.Debugf("cdm send message [%s]", msg)
 	return cdm.stream.Send(msg)
 }
 
