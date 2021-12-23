@@ -68,6 +68,10 @@ type Process struct {
 	mutex      sync.Mutex
 }
 
+func (p *Process) ProcessName() string {
+	return p.processName
+}
+
 // NewProcess new process, process working on main contract which is not called cross contract
 func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
 	processName, contractPath string, processPool ProcessMgrInterface) *Process {
@@ -237,7 +241,7 @@ func (p *Process) InvokeProcess() {
 	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
 	err := p.Handler.HandleContract()
 	if err != nil {
-		p.logger.Errorf("fail to invoke contract: %s", err)
+		p.logger.Errorf("process [%s] fail to invoke contract: %s", p.processName, err)
 	}
 
 }

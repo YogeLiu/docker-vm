@@ -55,7 +55,7 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 
 	err = handler.HandleMessage(registerMsg)
 	if err != nil {
-		s.logger.Errorf("fail to handle register msg: [%s] -- msg: [%s]", err, registerMsg)
+		s.logger.Errorf("fail to handle register msg: [%s] -- msg: [%s], process [%s]", err, registerMsg, process.ProcessName())
 		return err
 	}
 
@@ -91,7 +91,7 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 			default:
 				err := handler.HandleMessage(rmsg.msg)
 				if err != nil {
-					err = fmt.Errorf("error handling message: %s", err)
+					err = fmt.Errorf("error handling message: %s process [%s]", err, process.ProcessName())
 					return err
 				}
 			}
