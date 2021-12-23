@@ -190,7 +190,8 @@ func (p *Process) LaunchProcess() error {
 	// 3. tx timeout: return timeout error
 	if err = cmd.Wait(); err != nil {
 
-		p.logger.Warnf("process [%s] stopped for tx [%s], err is [%s]", p.processName, p.Handler.TxRequest.TxId, err)
+		p.logger.Warnf("process [%s] stopped for tx [%s], err is [%s], process state is [%s]",
+			p.processName, p.Handler.TxRequest.TxId, err, p.ProcessState)
 
 		// process exceed max process waiting time, exit process, we assume it as normal exit
 		if p.ProcessState == protogo.ProcessState_PROCESS_STATE_EXPIRE {
