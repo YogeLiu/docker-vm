@@ -8,7 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -18,8 +21,16 @@ import (
 	"sync/atomic"
 
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
+	commonCrt "chainmaker.org/chainmaker/common/v2/cert"
+	"chainmaker.org/chainmaker/common/v2/crypto"
+	"chainmaker.org/chainmaker/common/v2/crypto/asym"
+	bcx509 "chainmaker.org/chainmaker/common/v2/crypto/x509"
+	"chainmaker.org/chainmaker/common/v2/evmutils"
+	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
+	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
@@ -30,6 +41,11 @@ import (
 const (
 	mountContractDir = "contracts"
 	msgIterIsNil     = "iterator is nil"
+)
+
+var (
+	chainConfigContractName = syscontract.SystemContract_CHAIN_CONFIG.String()
+	keyChainConfig          = chainConfigContractName
 )
 
 type CDMClient interface {
@@ -231,6 +247,11 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(txId, recvMsg, txSimContext, gasUsed)
 			r.Client.GetStateResponseSendCh() <- consumeKeyHistoryResp
 
+		case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
+			var getSenderAddressResp *protogo.CDMMessage
+			getSenderAddressResp, gasUsed = r.handleGetSenderAddress(txId, txSimContext, gasUsed)
+			r.Client.GetStateResponseSendCh() <- getSenderAddressResp
+
 		default:
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(
@@ -251,6 +272,163 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType)
 		ResultCode: protocol.ContractSdkSignalResultFail,
 		Payload:    nil,
 		Message:    "",
+	}
+}
+
+func (r *RuntimeInstance) handleGetSenderAddress(txId string,
+	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.CDMMessage, uint64) {
+	getSenderAddressResponse := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE)
+
+	var err error
+	gasUsed, err = gas.GetSenderAddressGasUsed(gasUsed)
+	if err != nil {
+		getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
+		getSenderAddressResponse.Message = err.Error()
+		getSenderAddressResponse.Payload = nil
+		return getSenderAddressResponse, gasUsed
+	}
+
+	var bytes []byte
+	bytes, err = txSimContext.Get(chainConfigContractName, []byte(keyChainConfig))
+	if err != nil {
+		r.Log.Errorf("txSimContext get failed, name[%s] key[%s] err: %s",
+			chainConfigContractName, keyChainConfig, err.Error())
+		getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
+		getSenderAddressResponse.Message = err.Error()
+		getSenderAddressResponse.Payload = nil
+		return getSenderAddressResponse, gasUsed
+	}
+
+	var chainConfig configPb.ChainConfig
+	if err = proto.Unmarshal(bytes, &chainConfig); err != nil {
+		r.Log.Errorf("unmarshal chainConfig failed, contractName %s err: %+v", chainConfigContractName, err)
+		getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
+		getSenderAddressResponse.Message = err.Error()
+		getSenderAddressResponse.Payload = nil
+		return getSenderAddressResponse, gasUsed
+	}
+
+	/*
+		| memberType            | memberInfo |
+		| ---                   | ---        |
+		| MemberType_CERT       | PEM        |
+		| MemberType_CERT_HASH  | HASH       |
+		| MemberType_PUBLIC_KEY | PEM        |
+	*/
+
+	var address string
+	sender := txSimContext.GetSender()
+	switch sender.MemberType {
+	case accesscontrol.MemberType_CERT:
+		address, err = getSenderAddressFromCert(sender.MemberInfo, chainConfig.GetVm().GetAddrType())
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			getSenderAddressResponse.Message = err.Error()
+			getSenderAddressResponse.Payload = nil
+			return getSenderAddressResponse, gasUsed
+		}
+
+	case accesscontrol.MemberType_CERT_HASH:
+		certHashKey := hex.EncodeToString(sender.MemberInfo)
+		var certBytes []byte
+		certBytes, err = txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
+		if err != nil {
+			r.Log.Errorf("get cert from chain fialed, %s", err.Error())
+			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			getSenderAddressResponse.Message = err.Error()
+			getSenderAddressResponse.Payload = nil
+			return getSenderAddressResponse, gasUsed
+		}
+
+		address, err = getSenderAddressFromCert(certBytes, chainConfig.GetVm().GetAddrType())
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			getSenderAddressResponse.Message = err.Error()
+			getSenderAddressResponse.Payload = nil
+			return getSenderAddressResponse, gasUsed
+		}
+
+	case accesscontrol.MemberType_PUBLIC_KEY:
+		address, err = getSenderAddressFromPublicKeyPEM(sender.MemberInfo, chainConfig.GetVm().GetAddrType(),
+			crypto.HashAlgoMap[chainConfig.GetCrypto().Hash])
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromPublicKeyPEM failed, %s", err.Error())
+			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
+			getSenderAddressResponse.Message = err.Error()
+			getSenderAddressResponse.Payload = nil
+			return getSenderAddressResponse, gasUsed
+		}
+
+	default:
+		r.Log.Errorf("handleGetSenderAddress failed, invalid member type")
+		getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
+		getSenderAddressResponse.Message = err.Error()
+		getSenderAddressResponse.Payload = nil
+		return getSenderAddressResponse, gasUsed
+	}
+
+	r.Log.Debug("get sender address: ", address)
+	getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultSuccess
+	getSenderAddressResponse.Payload = []byte(address)
+
+	return getSenderAddressResponse, gasUsed
+}
+
+func getSenderAddressFromCert(certPem []byte, addressType configPb.AddrType) (string, error) {
+	if addressType == configPb.AddrType_ZXL {
+		address, err := evmutils.ZXAddressFromCertificatePEM(certPem)
+		if err != nil {
+			return "", fmt.Errorf("ParseCertificate failed, %s", err.Error())
+		}
+
+		return address, nil
+	} else if addressType == configPb.AddrType_ETHEREUM {
+		blockCrt, _ := pem.Decode(certPem)
+		crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
+		}
+
+		ski := hex.EncodeToString(crt.SubjectKeyId)
+		addrInt, err := evmutils.MakeAddressFromHex(ski)
+		if err != nil {
+			return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
+		}
+
+		return addrInt.String(), nil
+	} else {
+		return "", errors.New("invalid address type")
+	}
+}
+
+func getSenderAddressFromPublicKeyPEM(publicKeyPem []byte, addressType configPb.AddrType,
+	hashType crypto.HashType) (string, error) {
+	if addressType == configPb.AddrType_ZXL {
+		address, err := evmutils.ZXAddressFromPublicKeyPEM(publicKeyPem)
+		if err != nil {
+			return "", fmt.Errorf("ZXAddressFromPublicKeyPEM, failed, %s", err.Error())
+		}
+		return address, nil
+	} else if addressType == configPb.AddrType_ETHEREUM {
+		publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
+		if err != nil {
+			return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
+		}
+
+		ski, err := commonCrt.ComputeSKI(hashType, publicKey.ToStandardKey())
+		if err != nil {
+			return "", fmt.Errorf("computeSKI from public key failed, %s", err.Error())
+		}
+
+		addr, err := evmutils.MakeAddressFromHex(hex.EncodeToString(ski))
+		if err != nil {
+			return "", fmt.Errorf("make address from cert SKI failed, %s", err)
+		}
+		return addr.String(), nil
+	} else {
+		return "", errors.New("invalid address type")
 	}
 }
 

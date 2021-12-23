@@ -111,6 +111,9 @@ func (cdm *CDMApi) recvMsgRoutine() {
 				err = cdm.handleCreateKeyHistoryKvIterResponse(recvMsg)
 			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE:
 				err = cdm.handleConsumeKeyHistoryKvIterResponse(recvMsg)
+			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE:
+				err = cdm.handleGetSenderAddrResponse(recvMsg)
+
 			default:
 				err = errors.New("unknown message type")
 			}
@@ -228,6 +231,14 @@ func (cdm *CDMApi) handleCreateKeyHistoryKvIterResponse(cdmMessage *protogo.CDMM
 }
 
 func (cdm *CDMApi) handleConsumeKeyHistoryKvIterResponse(cdmMessage *protogo.CDMMessage) error {
+	responseCh := cdm.scheduler.GetResponseChByTxId(cdmMessage.TxId)
+
+	responseCh <- cdmMessage
+
+	return nil
+}
+
+func (cdm *CDMApi) handleGetSenderAddrResponse(cdmMessage *protogo.CDMMessage) error {
 	responseCh := cdm.scheduler.GetResponseChByTxId(cdmMessage.TxId)
 
 	responseCh <- cdmMessage
