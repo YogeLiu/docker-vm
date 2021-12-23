@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -55,7 +56,7 @@ type Process struct {
 
 	ProcessState     protogo.ProcessState
 	TxWaitingQueue   chan *protogo.TxRequest
-	waitingQueueSize int
+	waitingQueueSize int32
 	txTrigger        chan bool
 	expireTimer      *time.Timer // process waiting time
 	Handler          *ProcessHandler
@@ -224,18 +225,13 @@ func (p *Process) LaunchProcess() error {
 // InvokeProcess handle next tx
 func (p *Process) InvokeProcess() {
 
-	if p.waitingQueueSize == 0 {
-		p.logger.Debugf("empty waiting queue")
-		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_WAITING)
-		return
-	}
-
 	nextTx := <-p.TxWaitingQueue
-	p.waitingQueueSize--
-	p.logger.Debugf("start handle tx [%s] in process [%s]", nextTx.TxId, p.processName)
+	p.minusSize()
+	p.logger.Debugf("start handle tx [%s] in process [%s] with queue size [%d]", nextTx.TxId, p.processName, p.waitingQueueSize)
 
 	// update tx in handler
 	p.Handler.TxRequest = nextTx
+	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
 	err := p.Handler.HandleContract()
 	if err != nil {
 		p.logger.Errorf("fail to invoke contract: %s", err)
@@ -245,22 +241,26 @@ func (p *Process) InvokeProcess() {
 
 // AddTxWaitingQueue add tx with same contract to process waiting queue
 func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
-	p.logger.Debugf("add tx [%s] to waiting queue in process [%s]", tx.TxId, p.processName)
-
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 
 	tx.TxContext.OriginalProcessName = p.processName
 	p.TxWaitingQueue <- tx
-	p.waitingQueueSize++
+	p.addSize()
 
-	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_WAITING {
-		p.triggerProcessState()
-	}
+	p.logger.Debugf("add tx [%s] to waiting queue in process [%s] with size [%d], process state is [%s]",
+		tx.TxId, p.processName, p.waitingQueueSize, p.ProcessState)
+
+}
+
+func (p *Process) addSize() {
+	atomic.AddInt32(&p.waitingQueueSize, 1)
+}
+
+func (p *Process) minusSize() {
+	atomic.AddInt32(&p.waitingQueueSize, -1)
 }
 
 func (p *Process) Size() int {
-	return p.waitingQueueSize
+	return int(p.waitingQueueSize)
 }
 
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
@@ -279,6 +279,7 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 
 // StopProcess stop process
 func (p *Process) StopProcess(processTimeout bool) {
+	p.logger.Debugf("stop process [%s]", p.processName)
 	if processTimeout {
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_EXPIRE)
 	} else {
@@ -308,22 +309,20 @@ func (p *Process) killProcess() {
 }
 
 func (p *Process) triggerProcessState() {
-	p.logger.Debugf("trigger next tx")
-	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
+	p.logger.Debugf("trigger next tx for process [%s]", p.processName)
 	p.txTrigger <- true
 }
 
 func (p *Process) updateProcessState(state protogo.ProcessState) {
-	p.logger.Debugf("update process state: [%s]", state)
+	p.logger.Debugf("update process state: [%s] for process [%s]", state, p.processName)
 	p.ProcessState = state
 }
 
 // resetProcessTimer reset timer when tx finished
 func (p *Process) resetProcessTimer() {
+	p.logger.Debugf("reset process [%s] expire timer", p.processName)
 	if !p.expireTimer.Stop() && len(p.expireTimer.C) > 0 {
 		<-p.expireTimer.C
 	}
 	p.expireTimer.Reset(processWaitingTime * time.Second)
 }
-
-// todo: enable cross process retrieve
