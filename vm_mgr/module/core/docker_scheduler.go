@@ -294,11 +294,13 @@ runProcess:
 			errMsg := fmt.Sprintf("%s fail: %s", lastContractName, err.Error())
 			s.returnErrorTxResponse(currentTx.TxId, errMsg)
 		} else {
+			s.logger.Errorf("return back error result for process [%s] for tx [%s]", process.processName, currentTx.TxId)
 			s.returnErrorTxResponse(currentTx.TxId, err.Error())
 		}
 
 		if process.ProcessState != protogo.ProcessState_PROCESS_STATE_FAIL {
 			// restart process and trigger next
+			s.logger.Debugf("restart process [%s]", process.processName)
 			goto runProcess
 		}
 

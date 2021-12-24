@@ -7,6 +7,7 @@ package core
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -140,9 +141,9 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 // after new process launched, it will trigger to handle tx,
 // tx including init, upgrade, invoke based on the method of tx
 func (p *Process) LaunchProcess() error {
-	p.logger.Debugf("launch process")
+	p.logger.Debugf("launch process [%s]", p.processName)
 
-	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
+	//p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
 
 	var err error           // process global error
 	var stderr bytes.Buffer // used to capture the error message from contract
@@ -157,6 +158,12 @@ func (p *Process) LaunchProcess() error {
 	if err != nil {
 		return err
 	}
+
+	//contractErr, err := cmd.StderrPipe()
+	//go func() {
+	//	out, _ := io.ReadAll(contractErr)
+	//	fmt.Println(out)
+	//}()
 
 	// these settings just working on linux,
 	// but it doesn't affect running, because it will put into docker to run
@@ -183,6 +190,7 @@ func (p *Process) LaunchProcess() error {
 	}
 	p.logger.Debugf("Add Process [%s] to cgroup", p.processName)
 
+	// todo add close logic when process end
 	go p.printContractLog(contractOut)
 
 	// wait process end, all err come from here
@@ -277,6 +285,8 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	for {
 		str, err := rd.ReadString('\n')
 		if err != nil {
+			fmt.Println("reading out")
+			fmt.Println(err)
 			return
 		}
 		str = strings.TrimSuffix(str, "\n")

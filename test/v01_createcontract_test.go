@@ -96,5 +96,5 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 	assert.Equal(t, []byte("unknown method"), result.Result)
 	fmt.Println(result)
 
-	//tearDownTest()
+	tearDownTest()
 }

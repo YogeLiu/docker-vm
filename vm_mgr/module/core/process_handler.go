@@ -85,7 +85,7 @@ func (h *ProcessHandler) SetStream(stream SDKProtogo.DMSRpc_DMSCommunicateServer
 }
 
 func (h *ProcessHandler) sendMessage(msg *SDKProtogo.DMSMessage) error {
-	h.logger.Debugf("send message [%s]", msg)
+	h.logger.Debugf("send message [%s] process [%s]", msg, h.processName)
 	return h.stream.Send(msg)
 }
 
@@ -564,6 +564,7 @@ func (h *ProcessHandler) resetHandler() {
 }
 
 func (h *ProcessHandler) startTimer() {
+	h.logger.Debugf("start tx timer: process [%s], tx [%s]", h.processName, h.TxRequest.TxId)
 	if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
 		<-h.txExpireTimer.C
 	}
@@ -571,6 +572,7 @@ func (h *ProcessHandler) startTimer() {
 }
 
 func (h *ProcessHandler) stopTimer() {
+	h.logger.Debugf("stop tx timer: process [%s], tx [%s]", h.processName, h.TxRequest.TxId)
 	if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
 		<-h.txExpireTimer.C
 	}

@@ -80,17 +80,21 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 		case rmsg := <-msgAvail:
 			switch {
 			case rmsg.err == io.EOF:
-				s.logger.Debugf("received EOF, ending contract stream")
+				s.logger.Warnf("received EOF, ending contract stream [%s]", process.ProcessName())
 				return nil
 			case rmsg.err != nil:
+				s.logger.Warnf("[%s] received fail %s", process.ProcessName(), rmsg.err)
 				err := fmt.Errorf("receive failed: %s", rmsg.err)
 				return err
 			case rmsg.msg == nil:
+				s.logger.Warnf("[%s] received nil message, ending contract stream", process.ProcessName())
 				err := errors.New("received nil message, ending contract stream")
 				return err
 			default:
+				s.logger.Debugf("[%s] handle msg [%s]", process.ProcessName(), rmsg.msg)
 				err := handler.HandleMessage(rmsg.msg)
 				if err != nil {
+					s.logger.Errorf("[%s] err handling message: %s", process.ProcessName(), err)
 					err = fmt.Errorf("error handling message: %s process [%s]", err, process.ProcessName())
 					return err
 				}

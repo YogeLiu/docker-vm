@@ -123,7 +123,7 @@ vm:
   dockervm_mount_path: ./testdata/org1/docker-go     # mount point in chain maker
   dockervm_log_path: ./testdata/org1/dockervm
   log_in_console: true
-  log_level: INFO
+  log_level: DEBUG
   uds_open: true                             # default is unix domain socket connection
   user_num: 100
   time_limit: 2

@@ -31,7 +31,7 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_test03"
+	ContractNameTest    = "contract_demo"
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"
