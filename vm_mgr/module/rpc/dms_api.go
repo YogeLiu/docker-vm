@@ -31,7 +31,7 @@ type DMSApi struct {
 
 func NewDMSApi(processManager ProcessManager) *DMSApi {
 	return &DMSApi{
-		logger:         logger.NewDockerLogger(logger.MODULE_CDM_SERVER, config.DockerLogDir),
+		logger:         logger.NewDockerLogger(logger.MODULE_DMS_SERVER, config.DockerLogDir),
 		processManager: processManager,
 	}
 }
@@ -91,7 +91,7 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 				err := errors.New("received nil message, ending contract stream")
 				return err
 			default:
-				s.logger.Debugf("[%s] handle msg [%s]", process.ProcessName(), rmsg.msg)
+				s.logger.Debugf("[%s] handle msg [%s]", process.ProcessName(), rmsg)
 				err := handler.HandleMessage(rmsg.msg)
 				if err != nil {
 					s.logger.Errorf("[%s] err handling message: %s", process.ProcessName(), err)

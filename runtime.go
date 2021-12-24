@@ -143,6 +143,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	timeoutC := time.After(timeout * time.Millisecond)
 
+	r.Log.Debugf("haha")
 	r.Log.Debugf("start tx [%s] in runtime", txRequest.TxId)
 	// wait this chan
 	for {
