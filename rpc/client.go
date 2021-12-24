@@ -63,7 +63,7 @@ func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessag
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.logger.Debugf("register recv chan [%s]", txId[:5])
+	c.logger.Debugf("register recv chan [%s]", txId)
 	c.recvChMap[txId] = recvCh
 }
 
@@ -75,7 +75,7 @@ func (c *CDMClient) deleteRecvChan(txId string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.logger.Debugf("delete recv chan [%s]", txId[:5])
+	c.logger.Debugf("delete recv chan [%s]", txId)
 	delete(c.recvChMap, txId)
 }
 
@@ -216,7 +216,7 @@ func (c *CDMClient) recvMsgRoutine() {
 func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.logger.Debugf("send message: [%s]", msg.Type)
+	c.logger.Debugf("send message: [%s]", msg)
 	return c.stream.Send(msg)
 }
 

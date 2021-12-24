@@ -94,7 +94,7 @@ func (cdm *CDMApi) recvMsgRoutine() {
 				continue
 			}
 
-			cdm.logger.Debugf("recv msg [%s]", recvMsg.Type)
+			cdm.logger.Debugf("recv msg [%s]", recvMsg)
 
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_REQUEST:
