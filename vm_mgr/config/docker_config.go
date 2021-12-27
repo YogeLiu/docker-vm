@@ -17,7 +17,7 @@ const (
 	// SwapLimitFile swap setting file
 	SwapLimitFile = "memory.swappiness"
 	// RssLimit rss limit file
-	RssLimit = 500 // 10 MB
+	RssLimit = 50000 // 10 MB
 
 	// DMSDir docker manager sandbox dir
 	DMSDir = "/dms"
