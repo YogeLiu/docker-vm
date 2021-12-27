@@ -1,6 +1,9 @@
-#!/bin/bash
+#
+# Copyright (C) BABEC. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 
-VERSION=develop-zxl
+VERSION=v2.2.0_alpha_qc
 
 docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`)
 

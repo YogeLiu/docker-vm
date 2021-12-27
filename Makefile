@@ -1,5 +1,4 @@
-# same as imageVersion in docker_manager.go
-VERSION=develop-zxl
+VERSION=v2.2.0_alpha_qc
 
 build-test:
 	cd test/scripts && ./prepare.sh
@@ -37,6 +36,15 @@ ci:
 	golangci-lint run ./...
 	go test -v ./...
 	make clean
+
+gomod:
+	go get chainmaker.org/chainmaker/common/v2@develop
+	go get chainmaker.org/chainmaker/localconf/v2@$(VERSION)
+	go get chainmaker.org/chainmaker/logger/v2@develop
+	go get chainmaker.org/chainmaker/pb-go/v2@$(VERSION)
+	go get chainmaker.org/chainmaker/protocol/v2@develop
+	go get chainmaker.org/chainmaker/utils/v2@develop
+	go mod tidy
 
 
 

@@ -1,4 +1,4 @@
-module chainmaker.org/chainmaker/vm-docker-go/vm_mgr
+module chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr
 
 go 1.15
 

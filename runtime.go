@@ -33,9 +33,9 @@ import (
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/config"
-	"chainmaker.org/chainmaker/vm-docker-go/gas"
-	"chainmaker.org/chainmaker/vm-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -101,7 +101,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	}
 
 	//init contract gas used calc and check gas limit
-	gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode, txSimContext)
+	gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode)
 	if err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())

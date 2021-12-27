@@ -23,10 +23,10 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"chainmaker.org/chainmaker/vm-docker-go/rpc"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
 
 	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -38,7 +38,7 @@ const (
 	dockerLogDir         = "/log"
 	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
 	defaultContainerName = "chainmaker-vm-docker-go-container"
-	imageVersion         = "develop-zxl"
+	imageVersion         = "v2.2.0_alpha_qc"
 
 	enablePProf = false // switch for enable pprof, just for testing
 )
