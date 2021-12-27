@@ -38,7 +38,7 @@ const (
 	dockerLogDir         = "/log"
 	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
 	defaultContainerName = "chainmaker-vm-docker-go-container"
-	imageVersion         = "v2.1.0.zxl-test"
+	imageVersion         = "develop-zxl"
 
 	enablePProf = false // switch for enable pprof, just for testing
 )

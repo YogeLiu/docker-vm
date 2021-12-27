@@ -7,7 +7,6 @@ package core
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -285,8 +284,6 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	for {
 		str, err := rd.ReadString('\n')
 		if err != nil {
-			fmt.Println("reading out")
-			fmt.Println(err)
 			return
 		}
 		str = strings.TrimSuffix(str, "\n")
