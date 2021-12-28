@@ -181,7 +181,6 @@ func (p *Process) LaunchProcess() error {
 	}
 	p.logger.Debugf("Add Process [%s] to cgroup", p.processName)
 
-	// todo add close logic when process end
 	go p.printContractLog(contractOut)
 
 	// wait process end, all err come from here
