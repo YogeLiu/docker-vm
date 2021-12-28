@@ -41,6 +41,9 @@ const (
 	imageVersion         = "v2.2.0_alpha_qc"
 
 	enablePProf = false // switch for enable pprof, just for testing
+
+	timeZone  = "/etc/timezone"
+	localTime = "/etc/localtime"
 )
 
 var (
@@ -319,6 +322,14 @@ func (m *DockerManager) createContainer() error {
 				},
 				VolumeOptions: nil,
 				TmpfsOptions:  nil,
+			}, {
+				Type:   mount.TypeBind,
+				Source: timeZone,
+				Target: timeZone,
+			}, {
+				Type:   mount.TypeBind,
+				Source: localTime,
+				Target: localTime,
 			},
 		},
 	}, nil, nil, m.dockerContainerConfig.ContainerName)
@@ -555,6 +566,14 @@ func (m *DockerManager) createTestContainer() error {
 				},
 				VolumeOptions: nil,
 				TmpfsOptions:  nil,
+			}, {
+				Type:   mount.TypeBind,
+				Source: timeZone,
+				Target: timeZone,
+			}, {
+				Type:   mount.TypeBind,
+				Source: localTime,
+				Target: localTime,
 			},
 		},
 		PortBindings: nat.PortMap{
@@ -627,6 +646,14 @@ func (m *DockerManager) createPProfContainer() error {
 				},
 				VolumeOptions: nil,
 				TmpfsOptions:  nil,
+			}, {
+				Type:   mount.TypeBind,
+				Source: timeZone,
+				Target: timeZone,
+			}, {
+				Type:   mount.TypeBind,
+				Source: localTime,
+				Target: localTime,
 			},
 		},
 		PortBindings: nat.PortMap{
