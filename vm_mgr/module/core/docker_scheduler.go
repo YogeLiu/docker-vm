@@ -318,12 +318,12 @@ func (s *DockerScheduler) listenProcessInvoke(process *Process) {
 	for {
 		select {
 		case <-process.txTrigger:
-			process.InvokeProcess()
+			success := process.InvokeProcess()
+			if !success {
+				return
+			}
 		case <-process.Handler.txExpireTimer.C:
 			process.StopProcess(false)
-		case <-process.expireTimer.C:
-			process.StopProcess(true)
-			return
 		}
 	}
 }

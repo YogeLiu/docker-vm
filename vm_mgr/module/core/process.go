@@ -142,8 +142,6 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 func (p *Process) LaunchProcess() error {
 	p.logger.Debugf("launch process [%s]", p.processName)
 
-	//p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
-
 	var err error           // process global error
 	var stderr bytes.Buffer // used to capture the error message from contract
 
@@ -157,12 +155,6 @@ func (p *Process) LaunchProcess() error {
 	if err != nil {
 		return err
 	}
-
-	//contractErr, err := cmd.StderrPipe()
-	//go func() {
-	//	out, _ := io.ReadAll(contractErr)
-	//	fmt.Println(out)
-	//}()
 
 	// these settings just working on linux,
 	// but it doesn't affect running, because it will put into docker to run
@@ -236,19 +228,27 @@ func (p *Process) LaunchProcess() error {
 	return err
 }
 
-// InvokeProcess handle next tx
-func (p *Process) InvokeProcess() {
+// InvokeProcess handle next tx or wait next available tx, process killed until expire time
+// return triggered next tx successfully or not
+func (p *Process) InvokeProcess() bool {
 
-	nextTx := <-p.TxWaitingQueue
-	p.minusSize()
-	p.logger.Debugf("start handle tx [%s] in process [%s] with queue size [%d]", nextTx.TxId, p.processName, p.waitingQueueSize)
+	select {
+	case nextTx := <-p.TxWaitingQueue:
+		p.logger.Debugf("start handle tx [%s] in process [%s] with queue size [%d]", nextTx.TxId, p.processName, p.waitingQueueSize)
 
-	// update tx in handler
-	p.Handler.TxRequest = nextTx
-	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
-	err := p.Handler.HandleContract()
-	if err != nil {
-		p.logger.Errorf("process [%s] fail to invoke contract: %s", p.processName, err)
+		p.minusSize()
+		p.disableProcessExpireTimer()
+		p.Handler.TxRequest = nextTx
+		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
+
+		err := p.Handler.HandleContract()
+		if err != nil {
+			p.logger.Errorf("process [%s] fail to invoke contract: %s", p.processName, err)
+		}
+		return true
+	case <-p.expireTimer.C:
+		p.StopProcess(true)
+		return false
 	}
 
 }
@@ -339,4 +339,12 @@ func (p *Process) resetProcessTimer() {
 		<-p.expireTimer.C
 	}
 	p.expireTimer.Reset(processWaitingTime * time.Second)
+}
+
+func (p *Process) disableProcessExpireTimer() {
+	p.logger.Debugf("disable process [%s] expire timer", p.processName)
+	if !p.expireTimer.Stop() && len(p.expireTimer.C) > 0 {
+		<-p.expireTimer.C
+	}
+	p.expireTimer.Stop()
 }
