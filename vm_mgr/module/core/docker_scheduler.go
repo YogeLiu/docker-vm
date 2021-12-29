@@ -29,9 +29,9 @@ import (
 
 const (
 	// ReqChanSize tx request chan size
-	ReqChanSize = 1000
+	ReqChanSize = 15000
 	// ResponseChanSize tx response chan size
-	ResponseChanSize = 1000
+	ResponseChanSize = 15000
 
 	crossContractsChanSize = 50
 )

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	txSize = 1000
+	txSize = 15000
 )
 
 type CDMClient struct {
