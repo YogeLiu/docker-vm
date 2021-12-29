@@ -33,7 +33,7 @@ const (
 
 const (
 	defaultMaxPeer = 10
-	minPeerLimit   = 5
+	minPeerLimit   = 2
 )
 
 var (
