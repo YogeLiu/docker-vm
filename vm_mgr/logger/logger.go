@@ -12,10 +12,11 @@ import (
 	"strconv"
 	"time"
 
+	rotatelogs "chainmaker.org/chainmaker/common/v2/log/file-rotatelogs"
 	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
@@ -24,7 +25,6 @@ const (
 	MODULE_MANAGER          = "[Docker MANAGER]"
 	MODULE_SCHEDULER        = "[Docker Scheduler]"
 	MODULE_USERCONTROLLER   = "[Docker User Controller]"
-	MODULE_PROCESS_POOL     = "[Docker Process Pool]"
 	MODULE_PROCESS_MANAGER  = "[Docker Process Manager]"
 	MODULE_PROCESS          = "[Docker Process]"
 	MODULE_DMS_HANDLER      = "[Docker DMS Handler]"
@@ -34,6 +34,11 @@ const (
 	MODULE_SECURITY_ENV     = "[Docker Security Env]"
 	MODULE_CONTRACT_MANAGER = "[Docker Contract Manager]"
 	MODULE_CONTRACT         = "[Docker Contract]"
+)
+
+const (
+	maxAge       = 365
+	rotationTime = 1
 )
 
 var (
@@ -145,13 +150,12 @@ func getContractEncoder() zapcore.Encoder {
 
 func getLogWriter() zapcore.WriteSyncer {
 
-	hook := &lumberjack.Logger{
-		Filename:   logPathFromConfig, //日志文件存放目录
-		MaxSize:    100,               //文件大小限制,单位MB
-		MaxBackups: 5,                 //最大保留日志文件数量
-		MaxAge:     30,                //日志文件保留天数
-		Compress:   false,             //是否压缩处理
-	}
+	hook, _ := rotatelogs.New(
+		logPathFromConfig+".%Y%m%d%H",
+		rotatelogs.WithRotationTime(time.Hour*time.Duration(rotationTime)),
+		rotatelogs.WithLinkName(logPathFromConfig),
+		rotatelogs.WithMaxAge(time.Hour*24*time.Duration(maxAge)),
+	)
 
 	var syncer zapcore.WriteSyncer
 	if displayInConsoleFromConfig {
