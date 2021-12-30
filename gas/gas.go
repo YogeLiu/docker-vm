@@ -173,17 +173,13 @@ func ContractGasUsed(gasUsed uint64, method string, contractName string, byteCod
 	}
 
 	if method == upgradeContract {
-		gasUsed += upgradeContractGasUsed(gasUsed, byteCode)
+		gasUsed += uint64(len(byteCode)) * PutStateGasPrice
 	}
 
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
 	return gasUsed, nil
-}
-
-func upgradeContractGasUsed(gasUsed uint64, byteCode []byte) uint64 {
-	return gasUsed + uint64(len(byteCode))*PutStateGasPrice
 }
 
 func checkKeys(args map[string][]byte, keys ...string) bool {
