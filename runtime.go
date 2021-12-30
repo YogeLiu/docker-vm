@@ -139,7 +139,9 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	r.Client.RegisterRecvChan(txId, responseCh)
 
 	// send message to tx chan
-	r.Client.GetTxSendCh() <- cdmMessage
+	sendCh := r.Client.GetTxSendCh()
+	r.Log.Debugf("put tx [%s] in send chan with length [%d]", txRequest.TxId, len(sendCh))
+	sendCh <- cdmMessage
 
 	timeoutC := time.After(timeout * time.Millisecond)
 
