@@ -63,7 +63,7 @@ func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessag
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.logger.Infof("register recv chan [%s]", txId)
+	c.logger.Debugf("register receive chan for [%s]", txId)
 	c.recvChMap[txId] = recvCh
 }
 
@@ -75,7 +75,7 @@ func (c *CDMClient) deleteRecvChan(txId string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.logger.Infof("delete recv chan [%s]", txId)
+	c.logger.Debugf("delete receive chan for [%s]", txId)
 	delete(c.recvChMap, txId)
 }
 
@@ -87,7 +87,7 @@ func (c *CDMClient) getRecvChan(txId string) chan *protogo.CDMMessage {
 
 func (c *CDMClient) StartClient() bool {
 
-	c.logger.Infof("start cdm rpc..")
+	c.logger.Debugf("start cdm rpc..")
 	conn, err := c.NewClientConn()
 	if err != nil {
 		c.logger.Errorf("fail to create connection: %s", err)
@@ -122,7 +122,7 @@ func (c *CDMClient) closeConnection() {
 
 func (c *CDMClient) sendMsgRoutine() {
 
-	c.logger.Infof("start sending cdm message ")
+	c.logger.Debugf("start sending cdm message ")
 	// listen three chan:
 	// txSendCh: used to send tx to docker manager
 	// stateResponseSendCh: used to send get state response or bytecode response to docker manager
@@ -133,9 +133,10 @@ func (c *CDMClient) sendMsgRoutine() {
 	for {
 		select {
 		case txMsg := <-c.txSendCh:
-			c.logger.Infof("send tx request to docker manager for tx [%s]", txMsg.TxId)
+			c.logger.Debugf("send tx request to docker manager for tx [%s]", txMsg.TxId)
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
+			c.logger.Debugf("send request to docker manager for tx [%s]", stateMsg.TxId)
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.stop:
 			c.logger.Debugf("close send cdm msg")
@@ -159,7 +160,7 @@ func (c *CDMClient) recvMsgRoutine() {
 
 		select {
 		case <-c.stop:
-			c.logger.Infof("close recv cdm msg")
+			c.logger.Debugf("close recv cdm msg")
 			return
 		default:
 			recvMsg, recvErr := c.stream.Recv()
@@ -174,9 +175,10 @@ func (c *CDMClient) recvMsgRoutine() {
 				continue
 			}
 
+			c.logger.Debugf("receive msg from docker manager for [%s]", recvMsg.TxId)
+
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-				c.logger.Infof("receive tx response from docker manager for [%s]", recvMsg.TxId)
 				waitCh := c.getRecvChan(recvMsg.TxId)
 				waitCh <- recvMsg
 				c.deleteRecvChan(recvMsg.TxId)
@@ -216,9 +218,7 @@ func (c *CDMClient) recvMsgRoutine() {
 }
 
 func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
-	//c.lock.Lock()
-	//defer c.lock.Unlock()
-	c.logger.Infof("send message: [%s]", msg)
+	c.logger.Debugf("send message: [%s]", msg)
 	return c.stream.Send(msg)
 }
 
