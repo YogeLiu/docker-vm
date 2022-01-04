@@ -409,12 +409,12 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 	}
 
 	responseCh := h.scheduler.GetTxResponseCh()
-	h.logger.Debugf("put response in response chan for tx [%s] in process [%s] with chan length[%d]", txResponse.TxId, h.processName, len(responseCh))
+	h.logger.Debugf("[%s] put tx response in response chan for in process [%s] with chan length[%d]", txResponse.TxId, h.processName, len(responseCh))
 
 	// give back result to scheduler  -- for multiple tx incoming
 	responseCh <- txResponse
 
-	h.logger.Debugf("end handle tx [%s] in process [%s]", txResponse.TxId, h.processName)
+	h.logger.Debugf("[%s] end handle tx in process [%s]", txResponse.TxId, h.processName)
 
 	h.stopTimer()
 	h.process.resetProcessTimer()

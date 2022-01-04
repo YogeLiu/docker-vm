@@ -133,10 +133,10 @@ func (c *CDMClient) sendMsgRoutine() {
 	for {
 		select {
 		case txMsg := <-c.txSendCh:
-			c.logger.Debugf("send tx request to docker manager for tx [%s]", txMsg.TxId)
+			c.logger.Infof("[%s] send tx request to docker manager", txMsg.TxId)
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
-			c.logger.Debugf("send request to docker manager for tx [%s]", stateMsg.TxId)
+			c.logger.Infof("[%s] send request to docker manager", stateMsg.TxId)
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.stop:
 			c.logger.Debugf("close send cdm msg")
@@ -175,7 +175,7 @@ func (c *CDMClient) recvMsgRoutine() {
 				continue
 			}
 
-			c.logger.Debugf("receive msg from docker manager for [%s]", recvMsg.TxId)
+			c.logger.Infof("[%s] receive msg from docker manager", recvMsg.TxId)
 
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:

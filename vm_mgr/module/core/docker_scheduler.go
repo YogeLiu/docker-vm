@@ -161,7 +161,7 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 
 func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
-	s.logger.Debugf("docker scheduler handle tx [%s]", txRequest.TxId)
+	s.logger.Debugf("[%s] docker scheduler handle tx", txRequest.TxId)
 
 	var (
 		err     error
