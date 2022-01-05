@@ -88,6 +88,9 @@ func NewCDMServer() (*CDMServer, error) {
 	serverOpts = append(serverOpts, grpc.ConnectionTimeout(ConnectionTimeout))
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.MaxSendSize*1024*1024))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.MaxRecvSize*1024*1024))
+	//serverOpts = append(serverOpts, grpc.InitialWindowSize(100*1024*1024))
+	//serverOpts = append(serverOpts, grpc.InitialConnWindowSize(100*1024*1024))
+	//serverOpts = append(serverOpts, grpc.MaxConcurrentStreams(100))
 
 	server := grpc.NewServer(serverOpts...)
 
