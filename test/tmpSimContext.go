@@ -26,7 +26,7 @@ package test
 //	lock          *sync.Mutex
 //	vmManager     protocol.VmManager
 //	gasUsed       uint64 // only for callContract
-//	//currentDepth  int
+//	currentDepth  int
 //	currentResult []byte
 //	hisResult     []*callContractResult
 //

@@ -12,9 +12,6 @@ package core
 //	"sync"
 //	"testing"
 //
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-//	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb_sdk/protogo"
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
 //	"go.uber.org/zap"
 //	"golang.org/x/sync/singleflight"
 //)

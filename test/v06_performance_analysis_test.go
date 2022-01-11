@@ -16,17 +16,17 @@ package test
 //
 //	"chainmaker.org/chainmaker/logger/v2"
 //	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-//	docker_go "chainmaker.org/chainmaker/vm-docker-go"
+//	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 //	"github.com/go-echarts/go-echarts/charts"
 //)
 //
 //const (
-//	performContractName    = "contract_zxl"
+//	performContractName    = "contract_fact_cut01"
 //	performContractVersion = "1.0.0"
 //
 //	timeFormat = "2006-01-02 15:04:05"
 //
-//	loopNum   = 100
+//	loopNum   = 200
 //	threadNum = 2000
 //)
 //
@@ -69,11 +69,11 @@ package test
 //	performTxContext = InitContextTest()
 //	mockLogger = logger.GetLogger(logger.MODULE_VM)
 //
-//	//testDeployCut()
+//	testDeployCut()
 //	//testCutSave()
-//	testDeployZXL()
+//	//testDeployZXL()
 //
-//	//performMultipleTxs(loopNum, threadNum)
+//	performMultipleTxs(loopNum, threadNum)
 //
 //	time.Sleep(10 * time.Second)
 //	fmt.Println("tear down")
@@ -84,6 +84,8 @@ package test
 //	fmt.Println("--------- Ready to analysis --------------")
 //	time.Sleep(10 * time.Second)
 //	fmt.Println("---------- Start -------------------------")
+//
+//	var totalTps float64
 //
 //	// declare a slice to store group exec info
 //	groupResultList := make([]*GroupRunInfo, 0, loopNum)
@@ -113,8 +115,8 @@ package test
 //				startTimeCh <- time.Now().UnixNano()
 //
 //				//testCutFindByHash()
-//				//testCutSave()
-//				testZXLAddPoint()
+//				testCutSave()
+//				//testZXLAddPoint()
 //
 //				endTimeCh <- time.Now().UnixNano()
 //
@@ -148,6 +150,8 @@ package test
 //		groupRunInfo.runtime = float64(groupRunInfo.endTime-groupRunInfo.startTime) / 1e9
 //		groupRunInfo.tps = cutOutFloat64(float64(groupRunInfo.taskNum)/groupRunInfo.runtime, 2)
 //
+//		totalTps += groupRunInfo.tps
+//
 //		fmt.Printf("finished group[%d]: tps:%v\n", loopIndex, groupRunInfo.tps)
 //
 //		groupResultList = append(groupResultList, groupRunInfo)
@@ -155,6 +159,8 @@ package test
 //	}
 //
 //	fmt.Println("--------- Finished analysis --------------")
+//	averageTps := totalTps / float64(loopNum)
+//	fmt.Println("total tps: ", averageTps)
 //
 //	//resultFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_result.log", performContractName, loopNum, threadNum)
 //	//chartFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_chart.html", performContractName, loopNum, threadNum)

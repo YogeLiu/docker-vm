@@ -136,6 +136,7 @@ func (cdm *CDMApi) sendMsgRoutine() {
 	for {
 		select {
 		case txResponseMsg := <-cdm.scheduler.GetTxResponseCh():
+			cdm.logger.Debugf("[%s] retrieve response from chan and send to chain", txResponseMsg.TxId)
 			cdmMsg := cdm.constructCDMMessage(txResponseMsg)
 			err = cdm.sendMessage(cdmMsg)
 		case getStateReqMsg := <-cdm.scheduler.GetGetStateReqCh():
@@ -184,7 +185,7 @@ func (cdm *CDMApi) handleTxRequest(cdmMessage *protogo.CDMMessage) error {
 		return err
 	}
 
-	cdm.logger.Debugf("cdm server receive tx [%s]", txRequest.TxId)
+	cdm.logger.Debugf("[%s] cdm server receive tx from chain", txRequest.TxId)
 
 	cdm.scheduler.GetTxReqCh() <- &txRequest
 

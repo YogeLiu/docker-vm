@@ -233,7 +233,7 @@ func (p *Process) InvokeProcess() bool {
 
 	select {
 	case nextTx := <-p.TxWaitingQueue:
-		p.logger.Debugf("start handle tx [%s] in process [%s] with queue size [%d]", nextTx.TxId, p.processName, p.waitingQueueSize)
+		p.logger.Debugf("[%s] start handle tx in process [%s] with queue size [%d]", nextTx.TxId, p.processName, p.waitingQueueSize)
 
 		p.minusSize()
 		p.disableProcessExpireTimer()
@@ -259,7 +259,7 @@ func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 	p.TxWaitingQueue <- tx
 	p.addSize()
 
-	p.logger.Debugf("add tx [%s] to waiting queue in process [%s] with size [%d], process state is [%s]",
+	p.logger.Debugf("[%s] add tx to waiting queue in process [%s] with size [%d], process state is [%s]",
 		tx.TxId, p.processName, p.waitingQueueSize, p.ProcessState)
 
 }

@@ -28,9 +28,9 @@ import (
 
 const (
 	// ReqChanSize tx request chan size
-	ReqChanSize = 1000
+	ReqChanSize = 15000
 	// ResponseChanSize tx response chan size
-	ResponseChanSize = 1000
+	ResponseChanSize = 15000
 
 	crossContractsChanSize = 50
 )
@@ -160,7 +160,7 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 
 func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
-	s.logger.Debugf("docker scheduler handle tx [%s]", txRequest.TxId)
+	s.logger.Debugf("[%s] docker scheduler handle tx", txRequest.TxId)
 
 	var (
 		err     error

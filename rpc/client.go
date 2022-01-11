@@ -21,15 +21,15 @@ import (
 )
 
 const (
-	txSize = 1000
+	txSize = 15000
 )
 
 type CDMClient struct {
 	chainId             string
-	txSendCh            chan *protogo.CDMMessage // channel receive tx from docker-go instance
-	stateResponseSendCh chan *protogo.CDMMessage // channel receive state response
+	txSendCh            chan *protogo.CDMMessage // used to send tx to docker-go instance
+	stateResponseSendCh chan *protogo.CDMMessage // used to receive message from docker-go
 	lock                sync.RWMutex
-	// store tx_id to chan, retrieve chan to send tx response back to docker-go instance
+	// key: txId, value: chan, used to receive tx response from docker-go
 	recvChMap map[string]chan *protogo.CDMMessage
 	stream    protogo.CDMRpc_CDMCommunicateClient
 	logger    *logger.CMLogger
@@ -63,7 +63,7 @@ func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessag
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.logger.Debugf("register recv chan [%s]", txId)
+	c.logger.Debugf("register receive chan for [%s]", txId)
 	c.recvChMap[txId] = recvCh
 }
 
@@ -75,7 +75,7 @@ func (c *CDMClient) deleteRecvChan(txId string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.logger.Debugf("delete recv chan [%s]", txId)
+	c.logger.Debugf("delete receive chan for [%s]", txId)
 	delete(c.recvChMap, txId)
 }
 
@@ -133,8 +133,10 @@ func (c *CDMClient) sendMsgRoutine() {
 	for {
 		select {
 		case txMsg := <-c.txSendCh:
+			c.logger.Debugf("[%s] send tx request to docker manager", txMsg.TxId)
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
+			c.logger.Debugf("[%s] send request to docker manager", stateMsg.TxId)
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.stop:
 			c.logger.Debugf("close send cdm msg")
@@ -172,6 +174,8 @@ func (c *CDMClient) recvMsgRoutine() {
 				c.closeConnection()
 				continue
 			}
+
+			c.logger.Debugf("[%s] receive msg from docker manager", recvMsg.TxId)
 
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
@@ -214,8 +218,6 @@ func (c *CDMClient) recvMsgRoutine() {
 }
 
 func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
 	c.logger.Debugf("send message: [%s]", msg)
 	return c.stream.Send(msg)
 }

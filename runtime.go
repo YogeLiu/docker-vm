@@ -139,7 +139,9 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	r.Client.RegisterRecvChan(txId, responseCh)
 
 	// send message to tx chan
-	r.Client.GetTxSendCh() <- cdmMessage
+	sendCh := r.Client.GetTxSendCh()
+	r.Log.Debugf("[%s] put tx in send chan with length [%d]", txRequest.TxId, len(sendCh))
+	sendCh <- cdmMessage
 
 	timeoutC := time.After(timeout * time.Millisecond)
 
@@ -172,7 +174,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.Log.Debugf("tx [%s] finish get state [%v]", txId, getStateResponse)
 
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-				r.Log.Debugf("tx [%s] start handle response [%v]", txId, recvMsg)
+				r.Log.Debugf("[%s] start handle response [%v]", txId, recvMsg)
 				// construct response
 				var txResponse protogo.TxResponse
 				_ = proto.UnmarshalMerge(recvMsg.Payload, &txResponse)
@@ -183,7 +185,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					contractResult.Result = txResponse.Result
 					contractResult.Message = txResponse.Message
 					contractResult.GasUsed = gasUsed
-					r.Log.Errorf("tx [%s] return error response [%v]", txId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", txId, contractResult)
 					return contractResult, protocol.ExecOrderTxTypeNormal
 				}
 
@@ -195,7 +197,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
-					r.Log.Errorf("tx [%s] return error response [%v]", txId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", txId, contractResult)
 					return r.errorResult(contractResult, err, "fail to put in sim context")
 				}
 
@@ -204,7 +206,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 				if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
 					err = fmt.Errorf("too many event data")
-					r.Log.Errorf("tx [%s] return error response [%v]", txId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", txId, contractResult)
 					return r.errorResult(contractResult, err, "fail to put event data")
 				}
 
@@ -220,7 +222,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					// emit event gas used calc and check gas limit
 					gasUsed, err = gas.EmitEventGasUsed(gasUsed, contractEvent)
 					if err != nil {
-						r.Log.Errorf("tx [%s] return error response [%v]", txId, contractResult)
+						r.Log.Errorf("[%s] return error response [%v]", txId, contractResult)
 						contractResult.GasUsed = gasUsed
 						return r.errorResult(contractResult, err, err.Error())
 					}
@@ -233,7 +235,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 				close(responseCh)
 
-				r.Log.Debugf("tx [%s] finish handle response [%v]", txId, contractResult)
+				r.Log.Debugf("[%s] finish handle response [%v]", txId, contractResult)
 				return contractResult, specialTxType
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
