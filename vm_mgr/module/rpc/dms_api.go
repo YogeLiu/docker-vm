@@ -91,7 +91,7 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 				err := errors.New("received nil message, ending contract stream")
 				return err
 			default:
-				s.logger.Debugf("[%s] handle msg [%s]", process.ProcessName(), rmsg)
+				s.logger.Debugf("[%s] handle msg [%v]", process.ProcessName(), rmsg)
 				err := handler.HandleMessage(rmsg.msg)
 				if err != nil {
 					s.logger.Errorf("[%s] err handling message: %s", process.ProcessName(), err)

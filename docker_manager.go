@@ -194,6 +194,7 @@ func (m *DockerManager) StartVM() error {
 	go func() {
 		err = m.displayInConsole(m.dockerContainerConfig.ContainerName)
 		if err != nil {
+			m.mgrLogger.Errorf("docker vm fail: %s", err)
 			return
 		}
 	}()

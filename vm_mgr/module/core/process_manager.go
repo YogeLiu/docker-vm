@@ -134,6 +134,7 @@ func (pm *ProcessManager) RegisterCrossProcess(initialProcessName string, called
 	pm.logger.Debugf("register cross process [%s]", calledProcess.processName)
 	pm.crossTable.Store(calledProcess.processName, calledProcess)
 	pm.addPeerIntoDepth(initialProcessName, calledProcess)
+	calledProcess.Handler.processName = calledProcess.processName
 }
 
 func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, initialProcessName string, currentHeight uint32) {

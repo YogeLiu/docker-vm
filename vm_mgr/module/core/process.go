@@ -303,8 +303,21 @@ func (p *Process) StopProcess(processTimeout bool) {
 
 // kill cross process and free process in cross process table
 func (p *Process) killCrossProcess() {
-	p.logger.Debugf("kill cross process: %s", p.processName)
-	_ = p.cmd.Process.Kill()
+	p.logger.Debugf("[%s] kill cross process", p.processName)
+	p.logger.Debugf("[%s] kill cross process cmd [%v]", p.processName, p.cmd)
+	p.logger.Debugf("[%s] kill cross process its process [%v]", p.processName, p.cmd.Process)
+
+	//if p.cmd.ProcessState.Exited() {
+	//p.logger.Debugf("[%s] cross process exist [%v]", p.processName, p.cmd.ProcessState)
+	if p.cmd.Process != nil {
+		err := p.cmd.Process.Kill()
+		if err != nil {
+			p.logger.Errorf("[%s] fail to kill cross process, err: [%s]", p.processName, err)
+		}
+	}
+	//} else {
+	//	p.logger.Debugf("[%s] cross process doesn't exist", p.processName)
+	//}
 
 }
 

@@ -358,7 +358,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 	// check current height,
 	// if current height > 0, which is cross contract, just return result to previous contract
 	if h.TxRequest.TxContext.CurrentHeight > 0 {
-		h.logger.Debugf("handle cross contract completed message")
+		h.logger.Debugf("process [%s] handle cross contract completed message [%s]", h.processName, completedMsg.TxId)
 		responseChId := crossContractChKey(h.TxRequest.TxId, h.TxRequest.TxContext.CurrentHeight)
 		responseCh := h.scheduler.GetCrossContractResponseCh(responseChId)
 		responseCh <- completedMsg
