@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -43,6 +44,8 @@ type ProcessMgrInterface interface {
 // processName: contractName:contractVersion:index
 // crossProcessName: txId:currentHeight
 type Process struct {
+	pId            int
+	underProcess   *os.Process
 	processName    string
 	isCrossProcess bool
 
@@ -163,16 +166,20 @@ func (p *Process) LaunchProcess() error {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.Uid),
 		},
-		Cloneflags: syscall.CLONE_NEWPID,
+		//Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
+	p.underProcess = cmd.Process
+	p.logger.Debugf("[%s] see under process exist [%v]", p.processName, p.underProcess)
 
 	// start process
 	if err = cmd.Start(); err != nil {
-		p.logger.Errorf("fail to start process: %s", err)
+		p.logger.Errorf("[%s] fail to start process: %s", p.processName, err)
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_FAIL)
 		return err
 	}
+	//p.pId = cmd.Process.Pid
+	p.logger.Debugf("[%s] second its pid is [%d]", p.processName, p.pId)
 
 	// add control group
 	if err = utils.WriteToFile(p.cGroupPath, cmd.Process.Pid); err != nil {
@@ -303,17 +310,20 @@ func (p *Process) StopProcess(processTimeout bool) {
 
 // kill cross process and free process in cross process table
 func (p *Process) killCrossProcess() {
+	time.Sleep(300 * time.Millisecond)
 	p.logger.Debugf("[%s] kill cross process", p.processName)
-	p.logger.Debugf("[%s] kill cross process cmd [%v]", p.processName, p.cmd)
-	p.logger.Debugf("[%s] kill cross process its process [%v]", p.processName, p.cmd.Process)
+	p.logger.Debugf("[%s] kill cross process cmd [%+v]", p.processName, p.cmd)
+	p.logger.Debugf("[%s] kill cross process cmd process state [%+v]", p.processName, p.cmd.ProcessState)
+	p.logger.Debugf("[%s] kill cross process its process [%+v]", p.processName, p.cmd.Process)
+	p.logger.Debugf("[%s] kill cross process its pid [%d]", p.processName, p.pId)
+	p.logger.Debugf("[%s] kill cross process under process [%v]", p.processName, p.underProcess)
 
 	//if p.cmd.ProcessState.Exited() {
 	//p.logger.Debugf("[%s] cross process exist [%v]", p.processName, p.cmd.ProcessState)
-	if p.cmd.Process != nil {
-		err := p.cmd.Process.Kill()
-		if err != nil {
-			p.logger.Errorf("[%s] fail to kill cross process, err: [%s]", p.processName, err)
-		}
+	//if p.cmd.Process != nil {
+	err := p.cmd.Process.Kill()
+	if err != nil {
+		p.logger.Errorf("[%s] fail to kill cross process, err: [%s]", p.processName, err)
 	}
 	//} else {
 	//	p.logger.Debugf("[%s] cross process doesn't exist", p.processName)
