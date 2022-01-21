@@ -280,7 +280,7 @@ func (s *DockerScheduler) runningProcess(process *Process) {
 	go s.listenProcessInvoke(process)
 	// launch process wait block until process finished
 runProcess:
-	err := process.LaunchProcess("", false)
+	err := process.LaunchProcess()
 
 	if err != nil && process.ProcessState != protogo.ProcessState_PROCESS_STATE_EXPIRE {
 		currentTx := process.Handler.TxRequest
@@ -366,7 +366,7 @@ func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxReq
 	// register cross process
 	s.processManager.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, crossContractTx.TxContext.CurrentHeight, newProcess)
 
-	err = newProcess.LaunchProcess(crossContractTx.TxContext.OriginalProcessName, true)
+	err = newProcess.LaunchProcess()
 	if err != nil {
 		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(), crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
 		s.returnErrorCrossContractResponse(crossContractTx, errResponse)

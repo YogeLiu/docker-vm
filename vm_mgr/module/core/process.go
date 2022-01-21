@@ -141,7 +141,7 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 // if process end because of tx timeout, return tx timeout error and restart process
 // after new process launched, it will trigger to handle tx,
 // tx including init, upgrade, invoke based on the method of tx
-func (p *Process) LaunchProcess(crossProcessName string, isCrossProcess bool) error {
+func (p *Process) LaunchProcess() error {
 	p.logger.Debugf("[%s] launch process", p.processName)
 
 	var err error           // process global error
@@ -149,8 +149,8 @@ func (p *Process) LaunchProcess(crossProcessName string, isCrossProcess bool) er
 
 	var pn string
 
-	if isCrossProcess {
-		pn = crossProcessName
+	if p.isCrossProcess {
+		pn = p.Handler.TxRequest.TxContext.OriginalProcessName
 	} else {
 		pn = p.processName
 	}
