@@ -282,6 +282,7 @@ func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 }
 
 func (p *Process) Size() int {
+	p.logger.Debugf("[%s] get process size, queue is [%+v]", p.processName, p.TxWaitingQueue)
 	return len(p.TxWaitingQueue)
 }
 

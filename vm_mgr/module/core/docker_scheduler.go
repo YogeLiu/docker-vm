@@ -184,8 +184,12 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 		return
 	}
 
+	s.logger.Debugf("[%s] avaliable process: %s, size: %d, count: %+v", txRequest.TxId, process.processName, process.Size(), process.count)
+
 	// process exist, put current tx into process waiting queue and return
 	peerBalance := s.processManager.getPeerBalance(processNamePrefix)
+
+	s.logger.Debugf("[%s] peerBalance strategy: %d", txRequest.TxId, peerBalance.strategy)
 
 	if peerBalance.strategy == SLeast {
 
@@ -210,6 +214,8 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	}
 
 	process = s.processManager.GetAvailableProcess(processNamePrefix)
+	s.logger.Debugf("[%s] roundrobin process: %s", txRequest.TxId, process.processName)
+	s.logger.Debugf("[%s] roundrobin process: %s, size: %d, count: %+v", txRequest.TxId, process.processName, process.Size(), process.count)
 	process.AddTxWaitingQueue(txRequest)
 }
 
