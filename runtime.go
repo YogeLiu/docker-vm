@@ -290,7 +290,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			return r.errorResult(
 				contractResult,
 				fmt.Errorf("docker-vm-go timeout"),
-				"fail to receive request",
+				"fail to receive response",
 			)
 		}
 	}

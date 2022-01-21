@@ -13,8 +13,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	protocol2 "chainmaker.org/chainmaker/protocol/v2"
-
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"go.uber.org/zap"
@@ -47,27 +45,47 @@ var (
 // key of map is processGroup: contractName:contractVersion
 // value of map is peerBalance: including a list of process, each name is contractName:contractVersion:index
 type PeerBalance struct {
-	peers    []*Process
+	peers    sync.Map
 	curIdx   uint64
-	size     int
 	strategy int
+	size     int
 }
 
-// PeerDepth control cross contract
-// key of map is processName: contractName:contractVersion:index
-// value of map is peerDepth: including a list of process, the first one is original process
-// the reset are cross contract process
-type PeerDepth struct {
-	peers [protocol2.CallContractDepth + 1]*Process
-	size  int
-}
+//// PeerDepth control cross contract
+//// key of map is processName: contractName:contractVersion:index
+//// value of map is peerDepth: including a list of process, the first one is original process
+//// the reset are cross contract process
+//type PeerDepth struct {
+//	peers [protocol2.CallContractDepth + 1]*Process
+//	size  int
+//}
 
 type ProcessManager struct {
-	logger       *zap.SugaredLogger
-	balanceTable map[string]*PeerBalance
-	depthTable   map[string]*PeerDepth
-	crossTable   sync.Map
-	mutex        sync.Mutex
+	logger *zap.SugaredLogger
+	mutex  sync.Mutex
+
+	// map[string]*PeerBalance:
+	// string: processNamePrefix: contractName:contractVersion
+	// peerBalance:
+	// sync.Map: map[index]*Process
+	// int: index
+	// process: original process: contractName:contractVersion#index
+	balanceTable sync.Map
+
+	// map[string1]map[string]*CrossProcess  sync.Map[map]
+	// string1: originalProcessName: contractName:contractVersion#index#count - related to tx
+	// string2: height
+	// process: cross process: txId:height#count
+	depthTable sync.Map
+
+	// map[string]*CrossProcess
+	// string: contractName:contractVersion#index#count -- related to tx
+	// *CrossProcess: txId:height#count
+	crossTable sync.Map
+
+	//balanceTable map[string]*PeerBalance
+	//depthTable map[string]*PeerDepth
+
 }
 
 func NewProcessManager() *ProcessManager {
@@ -79,8 +97,8 @@ func NewProcessManager() *ProcessManager {
 
 	return &ProcessManager{
 		logger:       pmLogger,
-		balanceTable: make(map[string]*PeerBalance),
-		depthTable:   make(map[string]*PeerDepth),
+		balanceTable: sync.Map{},
+		depthTable:   sync.Map{},
 		crossTable:   sync.Map{},
 	}
 }
@@ -90,10 +108,11 @@ func (pm *ProcessManager) setStrategy(key string, _strategy int) {
 
 	pm.logger.Infof("set process manager strategy [%d]", _strategy)
 
-	balance, ok := pm.balanceTable[key]
+	balance, ok := pm.balanceTable.Load(key)
 	if ok {
-		balance.strategy = _strategy
+		balance.(*PeerBalance).strategy = _strategy
 	}
+
 }
 
 // RegisterNewProcess register new original process
@@ -107,9 +126,8 @@ func (pm *ProcessManager) RegisterNewProcess(processNamePrefix string, process *
 
 	success := pm.addPeerIntoBalance(processNamePrefix, process)
 	if success {
-		pm.addFirstPeerIntoDepth(process.processName, process)
+		process.Handler.processName = process.processName
 	}
-	process.Handler.processName = process.processName
 
 	return success
 }
@@ -127,27 +145,29 @@ func (pm *ProcessManager) ReleaseProcess(processName string) {
 	idx, _ := strconv.Atoi(nameList[1])
 
 	pm.removePeerFromBalance(key, idx)
-	pm.removeFirstPeerFromDepth(processName)
 }
 
-func (pm *ProcessManager) RegisterCrossProcess(initialProcessName string, calledProcess *Process) {
-	pm.logger.Debugf("register cross process [%s]", calledProcess.processName)
-	pm.crossTable.Store(calledProcess.processName, calledProcess)
-	pm.addPeerIntoDepth(initialProcessName, calledProcess)
+func (pm *ProcessManager) RegisterCrossProcess(originalProcessName string, height uint32, calledProcess *Process) {
+	pm.logger.Debugf("register cross process [%s], original process name [%s]", calledProcess.processName, originalProcessName)
+	pm.crossTable.Store(originalProcessName, calledProcess)
+	pm.addPeerIntoDepth(originalProcessName, height, calledProcess)
 	calledProcess.Handler.processName = calledProcess.processName
 }
 
-func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, initialProcessName string, currentHeight uint32) {
-	pm.logger.Debugf("release cross process [%s]", crossProcessName)
-	pm.crossTable.Delete(crossProcessName)
-	pm.removePeerFromDepth(initialProcessName, currentHeight)
+func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, originalProcessName string, currentHeight uint32) {
+	pm.logger.Debugf("release cross process [%s], original process name [%s]", crossProcessName, originalProcessName)
+	pm.crossTable.Delete(originalProcessName)
+	pm.removePeerFromDepth(originalProcessName, currentHeight)
 }
 
+// GetPeer retrieve peer from process manager, could be original process or cross process:
+// contractName:contractVersion#index#count
+// original process: contractName:contractVersion#index
 func (pm *ProcessManager) GetPeer(processName string) *Process {
 	pm.logger.Debugf("get process [%s]", processName)
 	nameList := strings.Split(processName, "#")
 
-	if len(nameList) == 1 {
+	if len(nameList) == 3 {
 		cp, _ := pm.crossTable.Load(processName)
 		crossProcess := cp.(*Process)
 		return crossProcess
@@ -157,7 +177,8 @@ func (pm *ProcessManager) GetPeer(processName string) *Process {
 	idx, _ := strconv.Atoi(nameList[1])
 
 	peerBalance := pm.getPeerBalance(key)
-	return peerBalance.peers[idx]
+	peer, _ := peerBalance.peers.Load(idx)
+	return peer.(*Process)
 }
 
 // GetAvailableProcess return one process from peer balance based on current strategy
@@ -169,36 +190,36 @@ func (pm *ProcessManager) GetAvailableProcess(processKey string) *Process {
 
 func (pm *ProcessManager) addPeerIntoBalance(key string, peer *Process) bool {
 
-	peerBalance, ok := pm.balanceTable[key]
+	peerBalance, ok := pm.balanceTable.Load(key)
 
 	if !ok {
 		balance := &PeerBalance{
-			peers:    make([]*Process, maxPeer),
+			peers:    sync.Map{},
 			curIdx:   0,
-			size:     0,
 			strategy: SLeast,
+			size:     0,
 		}
 		peer.processName = fmt.Sprintf("%s#%d", peer.processName, 0)
-		balance.peers[0] = peer
-		balance.size++
+		balance.peers.Store(0, peer)
 
-		pm.balanceTable[key] = balance
-		pm.logger.Infof("add process into balance [%s]", peer.processName)
+		pm.balanceTable.Store(key, balance)
+		pm.logger.Debugf("add process into balance [%s]", peer.processName)
 		return true
 	}
 
-	curSize := peerBalance.size
+	pb := peerBalance.(*PeerBalance)
+	curSize := pb.size
 
 	if curSize < maxPeer {
 		peer.processName = fmt.Sprintf("%s#%d", peer.processName, curSize)
-		peerBalance.peers[curSize] = peer
-		peerBalance.size++
+		pb.peers.Store(curSize, peer)
+		pb.size++
 
-		if peerBalance.size == maxPeer {
+		if pb.size == maxPeer {
 			pm.setStrategy(key, SRoundRobin)
 		}
 
-		pm.logger.Infof("add process into balance [%s]", peer.processName)
+		pm.logger.Debugf("add process into balance [%s]", peer.processName)
 
 		return true
 	}
@@ -221,13 +242,15 @@ func (pm *ProcessManager) getPeerFromBalance(key string) *Process {
 
 	// peer list just have one peer, always return it
 	// until returned peer reach limit, will generate new peer into balancer
-	peerBalance, ok := pm.balanceTable[key]
+	pb, ok := pm.balanceTable.Load(key)
 	if !ok {
 		return nil
 	}
+	peerBalance := pb.(*PeerBalance)
 
 	if peerBalance.size == 1 {
-		return peerBalance.peers[0]
+		curPb, _ := peerBalance.peers.Load(0)
+		return curPb.(*Process)
 	}
 
 	// peer list contains 1 ~ maxPeer peers, return lease size peer
@@ -246,76 +269,105 @@ func (pm *ProcessManager) getPeerFromBalance(key string) *Process {
 }
 
 func (pm *ProcessManager) getPeerBalance(key string) *PeerBalance {
-	peerBalance, ok := pm.balanceTable[key]
+	peerBalance, ok := pm.balanceTable.Load(key)
 	if ok {
-		return peerBalance
+		return peerBalance.(*PeerBalance)
 	}
 	return nil
 }
 
 func (pm *ProcessManager) removePeerFromBalance(key string, idx int) {
-	peerBalance, ok := pm.balanceTable[key]
+	pb, ok := pm.balanceTable.Load(key)
 	if !ok {
 		return
 	}
 
-	peerBalance.peers[idx] = nil
+	peerBalance := pb.(*PeerBalance)
+
+	peerBalance.peers.Delete(idx)
 	peerBalance.size--
 	peerBalance.strategy = SLeast
 
 	if peerBalance.size == 0 {
-		delete(pm.balanceTable, key)
+		//delete(pm.balanceTable, key)
+		pm.balanceTable.Delete(key)
 	}
 }
 
 // ============================== Peer Depth functions ================================
 
-func (pm *ProcessManager) addFirstPeerIntoDepth(processName string, process *Process) {
-	pm.logger.Debugf("add first peer into depth [%s]", process.processName)
-	newPeerDepth := &PeerDepth{
-		peers: [protocol2.CallContractDepth + 1]*Process{},
-		size:  0,
-	}
-	newPeerDepth.peers[0] = process
-	newPeerDepth.size++
-	pm.depthTable[processName] = newPeerDepth
-}
+//func (pm *ProcessManager) addFirstPeerIntoDepth(processName string, process *Process) {
+//	pm.logger.Debugf("add first peer into depth [%s]", process.processName)
+//	newPeerDepth := &PeerDepth{
+//		peers: [protocol2.CallContractDepth + 1]*Process{},
+//		size:  0,
+//	}
+//	newPeerDepth.peers[0] = process
+//	newPeerDepth.size++
+//	pm.depthTable[processName] = newPeerDepth
+//}
+//
+//func (pm *ProcessManager) removeFirstPeerFromDepth(processName string) {
+//	pm.logger.Debugf("remove first peer from depth [%s]", processName)
+//	delete(pm.depthTable, processName)
+//}
 
-func (pm *ProcessManager) removeFirstPeerFromDepth(processName string) {
-	pm.logger.Debugf("remove first peer from depth [%s]", processName)
-	delete(pm.depthTable, processName)
-}
-
-func (pm *ProcessManager) addPeerIntoDepth(initialProcessName string, calledProcess *Process) {
+func (pm *ProcessManager) addPeerIntoDepth(originalProcessName string, height uint32, calledProcess *Process) {
 
 	pm.logger.Debugf("add cross process %s with initial process name %s",
-		calledProcess.processName, initialProcessName)
+		calledProcess.processName, originalProcessName)
 
-	peerDepth, ok := pm.depthTable[initialProcessName]
-	if ok {
-		peerDepth.peers[peerDepth.size] = calledProcess
-		peerDepth.size += 1
+	peerDepth, ok := pm.depthTable.Load(originalProcessName)
+	if !ok {
+		//newPeerDepth := &PeerDepth{
+		//	peers: [protocol2.CallContractDepth + 1]*Process{},
+		//	size:  0,
+		//}
+
+		newPeerDepth := make(map[uint32]*Process)
+		newPeerDepth[height] = calledProcess
+		pm.depthTable.Store(originalProcessName, newPeerDepth)
+
+		peerDepth = newPeerDepth
 	}
+
+	//pm.mutex.Lock()
+	//defer pm.mutex.Unlock()
+
+	pd := peerDepth.(map[uint32]*Process)
+	pd[height] = calledProcess
 
 }
 
-func (pm *ProcessManager) removePeerFromDepth(initialProcessName string, currentHeight uint32) {
+func (pm *ProcessManager) removePeerFromDepth(originalProcessName string, currentHeight uint32) {
 	if currentHeight == 0 {
 		return
 	}
+
 	pm.logger.Debugf("release cross process with position: %v", currentHeight)
-	peerDepth, ok := pm.depthTable[initialProcessName]
+
+	//pm.mutex.Lock()
+	//defer pm.mutex.Unlock()
+
+	peerDepth, ok := pm.depthTable.Load(originalProcessName)
 	if ok {
-		peerDepth.peers[currentHeight] = nil
-		peerDepth.size -= 1
+		pd := peerDepth.(map[uint32]*Process)
+		delete(pd, currentHeight)
+		//peerDepth.peers[currentHeight-1] = nil
 	}
 }
 
-func (pm *ProcessManager) getPeerDepth(initialProcessName string) *PeerDepth {
-	pd, ok := pm.depthTable[initialProcessName]
+func (pm *ProcessManager) getPeerDepth(originalProcessName string) map[uint32]*Process {
+
+	depthTable, ok := pm.depthTable.Load(originalProcessName)
 	if ok {
-		return pd
+		return depthTable.(map[uint32]*Process)
 	}
+
+	//pd, ok := pm.depthTable[initialProcessName]
+	//if ok {
+	//	return pd
+	//}
 	return nil
 }
 
@@ -329,20 +381,25 @@ func (pm *ProcessManager) getNextPeerRoundRobin(group *PeerBalance) *Process {
 	}
 
 	if group.size == 1 {
-		return group.peers[0]
+		peer, _ := group.peers.Load(0)
+		return peer.(*Process)
 	}
 
 	// loop entire backends to find out an Alive backend
 	next := pm.nextIndex(group)
-	l := len(group.peers) + next // start from next and move a full cycle
-	for i := next; i < l; i++ {
-		idx := i % len(group.peers) // take an index by modding with length
-		// if we have an alive backend, use it and store if its not the original one
-		if group.peers[idx] != nil {
-			atomic.StoreUint64(&group.curIdx, uint64(idx)) // mark the current one
-			return group.peers[idx]
-		}
+	process, ok := group.peers.Load(next)
+	if ok {
+		return process.(*Process)
 	}
+	//l := group.size + next // start from next and move a full cycle
+	//for i := next; i < l; i++ {
+	//	idx := i % group.size // take an index by modding with length
+	//	// if we have an alive backend, use it and store if its not the original one
+	//	if group.peers[idx] != nil {
+	//		atomic.StoreUint64(&group.curIdx, uint64(idx)) // mark the current one
+	//		return group.peers[idx]
+	//	}
+	//}
 	return nil
 }
 
@@ -352,16 +409,30 @@ func (pm *ProcessManager) getNextPeerLeastSize(group *PeerBalance) *Process {
 	nextIdx := 0
 	minSize := processWaitingQueueSize + 1
 
-	for i := 0; i < len(group.peers); i++ {
-		curPeer := group.peers[i]
-		if group.peers[i] != nil && curPeer.Size() < minSize {
-			minSize = curPeer.Size()
-			nextIdx = i
+	curIdx := 0
+	f := func(k, v interface{}) bool {
+		curIdx++
+		if v.(*Process).Size() < minSize {
+			minSize = v.(*Process).Size()
+			nextIdx = k.(int)
 		}
+
+		return true
 	}
 
+	group.peers.Range(f)
+
+	//for i := 0; i < group.size; i++ {
+	//	curPeer := group.peers.Load(i)
+	//	if group.peers[i] != nil && curPeer.Size() < minSize {
+	//		minSize = curPeer.Size()
+	//		nextIdx = i
+	//	}
+	//}
+
 	atomic.StoreUint64(&group.curIdx, uint64(nextIdx)) // mark the current one
-	return group.peers[nextIdx]
+	peer, _ := group.peers.Load(nextIdx)
+	return peer.(*Process)
 }
 
 func (pm *ProcessManager) nextIndex(group *PeerBalance) int {

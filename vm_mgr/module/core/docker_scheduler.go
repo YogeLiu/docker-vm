@@ -280,22 +280,31 @@ func (s *DockerScheduler) runningProcess(process *Process) {
 	go s.listenProcessInvoke(process)
 	// launch process wait block until process finished
 runProcess:
-	err := process.LaunchProcess()
+	err := process.LaunchProcess("", false)
 
 	if err != nil && process.ProcessState != protogo.ProcessState_PROCESS_STATE_EXPIRE {
 		currentTx := process.Handler.TxRequest
 
-		s.logger.Warn("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName, process.Handler.TxRequest.TxId, err)
+		s.logger.Warnf("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName, process.Handler.TxRequest.TxId, err)
 
-		peerDepth := s.processManager.getPeerDepth(process.processName)
-		if peerDepth.size > 1 {
-			lastContractName := peerDepth.peers[peerDepth.size-1].contractName
+		peerDepth := s.processManager.getPeerDepth(currentTx.TxContext.OriginalProcessName)
+
+		//todo: re check which child process is fail
+		if len(peerDepth) > 1 {
+			lastChildProcessHeight := len(peerDepth)
+			lastContractName := peerDepth[uint32(lastChildProcessHeight)].contractName
 			errMsg := fmt.Sprintf("%s fail: %s", lastContractName, err.Error())
 			s.returnErrorTxResponse(currentTx.TxId, errMsg)
 		} else {
 			s.logger.Errorf("return back error result for process [%s] for tx [%s]", process.processName, currentTx.TxId)
 			s.returnErrorTxResponse(currentTx.TxId, err.Error())
 		}
+
+		//if peerDepth.size > 1 {
+		//	lastContractName := peerDepth.peers[peerDepth.size-1].contractName
+		//	errMsg := fmt.Sprintf("%s fail: %s", lastContractName, err.Error())
+		//	s.returnErrorTxResponse(currentTx.TxId, errMsg)
+		//}
 
 		if process.ProcessState != protogo.ProcessState_PROCESS_STATE_FAIL {
 			// restart process and trigger next
@@ -355,9 +364,9 @@ func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxReq
 	newProcess := NewCrossProcess(user, crossContractTx, s, processName, contractPath, s.processManager)
 
 	// register cross process
-	s.processManager.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newProcess)
+	s.processManager.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, crossContractTx.TxContext.CurrentHeight, newProcess)
 
-	err = newProcess.LaunchProcess()
+	err = newProcess.LaunchProcess(crossContractTx.TxContext.OriginalProcessName, true)
 	if err != nil {
 		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(), crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
 		s.returnErrorCrossContractResponse(crossContractTx, errResponse)

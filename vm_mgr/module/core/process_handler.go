@@ -350,7 +350,6 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 
 	// give back response, could be normal response or error response
 	return h.sendMessage(crossContractResponse)
-
 }
 
 func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) error {

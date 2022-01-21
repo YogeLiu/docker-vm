@@ -8,14 +8,14 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
@@ -37,15 +37,14 @@ const (
 )
 
 type ProcessMgrInterface interface {
-	getPeerDepth(initialProcessName string) *PeerDepth
+	getPeerDepth(initialProcessName string) map[uint32]*Process
 }
 
 // Process id of process is index of process in process list
 // processName: contractName:contractVersion:index
 // crossProcessName: txId:currentHeight
 type Process struct {
-	pId            int
-	underProcess   *os.Process
+	count          atomic.Uint32
 	processName    string
 	isCrossProcess bool
 
@@ -57,12 +56,12 @@ type Process struct {
 	user       *security.User
 	cmd        *exec.Cmd
 
-	ProcessState     protogo.ProcessState
-	TxWaitingQueue   chan *protogo.TxRequest
-	waitingQueueSize int32
-	txTrigger        chan bool
-	expireTimer      *time.Timer // process waiting time
-	Handler          *ProcessHandler
+	ProcessState   protogo.ProcessState
+	TxWaitingQueue chan *protogo.TxRequest
+	txTrigger      chan bool
+	expireTimer    *time.Timer // process waiting time
+	Handler        *ProcessHandler
+	notifyCh       chan bool
 
 	logger *zap.SugaredLogger
 
@@ -90,12 +89,12 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 		cGroupPath: filepath.Join(config.CGroupRoot, config.ProcsFile),
 		user:       user,
 
-		ProcessState:     protogo.ProcessState_PROCESS_STATE_CREATED,
-		TxWaitingQueue:   make(chan *protogo.TxRequest, processWaitingQueueSize),
-		waitingQueueSize: 0,
-		txTrigger:        make(chan bool),
-		expireTimer:      time.NewTimer(processWaitingTime * time.Second),
-		Handler:          nil,
+		ProcessState:   protogo.ProcessState_PROCESS_STATE_CREATED,
+		TxWaitingQueue: make(chan *protogo.TxRequest, processWaitingQueueSize),
+		txTrigger:      make(chan bool),
+		expireTimer:    time.NewTimer(processWaitingTime * time.Second),
+		Handler:        nil,
+		notifyCh:       make(chan bool, 1),
 
 		logger: logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
@@ -112,18 +111,18 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
-		isCrossProcess:   true,
-		processName:      processName,
-		contractName:     txRequest.ContractName,
-		contractVersion:  txRequest.ContractVersion,
-		ProcessState:     protogo.ProcessState_PROCESS_STATE_CREATED,
-		TxWaitingQueue:   nil,
-		waitingQueueSize: 0,
-		txTrigger:        nil,
-		expireTimer:      time.NewTimer(processWaitingTime * time.Second),
-		logger:           logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		isCrossProcess:  true,
+		processName:     processName,
+		contractName:    txRequest.ContractName,
+		contractVersion: txRequest.ContractVersion,
+		ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
+		TxWaitingQueue:  nil,
+		txTrigger:       nil,
+		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
+		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
 		Handler:      nil,
+		notifyCh:     make(chan bool, 1),
 		user:         user,
 		contractPath: contractPath,
 		cGroupPath:   filepath.Join(config.CGroupRoot, config.ProcsFile),
@@ -142,15 +141,23 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 // if process end because of tx timeout, return tx timeout error and restart process
 // after new process launched, it will trigger to handle tx,
 // tx including init, upgrade, invoke based on the method of tx
-func (p *Process) LaunchProcess() error {
-	p.logger.Debugf("launch process [%s]", p.processName)
+func (p *Process) LaunchProcess(crossProcessName string, isCrossProcess bool) error {
+	p.logger.Debugf("[%s] launch process", p.processName)
 
 	var err error           // process global error
 	var stderr bytes.Buffer // used to capture the error message from contract
 
+	var pn string
+
+	if isCrossProcess {
+		pn = crossProcessName
+	} else {
+		pn = p.processName
+	}
+
 	cmd := exec.Cmd{
 		Path:   p.contractPath,
-		Args:   []string{p.user.SockPath, p.processName, p.contractName, p.contractVersion, config.SandBoxLogLevel},
+		Args:   []string{p.user.SockPath, pn, p.contractName, p.contractVersion, config.SandBoxLogLevel},
 		Stderr: &stderr,
 	}
 
@@ -166,29 +173,27 @@ func (p *Process) LaunchProcess() error {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.Uid),
 		},
-		//Cloneflags: syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
-	p.underProcess = cmd.Process
-	p.logger.Debugf("[%s] see under process exist [%v]", p.processName, p.underProcess)
 
-	// start process
 	if err = cmd.Start(); err != nil {
 		p.logger.Errorf("[%s] fail to start process: %s", p.processName, err)
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_FAIL)
 		return err
 	}
-	//p.pId = cmd.Process.Pid
-	p.logger.Debugf("[%s] second its pid is [%d]", p.processName, p.pId)
 
 	// add control group
 	if err = utils.WriteToFile(p.cGroupPath, cmd.Process.Pid); err != nil {
 		p.logger.Errorf("fail to add cgroup: %s", err)
 		return err
 	}
-	p.logger.Debugf("Add Process [%s] to cgroup", p.processName)
+	p.logger.Debugf("[%s] add process to cgroup", p.processName)
 
 	go p.printContractLog(contractOut)
+
+	p.notifyCh <- true
+	p.logger.Debugf("[%s] notify process started", p.processName)
 
 	// wait process end, all err come from here
 	// the life of wait including process initial, all running txs
@@ -199,7 +204,7 @@ func (p *Process) LaunchProcess() error {
 	// 3. tx timeout: return timeout error
 	if err = cmd.Wait(); err != nil {
 
-		p.logger.Warnf("process [%s] stopped for tx [%s], err is [%s], process state is [%s]",
+		p.logger.Warnf("[%s] process stopped for tx [%s], err is [%s], process state is [%s]",
 			p.processName, p.Handler.TxRequest.TxId, err, p.ProcessState)
 
 		// process exceed max process waiting time, exit process, we assume it as normal exit
@@ -212,9 +217,9 @@ func (p *Process) LaunchProcess() error {
 		}
 
 		if p.isCrossProcess {
-			p.logger.Errorf("cross process fail: [%s], [%s]", stderr.String(), err)
+			p.logger.Errorf("[%s] cross process fail: [%s], [%s]", stderr.String(), err)
 		} else {
-			p.logger.Errorf("tx [%s] fail: [%s], [%s]", p.Handler.TxRequest.TxId, stderr.String(), err)
+			p.logger.Errorf("[%s] process fail: tx [%s], [%s], [%s]", p.processName, p.Handler.TxRequest.TxId, stderr.String(), err)
 		}
 
 		// process fail because exceed main process max waiting time
@@ -240,16 +245,15 @@ func (p *Process) InvokeProcess() bool {
 
 	select {
 	case nextTx := <-p.TxWaitingQueue:
-		p.logger.Debugf("[%s] start handle tx in process [%s] with queue size [%d]", nextTx.TxId, p.processName, p.waitingQueueSize)
+		p.logger.Debugf("[%s] process start handle tx [%s], waiting queue size [%d]", p.processName, nextTx.TxId, len(p.TxWaitingQueue))
 
-		p.minusSize()
 		p.disableProcessExpireTimer()
 		p.Handler.TxRequest = nextTx
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
 
 		err := p.Handler.HandleContract()
 		if err != nil {
-			p.logger.Errorf("process [%s] fail to invoke contract: %s", p.processName, err)
+			p.logger.Errorf("[%s] process fail to invoke contract: %s", p.processName, err)
 		}
 		return true
 	case <-p.expireTimer.C:
@@ -262,25 +266,18 @@ func (p *Process) InvokeProcess() bool {
 // AddTxWaitingQueue add tx with same contract to process waiting queue
 func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 
-	tx.TxContext.OriginalProcessName = p.processName
+	p.mutex.Lock()
+	p.count.Add(1)
+	tx.TxContext.OriginalProcessName = p.processName + "#" + p.count.String()
+	p.mutex.Unlock()
+
 	p.TxWaitingQueue <- tx
-	p.addSize()
+	p.logger.Debugf("[%s] add tx [%s] to waiting queue with size [%d], process state is [%s]", p.processName, tx.TxId, len(p.TxWaitingQueue), p.ProcessState)
 
-	p.logger.Debugf("[%s] add tx to waiting queue in process [%s] with size [%d], process state is [%s]",
-		tx.TxId, p.processName, p.waitingQueueSize, p.ProcessState)
-
-}
-
-func (p *Process) addSize() {
-	atomic.AddInt32(&p.waitingQueueSize, 1)
-}
-
-func (p *Process) minusSize() {
-	atomic.AddInt32(&p.waitingQueueSize, -1)
 }
 
 func (p *Process) Size() int {
-	return int(p.waitingQueueSize)
+	return len(p.TxWaitingQueue)
 }
 
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
@@ -299,64 +296,60 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 
 // StopProcess stop process
 func (p *Process) StopProcess(processTimeout bool) {
-	p.logger.Debugf("stop process [%s]", p.processName)
+	p.logger.Debugf("[%s] stop process", p.processName)
 	if processTimeout {
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_EXPIRE)
+		p.killProcess(false)
 	} else {
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_TX_TIMEOUT)
+		p.killProcess(true)
 	}
-	p.killProcess()
+
 }
 
 // kill cross process and free process in cross process table
 func (p *Process) killCrossProcess() {
-	time.Sleep(300 * time.Millisecond)
-	p.logger.Debugf("[%s] kill cross process", p.processName)
-	p.logger.Debugf("[%s] kill cross process cmd [%+v]", p.processName, p.cmd)
-	p.logger.Debugf("[%s] kill cross process cmd process state [%+v]", p.processName, p.cmd.ProcessState)
-	p.logger.Debugf("[%s] kill cross process its process [%+v]", p.processName, p.cmd.Process)
-	p.logger.Debugf("[%s] kill cross process its pid [%d]", p.processName, p.pId)
-	p.logger.Debugf("[%s] kill cross process under process [%v]", p.processName, p.underProcess)
-
-	//if p.cmd.ProcessState.Exited() {
-	//p.logger.Debugf("[%s] cross process exist [%v]", p.processName, p.cmd.ProcessState)
-	//if p.cmd.Process != nil {
+	<-p.notifyCh
+	p.logger.Debugf("[%s] receive process notify and kill cross process", p.processName)
 	err := p.cmd.Process.Kill()
 	if err != nil {
-		p.logger.Errorf("[%s] fail to kill cross process, err: [%s]", p.processName, err)
+		p.logger.Errorf("[%s] fail to kill cross process: [%s]", p.processName, err)
 	}
-	//} else {
-	//	p.logger.Debugf("[%s] cross process doesn't exist", p.processName)
-	//}
+	close(p.notifyCh)
 
 }
 
 // kill main process when process encounter error
-func (p *Process) killProcess() {
+func (p *Process) killProcess(isTxTimeout bool) {
 
-	processContext := p.processMgr.getPeerDepth(p.processName)
-
-	for _, process := range processContext.peers {
-		if process != nil {
-			p.logger.Debugf("kill process: %s", process.processName)
-			_ = process.cmd.Process.Kill()
+	if isTxTimeout {
+		childProcessName := p.Handler.TxRequest.TxContext.OriginalProcessName
+		processContext := p.processMgr.getPeerDepth(childProcessName)
+		for depth, process := range processContext {
+			if process != nil {
+				p.logger.Debugf("[%s] kill cross process in depth [%d]", process.processName, depth)
+				_ = process.cmd.Process.Kill()
+			}
 		}
 	}
+	p.logger.Debugf("[%s] kill original process", p.processName)
+	_ = p.cmd.Process.Kill()
+
 }
 
 func (p *Process) triggerProcessState() {
-	p.logger.Debugf("trigger next tx for process [%s]", p.processName)
+	p.logger.Debugf("[%s] trigger next tx for process", p.processName)
 	p.txTrigger <- true
 }
 
 func (p *Process) updateProcessState(state protogo.ProcessState) {
-	p.logger.Debugf("update process state: [%s] for process [%s]", state, p.processName)
+	p.logger.Debugf("[%s] update process state: [%s]", p.processName, state)
 	p.ProcessState = state
 }
 
 // resetProcessTimer reset timer when tx finished
 func (p *Process) resetProcessTimer() {
-	p.logger.Debugf("reset process [%s] expire timer", p.processName)
+	p.logger.Debugf("[%s] reset process expire timer", p.processName)
 	if !p.expireTimer.Stop() && len(p.expireTimer.C) > 0 {
 		<-p.expireTimer.C
 	}
@@ -364,7 +357,7 @@ func (p *Process) resetProcessTimer() {
 }
 
 func (p *Process) disableProcessExpireTimer() {
-	p.logger.Debugf("disable process [%s] expire timer", p.processName)
+	p.logger.Debugf("[%s] disable process expire timer", p.processName)
 	if !p.expireTimer.Stop() && len(p.expireTimer.C) > 0 {
 		<-p.expireTimer.C
 	}
