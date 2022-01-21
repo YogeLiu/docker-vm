@@ -46,7 +46,7 @@ package core
 //	assert.Equal(t, 1, balance.size)
 //	assert.Equal(t, "contract:1.0#0", balance.peers[0].processName)
 //
-//	peerDepth, _ := processManager.depthTable["contract:1.0#0"]
+//	peerDepth, _ := processManager.crossTable["contract:1.0#0"]
 //	assert.Equal(t, 1, peerDepth.size)
 //	assert.Equal(t, "contract:1.0#0", peerDepth.peers[0].processName)
 //
@@ -59,7 +59,7 @@ package core
 //	assert.Equal(t, "contract:1.0#0", balance1.peers[0].processName)
 //	assert.Equal(t, "contract:1.0#1", balance1.peers[1].processName)
 //
-//	peerDepth1, _ := processManager.depthTable["contract:1.0#1"]
+//	peerDepth1, _ := processManager.crossTable["contract:1.0#1"]
 //	assert.Equal(t, 1, peerDepth1.size)
 //	assert.Equal(t, "contract:1.0#1", peerDepth1.peers[0].processName)
 //}
@@ -82,9 +82,9 @@ package core
 //	assert.Equal(t, 1, balance0.size)
 //	assert.Equal(t, "contract:1.0#1", balance0.peers[1].processName)
 //	assert.Nil(t, balance0.peers[0])
-//	_, ok := processManager.depthTable["contract:1.0#0"]
+//	_, ok := processManager.crossTable["contract:1.0#0"]
 //	assert.False(t, ok)
-//	peerDepth0, ok := processManager.depthTable["contract:1.0#1"]
+//	peerDepth0, ok := processManager.crossTable["contract:1.0#1"]
 //	assert.True(t, ok)
 //	assert.Equal(t, 1, peerDepth0.size)
 //	assert.Equal(t, "contract:1.0#1", peerDepth0.peers[0].processName)
@@ -92,7 +92,7 @@ package core
 //	processManager.ReleaseProcess("contract:1.0#1")
 //	_, ok = processManager.balanceTable[processNamePrefix]
 //	assert.False(t, ok)
-//	_, ok = processManager.depthTable["contract:1.0#1"]
+//	_, ok = processManager.crossTable["contract:1.0#1"]
 //	assert.False(t, ok)
 //}
 //
@@ -112,7 +112,7 @@ package core
 //	assert.Equal(t, 1, balance0.size)
 //	assert.Equal(t, "contract:1.0#0", balance0.peers[0].processName)
 //
-//	peerDepth0, ok := processManager.depthTable["contract:1.0#0"]
+//	peerDepth0, ok := processManager.crossTable["contract:1.0#0"]
 //	assert.True(t, ok)
 //	assert.Equal(t, 2, peerDepth0.size)
 //	assert.Equal(t, "contract:1.0#0", peerDepth0.peers[0].processName)
@@ -126,7 +126,7 @@ package core
 //	assert.Equal(t, 1, balance1.size)
 //	assert.Equal(t, "contract:1.0#0", balance1.peers[0].processName)
 //
-//	peerDepth1, ok := processManager.depthTable["contract:1.0#0"]
+//	peerDepth1, ok := processManager.crossTable["contract:1.0#0"]
 //	assert.True(t, ok)
 //	assert.Equal(t, 3, peerDepth1.size)
 //	assert.Equal(t, "contract:1.0#0", peerDepth1.peers[0].processName)
@@ -156,7 +156,7 @@ package core
 //	assert.Equal(t, 1, balance0.size)
 //	assert.Equal(t, "contract:1.0#0", balance0.peers[0].processName)
 //
-//	peerDepth0, ok := processManager.depthTable["contract:1.0#0"]
+//	peerDepth0, ok := processManager.crossTable["contract:1.0#0"]
 //	assert.True(t, ok)
 //	assert.Equal(t, 2, peerDepth0.size)
 //	assert.Equal(t, "contract:1.0#0", peerDepth0.peers[0].processName)
@@ -168,7 +168,7 @@ package core
 //	assert.Equal(t, 1, balance1.size)
 //	assert.Equal(t, "contract:1.0#0", balance1.peers[0].processName)
 //
-//	peerDepth1, ok := processManager.depthTable["contract:1.0#0"]
+//	peerDepth1, ok := processManager.crossTable["contract:1.0#0"]
 //	assert.True(t, ok)
 //	assert.Equal(t, 1, peerDepth1.size)
 //	assert.Equal(t, "contract:1.0#0", peerDepth1.peers[0].processName)

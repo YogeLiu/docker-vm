@@ -10,6 +10,7 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -44,7 +45,7 @@ type ProcessMgrInterface interface {
 // processName: contractName:contractVersion:index
 // crossProcessName: txId:currentHeight
 type Process struct {
-	count          atomic.Uint32
+	count          *atomic.Uint64
 	processName    string
 	isCrossProcess bool
 
@@ -79,6 +80,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
+		count:          atomic.NewUint64(0),
 		processName:    processName,
 		isCrossProcess: false,
 
@@ -111,6 +113,7 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
+		count:           atomic.NewUint64(0),
 		isCrossProcess:  true,
 		processName:     processName,
 		contractName:    txRequest.ContractName,
@@ -148,9 +151,9 @@ func (p *Process) LaunchProcess() error {
 	var stderr bytes.Buffer // used to capture the error message from contract
 
 	var pn string
-
 	if p.isCrossProcess {
-		pn = p.Handler.TxRequest.TxContext.OriginalProcessName
+		pn = p.Handler.TxRequest.TxContext.OriginalProcessName + "#" +
+			strconv.FormatUint(uint64(p.Handler.TxRequest.TxContext.CurrentHeight), 10)
 	} else {
 		pn = p.processName
 	}
@@ -266,13 +269,15 @@ func (p *Process) InvokeProcess() bool {
 // AddTxWaitingQueue add tx with same contract to process waiting queue
 func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 
-	p.mutex.Lock()
+	//p.mutex.Lock()
 	p.count.Add(1)
 	tx.TxContext.OriginalProcessName = p.processName + "#" + p.count.String()
-	p.mutex.Unlock()
+	p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, tx.TxContext.OriginalProcessName)
+	//p.mutex.Unlock()
 
 	p.TxWaitingQueue <- tx
-	p.logger.Debugf("[%s] add tx [%s] to waiting queue with size [%d], process state is [%s]", p.processName, tx.TxId, len(p.TxWaitingQueue), p.ProcessState)
+	p.logger.Debugf("[%s] add tx [%s] to waiting queue with size [%d], "+
+		"process state is [%s]", p.processName, tx.TxId, len(p.TxWaitingQueue), p.ProcessState)
 
 }
 
