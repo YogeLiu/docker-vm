@@ -327,6 +327,9 @@ func (s *DockerScheduler) listenProcessInvoke(process *Process) {
 	for {
 		select {
 		case <-process.txTrigger:
+			if process.ProcessState != protogo.ProcessState_PROCESS_STATE_READY {
+				continue
+			}
 			success := process.InvokeProcess()
 			if !success {
 				return

@@ -270,8 +270,8 @@ func (p *Process) InvokeProcess() bool {
 func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 
 	//p.mutex.Lock()
-	p.count.Add(1)
-	tx.TxContext.OriginalProcessName = p.processName + "#" + p.count.String()
+	newCount := p.count.Add(1)
+	tx.TxContext.OriginalProcessName = p.processName + "#" + strconv.FormatUint(newCount, 10)
 	p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, tx.TxContext.OriginalProcessName)
 	//p.mutex.Unlock()
 
