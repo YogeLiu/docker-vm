@@ -42,7 +42,7 @@ import (
 const (
 	mountContractDir = "contracts"
 	msgIterIsNil     = "iterator is nil"
-	timeout          = 5000 // tx execution timeout(milliseconds)
+	timeout          = 10000 // tx execution timeout(milliseconds)
 )
 
 var (
