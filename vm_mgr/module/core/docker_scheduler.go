@@ -184,38 +184,35 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 		return
 	}
 
-	s.logger.Debugf("[%s] avaliable process: %s, size: %d, count: %+v", txRequest.TxId, process.processName, process.Size(), process.count)
+	s.logger.Debugf("[%s] avaliable process: %s, size: %d, txCount: %+v", txRequest.TxId,
+		process.processName, process.Size(), process.txCount)
 
 	// process exist, put current tx into process waiting queue and return
-	peerBalance := s.processManager.getPeerBalance(processNamePrefix)
+	peerBalance := s.processManager.getProcessBalance(processNamePrefix)
 
 	s.logger.Debugf("[%s] peerBalance strategy: %d", txRequest.TxId, peerBalance.strategy)
 
-	if peerBalance.strategy == SLeast {
-
-		if process.Size() <= peerLimit {
+	if peerBalance.strategy == StrategyLeastSize {
+		if process.Size() < waitingQueueLimit {
 			process.AddTxWaitingQueue(txRequest)
 			return
-		} else {
-			process, err = s.createNewProcess(processNamePrefix, txRequest)
-
-			if err == utils.RegisterProcessError {
-				s.txReqCh <- txRequest
-				return
-			}
-
-			if err != nil {
-				s.returnErrorTxResponse(txRequest.TxId, err.Error())
-				return
-			}
-			s.initProcess(process)
+		}
+		process, err = s.createNewProcess(processNamePrefix, txRequest)
+		if err == utils.RegisterProcessError {
+			s.txReqCh <- txRequest
 			return
 		}
+		if err != nil {
+			s.returnErrorTxResponse(txRequest.TxId, err.Error())
+			return
+		}
+		s.initProcess(process)
+		return
 	}
 
-	process = s.processManager.GetAvailableProcess(processNamePrefix)
 	s.logger.Debugf("[%s] roundrobin process: %s", txRequest.TxId, process.processName)
-	s.logger.Debugf("[%s] roundrobin process: %s, size: %d, count: %+v", txRequest.TxId, process.processName, process.Size(), process.count)
+	s.logger.Debugf("[%s] roundrobin process: %s, size: %d, txCount: %+v", txRequest.TxId,
+		process.processName, process.Size(), process.txCount)
 	process.AddTxWaitingQueue(txRequest)
 }
 
@@ -293,7 +290,7 @@ runProcess:
 
 		s.logger.Warnf("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName, process.Handler.TxRequest.TxId, err)
 
-		peerDepth := s.processManager.getPeerDepth(currentTx.TxContext.OriginalProcessName)
+		peerDepth := s.processManager.getProcessDepth(currentTx.TxContext.OriginalProcessName)
 
 		//todo: re check which child process is fail
 		if len(peerDepth) > 1 {
@@ -307,7 +304,7 @@ runProcess:
 		}
 
 		//if peerDepth.size > 1 {
-		//	lastContractName := peerDepth.peers[peerDepth.size-1].contractName
+		//	lastContractName := peerDepth.processes[peerDepth.size-1].contractName
 		//	errMsg := fmt.Sprintf("%s fail: %s", lastContractName, err.Error())
 		//	s.returnErrorTxResponse(currentTx.TxId, errMsg)
 		//}

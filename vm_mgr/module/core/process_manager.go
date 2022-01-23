@@ -20,35 +20,37 @@ import (
 
 // balancer strategy
 const (
-	// SRoundRobin every time, launch max num backend,
+	// StrategyRoundRobin every time, launch max num backend,
 	// and then using round-robin to feed txs
-	SRoundRobin = iota
+	StrategyRoundRobin = iota
 
-	// SLeast first launch one backend, when reaching the 2/3 capacity, launch the second one
+	// StrategyLeastSize first launch one backend, when reaching the 2/3 capacity, launch the second one
 	// using the least connections' strategy to feed txs
-	SLeast
+	StrategyLeastSize
 )
 
 const (
-	defaultMaxPeer = 10
-	minPeerLimit   = 2
+	defaultMaxProcess          = 10
+	defaultMaxWaitingQueueSize = 2
 )
 
 var (
 	// max process num for same contract
-	maxPeer int
+	maxProcess int
 	// increase process condition: when reach limit, add new process
-	peerLimit int
+	waitingQueueLimit int
 )
 
-// PeerBalance control load balance of process which related to same contract
+// ProcessBalance control load balance of process which related to same contract
 // key of map is processGroup: contractName:contractVersion
 // value of map is peerBalance: including a list of process, each name is contractName:contractVersion:index
-type PeerBalance struct {
-	peers    sync.Map
+type ProcessBalance struct {
+	processes sync.Map
+	// curIdx: round-robin index
 	curIdx   uint64
 	strategy int
-	size     int
+	// size of the processes
+	size int
 }
 
 //// PeerDepth control cross contract
@@ -56,7 +58,7 @@ type PeerBalance struct {
 //// value of map is peerDepth: including a list of process, the first one is original process
 //// the reset are cross contract process
 //type PeerDepth struct {
-//	peers [protocol2.CallContractDepth + 1]*Process
+//	processes [protocol2.CallContractDepth + 1]*Process
 //	size  int
 //}
 
@@ -64,42 +66,32 @@ type ProcessManager struct {
 	logger *zap.SugaredLogger
 	mutex  sync.Mutex
 
-	// map[string]*PeerBalance:
+	// map[string]*ProcessBalance:
 	// string: processNamePrefix: contractName:contractVersion
 	// peerBalance:
 	// sync.Map: map[index]*Process
 	// int: index
 	// processName: contractName:contractVersion#index (original process)
-	balanceTable sync.Map
+	contractTable sync.Map
 
 	// map[string1]map[int]*CrossProcess  sync.Map[map]
-	// string1: originalProcessName: contractName:contractVersion#index#count - related to tx
+	// string1: originalProcessName: contractName:contractVersion#index#txCount - related to tx
 	// int: height
-	// processName: txId:height#count (cross process)
+	// processName: txId:height#txCount (cross process)
 	crossTable sync.Map
-
-	// map[string]*CrossProcess
-	// string: contractName:contractVersion#index#count -- related to tx
-	// *CrossProcess: txId:height#count
-	//todo: delete
-	//crossTable sync.Map
-
-	//balanceTable map[string]*PeerBalance
-	//crossTable map[string]*PeerDepth
-
 }
 
 func NewProcessManager() *ProcessManager {
 	pmLogger := logger.NewDockerLogger(logger.MODULE_PROCESS_MANAGER, config.DockerLogDir)
 
-	maxPeer = getMaxPeer()
-	peerLimit = getProcessLimitSize()
-	pmLogger.Infof("init process manager with max concurrency [%d], limit size [%d]", maxPeer, peerLimit)
+	maxProcess = getMaxPeer()
+	waitingQueueLimit = getProcessLimitSize()
+	pmLogger.Infof("init process manager with max concurrency [%d], limit size [%d]", maxProcess, waitingQueueLimit)
 
 	return &ProcessManager{
-		logger:       pmLogger,
-		balanceTable: sync.Map{},
-		crossTable:   sync.Map{},
+		logger:        pmLogger,
+		contractTable: sync.Map{},
+		crossTable:    sync.Map{},
 		//crossTable:   sync.Map{},
 	}
 }
@@ -109,9 +101,9 @@ func (pm *ProcessManager) setStrategy(key string, _strategy int) {
 
 	pm.logger.Infof("set process manager strategy [%d]", _strategy)
 
-	balance, ok := pm.balanceTable.Load(key)
+	balance, ok := pm.contractTable.Load(key)
 	if ok {
-		balance.(*PeerBalance).strategy = _strategy
+		balance.(*ProcessBalance).strategy = _strategy
 	}
 
 }
@@ -125,7 +117,7 @@ func (pm *ProcessManager) RegisterNewProcess(processNamePrefix string, process *
 
 	pm.logger.Infof("register new process: [%s]", processNamePrefix)
 
-	success := pm.addPeerIntoBalance(processNamePrefix, process)
+	success := pm.addProcessIntoBalance(processNamePrefix, process)
 	if success {
 		process.Handler.processName = process.processName
 	}
@@ -145,33 +137,30 @@ func (pm *ProcessManager) ReleaseProcess(processName string) {
 	key := nameList[0]
 	idx, _ := strconv.Atoi(nameList[1])
 
-	pm.removePeerFromBalance(key, idx)
+	pm.removeProcessFromProcessBalance(key, idx)
 }
 
 func (pm *ProcessManager) RegisterCrossProcess(originalProcessName string, height uint32, calledProcess *Process) {
 	pm.logger.Debugf("register cross process [%s], original process name [%s]", calledProcess.processName, originalProcessName)
 	//pm.crossTable.Store(originalProcessName, calledProcess)
-	pm.addPeerIntoDepth(originalProcessName, height, calledProcess)
+	pm.addCrossProcessIntoDepth(originalProcessName, height, calledProcess)
 	calledProcess.Handler.processName = calledProcess.processName
 }
 
 func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, originalProcessName string, currentHeight uint32) {
 	pm.logger.Debugf("release cross process [%s], original process name [%s]", crossProcessName, originalProcessName)
 	//pm.crossTable.Delete(originalProcessName)
-	pm.removePeerFromDepth(originalProcessName, currentHeight)
+	pm.removeCrosseProcessFromDepth(originalProcessName, currentHeight)
 }
 
-// GetPeer retrieve peer from process manager, could be original process or cross process:
-// contractName:contractVersion#index#count
+// GetProcess retrieve peer from process manager, could be original process or cross process:
+// contractName:contractVersion#index#txCount
 // original process: contractName:contractVersion#index
-func (pm *ProcessManager) GetPeer(processName string) *Process {
+func (pm *ProcessManager) GetProcess(processName string) *Process {
 	pm.logger.Debugf("get process [%s]", processName)
 	nameList := strings.Split(processName, "#")
 
 	if len(nameList) == 4 {
-		//cp, _ := pm.crossTable.Load(processName)
-		//crossProcess := cp.(*Process)
-		//return crossProcess
 		crossKey := strings.Join(nameList[:3], "#")
 		height, _ := strconv.Atoi(nameList[3])
 		cd, _ := pm.crossTable.Load(crossKey)
@@ -182,50 +171,84 @@ func (pm *ProcessManager) GetPeer(processName string) *Process {
 	key := nameList[0]
 	idx, _ := strconv.Atoi(nameList[1])
 
-	peerBalance := pm.getPeerBalance(key)
-	peer, _ := peerBalance.peers.Load(idx)
-	return peer.(*Process)
+	processBalance := pm.getProcessBalance(key)
+	process, _ := processBalance.processes.Load(idx)
+	return process.(*Process)
 }
 
 // GetAvailableProcess return one process from peer balance based on current strategy
+// based on different strategy, using different method to get next
+// if peer list just have one peer, always return it
+// when this peer reach limit, scheduler will generate new peer, limit May 2/3 of capacity or 4/5 of capacity
+// then function will return this new peer always, because we should feed this new process -- using lease size function
+// when return peer reach limit, then generate new peer, do above process
+// eventually, peer list reach limit, and return peer also reach limit, using round-robin algorithm to return peer
+// get one peer from a group of processes
 func (pm *ProcessManager) GetAvailableProcess(processKey string) *Process {
-	return pm.getPeerFromBalance(processKey)
+	pm.mutex.Lock()
+	defer pm.mutex.Unlock()
+
+	// peer list just have one peer, always return it
+	// until returned peer reach limit, will generate new peer into balancer
+	pb, ok := pm.contractTable.Load(processKey)
+	if !ok {
+		return nil
+	}
+	processBalance := pb.(*ProcessBalance)
+	//
+	//if processBalance.size == 1 {
+	//	curPb, _ := processBalance.processes.Load(0)
+	//	return curPb.(*Process)
+	//}
+
+	// peer list contains 1 ~ maxProcess processes, return lease size peer
+	// when returned peer reach limit, will generate new peer into balancer
+	// until returned peer also reach limit, set strategy as StrategyRoundRobin
+	if processBalance.size <= maxProcess && processBalance.strategy == StrategyLeastSize {
+		return pm.getProcessWithLeastSize(processBalance)
+	}
+
+	// peer list is full, using Round-Robin to return peer
+	// at this time, strategy == StrategyRoundRobin
+	// when one peer timeout, release this peer, reset strategy as StrategyLeastSize
+	// so using lease size to return peer
+	return pm.getProcessWithRoundRobin(processBalance)
 }
 
 // ========================= Peer Balance functions ===============================
 
-func (pm *ProcessManager) addPeerIntoBalance(key string, peer *Process) bool {
+func (pm *ProcessManager) addProcessIntoBalance(key string, process *Process) bool {
 
-	peerBalance, ok := pm.balanceTable.Load(key)
+	processBalance, ok := pm.contractTable.Load(key)
 
 	if !ok {
-		balance := &PeerBalance{
-			peers:    sync.Map{},
-			curIdx:   0,
-			strategy: SLeast,
-			size:     0,
+		newProcessBalance := &ProcessBalance{
+			processes: sync.Map{},
+			curIdx:    0,
+			strategy:  StrategyLeastSize,
+			size:      0,
 		}
-		peer.processName = fmt.Sprintf("%s#%d", peer.processName, 0)
-		balance.peers.Store(0, peer)
-
-		pm.balanceTable.Store(key, balance)
-		pm.logger.Debugf("add process into balance [%s]", peer.processName)
+		process.processName = fmt.Sprintf("%s#%d", process.processName, 0)
+		newProcessBalance.processes.Store(0, process)
+		newProcessBalance.size++
+		pm.contractTable.Store(key, newProcessBalance)
+		pm.logger.Debugf("add process into newProcessBalance [%s]", process.processName)
 		return true
 	}
 
-	pb := peerBalance.(*PeerBalance)
+	pb := processBalance.(*ProcessBalance)
 	curSize := pb.size
 
-	if curSize < maxPeer {
-		peer.processName = fmt.Sprintf("%s#%d", peer.processName, curSize)
-		pb.peers.Store(curSize, peer)
+	if curSize < maxProcess {
+		process.processName = fmt.Sprintf("%s#%d", process.processName, curSize)
+		pb.processes.Store(curSize, process)
 		pb.size++
 
-		if pb.size == maxPeer {
-			pm.setStrategy(key, SRoundRobin)
+		if pb.size == maxProcess {
+			pm.setStrategy(key, StrategyRoundRobin)
 		}
 
-		pm.logger.Debugf("add process into balance [%s]", peer.processName)
+		pm.logger.Debugf("add process into balance [%s], processBalance size:%d", process.processName, pb.size)
 
 		return true
 	}
@@ -234,69 +257,29 @@ func (pm *ProcessManager) addPeerIntoBalance(key string, peer *Process) bool {
 
 }
 
-// GetPeerFromBalance get next peer based on key
-// based on different strategy, using different method to get next
-// if peer list just have one peer, always return it
-// when this peer reach limit, scheduler will generate new peer, limit May 2/3 of capacity or 4/5 of capacity
-// then function will return this new peer always, because we should feed this new process -- using lease size function
-// when return peer reach limit, then generate new peer, do above process
-// eventually, peer list reach limit, and return peer also reach limit, using round-robin algorithm to return peer
-// get one peer from a group of peers
-func (pm *ProcessManager) getPeerFromBalance(key string) *Process {
-	pm.mutex.Lock()
-	defer pm.mutex.Unlock()
-
-	// peer list just have one peer, always return it
-	// until returned peer reach limit, will generate new peer into balancer
-	pb, ok := pm.balanceTable.Load(key)
-	if !ok {
-		return nil
-	}
-	peerBalance := pb.(*PeerBalance)
-
-	if peerBalance.size == 1 {
-		curPb, _ := peerBalance.peers.Load(0)
-		return curPb.(*Process)
-	}
-
-	// peer list contains 1 ~ maxPeer peers, return lease size peer
-	// when returned peer reach limit, will generate new peer into balancer
-	// until returned peer also reach limit, set strategy as SRoundRobin
-	if peerBalance.size <= maxPeer && peerBalance.strategy == SLeast {
-		return pm.getNextPeerLeastSize(peerBalance)
-	}
-
-	// peer list is full, using Round-Robin to return peer
-	// at this time, strategy == SRoundRobin
-	// when one peer timeout, release this peer, reset strategy as SLeast
-	// so using lease size to return peer
-	return pm.getNextPeerRoundRobin(peerBalance)
-
-}
-
-func (pm *ProcessManager) getPeerBalance(key string) *PeerBalance {
-	peerBalance, ok := pm.balanceTable.Load(key)
+func (pm *ProcessManager) getProcessBalance(key string) *ProcessBalance {
+	processBalance, ok := pm.contractTable.Load(key)
 	if ok {
-		return peerBalance.(*PeerBalance)
+		return processBalance.(*ProcessBalance)
 	}
 	return nil
 }
 
-func (pm *ProcessManager) removePeerFromBalance(key string, idx int) {
-	pb, ok := pm.balanceTable.Load(key)
+func (pm *ProcessManager) removeProcessFromProcessBalance(key string, idx int) {
+	pb, ok := pm.contractTable.Load(key)
 	if !ok {
 		return
 	}
 
-	peerBalance := pb.(*PeerBalance)
+	processBalance := pb.(*ProcessBalance)
 
-	peerBalance.peers.Delete(idx)
-	peerBalance.size--
-	peerBalance.strategy = SLeast
+	processBalance.processes.Delete(idx)
+	processBalance.size--
+	processBalance.strategy = StrategyLeastSize
 
-	if peerBalance.size == 0 {
-		//delete(pm.balanceTable, key)
-		pm.balanceTable.Delete(key)
+	if processBalance.size == 0 {
+		//delete(pm.contractTable, key)
+		pm.contractTable.Delete(key)
 	}
 }
 
@@ -305,10 +288,10 @@ func (pm *ProcessManager) removePeerFromBalance(key string, idx int) {
 //func (pm *ProcessManager) addFirstPeerIntoDepth(processName string, process *Process) {
 //	pm.logger.Debugf("add first peer into depth [%s]", process.processName)
 //	newPeerDepth := &PeerDepth{
-//		peers: [protocol2.CallContractDepth + 1]*Process{},
+//		processes: [protocol2.CallContractDepth + 1]*Process{},
 //		size:  0,
 //	}
-//	newPeerDepth.peers[0] = process
+//	newPeerDepth.processes[0] = process
 //	newPeerDepth.size++
 //	pm.crossTable[processName] = newPeerDepth
 //}
@@ -318,34 +301,28 @@ func (pm *ProcessManager) removePeerFromBalance(key string, idx int) {
 //	delete(pm.crossTable, processName)
 //}
 
-func (pm *ProcessManager) addPeerIntoDepth(originalProcessName string, height uint32, calledProcess *Process) {
+func (pm *ProcessManager) addCrossProcessIntoDepth(originalProcessName string, height uint32, calledProcess *Process) {
 
 	pm.logger.Debugf("add cross process %s with initial process name %s",
 		calledProcess.processName, originalProcessName)
 
-	peerDepth, ok := pm.crossTable.Load(originalProcessName)
+	processDepth, ok := pm.crossTable.Load(originalProcessName)
 	if !ok {
-		//newPeerDepth := &PeerDepth{
-		//	peers: [protocol2.CallContractDepth + 1]*Process{},
-		//	size:  0,
-		//}
-
-		newPeerDepth := make(map[uint32]*Process)
-		newPeerDepth[height] = calledProcess
-		pm.crossTable.Store(originalProcessName, newPeerDepth)
-
-		peerDepth = newPeerDepth
+		newProcessDepth := make(map[uint32]*Process)
+		newProcessDepth[height] = calledProcess
+		pm.crossTable.Store(originalProcessName, newProcessDepth)
+		processDepth = newProcessDepth
 	}
 
 	//pm.mutex.Lock()
 	//defer pm.mutex.Unlock()
 
-	pd := peerDepth.(map[uint32]*Process)
+	pd := processDepth.(map[uint32]*Process)
 	pd[height] = calledProcess
 
 }
 
-func (pm *ProcessManager) removePeerFromDepth(originalProcessName string, currentHeight uint32) {
+func (pm *ProcessManager) removeCrosseProcessFromDepth(originalProcessName string, currentHeight uint32) {
 	if currentHeight == 0 {
 		return
 	}
@@ -359,65 +336,39 @@ func (pm *ProcessManager) removePeerFromDepth(originalProcessName string, curren
 	if ok {
 		pd := peerDepth.(map[uint32]*Process)
 		delete(pd, currentHeight)
-		//peerDepth.peers[currentHeight-1] = nil
+		//peerDepth.processes[currentHeight-1] = nil
 	}
 }
 
-func (pm *ProcessManager) getPeerDepth(originalProcessName string) map[uint32]*Process {
+func (pm *ProcessManager) getProcessDepth(originalProcessName string) map[uint32]*Process {
 
 	depthTable, ok := pm.crossTable.Load(originalProcessName)
 	if ok {
 		return depthTable.(map[uint32]*Process)
 	}
-
-	//pd, ok := pm.crossTable[initialProcessName]
-	//if ok {
-	//	return pd
-	//}
 	return nil
 }
 
 // =============================== utils functions =============================
 
-// getNextPeerRoundRobin get peer with Round Robin algorithm, which is equally get next peer
-func (pm *ProcessManager) getNextPeerRoundRobin(group *PeerBalance) *Process {
-
-	if group.size == 0 {
-		return nil
-	}
-
-	if group.size == 1 {
-		peer, _ := group.peers.Load(0)
-		return peer.(*Process)
-	}
-
+// getProcessWithRoundRobin get peer with Round Robin algorithm, which is equally get next peer
+func (pm *ProcessManager) getProcessWithRoundRobin(processBalance *ProcessBalance) *Process {
 	// loop entire backends to find out an Alive backend
-	next := pm.nextIndex(group)
-	process, ok := group.peers.Load(next)
+	next := pm.nextIndex(processBalance)
+	process, ok := processBalance.processes.Load(next)
 	if ok {
 		return process.(*Process)
 	}
-	//l := group.size + next // start from next and move a full cycle
-	//for i := next; i < l; i++ {
-	//	idx := i % group.size // take an index by modding with length
-	//	// if we have an alive backend, use it and store if its not the original one
-	//	if group.peers[idx] != nil {
-	//		atomic.StoreUint64(&group.curIdx, uint64(idx)) // mark the current one
-	//		return group.peers[idx]
-	//	}
-	//}
+
 	return nil
 }
 
-// getNextPeerLeastSize get next peer with the smallest size
-func (pm *ProcessManager) getNextPeerLeastSize(group *PeerBalance) *Process {
+// getProcessWithLeastSize get a process with the smallest size
+func (pm *ProcessManager) getProcessWithLeastSize(processBalance *ProcessBalance) *Process {
 
 	nextIdx := 0
 	minSize := processWaitingQueueSize + 1
-
-	curIdx := 0
 	f := func(k, v interface{}) bool {
-		curIdx++
 		if v.(*Process).Size() < minSize {
 			minSize = v.(*Process).Size()
 			nextIdx = k.(int)
@@ -426,39 +377,31 @@ func (pm *ProcessManager) getNextPeerLeastSize(group *PeerBalance) *Process {
 		return true
 	}
 
-	group.peers.Range(f)
+	processBalance.processes.Range(f)
 
-	//for i := 0; i < group.size; i++ {
-	//	curPeer := group.peers.Load(i)
-	//	if group.peers[i] != nil && curPeer.Size() < minSize {
-	//		minSize = curPeer.Size()
-	//		nextIdx = i
-	//	}
-	//}
-
-	atomic.StoreUint64(&group.curIdx, uint64(nextIdx)) // mark the current one
-	peer, _ := group.peers.Load(nextIdx)
-	return peer.(*Process)
+	atomic.StoreUint64(&processBalance.curIdx, uint64(nextIdx)) // mark the current one
+	process, _ := processBalance.processes.Load(nextIdx)
+	return process.(*Process)
 }
 
-func (pm *ProcessManager) nextIndex(group *PeerBalance) int {
-	return int(atomic.AddUint64(&group.curIdx, uint64(1)) % uint64(group.size))
+func (pm *ProcessManager) nextIndex(processBalance *ProcessBalance) int {
+	return int(atomic.AddUint64(&processBalance.curIdx, uint64(1)) % uint64(processBalance.size))
 }
 
 func getMaxPeer() int {
 	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
 	maxConcurrency, err := strconv.Atoi(mc)
 	if err != nil {
-		maxConcurrency = defaultMaxPeer
+		maxConcurrency = defaultMaxProcess
 	}
 	return maxConcurrency
 }
 
 func getProcessLimitSize() int {
 	batchSize := runtime.NumCPU() * 4
-	processLimitSize := batchSize / maxPeer
-	if processLimitSize < minPeerLimit {
-		return minPeerLimit
+	processLimitSize := batchSize / maxProcess
+	if processLimitSize < defaultMaxWaitingQueueSize {
+		return defaultMaxWaitingQueueSize
 	}
 	return processLimitSize
 }

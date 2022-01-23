@@ -21,7 +21,7 @@ import (
 )
 
 type ProcessManager interface {
-	GetPeer(processName string) *core.Process
+	GetProcess(processName string) *core.Process
 }
 
 type DMSApi struct {
@@ -48,7 +48,7 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 
 	// check cross contract or original contract
 	// todo
-	process := s.processManager.GetPeer(processName)
+	process := s.processManager.GetProcess(processName)
 	handler := process.Handler
 	handler.SetStream(stream)
 	s.logger.Debugf("get handler: %s", processName)
