@@ -6,14 +6,10 @@
 package core
 
 import (
-	"fmt"
-	"strconv"
 	"sync"
-	"sync/atomic"
+	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
-
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
@@ -22,7 +18,6 @@ import (
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"go.uber.org/zap"
 )
 
@@ -36,12 +31,10 @@ const (
 )
 
 type DockerScheduler struct {
-	lock            sync.Mutex
-	logger          *zap.SugaredLogger
-	singleFlight    singleflight.Group
-	userController  protocol.UserController
-	processManager  *ProcessManager
-	contractManager *ContractManager
+	lock           sync.Mutex
+	logger         *zap.SugaredLogger
+	singleFlight   singleflight.Group
+	processManager *ProcessManager
 
 	txReqCh          chan *protogo.TxRequest
 	txResponseCh     chan *protogo.TxResponse
@@ -53,15 +46,10 @@ type DockerScheduler struct {
 }
 
 // NewDockerScheduler new docker scheduler
-func NewDockerScheduler(userController protocol.UserController, processManager *ProcessManager) *DockerScheduler {
-
-	contractManager := NewContractManager(config.DockerLogDir)
-
+func NewDockerScheduler(processManager *ProcessManager) *DockerScheduler {
 	scheduler := &DockerScheduler{
-		userController:  userController,
-		logger:          logger.NewDockerLogger(logger.MODULE_SCHEDULER, config.DockerLogDir),
-		processManager:  processManager,
-		contractManager: contractManager,
+		logger:         logger.NewDockerLogger(logger.MODULE_SCHEDULER, config.DockerLogDir),
+		processManager: processManager,
 
 		txReqCh:          make(chan *protogo.TxRequest, ReqChanSize),
 		txResponseCh:     make(chan *protogo.TxResponse, ResponseChanSize),
@@ -70,8 +58,6 @@ func NewDockerScheduler(userController protocol.UserController, processManager *
 		crossContractsCh: make(chan *protogo.TxRequest, crossContractsChanSize),
 		responseChMap:    sync.Map{},
 	}
-
-	contractManager.scheduler = scheduler
 
 	return scheduler
 }
@@ -153,237 +139,31 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 		case txRequest := <-s.txReqCh:
 			go s.handleTx(txRequest)
 		case crossContractMsg := <-s.crossContractsCh:
-			go s.handleCallCrossContract(crossContractMsg)
+			go s.processManager.handleCallCrossContract(crossContractMsg)
 		}
 	}
 }
 
 func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
-
-	s.logger.Debugf("[%s] docker scheduler handle tx", txRequest.TxId)
-
-	var (
-		err     error
-		process *Process
-	)
-
-	// processNamePrefix: contractName:contractVersion
-	processNamePrefix := s.constructProcessName(txRequest)
-
-	// get proper process from process manager
-	process = s.processManager.GetAvailableProcess(processNamePrefix)
-
-	// process doesn't exist, init new process
-	if process == nil {
-		process, err = s.createNewProcess(processNamePrefix, txRequest)
-		if err != nil {
-			s.returnErrorTxResponse(txRequest.TxId, err.Error())
-			return
-		}
-		s.initProcess(process)
-		return
-	}
-
-	s.logger.Debugf("[%s] avaliable process: %s, size: %d, txCount: %+v", txRequest.TxId,
-		process.processName, process.Size(), process.txCount)
-
-	// process exist, put current tx into process waiting queue and return
-	peerBalance := s.processManager.getProcessBalance(processNamePrefix)
-
-	s.logger.Debugf("[%s] peerBalance strategy: %d", txRequest.TxId, peerBalance.strategy)
-
-	if peerBalance.strategy == StrategyLeastSize {
-		if process.Size() < waitingQueueLimit {
-			process.AddTxWaitingQueue(txRequest)
-			return
-		}
-		process, err = s.createNewProcess(processNamePrefix, txRequest)
-		if err == utils.RegisterProcessError {
-			s.txReqCh <- txRequest
-			return
-		}
-		if err != nil {
-			s.returnErrorTxResponse(txRequest.TxId, err.Error())
-			return
-		}
-		s.initProcess(process)
-		return
-	}
-
-	s.logger.Debugf("[%s] roundrobin process: %s", txRequest.TxId, process.processName)
-	s.logger.Debugf("[%s] roundrobin process: %s, size: %d, txCount: %+v", txRequest.TxId,
-		process.processName, process.Size(), process.txCount)
-	process.AddTxWaitingQueue(txRequest)
-}
-
-// using single flight to create new process and register into process manager
-func (s *DockerScheduler) createNewProcess(processName string, txRequest *protogo.TxRequest) (*Process, error) {
-
-	var err error
-
-	proc, err, _ := s.singleFlight.Do(processName, func() (interface{}, error) {
-		defer s.singleFlight.Forget(processName)
-
-		var (
-			user         *security.User
-			contractPath string
-		)
-
-		user, err = s.userController.GetAvailableUser()
-		if err != nil {
-			s.logger.Errorf("fail to get available user: %s", err)
-			return nil, err
-		}
-
-		// get contract deploy path
-		contractKey := s.constructContractKey(txRequest.ContractName, txRequest.ContractVersion)
-		contractPath, err = s.contractManager.GetContract(txRequest.TxId, contractKey)
-		if err != nil || len(contractPath) == 0 {
-			s.logger.Errorf("fail to get contract path, contractName is [%s], err is [%s]", contractKey, err)
-			return nil, err
-		}
-
-		newProcess := NewProcess(user, txRequest, s, processName, contractPath, s.processManager)
-
-		registered := s.processManager.RegisterNewProcess(processName, newProcess)
-
-		if registered {
-			return newProcess, nil
-		}
-
-		return nil, utils.RegisterProcessError
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	process := proc.(*Process)
-	process.AddTxWaitingQueue(txRequest)
-	return process, nil
-}
-
-// start process
-// only one goroutine can launch process
-// reset will return
-func (s *DockerScheduler) initProcess(newProcess *Process) {
-
-	if atomic.LoadUint32(&newProcess.done) == 0 {
-		newProcess.mutex.Lock()
-		defer newProcess.mutex.Unlock()
-		if newProcess.done == 0 {
-			atomic.StoreUint32(&newProcess.done, 1)
-			go s.runningProcess(newProcess)
-		}
-	}
-}
-
-func (s *DockerScheduler) runningProcess(process *Process) {
-	// execute contract method, including init, invoke
-	go s.listenProcessInvoke(process)
-	// launch process wait block until process finished
-runProcess:
-	err := process.LaunchProcess()
-
-	if err != nil && process.ProcessState != protogo.ProcessState_PROCESS_STATE_EXPIRE {
-		currentTx := process.Handler.TxRequest
-
-		s.logger.Warnf("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName, process.Handler.TxRequest.TxId, err)
-
-		peerDepth := s.processManager.getProcessDepth(currentTx.TxContext.OriginalProcessName)
-
-		//todo: re check which child process is fail
-		if len(peerDepth) > 1 {
-			lastChildProcessHeight := len(peerDepth)
-			lastContractName := peerDepth[uint32(lastChildProcessHeight)].contractName
-			errMsg := fmt.Sprintf("%s fail: %s", lastContractName, err.Error())
-			s.returnErrorTxResponse(currentTx.TxId, errMsg)
-		} else {
-			s.logger.Errorf("return back error result for process [%s] for tx [%s]", process.processName, currentTx.TxId)
-			s.returnErrorTxResponse(currentTx.TxId, err.Error())
-		}
-
-		//if peerDepth.size > 1 {
-		//	lastContractName := peerDepth.processes[peerDepth.size-1].contractName
-		//	errMsg := fmt.Sprintf("%s fail: %s", lastContractName, err.Error())
-		//	s.returnErrorTxResponse(currentTx.TxId, errMsg)
-		//}
-
-		if process.ProcessState != protogo.ProcessState_PROCESS_STATE_FAIL {
-			// restart process and trigger next
-			s.logger.Debugf("restart process [%s]", process.processName)
-			goto runProcess
-		}
-
-	}
-
-	// when process timeout, release resources
-	s.logger.Debugf("release process: [%s]", process.processName)
-
-	s.processManager.ReleaseProcess(process.processName)
-	_ = s.userController.FreeUser(process.user)
-
-}
-
-func (s *DockerScheduler) listenProcessInvoke(process *Process) {
-
 	for {
-		select {
-		case <-process.txTrigger:
-			if process.ProcessState != protogo.ProcessState_PROCESS_STATE_READY {
-				continue
-			}
-			success := process.InvokeProcess()
-			if !success {
-				return
-			}
-		case <-process.Handler.txExpireTimer.C:
-			process.StopProcess(false)
+		s.logger.Debugf("[%s] docker scheduler handle tx", txRequest.TxId)
+		err := s.processManager.AddTx(txRequest)
+		if err == utils.ContractFileError {
+			s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
+				err, txRequest.TxId)
+			s.ReturnErrorResponse(txRequest.TxId, err.Error())
+			return
 		}
+		if err == nil {
+			return
+		}
+		s.logger.Warnf("failed to add tx, err is :%s, txId: %s",
+			err, txRequest.TxId)
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
-func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
-
-	// validate contract deployed or not
-	contractKey := s.constructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
-	contractPath, exist := s.contractManager.checkContractDeployed(contractKey)
-
-	if !exist {
-		s.logger.Errorf(utils.ContractNotDeployedError.Error())
-		errResponse := constructCallContractErrorResponse(utils.ContractNotDeployedError.Error(), crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
-		s.returnErrorCrossContractResponse(crossContractTx, errResponse)
-		return
-	}
-	// new process, process just for one tx
-	user, err := s.userController.GetAvailableUser()
-	if err != nil {
-		errMsg := fmt.Sprintf("fail to get available user: %s", err)
-		s.logger.Errorf(errMsg)
-		errResponse := constructCallContractErrorResponse(errMsg, crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
-		s.returnErrorCrossContractResponse(crossContractTx, errResponse)
-		return
-	}
-
-	processName := s.constructCrossContractProcessName(crossContractTx)
-
-	newProcess := NewCrossProcess(user, crossContractTx, s, processName, contractPath, s.processManager)
-
-	// register cross process
-	s.processManager.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, crossContractTx.TxContext.CurrentHeight, newProcess)
-
-	err = newProcess.LaunchProcess()
-	if err != nil {
-		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(), crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
-		s.returnErrorCrossContractResponse(crossContractTx, errResponse)
-	}
-
-	txContext := newProcess.Handler.TxRequest.TxContext
-	s.processManager.ReleaseCrossProcess(newProcess.processName, txContext.OriginalProcessName, txContext.CurrentHeight)
-	_ = s.userController.FreeUser(newProcess.user)
-}
-
-func (s *DockerScheduler) returnErrorTxResponse(txId string, errMsg string) {
+func (s *DockerScheduler) ReturnErrorResponse(txId string, errMsg string) {
 	errTxResponse := s.constructErrorResponse(txId, errMsg)
 	s.txResponseCh <- errTxResponse
 }
@@ -397,28 +177,11 @@ func (s *DockerScheduler) constructErrorResponse(txId string, errMsg string) *pr
 	}
 }
 
-func (s *DockerScheduler) returnErrorCrossContractResponse(crossContractTx *protogo.TxRequest, errResponse *SDKProtogo.DMSMessage) {
+func (s *DockerScheduler) ReturnErrorCrossContractResponse(crossContractTx *protogo.TxRequest,
+	errResponse *SDKProtogo.DMSMessage) {
 
 	responseChId := crossContractChKey(crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
 	responseCh := s.GetCrossContractResponseCh(responseChId)
 
 	responseCh <- errResponse
-}
-
-// processName: contractName:contractVersion
-// real processName: contractName:contractVersion#index
-func (s *DockerScheduler) constructProcessName(tx *protogo.TxRequest) string {
-	handlerName := tx.ContractName + ":" + tx.ContractVersion
-	return handlerName
-}
-
-// cross processName: txId:height
-func (s *DockerScheduler) constructCrossContractProcessName(tx *protogo.TxRequest) string {
-	return tx.TxId + ":" +
-		strconv.FormatUint(uint64(tx.TxContext.CurrentHeight), 10)
-}
-
-// constructContractKey contractKey: contractName:contractVersion
-func (s *DockerScheduler) constructContractKey(contractName, contractVersion string) string {
-	return contractName + "#" + contractVersion
 }

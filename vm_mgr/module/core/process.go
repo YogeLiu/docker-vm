@@ -35,6 +35,7 @@ import (
 const (
 	processWaitingTime      = 60 * 10
 	processWaitingQueueSize = 1000
+	triggerNewProcessSize   = 3
 )
 
 type ProcessMgrInterface interface {
@@ -269,14 +270,12 @@ func (p *Process) InvokeProcess() bool {
 // AddTxWaitingQueue add tx with same contract to process waiting queue
 func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 
-	//p.mutex.Lock()
 	newCount := p.txCount.Add(1)
 	tx.TxContext.OriginalProcessName = p.processName + "#" + strconv.FormatUint(newCount, 10)
 	p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, tx.TxContext.OriginalProcessName)
-	//p.mutex.Unlock()
 
 	p.TxWaitingQueue <- tx
-	p.logger.Debugf("[%s] add tx [%s] to waiting queue with size [%d], "+
+	p.logger.Debugf("[%s] add tx [%s] to waiting queue, new size [%d], "+
 		"process state is [%s]", p.processName, tx.TxId, len(p.TxWaitingQueue), p.ProcessState)
 
 }

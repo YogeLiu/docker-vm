@@ -10,7 +10,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
@@ -62,4 +64,20 @@ func GetTestLogPath() string {
 
 func GetLogHandler() *zap.SugaredLogger {
 	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
+}
+
+// ConstructContractKey contractName:contractVersion
+func ConstructContractKey(contractName, contractVersion string) string {
+	return contractName + ":" + contractVersion
+}
+
+// ConstructProcessName contractName:contractVersion:index
+func ConstructProcessName(contractName, contractVersion string, index uint64) string {
+	return contractName + ":" + contractVersion + "#" + strconv.FormatInt(time.Now().UnixMicro(), 10) +
+		":" + strconv.FormatUint(index, 10)
+}
+
+// cross processName: txId:height
+func ConstructCrossContractProcessName(txId string, txDepth uint64) string {
+	return txId + ":" + strconv.FormatUint(txDepth, 10)
 }

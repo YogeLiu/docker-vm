@@ -34,13 +34,15 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	}
 
 	// new users controller
-	userController := core.NewUsersManager()
+	usersManager := core.NewUsersManager()
 
+	contractManager := core.NewContractManager()
 	// new process pool
-	processManager := core.NewProcessManager()
+	processManager := core.NewProcessManager(usersManager, contractManager)
 
 	// new scheduler
-	scheduler := core.NewDockerScheduler(userController, processManager)
+	scheduler := core.NewDockerScheduler(processManager)
+	processManager.SetScheduler(scheduler)
 
 	// new docker manager to sandbox server
 	dmsRpcServer, err := rpc.NewDMSServer()
@@ -60,7 +62,7 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 		cdmRpcServer:   cdmRpcServer,
 		dmsRpcServer:   dmsRpcServer,
 		scheduler:      scheduler,
-		userController: userController,
+		userController: usersManager,
 		securityEnv:    securityEnv,
 		processManager: processManager,
 		logger:         managerLogger,

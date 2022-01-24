@@ -283,7 +283,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -310,7 +310,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -329,7 +329,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -356,7 +356,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -375,7 +375,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -397,7 +397,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -416,7 +416,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -438,7 +438,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -457,7 +457,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -485,7 +485,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -507,7 +507,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -534,7 +534,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -556,7 +556,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -584,7 +584,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -606,7 +606,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -633,7 +633,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -655,7 +655,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -681,7 +681,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -700,7 +700,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -726,7 +726,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -745,7 +745,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -771,7 +771,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -790,7 +790,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -812,7 +812,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -831,7 +831,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -857,7 +857,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -876,7 +876,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -903,7 +903,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -922,7 +922,7 @@ package core
 //		lock             sync.Mutex
 //		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
-//		userController   protocol.UserController
+//		usersManager   protocol.UserController
 //		contractManager  *ContractManager
 //		processPool      *ProcessManager
 //		txReqCh          chan *protogo.TxRequest
@@ -949,7 +949,7 @@ package core
 //				lock:             tt.fields.lock,
 //				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
-//				userController:   tt.fields.userController,
+//				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
 //				processPool:      tt.fields.processPool,
 //				txReqCh:          tt.fields.txReqCh,
@@ -965,7 +965,7 @@ package core
 //
 //func TestNewDockerScheduler(t *testing.T) {
 //	type args struct {
-//		userController protocol.UserController
+//		usersManager protocol.UserController
 //		processPool    *ProcessManager
 //	}
 //	tests := []struct {
@@ -977,7 +977,7 @@ package core
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
-//			if got := NewDockerScheduler(tt.args.userController, tt.args.processPool); !reflect.DeepEqual(got, tt.want) {
+//			if got := NewDockerScheduler(tt.args.usersManager, tt.args.processPool); !reflect.DeepEqual(got, tt.want) {
 //				t.Errorf("NewDockerScheduler() = %v, want %v", got, tt.want)
 //			}
 //		})

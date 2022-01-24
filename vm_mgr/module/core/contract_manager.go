@@ -33,10 +33,10 @@ type ContractManager struct {
 }
 
 // NewContractManager new contract manager
-func NewContractManager(logPath string) *ContractManager {
+func NewContractManager() *ContractManager {
 	contractManager := &ContractManager{
 		contractsMap: make(map[string]string),
-		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath),
+		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, config.DockerLogDir),
 	}
 
 	mountDir = config.ContractBaseDir

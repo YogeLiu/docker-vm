@@ -9,10 +9,10 @@ import "errors"
 
 var (
 	// cross contract errors
-
 	MissingContractNameError       = errors.New("missing contract name")
 	MissingContractVersionError    = errors.New("missing contact version")
 	ExceedMaxDepthError            = errors.New("exceed max depth")
+	ContractFileError              = errors.New("bad contract file")
 	ContractNotDeployedError       = errors.New("contract not deployed")
 	CrossContractRuntimePanicError = errors.New("cross contract runtime panic")
 

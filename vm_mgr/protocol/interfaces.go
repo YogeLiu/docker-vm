@@ -37,6 +37,10 @@ type Scheduler interface {
 	GetByteCodeReqCh() chan *protogo.CDMMessage
 
 	GetCrossContractReqCh() chan *protogo.TxRequest
+
+	ReturnErrorResponse(string, string)
+
+	ReturnErrorCrossContractResponse(txRequest *protogo.TxRequest, resp *SDKProtogo.DMSMessage)
 }
 
 type UserController interface {
