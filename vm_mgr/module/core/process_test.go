@@ -180,7 +180,7 @@ package core
 //		processPoolInterface ProcessPoolInterface
 //		isCrossProcess       bool
 //		done                 uint32
-//		mutex                sync.Mutex
+//		balanceRWMutex                sync.Mutex
 //	}
 //	type args struct {
 //		tx *protogo.TxRequest
@@ -209,7 +209,7 @@ package core
 //				processPoolInterface: nil,
 //				isCrossProcess:       false,
 //				done:                 0,
-//				mutex:                sync.Mutex{},
+//				balanceRWMutex:                sync.Mutex{},
 //			},
 //		},
 //	}
@@ -232,7 +232,7 @@ package core
 //				processPoolInterface: tt.fields.processPoolInterface,
 //				isCrossProcess:       tt.fields.isCrossProcess,
 //				done:                 tt.fields.done,
-//				mutex:                tt.fields.mutex,
+//				balanceRWMutex:                tt.fields.balanceRWMutex,
 //			}
 //
 //			go func() {
@@ -277,7 +277,7 @@ package core
 //		processPoolInterface ProcessPoolInterface
 //		isCrossProcess       bool
 //		done                 uint32
-//		mutex                sync.Mutex
+//		balanceRWMutex                sync.Mutex
 //	}
 //
 //	requests := make(chan *protogo.TxRequest, 10)
@@ -325,7 +325,7 @@ package core
 //				processPoolInterface: nil,
 //				isCrossProcess:       false,
 //				done:                 0,
-//				mutex:                sync.Mutex{},
+//				balanceRWMutex:                sync.Mutex{},
 //			},
 //		},
 //		{
@@ -355,7 +355,7 @@ package core
 //				processPoolInterface: nil,
 //				isCrossProcess:       false,
 //				done:                 0,
-//				mutex:                sync.Mutex{},
+//				balanceRWMutex:                sync.Mutex{},
 //			},
 //		},
 //	}
@@ -378,7 +378,7 @@ package core
 //				processPoolInterface: tt.fields.processPoolInterface,
 //				isCrossProcess:       tt.fields.isCrossProcess,
 //				done:                 tt.fields.done,
-//				mutex:                tt.fields.mutex,
+//				balanceRWMutex:                tt.fields.balanceRWMutex,
 //			}
 //
 //			p.InvokeProcess()
@@ -406,7 +406,7 @@ package core
 //		processPoolInterface ProcessPoolInterface
 //		isCrossProcess       bool
 //		done                 uint32
-//		mutex                sync.Mutex
+//		balanceRWMutex                sync.Mutex
 //	}
 //	tests := []struct {
 //		name    string
@@ -437,7 +437,7 @@ package core
 //				processPoolInterface: nil,
 //				isCrossProcess:       false,
 //				done:                 0,
-//				mutex:                sync.Mutex{},
+//				balanceRWMutex:                sync.Mutex{},
 //			},
 //			wantErr: true,
 //		},
@@ -461,7 +461,7 @@ package core
 //				processPoolInterface: tt.fields.processPoolInterface,
 //				isCrossProcess:       tt.fields.isCrossProcess,
 //				done:                 tt.fields.done,
-//				mutex:                tt.fields.mutex,
+//				balanceRWMutex:                tt.fields.balanceRWMutex,
 //			}
 //			if err := p.LaunchProcess(); (err != nil) != tt.wantErr {
 //				t.Errorf("LaunchProcess() error = %v, wantErr %v", err, tt.wantErr)
@@ -503,7 +503,7 @@ package core
 //		processPoolInterface ProcessPoolInterface
 //		isCrossProcess       bool
 //		done                 uint32
-//		mutex                sync.Mutex
+//		balanceRWMutex                sync.Mutex
 //	}
 //	type args struct {
 //		processTimeout bool
@@ -600,7 +600,7 @@ package core
 //		processPoolInterface ProcessPoolInterface
 //		isCrossProcess       bool
 //		done                 uint32
-//		mutex                sync.Mutex
+//		balanceRWMutex                sync.Mutex
 //	}
 //	type args struct {
 //		contractPipe io.ReadCloser
@@ -629,7 +629,7 @@ package core
 //				processPoolInterface: nil,
 //				isCrossProcess:       false,
 //				done:                 0,
-//				mutex:                sync.Mutex{},
+//				balanceRWMutex:                sync.Mutex{},
 //			},
 //			args: args{contractPipe: contractOut},
 //		},
@@ -653,7 +653,7 @@ package core
 //				processPoolInterface: tt.fields.processPoolInterface,
 //				isCrossProcess:       tt.fields.isCrossProcess,
 //				done:                 tt.fields.done,
-//				mutex:                tt.fields.mutex,
+//				balanceRWMutex:                tt.fields.balanceRWMutex,
 //			}
 //
 //			go p.printContractLog(contractOut)

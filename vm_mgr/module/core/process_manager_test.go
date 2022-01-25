@@ -264,6 +264,6 @@ package core
 //		logger:           nil,
 //		processMgr:       nil,
 //		done:             0,
-//		mutex:            sync.Mutex{},
+//		balanceRWMutex:            sync.Mutex{},
 //	}
 //}

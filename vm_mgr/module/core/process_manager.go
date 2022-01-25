@@ -13,8 +13,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"fmt"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -23,8 +21,9 @@ const (
 )
 
 type ProcessManager struct {
-	logger *zap.SugaredLogger
-	mutex  sync.Mutex
+	logger         *zap.SugaredLogger
+	balanceRWMutex sync.RWMutex
+	crossRWMutex   sync.RWMutex
 
 	contractManager *ContractManager
 	usersManager    protocol.UserController
@@ -35,13 +34,13 @@ type ProcessManager struct {
 	// sync.Map: map[index]*Process
 	// int: index
 	// processName: contractName:contractVersion#index (original process)
-	balanceTable sync.Map
+	balanceTable map[string]*ProcessBalance
 
 	// map[string1]map[int]*CrossProcess  sync.Map[map]
 	// string1: originalProcessName: contractName:contractVersion#index#txCount - related to tx
 	// int: height
 	// processName: txId:height#txCount (cross process)
-	crossTable sync.Map
+	crossTable map[string]*ProcessDepth
 }
 
 func NewProcessManager(usersManager *UsersManager, contractManager *ContractManager) *ProcessManager {
@@ -50,8 +49,8 @@ func NewProcessManager(usersManager *UsersManager, contractManager *ContractMana
 		usersManager:    usersManager,
 		contractManager: contractManager,
 		logger:          pmLogger,
-		balanceTable:    sync.Map{},
-		crossTable:      sync.Map{},
+		balanceTable:    make(map[string]*ProcessBalance),
+		crossTable:      make(map[string]*ProcessDepth),
 	}
 }
 
@@ -60,15 +59,15 @@ func (pm *ProcessManager) SetScheduler(scheduler protocol.Scheduler) {
 }
 
 func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
-	pm.mutex.Lock()
-	defer pm.mutex.Unlock()
+	pm.balanceRWMutex.Lock()
+	defer pm.balanceRWMutex.Unlock()
 	// processNamePrefix: contractName:contractVersion
 	contractKey := utils.ConstructContractKey(txRequest.ContractName, txRequest.ContractVersion)
 	// process exist, put current tx into process waiting queue and return
-	processBalance := pm.getProcessBalance(contractKey)
+	processBalance := pm.balanceTable[contractKey]
 	if processBalance == nil {
 		newProcessBalance := NewProcessBalance()
-		pm.balanceTable.Store(contractKey, newProcessBalance)
+		pm.balanceTable[contractKey] = newProcessBalance
 		pm.logger.Debugf("new process balance for contract [%s]", contractKey)
 		processBalance = newProcessBalance
 	}
@@ -98,6 +97,27 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 	go pm.runningProcess(process)
 
 	return nil
+}
+
+func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, processName string) bool {
+	pm.balanceRWMutex.Lock()
+	defer pm.balanceRWMutex.Unlock()
+	processBalance, ok := pm.balanceTable[contractKey]
+	if !ok {
+		return true
+	}
+	process := processBalance.GetProcess(processName)
+	if process == nil {
+		return true
+	}
+	if process.Size() > 0 {
+		return false
+	}
+	processBalance.RemoveProcess(processName)
+	if processBalance.Size() == 0 {
+		delete(pm.balanceTable, contractKey)
+	}
+	return true
 }
 
 // CreateNewProcess create a new process
@@ -151,48 +171,29 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 	processName := utils.ConstructCrossContractProcessName(crossContractTx.TxId,
 		uint64(crossContractTx.TxContext.CurrentHeight))
 
-	newProcess := NewCrossProcess(user, crossContractTx, pm.scheduler, processName, contractPath, pm)
+	newCrossProcess := NewCrossProcess(user, crossContractTx, pm.scheduler, processName, contractPath, pm)
 
 	// register cross process
-	pm.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, crossContractTx.TxContext.CurrentHeight,
-		newProcess)
+	pm.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newCrossProcess)
 
-	err = newProcess.LaunchProcess()
+	err = newCrossProcess.LaunchProcess()
 	if err != nil {
 		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
 			crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
 		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
 	}
 
-	txContext := newProcess.Handler.TxRequest.TxContext
-	pm.ReleaseCrossProcess(newProcess.processName, txContext.OriginalProcessName, txContext.CurrentHeight)
-	_ = pm.usersManager.FreeUser(newProcess.user)
+	txContext := newCrossProcess.Handler.TxRequest.TxContext
+	pm.ReleaseCrossProcess(newCrossProcess.processName, txContext.OriginalProcessName)
+	_ = pm.usersManager.FreeUser(newCrossProcess.user)
 }
 
-// ReleaseProcess release original process
-// @param: processName: contract:version#index
-func (pm *ProcessManager) ReleaseProcess(processName string) {
-	pm.mutex.Lock()
-	defer pm.mutex.Unlock()
-
+// ReleaseProcess release balance process
+// @param: processName: contract:version#timestamp:index
+func (pm *ProcessManager) ReleaseProcess(processName string) bool {
 	pm.logger.Infof("release process: [%s]", processName)
-
-	nameList := strings.Split(processName, "#")
-	contractKey := nameList[0]
-	pm.removeProcessFromProcessBalance(contractKey, processName)
-}
-
-func (pm *ProcessManager) RegisterCrossProcess(originalProcessName string, depth uint32, calledProcess *Process) {
-	pm.logger.Debugf("register cross process [%s], original process name [%s]",
-		calledProcess.processName, originalProcessName)
-	pm.addCrossProcessIntoDepth(originalProcessName, depth, calledProcess)
-	calledProcess.Handler.processName = calledProcess.processName
-}
-
-func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, originalProcessName string, depth uint32) {
-	pm.logger.Debugf("release cross process [%s], original process name [%s]",
-		crossProcessName, originalProcessName)
-	pm.removeCrosseProcessFromDepth(originalProcessName, depth)
+	contractKey := utils.GetContractKeyFromProcessName(processName)
+	return pm.removeProcessFromProcessBalance(contractKey, processName)
 }
 
 func (pm *ProcessManager) runningProcess(process *Process) {
@@ -205,19 +206,18 @@ runProcess:
 	if err != nil && process.ProcessState != protogo.ProcessState_PROCESS_STATE_EXPIRE {
 		currentTx := process.Handler.TxRequest
 
-		pm.logger.Warnf("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName, process.Handler.TxRequest.TxId, err)
+		pm.logger.Warnf("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName,
+			process.Handler.TxRequest.TxId, err)
 
-		peerDepth := pm.getProcessDepth(currentTx.TxContext.OriginalProcessName)
-
-		//todo: re check which child process is fail
-		if len(peerDepth) > 1 {
-			lastChildProcessHeight := len(peerDepth)
-			lastContractName := peerDepth[uint32(lastChildProcessHeight)].contractName
-			errMsg := fmt.Sprintf("%s fail: %s", lastContractName, err.Error())
-			pm.scheduler.ReturnErrorResponse(currentTx.TxId, errMsg)
-		} else {
-			pm.logger.Errorf("return back error result for process [%s] for tx [%s]", process.processName, currentTx.TxId)
+		processDepth := pm.getProcessDepth(currentTx.TxContext.OriginalProcessName)
+		if processDepth == nil {
+			pm.logger.Warnf("return back error result for process [%s] for tx [%s]", process.processName, currentTx.TxId)
 			pm.scheduler.ReturnErrorResponse(currentTx.TxId, err.Error())
+		} else {
+			errMsg := fmt.Sprintf("cross contract fail: err is:%s, cross processes: %s", err.Error(),
+				processDepth.GetConcatProcessName())
+			pm.logger.Warn(errMsg)
+			pm.scheduler.ReturnErrorResponse(currentTx.TxId, errMsg)
 		}
 
 		if process.ProcessState != protogo.ProcessState_PROCESS_STATE_FAIL {
@@ -230,7 +230,9 @@ runProcess:
 	// when process timeout, release resources
 	pm.logger.Debugf("release process: [%s]", process.processName)
 
-	pm.ReleaseProcess(process.processName)
+	if !pm.ReleaseProcess(process.processName) {
+		goto runProcess
+	}
 	_ = pm.usersManager.FreeUser(process.user)
 }
 
@@ -252,82 +254,54 @@ func (pm *ProcessManager) listenProcessInvoke(process *Process) {
 }
 
 // GetProcess retrieve process from process manager, could be original process or cross process:
-// contractName:contractVersion#timestamp:index#txCount#depth
+// cross process: contractName:contractVersion#timestamp:index#txCount#depth
 // original process: contractName:contractVersion#timestamp:index
 func (pm *ProcessManager) GetProcess(processName string) *Process {
 	pm.logger.Debugf("get process [%s]", processName)
-	pm.mutex.Lock()
-	defer pm.mutex.Unlock()
-	nameList := strings.Split(processName, "#")
-	if len(nameList) == 4 {
-		crossKey := strings.Join(nameList[:3], "#")
-		depth, _ := strconv.Atoi(nameList[3])
-		cd, _ := pm.crossTable.Load(crossKey)
-		crossDepth := cd.(map[uint32]*Process)
-		return crossDepth[uint32(depth)]
+	isCrossProcess, processName1, processName2 := utils.TrySplitCrossProcessNames(processName)
+	if isCrossProcess {
+		pm.crossRWMutex.RLock()
+		defer pm.crossRWMutex.RUnlock()
+		crossDepth := pm.crossTable[processName1]
+		return crossDepth.GetProcess(processName2)
 	}
-
-	contractKey := nameList[0]
-
-	processBalance := pm.getProcessBalance(contractKey)
-	return processBalance.GetProcess(processName)
+	pm.balanceRWMutex.RLock()
+	defer pm.balanceRWMutex.RUnlock()
+	processBalance := pm.balanceTable[processName1]
+	return processBalance.GetProcess(processName2)
 }
 
-func (pm *ProcessManager) getProcessBalance(key string) *ProcessBalance {
-	processBalance, ok := pm.balanceTable.Load(key)
-	if ok {
-		return processBalance.(*ProcessBalance)
+func (pm *ProcessManager) RegisterCrossProcess(originalProcessName string, crossProcess *Process) {
+	pm.logger.Debugf("register cross process [%s], original process name [%s]",
+		crossProcess.processName, originalProcessName)
+	pm.crossRWMutex.Lock()
+	defer pm.crossRWMutex.Unlock()
+	processDepth, ok := pm.crossTable[originalProcessName]
+	if !ok {
+		newProcessDepth := NewProcessDepth()
+		pm.crossTable[originalProcessName] = newProcessDepth
+		processDepth = newProcessDepth
 	}
-	return nil
+	processDepth.AddProcess(crossProcess.processName, crossProcess)
 }
 
-func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, processName string) {
-	pb, ok := pm.balanceTable.Load(contractKey)
+func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, originalProcessName string) {
+	pm.logger.Debugf("release cross process [%s], original process name [%s]",
+		crossProcessName, originalProcessName)
+	pm.crossRWMutex.Lock()
+	defer pm.crossRWMutex.Unlock()
+	processDepth, ok := pm.crossTable[originalProcessName]
 	if !ok {
 		return
 	}
-
-	processBalance := pb.(*ProcessBalance)
-	processBalance.RemoveProcess(processName)
-
-	if processBalance.Size() == 0 {
-		pm.balanceTable.Delete(contractKey)
+	processDepth.RemoveProcess(crossProcessName)
+	if processDepth.Size() == 0 {
+		delete(pm.crossTable, originalProcessName)
 	}
 }
 
-func (pm *ProcessManager) addCrossProcessIntoDepth(originalProcessName string, height uint32, calledProcess *Process) {
-
-	pm.logger.Debugf("add cross process %s with initial process name %s",
-		calledProcess.processName, originalProcessName)
-
-	processDepth, ok := pm.crossTable.Load(originalProcessName)
-	if !ok {
-		newProcessDepth := make(map[uint32]*Process)
-		newProcessDepth[height] = calledProcess
-		pm.crossTable.Store(originalProcessName, newProcessDepth)
-		processDepth = newProcessDepth
-	}
-
-	pd := processDepth.(map[uint32]*Process)
-	pd[height] = calledProcess
-}
-
-func (pm *ProcessManager) removeCrosseProcessFromDepth(originalProcessName string, depth uint32) {
-	pm.logger.Debugf("release cross process with position: %v", depth)
-	processDepth, ok := pm.crossTable.Load(originalProcessName)
-	if ok {
-		pd := processDepth.(map[uint32]*Process)
-		delete(pd, depth)
-		if len(pd) == 0 {
-			pm.crossTable.Delete(originalProcessName)
-		}
-	}
-}
-
-func (pm *ProcessManager) getProcessDepth(originalProcessName string) map[uint32]*Process {
-	depthTable, ok := pm.crossTable.Load(originalProcessName)
-	if ok {
-		return depthTable.(map[uint32]*Process)
-	}
-	return nil
+func (pm *ProcessManager) getProcessDepth(originalProcessName string) *ProcessDepth {
+	pm.crossRWMutex.RUnlock()
+	defer pm.crossRWMutex.RUnlock()
+	return pm.crossTable[originalProcessName]
 }

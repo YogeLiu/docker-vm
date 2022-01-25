@@ -10,7 +10,6 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -39,7 +38,7 @@ const (
 )
 
 type ProcessMgrInterface interface {
-	getProcessDepth(initialProcessName string) map[uint32]*Process
+	getProcessDepth(initialProcessName string) *ProcessDepth
 }
 
 // Process id of process is index of process in process list
@@ -104,7 +103,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 		processMgr: processPool,
 	}
 
-	processHandler := NewProcessHandler(txRequest, scheduler, process)
+	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
 	process.Handler = processHandler
 	return process
 }
@@ -133,7 +132,7 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 		processMgr:   processPool,
 	}
 
-	processHandler := NewProcessHandler(txRequest, scheduler, process)
+	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
 	process.Handler = processHandler
 	return process
 }
@@ -153,8 +152,8 @@ func (p *Process) LaunchProcess() error {
 
 	var pn string
 	if p.isCrossProcess {
-		pn = p.Handler.TxRequest.TxContext.OriginalProcessName + "#" +
-			strconv.FormatUint(uint64(p.Handler.TxRequest.TxContext.CurrentHeight), 10)
+		pn = utils.ConstructConcatOriginalAndCrossProcessName(p.Handler.TxRequest.TxContext.OriginalProcessName,
+			p.processName)
 	} else {
 		pn = p.processName
 	}
@@ -271,7 +270,7 @@ func (p *Process) InvokeProcess() bool {
 func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
 
 	newCount := p.txCount.Add(1)
-	tx.TxContext.OriginalProcessName = p.processName + "#" + strconv.FormatUint(newCount, 10)
+	tx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, newCount)
 	p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, tx.TxContext.OriginalProcessName)
 
 	p.TxWaitingQueue <- tx
@@ -328,9 +327,9 @@ func (p *Process) killCrossProcess() {
 func (p *Process) killProcess(isTxTimeout bool) {
 
 	if isTxTimeout {
-		childProcessName := p.Handler.TxRequest.TxContext.OriginalProcessName
-		processContext := p.processMgr.getProcessDepth(childProcessName)
-		for depth, process := range processContext {
+		originalProcessName := p.Handler.TxRequest.TxContext.OriginalProcessName
+		processDepth := p.processMgr.getProcessDepth(originalProcessName)
+		for depth, process := range processDepth.processes {
 			if process != nil {
 				p.logger.Debugf("[%s] kill cross process in depth [%d]", process.processName, depth)
 				_ = process.cmd.Process.Kill()
