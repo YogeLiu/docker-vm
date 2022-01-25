@@ -68,28 +68,53 @@ func GetLogHandler() *zap.SugaredLogger {
 
 // ConstructContractKey contractName:contractVersion
 func ConstructContractKey(contractName, contractVersion string) string {
-	return contractName + ":" + contractVersion
+	var sb strings.Builder
+	sb.WriteString(contractName)
+	sb.WriteString(":")
+	sb.WriteString(contractVersion)
+	return sb.String()
 }
 
 // ConstructProcessName contractName:contractVersion#timestamp:index
 func ConstructProcessName(contractName, contractVersion string, index uint64) string {
-	return contractName + ":" + contractVersion + "#" + strconv.FormatInt(time.Now().UnixMicro(), 10) +
-		":" + strconv.FormatUint(index, 10)
+	var sb strings.Builder
+	sb.WriteString(contractName)
+	sb.WriteString(":")
+	sb.WriteString(contractVersion)
+	sb.WriteString("#")
+	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+	sb.WriteString(":")
+	sb.WriteString(strconv.FormatUint(index, 10))
+	return sb.String()
 }
 
 // ConstructOriginalProcessName contractName:contractVersion#timestamp:index#txCount
 func ConstructOriginalProcessName(processName string, txCount uint64) string {
-	return processName + "#" + strconv.FormatUint(txCount, 10)
+	var sb strings.Builder
+	sb.WriteString(processName)
+	sb.WriteString("#")
+	sb.WriteString(strconv.FormatUint(txCount, 10))
+	return sb.String()
 }
 
 // ConstructConcatOriginalAndCrossProcessName contractName:contractVersion#timestamp:index#txCount&txId:timestamp:depth
 func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProcessName string) string {
-	return originalProcessName + "&" + crossProcessName
+	var sb strings.Builder
+	sb.WriteString(originalProcessName)
+	sb.WriteString("&")
+	sb.WriteString(crossProcessName)
+	return sb.String()
 }
 
 // ConstructCrossContractProcessName txId:timestamp:depth
 func ConstructCrossContractProcessName(txId string, txDepth uint64) string {
-	return txId + ":" + strconv.FormatInt(time.Now().UnixMicro(), 10) + ":" + strconv.FormatUint(txDepth, 10)
+	var sb strings.Builder
+	sb.WriteString(txId)
+	sb.WriteString(":")
+	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+	sb.WriteString(":")
+	sb.WriteString(strconv.FormatUint(txDepth, 10))
+	return sb.String()
 }
 
 // TrySplitCrossProcessNames if processName is a crossProcessName, return original process name and cross process name.
