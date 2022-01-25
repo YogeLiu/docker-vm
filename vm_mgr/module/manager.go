@@ -43,6 +43,7 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	// new scheduler
 	scheduler := core.NewDockerScheduler(processManager)
 	processManager.SetScheduler(scheduler)
+	contractManager.SetScheduler(scheduler)
 
 	// new docker manager to sandbox server
 	dmsRpcServer, err := rpc.NewDMSServer()

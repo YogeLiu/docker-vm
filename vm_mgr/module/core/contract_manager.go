@@ -45,6 +45,10 @@ func NewContractManager() *ContractManager {
 	return contractManager
 }
 
+func (cm *ContractManager) SetScheduler(scheduler protocol.Scheduler) {
+	cm.scheduler = scheduler
+}
+
 // GetContract get contract path in volume,
 // if it exists in volume, return path
 // if not exist in volume, request from chain maker state library
