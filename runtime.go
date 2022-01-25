@@ -1029,7 +1029,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE)
 
 	contractFullName := string(recvMsg.Payload)             // contract1#1.0.0
-	contractName := strings.Split(contractFullName, "#")[0] // contract1
+	contractName := strings.Split(contractFullName, ":")[0] // contract1
 
 	hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
 	hostMountPath = filepath.Join(hostMountPath, r.ChainId)

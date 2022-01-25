@@ -5,15 +5,16 @@
 package core
 
 import (
+	"fmt"
+	"sync"
+
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
-	"fmt"
 	"go.uber.org/zap"
-	"sync"
 )
 
 const (
@@ -301,7 +302,7 @@ func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, originalP
 }
 
 func (pm *ProcessManager) getProcessDepth(originalProcessName string) *ProcessDepth {
-	pm.crossRWMutex.RUnlock()
+	pm.crossRWMutex.RLock()
 	defer pm.crossRWMutex.RUnlock()
 	return pm.crossTable[originalProcessName]
 }

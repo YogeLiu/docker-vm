@@ -329,10 +329,12 @@ func (p *Process) killProcess(isTxTimeout bool) {
 	if isTxTimeout {
 		originalProcessName := p.Handler.TxRequest.TxContext.OriginalProcessName
 		processDepth := p.processMgr.getProcessDepth(originalProcessName)
-		for depth, process := range processDepth.processes {
-			if process != nil {
-				p.logger.Debugf("[%s] kill cross process in depth [%d]", process.processName, depth)
-				_ = process.cmd.Process.Kill()
+		if processDepth != nil {
+			for depth, process := range processDepth.processes {
+				if process != nil {
+					p.logger.Debugf("[%s] kill cross process in depth [%d]", process.processName, depth)
+					_ = process.cmd.Process.Kill()
+				}
 			}
 		}
 	}
