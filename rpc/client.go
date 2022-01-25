@@ -45,7 +45,7 @@ func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 		stateResponseSendCh: make(chan *protogo.CDMMessage, txSize*8), // get_state response and bytecode response
 		recvChMap:           make(map[string]chan *protogo.CDMMessage),
 		stream:              nil,
-		logger:              logger.GetLoggerByChain("[CDM Client]", chainId),
+		logger:              logger.GetLoggerByChain(logger.MODULE_VM, chainId),
 		stop:                nil,
 		config:              vmConfig,
 	}
