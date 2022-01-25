@@ -70,7 +70,7 @@ func GetLogHandler() *zap.SugaredLogger {
 func ConstructContractKey(contractName, contractVersion string) string {
 	var sb strings.Builder
 	sb.WriteString(contractName)
-	sb.WriteString(":")
+	sb.WriteString("#")
 	sb.WriteString(contractVersion)
 	return sb.String()
 }
@@ -79,7 +79,7 @@ func ConstructContractKey(contractName, contractVersion string) string {
 func ConstructProcessName(contractName, contractVersion string, index uint64) string {
 	var sb strings.Builder
 	sb.WriteString(contractName)
-	sb.WriteString(":")
+	sb.WriteString("#")
 	sb.WriteString(contractVersion)
 	sb.WriteString("#")
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
@@ -125,9 +125,10 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 		return true, nameList[0], nameList[1]
 	}
 	nameList = strings.Split(processName, "#")
-	return false, nameList[0], processName
+	return false, ConstructContractKey(nameList[0], nameList[1]), processName
 }
 
 func GetContractKeyFromProcessName(processName string) string {
-	return strings.Split(processName, "#")[0]
+	nameList := strings.Split(processName, "#")
+	return ConstructContractKey(nameList[0], nameList[1])
 }
