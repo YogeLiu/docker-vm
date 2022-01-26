@@ -675,7 +675,7 @@ func validateVMSettings(config *config.DockerVMConfig,
 		hostMountDir, _ = filepath.Abs(config.DockerVMMountPath)
 		hostMountDir = filepath.Join(hostMountDir, chainId)
 	} else {
-		hostMountDir = filepath.Join(hostMountDir, chainId)
+		hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
 	}
 
 	// set host log directory
@@ -683,7 +683,7 @@ func validateVMSettings(config *config.DockerVMConfig,
 		hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
 		hostLogDir = filepath.Join(hostLogDir, chainId)
 	} else {
-		hostMountDir = filepath.Join(hostMountDir, chainId)
+		hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
 	}
 
 	// set docker container name
