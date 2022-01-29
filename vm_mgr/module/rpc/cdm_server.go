@@ -15,9 +15,9 @@ import (
 	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -88,6 +88,9 @@ func NewCDMServer() (*CDMServer, error) {
 	serverOpts = append(serverOpts, grpc.ConnectionTimeout(ConnectionTimeout))
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.MaxSendSize*1024*1024))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.MaxRecvSize*1024*1024))
+	//serverOpts = append(serverOpts, grpc.InitialWindowSize(100*1024*1024))
+	//serverOpts = append(serverOpts, grpc.InitialConnWindowSize(100*1024*1024))
+	//serverOpts = append(serverOpts, grpc.MaxConcurrentStreams(100))
 
 	server := grpc.NewServer(serverOpts...)
 

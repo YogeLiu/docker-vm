@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 )
@@ -33,16 +33,20 @@ type ContractManager struct {
 }
 
 // NewContractManager new contract manager
-func NewContractManager(logPath string) *ContractManager {
+func NewContractManager() *ContractManager {
 	contractManager := &ContractManager{
 		contractsMap: make(map[string]string),
-		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath),
+		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, config.DockerLogDir),
 	}
 
 	mountDir = config.ContractBaseDir
 
 	_ = contractManager.initialContractMap()
 	return contractManager
+}
+
+func (cm *ContractManager) SetScheduler(scheduler protocol.Scheduler) {
+	cm.scheduler = scheduler
 }
 
 // GetContract get contract path in volume,

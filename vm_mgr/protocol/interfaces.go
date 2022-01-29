@@ -1,9 +1,14 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 package protocol
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/security"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb_sdk/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
 )
 
 type Scheduler interface {
@@ -32,12 +37,15 @@ type Scheduler interface {
 	GetByteCodeReqCh() chan *protogo.CDMMessage
 
 	GetCrossContractReqCh() chan *protogo.TxRequest
+
+	ReturnErrorResponse(string, string)
+
+	ReturnErrorCrossContractResponse(txRequest *protogo.TxRequest, resp *SDKProtogo.DMSMessage)
 }
 
 type UserController interface {
 	// GetAvailableUser get available user
 	GetAvailableUser() (*security.User, error)
-
 	// FreeUser free user
 	FreeUser(user *security.User) error
 }

@@ -1,3 +1,8 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 package test
 
 import (
@@ -6,7 +11,7 @@ import (
 	"log"
 	"testing"
 
-	docker_go "chainmaker.org/chainmaker/vm-docker-go"
+	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 	"github.com/stretchr/testify/assert"
 
 	"chainmaker.org/chainmaker/logger/v2"
@@ -94,6 +99,7 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Equal(t, []byte("unknown method"), result.Result)
+	fmt.Println(result)
 
 	tearDownTest()
 }

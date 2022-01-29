@@ -23,10 +23,10 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"chainmaker.org/chainmaker/vm-docker-go/rpc"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
 
 	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -41,6 +41,7 @@ const (
 	imageVersion         = "develop"
 
 	enablePProf = false // switch for enable pprof, just for testing
+
 )
 
 var (
@@ -193,6 +194,7 @@ func (m *DockerManager) StartVM() error {
 	go func() {
 		err = m.displayInConsole(m.dockerContainerConfig.ContainerName)
 		if err != nil {
+			m.mgrLogger.Errorf("docker vm fail: %s", err)
 			return
 		}
 	}()
@@ -414,8 +416,6 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
 		config.ENV_ENABLE_UDS, m.dockerVMConfig.DockerVMUDSOpen))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_TX_SIZE, m.dockerVMConfig.TxSize))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
 		config.ENV_USER_NUM, m.dockerVMConfig.UserNum))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
 		config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
@@ -423,6 +423,8 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 		config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
 		config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
+		config.ENV_MAX_CONCURRENCY, m.dockerVMConfig.MaxConcurrency))
 
 	// add test port just for mac development and pprof
 	// if using this feature, make sure close enable_uds in yml
@@ -560,7 +562,7 @@ func (m *DockerManager) createTestContainer() error {
 		PortBindings: nat.PortMap{
 			openPort: []nat.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP:   "127.0.0.1",
 					HostPort: hostPort,
 				},
 			},
@@ -582,6 +584,9 @@ func (m *DockerManager) createPProfContainer() error {
 	hostPort := config.PProfPort
 	openPort := nat.Port(hostPort + "/tcp")
 
+	sdkHostPort := config.SDKPort
+	sdkOpenPort := nat.Port(sdkHostPort + "/tcp")
+
 	envs := m.constructEnvs(true)
 	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, config.PProfPort))
 	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvEnablePprof, true))
@@ -593,7 +598,8 @@ func (m *DockerManager) createPProfContainer() error {
 		AttachStdout: m.dockerContainerConfig.AttachStdOut,
 		AttachStderr: m.dockerContainerConfig.AttachStderr,
 		ExposedPorts: nat.PortSet{
-			openPort: struct{}{},
+			openPort:    struct{}{},
+			sdkOpenPort: struct{}{},
 		},
 	}, &container.HostConfig{
 		Privileged: true,
@@ -632,6 +638,12 @@ func (m *DockerManager) createPProfContainer() error {
 					HostPort: hostPort,
 				},
 			},
+			sdkOpenPort: []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: sdkHostPort,
+				},
+			},
 		},
 	}, nil, nil, m.dockerContainerConfig.ContainerName)
 
@@ -663,7 +675,7 @@ func validateVMSettings(config *config.DockerVMConfig,
 		hostMountDir, _ = filepath.Abs(config.DockerVMMountPath)
 		hostMountDir = filepath.Join(hostMountDir, chainId)
 	} else {
-		hostMountDir = filepath.Join(hostMountDir, chainId)
+		hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
 	}
 
 	// set host log directory
@@ -671,7 +683,7 @@ func validateVMSettings(config *config.DockerVMConfig,
 		hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
 		hostLogDir = filepath.Join(hostLogDir, chainId)
 	} else {
-		hostMountDir = filepath.Join(hostMountDir, chainId)
+		hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
 	}
 
 	// set docker container name

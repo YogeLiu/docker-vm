@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/security"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
 
@@ -84,7 +84,7 @@ func (u *UsersManager) generateNewUser(newUserId int) error {
 	addUserCommand := fmt.Sprintf(addUserFormat, newUserId, newUser.UserName)
 
 	if err := utils.RunCmd(addUserCommand); err != nil {
-		u.logger.Errorf("fail to run cmd : [%s], [%s]", addUserCommand, err)
+		u.logger.Warn("fail to run cmd : [%s], [%s]", addUserCommand, err)
 		return err
 	}
 

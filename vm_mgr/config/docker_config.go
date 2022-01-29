@@ -17,7 +17,7 @@ const (
 	// SwapLimitFile swap setting file
 	SwapLimitFile = "memory.swappiness"
 	// RssLimit rss limit file
-	RssLimit = 500 // 10 MB
+	RssLimit = 50000 // 10 MB
 
 	// DMSDir docker manager sandbox dir
 	DMSDir = "/dms"
@@ -58,14 +58,12 @@ var (
 )
 
 const (
-	ENV_ENABLE_UDS        = "ENV_ENABLE_UDS"
-	ENV_MAX_SEND_MSG_SIZE = "ENV_MAX_SEND_MSG_SIZE"
-	ENV_MAX_RECV_MSG_SIZE = "ENV_MAX_RECV_MSG_SIZE"
-	ENV_TX_SIZE           = "ENV_TX_SIZE"
-	ENV_USER_NUM          = "ENV_USER_NUM"
-	ENV_TX_TIME_LIMIT     = "ENV_TX_TIME_LIMIT"
-	ENV_LOG_LEVEL         = "ENV_LOG_LEVEL"
-	ENV_LOG_IN_CONSOLE    = "ENV_LOG_IN_CONSOLE"
+	ENV_ENABLE_UDS      = "ENV_ENABLE_UDS"
+	ENV_USER_NUM        = "ENV_USER_NUM"
+	ENV_TX_TIME_LIMIT   = "ENV_TX_TIME_LIMIT"
+	ENV_LOG_LEVEL       = "ENV_LOG_LEVEL"
+	ENV_LOG_IN_CONSOLE  = "ENV_LOG_IN_CONSOLE"
+	ENV_MAX_CONCURRENCY = "ENV_MAX_CONCURRENCY"
 
 	EnvEnablePprof = "ENV_ENABLE_PPROF"
 	EnvPprofPort   = "ENV_PPROF_PORT"

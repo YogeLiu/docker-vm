@@ -1,3 +1,8 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 package test
 
 import (
@@ -44,7 +49,7 @@ func TestDockerGoCrossCall(t *testing.T) {
 		parameters2, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Equal(t, []byte("missing contract name"), result.Result)
-
+	//
 	// missing contract version
 	parameters3 := generateInitParams()
 	parameters3["method"] = []byte("cross_contract")

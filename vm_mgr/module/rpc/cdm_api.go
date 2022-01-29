@@ -11,12 +11,11 @@ import (
 	"io"
 	"sync"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
-	"github.com/golang/protobuf/proto"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"go.uber.org/zap"
 )
 
@@ -94,7 +93,7 @@ func (cdm *CDMApi) recvMsgRoutine() {
 				continue
 			}
 
-			cdm.logger.Debugf("recv msg [%s]", recvMsg.Type)
+			cdm.logger.Debugf("recv msg [%s]", recvMsg)
 
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_REQUEST:
@@ -136,6 +135,7 @@ func (cdm *CDMApi) sendMsgRoutine() {
 	for {
 		select {
 		case txResponseMsg := <-cdm.scheduler.GetTxResponseCh():
+			cdm.logger.Debugf("[%s] retrieve response from chan and send to chain", txResponseMsg.TxId)
 			cdmMsg := cdm.constructCDMMessage(txResponseMsg)
 			err = cdm.sendMessage(cdmMsg)
 		case getStateReqMsg := <-cdm.scheduler.GetGetStateReqCh():
@@ -158,33 +158,36 @@ func (cdm *CDMApi) sendMsgRoutine() {
 
 func (cdm *CDMApi) constructCDMMessage(txResponseMsg *protogo.TxResponse) *protogo.CDMMessage {
 
-	payload, _ := txResponseMsg.Marshal()
+	//payload, _ := txResponseMsg.Marshal()
 
 	cdmMsg := &protogo.CDMMessage{
-		TxId:    txResponseMsg.TxId,
-		Type:    protogo.CDMType_CDM_TYPE_TX_RESPONSE,
-		Payload: payload,
+		TxId:       txResponseMsg.TxId,
+		Type:       protogo.CDMType_CDM_TYPE_TX_RESPONSE,
+		TxResponse: txResponseMsg,
 	}
 
 	return cdmMsg
 }
 
 func (cdm *CDMApi) sendMessage(msg *protogo.CDMMessage) error {
-	cdm.logger.Debugf("send message [%s]", msg)
+	cdm.logger.Debugf("cdm send message [%s]", msg)
 	return cdm.stream.Send(msg)
 }
 
 // unmarshal cdm message to send txRequest to txReqCh
 func (cdm *CDMApi) handleTxRequest(cdmMessage *protogo.CDMMessage) error {
 
-	var txRequest protogo.TxRequest
-	err := proto.Unmarshal(cdmMessage.Payload, &txRequest)
-	if err != nil {
-		cdm.logger.Errorf("fail to unmarshal cdmMessage.Payload [%s] to protogo.TxRequest ", cdmMessage.Payload)
-		return err
-	}
+	//var txRequest protogo.TxRequest
+	//err := proto.Unmarshal(cdmMessage.Payload, &txRequest)
+	//if err != nil {
+	//	cdm.logger.Errorf("fail to unmarshal cdmMessage.Payload [%s] to protogo.TxRequest ", cdmMessage.Payload)
+	//	return err
+	//}
 
-	cdm.scheduler.GetTxReqCh() <- &txRequest
+	txRequest := cdmMessage.TxRequest
+	cdm.logger.Debugf("[%s] cdm server receive tx from chain", txRequest.TxId)
+
+	cdm.scheduler.GetTxReqCh() <- txRequest
 
 	return nil
 }

@@ -1,6 +1,7 @@
 .idea
 bin
 *.log
+*.html
 *.log.*
 cover.out
 vm_mgr/vendor

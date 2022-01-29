@@ -11,16 +11,16 @@ import (
 	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 
 	chainProtocol "chainmaker.org/chainmaker/protocol/v2"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb_sdk/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 )
@@ -54,6 +54,7 @@ type ProcessInterface interface {
 // ProcessHandler used to handle each contract's message
 // to deal with each contract message
 type ProcessHandler struct {
+	processName   string
 	state         state
 	logger        *zap.SugaredLogger
 	TxRequest     *protogo.TxRequest
@@ -64,9 +65,9 @@ type ProcessHandler struct {
 }
 
 func NewProcessHandler(txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	process ProcessInterface) *ProcessHandler {
-
+	processName string, process ProcessInterface) *ProcessHandler {
 	handler := &ProcessHandler{
+		processName:   processName,
 		logger:        logger.NewDockerLogger(logger.MODULE_DMS_HANDLER, config.DockerLogDir),
 		TxRequest:     txRequest,
 		state:         created,
@@ -83,13 +84,13 @@ func (h *ProcessHandler) SetStream(stream SDKProtogo.DMSRpc_DMSCommunicateServer
 }
 
 func (h *ProcessHandler) sendMessage(msg *SDKProtogo.DMSMessage) error {
-	h.logger.Debugf("send message [%s]", msg)
+	h.logger.Debugf("send message [%s] process [%s]", msg, h.processName)
 	return h.stream.Send(msg)
 }
 
 // HandleMessage handle incoming message from contract
 func (h *ProcessHandler) HandleMessage(msg *SDKProtogo.DMSMessage) error {
-	h.logger.Debugf("handle msg [%s]\n", msg)
+	h.logger.Debugf("process [%s] handle msg [%s]\n in state [%s]", h.processName, msg, h.state)
 
 	switch h.state {
 	case created:
@@ -232,6 +233,7 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 		Payload: key,
 	}
 	getStateResponseCh := make(chan *protogo.CDMMessage)
+	// Todo: may have duplicate txId
 	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, getStateResponseCh)
 
 	// wait to get state response
@@ -349,7 +351,6 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 
 	// give back response, could be normal response or error response
 	return h.sendMessage(crossContractResponse)
-
 }
 
 func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) error {
@@ -357,7 +358,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 	// check current height,
 	// if current height > 0, which is cross contract, just return result to previous contract
 	if h.TxRequest.TxContext.CurrentHeight > 0 {
-		h.logger.Debugf("handle cross contract completed message")
+		h.logger.Debugf("process [%s] handle cross contract completed message [%s]", h.processName, completedMsg.TxId)
 		responseChId := crossContractChKey(h.TxRequest.TxId, h.TxRequest.TxContext.CurrentHeight)
 		responseCh := h.scheduler.GetCrossContractResponseCh(responseChId)
 		responseCh <- completedMsg
@@ -403,8 +404,13 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		txResponse.Events = nil
 	}
 
+	responseCh := h.scheduler.GetTxResponseCh()
+	h.logger.Debugf("[%s] put tx response in response chan for in process [%s] with chan length[%d]", txResponse.TxId, h.processName, len(responseCh))
+
 	// give back result to scheduler  -- for multiple tx incoming
-	h.scheduler.GetTxResponseCh() <- txResponse
+	responseCh <- txResponse
+
+	h.logger.Debugf("[%s] end handle tx in process [%s]", txResponse.TxId, h.processName)
 
 	h.stopTimer()
 	h.process.resetProcessTimer()
@@ -555,13 +561,15 @@ func (h *ProcessHandler) resetHandler() {
 }
 
 func (h *ProcessHandler) startTimer() {
+	h.logger.Debugf("start tx timer: process [%s], tx [%s]", h.processName, h.TxRequest.TxId)
 	if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
 		<-h.txExpireTimer.C
 	}
-	h.txExpireTimer.Reset(txDuration * time.Second)
+	h.txExpireTimer.Reset(time.Duration(config.SandBoxTimeout) * time.Second)
 }
 
 func (h *ProcessHandler) stopTimer() {
+	h.logger.Debugf("stop tx timer: process [%s], tx [%s]", h.processName, h.TxRequest.TxId)
 	if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
 		<-h.txExpireTimer.C
 	}

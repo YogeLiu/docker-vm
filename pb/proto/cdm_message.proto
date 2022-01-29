@@ -1,3 +1,8 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 syntax = "proto3";
 
 package proto;
@@ -20,6 +25,10 @@ message CDMMessage {
     bytes payload = 4;
 
     string message = 5;
+
+    TxRequest txRequest = 6;
+
+    TxResponse txResponse = 7;
 }
 
 enum CDMType {

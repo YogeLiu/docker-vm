@@ -1,3 +1,8 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 package test
 
 import (
@@ -10,7 +15,7 @@ import (
 
 	"chainmaker.org/chainmaker/logger/v2"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-	docker_go "chainmaker.org/chainmaker/vm-docker-go"
+	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 )
 
 const (

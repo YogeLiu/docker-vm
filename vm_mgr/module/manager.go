@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package module
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/core"
-	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/rpc"
-	security2 "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
+	security2 "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"go.uber.org/zap"
 )
 
@@ -19,7 +19,7 @@ type ManagerImpl struct {
 	scheduler      *core.DockerScheduler
 	userController *core.UsersManager
 	securityEnv    *security2.SecurityEnv
-	processPool    *core.ProcessPool
+	processManager *core.ProcessManager
 	logger         *zap.SugaredLogger
 }
 
@@ -34,13 +34,16 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	}
 
 	// new users controller
-	userController := core.NewUsersManager()
+	usersManager := core.NewUsersManager()
 
+	contractManager := core.NewContractManager()
 	// new process pool
-	processPool := core.NewProcessPool()
+	processManager := core.NewProcessManager(usersManager, contractManager)
 
 	// new scheduler
-	scheduler := core.NewDockerScheduler(userController, processPool)
+	scheduler := core.NewDockerScheduler(processManager)
+	processManager.SetScheduler(scheduler)
+	contractManager.SetScheduler(scheduler)
 
 	// new docker manager to sandbox server
 	dmsRpcServer, err := rpc.NewDMSServer()
@@ -60,9 +63,9 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 		cdmRpcServer:   cdmRpcServer,
 		dmsRpcServer:   dmsRpcServer,
 		scheduler:      scheduler,
-		userController: userController,
+		userController: usersManager,
 		securityEnv:    securityEnv,
-		processPool:    processPool,
+		processManager: processManager,
 		logger:         managerLogger,
 	}
 
@@ -83,7 +86,7 @@ func (m *ManagerImpl) InitContainer() {
 	}
 
 	// start dms server
-	dmsApiInstance := rpc.NewDMSApi(m.processPool)
+	dmsApiInstance := rpc.NewDMSApi(m.processManager)
 	if err = m.dmsRpcServer.StartDMSServer(dmsApiInstance); err != nil {
 		errorC <- err
 	}
