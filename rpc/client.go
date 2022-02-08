@@ -136,7 +136,7 @@ func (c *CDMClient) sendMsgRoutine() {
 			c.logger.Debugf("[%s] send tx request to docker manager", txMsg.TxId)
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
-			c.logger.Debugf("[%s] send request to docker manager", stateMsg.TxId)
+			c.logger.Debugf("[%s] send response to docker manager", stateMsg.TxId)
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.stop:
 			c.logger.Debugf("close send cdm msg")
