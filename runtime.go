@@ -127,11 +127,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			ReadMap:             nil,
 		},
 	}
-	txRequestPayload, _ := proto.Marshal(txRequest)
 	cdmMessage := &protogo.CDMMessage{
-		TxId:    txId,
-		Type:    protogo.CDMType_CDM_TYPE_TX_REQUEST,
-		Payload: txRequestPayload,
+		TxId:      txId,
+		Type:      protogo.CDMType_CDM_TYPE_TX_REQUEST,
+		TxRequest: txRequest,
 	}
 
 	// register result chan
@@ -176,9 +175,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
 				r.Log.Debugf("[%s] start handle response [%v]", txId, recvMsg)
 				// construct response
-				var txResponse protogo.TxResponse
-				_ = proto.UnmarshalMerge(recvMsg.Payload, &txResponse)
-
+				txResponse := recvMsg.TxResponse
 				// tx fail, just return without merge read write map and events
 				if txResponse.Code != 0 {
 					contractResult.Code = 1

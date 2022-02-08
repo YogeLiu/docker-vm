@@ -45,7 +45,7 @@ func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 		stateResponseSendCh: make(chan *protogo.CDMMessage, txSize*8), // get_state response and bytecode response
 		recvChMap:           make(map[string]chan *protogo.CDMMessage),
 		stream:              nil,
-		logger:              logger.GetLoggerByChain("[CDM Client]", chainId),
+		logger:              logger.GetLoggerByChain(logger.MODULE_VM, chainId),
 		stop:                nil,
 		config:              vmConfig,
 	}
@@ -136,7 +136,7 @@ func (c *CDMClient) sendMsgRoutine() {
 			c.logger.Debugf("[%s] send tx request to docker manager", txMsg.TxId)
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
-			c.logger.Debugf("[%s] send request to docker manager", stateMsg.TxId)
+			c.logger.Debugf("[%s] send response to docker manager", stateMsg.TxId)
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.stop:
 			c.logger.Debugf("close send cdm msg")
