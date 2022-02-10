@@ -246,13 +246,14 @@ func (pm *ProcessManager) listenProcessInvoke(process *Process) {
 			}
 			success, currentTxId, err := process.InvokeProcess()
 
-			if success && err != nil {
-				pm.scheduler.ReturnErrorResponse(currentTxId, err.Error())
-			}
-
 			if !success {
 				return
 			}
+
+			if err != nil {
+				pm.scheduler.ReturnErrorResponse(currentTxId, err.Error())
+			}
+
 		case <-process.Handler.txExpireTimer.C:
 			process.StopProcess(false)
 		}
