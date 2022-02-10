@@ -563,11 +563,11 @@ func (h *ProcessHandler) resetHandler() {
 }
 
 func (h *ProcessHandler) startTimer() {
-	h.logger.Debugf("start tx timer: process [%s], tx [%s]", h.processName, h.TxRequest.TxId)
-	if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
-		<-h.txExpireTimer.C
-	}
-	h.txExpireTimer.Reset(time.Duration(config.SandBoxTimeout) * time.Second)
+	//h.logger.Debugf("start tx timer: process [%s], tx [%s]", h.processName, h.TxRequest.TxId)
+	//if !h.txExpireTimer.Stop() && len(h.txExpireTimer.C) > 0 {
+	//	<-h.txExpireTimer.C
+	//}
+	//h.txExpireTimer.Reset(time.Duration(config.SandBoxTimeout) * time.Second)
 }
 
 func (h *ProcessHandler) stopTimer() {

@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	processWaitingTime      = 60 * 10
+	processWaitingTime      = 600000 * 10
 	processWaitingQueueSize = 1000
 	triggerNewProcessSize   = 3
 )
@@ -294,6 +294,7 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	for {
 		str, err := rd.ReadString('\n')
 		if err != nil {
+			contractLogger.Info(err)
 			return
 		}
 		str = strings.TrimSuffix(str, "\n")
@@ -358,11 +359,11 @@ func (p *Process) updateProcessState(state protogo.ProcessState) {
 
 // resetProcessTimer reset timer when tx finished
 func (p *Process) resetProcessTimer() {
-	p.logger.Debugf("[%s] reset process expire timer", p.processName)
-	if !p.expireTimer.Stop() && len(p.expireTimer.C) > 0 {
-		<-p.expireTimer.C
-	}
-	p.expireTimer.Reset(processWaitingTime * time.Second)
+	//p.logger.Debugf("[%s] reset process expire timer", p.processName)
+	//if !p.expireTimer.Stop() && len(p.expireTimer.C) > 0 {
+	//	<-p.expireTimer.C
+	//}
+	//p.expireTimer.Reset(processWaitingTime * time.Second)
 }
 
 func (p *Process) disableProcessExpireTimer() {
