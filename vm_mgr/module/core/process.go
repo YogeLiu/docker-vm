@@ -7,6 +7,7 @@ package core
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -244,7 +245,7 @@ func (p *Process) LaunchProcess() error {
 
 // InvokeProcess handle next tx or wait next available tx, process killed until expire time
 // return triggered next tx successfully or not
-func (p *Process) InvokeProcess() bool {
+func (p *Process) InvokeProcess() (bool, string, error) {
 
 	select {
 	case nextTx := <-p.TxWaitingQueue:
@@ -255,13 +256,25 @@ func (p *Process) InvokeProcess() bool {
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
 
 		err := p.Handler.HandleContract()
+
+		// send tx msg fail or invalid method
+		// valid method just have: initContract, invokeContract, upgradeContract
 		if err != nil {
-			p.logger.Errorf("[%s] process fail to invoke contract: %s", p.processName, err)
+			errMsg := fmt.Sprintf("[%s] process fail to invoke contract: %s", p.processName, err)
+			p.logger.Error(errMsg)
+
+			p.Handler.stopTimer()
+			p.resetProcessTimer()
+			p.updateProcessState(protogo.ProcessState_PROCESS_STATE_READY)
+			go p.triggerProcessState()
+
+			return true, nextTx.TxId, err
 		}
-		return true
+
+		return true, "", nil
 	case <-p.expireTimer.C:
 		p.StopProcess(true)
-		return false
+		return false, "", nil
 	}
 
 }
