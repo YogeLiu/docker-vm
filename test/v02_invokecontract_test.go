@@ -177,3 +177,20 @@ func TestDockerGoOutRange(t *testing.T) {
 	tearDownTest()
 
 }
+
+func TestDockerGoInvalidMethod(t *testing.T) {
+	setupTest(t)
+
+	fmt.Println("======= testing ======== ")
+
+	parameters0 := generateInitParams()
+	parameters0["method"] = []byte("fake_method")
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, "fake_method", nil,
+		parameters0, mockTxContext, uint64(123))
+	assert.Equal(t, uint32(1), result.Code)
+	assert.Nil(t, result.Result)
+	assert.Nil(t, result.ContractEvent)
+	fmt.Println(result)
+
+	tearDownTest()
+}

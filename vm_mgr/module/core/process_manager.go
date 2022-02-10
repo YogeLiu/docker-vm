@@ -244,7 +244,12 @@ func (pm *ProcessManager) listenProcessInvoke(process *Process) {
 			if process.ProcessState != protogo.ProcessState_PROCESS_STATE_READY {
 				continue
 			}
-			success := process.InvokeProcess()
+			success, currentTxId, err := process.InvokeProcess()
+
+			if success && err != nil {
+				pm.scheduler.ReturnErrorResponse(currentTxId, err.Error())
+			}
+
 			if !success {
 				return
 			}
