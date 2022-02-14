@@ -187,7 +187,7 @@ func (h *ProcessHandler) HandleContract() error {
 	case invokeContract:
 		return h.sendInvoke()
 	default:
-		return fmt.Errorf("contract [%s] handler cannot send such method: %s", h.TxRequest.ContractName, h.TxRequest.Method)
+		return fmt.Errorf("invalid method: %s", h.TxRequest.Method)
 	}
 }
 
