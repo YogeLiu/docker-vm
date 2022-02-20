@@ -10,8 +10,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
-	"path/filepath"
 	"sync"
 
 	"chainmaker.org/chainmaker/logger/v2"
@@ -234,22 +232,11 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 		),
 	}
 
-	// just for mac development and pprof testing
-	if !c.config.DockerVMUDSOpen {
-		ip := "0.0.0.0"
-		url := fmt.Sprintf("%s:%s", ip, config.TestPort)
-		return grpc.Dial(url, dialOpts...)
-	}
+	ip := c.config.DockerVMHost
+	url := fmt.Sprintf("%s:%d", ip, c.config.DockerVMPort)
 
-	dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
-		unixAddress, _ := net.ResolveUnixAddr("unix", sock)
-		conn, err := net.DialUnix("unix", nil, unixAddress)
-		return conn, err
-	}))
-
-	sockAddress := filepath.Join(c.config.DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
-
-	return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
+	c.logger.Debugf("connect docker vm manager: %s", url)
+	return grpc.Dial(url, dialOpts...)
 
 }
 

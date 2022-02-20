@@ -8,15 +8,11 @@ package docker_go
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sync"
-
-	"github.com/docker/go-connections/nat"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -27,10 +23,7 @@ import (
 
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
+	//"github.com/docker/docker/client"
 )
 
 const (
@@ -52,8 +45,8 @@ type DockerManager struct {
 	chainId   string
 	mgrLogger *logger.CMLogger
 
-	ctx             context.Context
-	dockerAPIClient *client.Client // docker client
+	ctx context.Context
+	//dockerAPIClient *client.Client // docker client
 
 	cdmClient      *rpc.CDMClient // grpc client
 	clientInitOnce sync.Once
@@ -87,18 +80,18 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		return nil
 	}
 
-	// init docker api client
-	dockerAPIClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil
-	}
+	//// init docker api client
+	//dockerAPIClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	//if err != nil {
+	//	return nil
+	//}
 
 	// init docker manager
 	newDockerManager := &DockerManager{
-		chainId:               chainId,
-		mgrLogger:             dockerManagerLogger,
-		ctx:                   context.Background(),
-		dockerAPIClient:       dockerAPIClient,
+		chainId:   chainId,
+		mgrLogger: dockerManagerLogger,
+		ctx:       context.Background(),
+		//dockerAPIClient:       dockerAPIClient,
 		cdmClient:             rpc.NewCDMClient(chainId, dockerVMConfig),
 		clientInitOnce:        sync.Once{},
 		cdmState:              false,
@@ -122,82 +115,33 @@ func (m *DockerManager) StartVM() error {
 		return nil
 	}
 	m.mgrLogger.Info("start docker vm...")
-	var err error
+
+	// 以另外一种方式 判断容器服务有没有启动，并在日志 打印版本等信息
+
+	// todo 校验信息：链id，等其他信息
 
 	// check container is running or not
 	// if running, stop it,
-	isRunning, err := m.getContainer(false)
-	if err != nil {
-		return err
-	}
-	if isRunning {
-		m.mgrLogger.Debugf("stop running container [%s]", m.dockerContainerConfig.ContainerName)
-		err = m.stopContainer()
-		if err != nil {
-			return err
-		}
-	}
 
-	// check container exist or not, if not exist, create new container
-	containerExist, err := m.getContainer(true)
-	if err != nil {
-		return err
-	}
-
-	if containerExist {
-		m.mgrLogger.Debugf("remove container [%s]", m.dockerContainerConfig.ContainerName)
-		err = m.removeContainer()
-		if err != nil {
-			return err
-		}
-	}
-
-	// check image exist or not, if not exist, create new image
-	imageExisted, err := m.imageExist()
-	if err != nil {
-		return err
-	}
-
-	if !imageExisted {
-		m.mgrLogger.Errorf("cannot find docker vm image, please pull the image")
-		return fmt.Errorf("cannot find docker vm image")
-	}
-
-	m.mgrLogger.Debugf("create container [%s]", m.dockerContainerConfig.ContainerName)
-
-	if m.dockerVMConfig.DockerVMUDSOpen {
-		if enablePProf {
-			err = m.createPProfContainer()
-		} else {
-			err = m.createContainer()
-		}
-		if err != nil {
-			return err
-		}
-	} else {
-		err = m.createTestContainer()
-		if err != nil {
-			return err
-		}
-	}
+	// pprof 在容器里设置（也换成环境变量的方式）
 
 	// running container
 	m.mgrLogger.Infof("start running container [%s]", m.dockerContainerConfig.ContainerName)
-	if err = m.dockerAPIClient.ContainerStart(m.ctx, m.dockerContainerConfig.ContainerName,
-		types.ContainerStartOptions{}); err != nil {
-		return err
-	}
+	//if err = m.dockerAPIClient.ContainerStart(m.ctx, m.dockerContainerConfig.ContainerName,
+	//	types.ContainerStartOptions{}); err != nil {
+	//	return err
+	//}
 
 	m.mgrLogger.Debugf("docker vm start success :)")
 
 	// display container info in the console
-	go func() {
-		err = m.displayInConsole(m.dockerContainerConfig.ContainerName)
-		if err != nil {
-			m.mgrLogger.Errorf("docker vm fail: %s", err)
-			return
-		}
-	}()
+	//go func() {
+	//	err = m.displayInConsole(m.dockerContainerConfig.ContainerName)
+	//	if err != nil {
+	//		m.mgrLogger.Errorf("docker vm fail: %s", err)
+	//		return
+	//	}
+	//}()
 	return nil
 }
 
@@ -206,17 +150,13 @@ func (m *DockerManager) StopVM() error {
 	if m == nil {
 		return nil
 	}
-	var err error
+	//var err error
 
-	err = m.stopContainer()
-	if err != nil {
-		return err
-	}
-
-	err = m.removeContainer()
-	if err != nil {
-		return err
-	}
+	// todo 是否需要停掉 合约管理容器： 如何停掉，停掉是否要删掉容器，那是否需要开启任务处理
+	//err := m.stopContainer()
+	//if err != nil {
+	//	return err
+	//}
 
 	//err = m.removeImage()
 	//if err != nil {
@@ -260,110 +200,8 @@ func (m *DockerManager) getCDMState() bool {
 	return m.cdmState
 }
 
-// ------------------ image functions --------------
-
-// imageExist check docker m image exist or not
-func (m *DockerManager) imageExist() (bool, error) {
-	imageList, err := m.dockerAPIClient.ImageList(m.ctx, types.ImageListOptions{All: true})
-	if err != nil {
-		return false, err
-	}
-
-	for _, v1 := range imageList {
-		for _, v2 := range v1.RepoTags {
-			if v2 == m.dockerContainerConfig.ImageName {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
-}
-
-// ------------------ container functions --------------
-
-// createContainer create container based on image
-func (m *DockerManager) createContainer() error {
-
-	envs := m.constructEnvs(true)
-
-	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
-		Cmd:          nil,
-		Image:        m.dockerContainerConfig.ImageName,
-		Env:          envs,
-		AttachStdout: m.dockerContainerConfig.AttachStdOut,
-		AttachStderr: m.dockerContainerConfig.AttachStderr,
-	}, &container.HostConfig{
-		NetworkMode: "none",
-		Privileged:  true,
-		Mounts: []mount.Mount{
-			{
-				Type:        mount.TypeBind,
-				Source:      m.dockerContainerConfig.HostMountDir,
-				Target:      m.dockerContainerConfig.DockerMountDir,
-				ReadOnly:    false,
-				Consistency: mount.ConsistencyFull,
-				BindOptions: &mount.BindOptions{
-					Propagation:  mount.PropagationRPrivate,
-					NonRecursive: false,
-				},
-				VolumeOptions: nil,
-				TmpfsOptions:  nil,
-			},
-			{
-				Type:        mount.TypeBind,
-				Source:      m.dockerContainerConfig.HostLogDir,
-				Target:      m.dockerContainerConfig.DockerLogDir,
-				ReadOnly:    false,
-				Consistency: mount.ConsistencyFull,
-				BindOptions: &mount.BindOptions{
-					Propagation:  mount.PropagationRPrivate,
-					NonRecursive: false,
-				},
-				VolumeOptions: nil,
-				TmpfsOptions:  nil,
-			},
-		},
-	}, nil, nil, m.dockerContainerConfig.ContainerName)
-
-	if err != nil {
-		m.mgrLogger.Errorf("create container [%s] failed", m.dockerContainerConfig.ContainerName)
-		return err
-	}
-
-	m.mgrLogger.Infof("create container [%s] success :)", m.dockerContainerConfig.ContainerName)
-	return nil
-}
-
-// getContainer check container status: exist, not exist, running, or not running
-func (m *DockerManager) getContainer(all bool) (bool, error) {
-	containerList, err := m.dockerAPIClient.ContainerList(m.ctx, types.ContainerListOptions{All: all})
-	if err != nil {
-		return false, err
-	}
-
-	indexName := "/" + m.dockerContainerConfig.ContainerName
-	for _, v1 := range containerList {
-		for _, v2 := range v1.Names {
-			if v2 == indexName {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
-}
-
-// removeContainer remove container
-func (m *DockerManager) removeContainer() error {
-	m.mgrLogger.Infof("Removing container [%s] ...", m.dockerContainerConfig.ContainerName)
-	return m.dockerAPIClient.ContainerRemove(m.ctx, m.dockerContainerConfig.ContainerName, types.ContainerRemoveOptions{})
-}
-
-// stopContainer stop container
-func (m *DockerManager) stopContainer() error {
-	return m.dockerAPIClient.ContainerStop(m.ctx, m.dockerContainerConfig.ContainerName, nil)
-}
-
 // InitMountDirectory init mount directory and subdirectories
+// todo 创建路径的操作需不需要在容器里再做一遍
 func (m *DockerManager) initMountDirectory() error {
 
 	var err error
@@ -436,52 +274,6 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 
 }
 
-// displayInConsole display container std out in host std out -- need finish loop accept
-func (m *DockerManager) displayInConsole(containerID string) error {
-	//display container std out
-	out, err := m.dockerAPIClient.ContainerLogs(m.ctx, containerID, types.ContainerLogsOptions{
-		ShowStdout: m.dockerContainerConfig.ShowStdout,
-		ShowStderr: m.dockerContainerConfig.ShowStderr,
-		Follow:     true,
-		Timestamps: false,
-	})
-	if err != nil {
-		return err
-	}
-	defer func(out io.ReadCloser) {
-		err = out.Close()
-		if err != nil {
-			return
-		}
-	}(out)
-
-	hdr := make([]byte, 8)
-	for {
-		_, err = out.Read(hdr)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-		}
-		var w io.Writer
-		switch hdr[0] {
-		case 1:
-			w = os.Stdout
-		default:
-			w = os.Stderr
-		}
-		count := binary.BigEndian.Uint32(hdr[4:])
-		dat := make([]byte, count)
-		_, _ = out.Read(dat)
-		_, err = fmt.Fprint(w, string(dat))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (m *DockerManager) createDir(directory string) error {
 	exist, err := m.exists(directory)
 	if err != nil {
@@ -512,149 +304,83 @@ func (m *DockerManager) exists(path string) (bool, error) {
 	return false, err
 }
 
-// create container based on image, just for testing
-func (m *DockerManager) createTestContainer() error {
-
-	hostPort := config.TestPort
-	openPort := nat.Port(hostPort + "/tcp")
-
-	envs := m.constructEnvs(false)
-
-	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
-		Cmd:          nil,
-		Image:        m.dockerContainerConfig.ImageName,
-		Env:          envs,
-		AttachStdout: m.dockerContainerConfig.AttachStdOut,
-		AttachStderr: m.dockerContainerConfig.AttachStderr,
-		ExposedPorts: nat.PortSet{
-			openPort: struct{}{},
-		},
-	}, &container.HostConfig{
-		Privileged: true,
-		Mounts: []mount.Mount{
-			{
-				Type:        mount.TypeBind,
-				Source:      m.dockerContainerConfig.HostMountDir,
-				Target:      m.dockerContainerConfig.DockerMountDir,
-				ReadOnly:    false,
-				Consistency: mount.ConsistencyFull,
-				BindOptions: &mount.BindOptions{
-					Propagation:  mount.PropagationRPrivate,
-					NonRecursive: false,
-				},
-				VolumeOptions: nil,
-				TmpfsOptions:  nil,
-			},
-			{
-				Type:        mount.TypeBind,
-				Source:      m.dockerContainerConfig.HostLogDir,
-				Target:      m.dockerContainerConfig.DockerLogDir,
-				ReadOnly:    false,
-				Consistency: mount.ConsistencyFull,
-				BindOptions: &mount.BindOptions{
-					Propagation:  mount.PropagationRPrivate,
-					NonRecursive: false,
-				},
-				VolumeOptions: nil,
-				TmpfsOptions:  nil,
-			},
-		},
-		PortBindings: nat.PortMap{
-			openPort: []nat.PortBinding{
-				{
-					HostIP:   "127.0.0.1",
-					HostPort: hostPort,
-				},
-			},
-		},
-	}, nil, nil, m.dockerContainerConfig.ContainerName)
-
-	if err != nil {
-		m.mgrLogger.Errorf("create container [%s] failed", m.dockerContainerConfig.ContainerName)
-		return err
-	}
-
-	m.mgrLogger.Infof("create container [%s] success :)", m.dockerContainerConfig.ContainerName)
-	return nil
-}
-
 // create container with pprof feature
 // which is open network and open an ip port in docker container
-func (m *DockerManager) createPProfContainer() error {
-	hostPort := config.PProfPort
-	openPort := nat.Port(hostPort + "/tcp")
-
-	sdkHostPort := config.SDKPort
-	sdkOpenPort := nat.Port(sdkHostPort + "/tcp")
-
-	envs := m.constructEnvs(true)
-	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, config.PProfPort))
-	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvEnablePprof, true))
-
-	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
-		Cmd:          nil,
-		Image:        m.dockerContainerConfig.ImageName,
-		Env:          envs,
-		AttachStdout: m.dockerContainerConfig.AttachStdOut,
-		AttachStderr: m.dockerContainerConfig.AttachStderr,
-		ExposedPorts: nat.PortSet{
-			openPort:    struct{}{},
-			sdkOpenPort: struct{}{},
-		},
-	}, &container.HostConfig{
-		Privileged: true,
-		Mounts: []mount.Mount{
-			{
-				Type:        mount.TypeBind,
-				Source:      m.dockerContainerConfig.HostMountDir,
-				Target:      m.dockerContainerConfig.DockerMountDir,
-				ReadOnly:    false,
-				Consistency: mount.ConsistencyFull,
-				BindOptions: &mount.BindOptions{
-					Propagation:  mount.PropagationRPrivate,
-					NonRecursive: false,
-				},
-				VolumeOptions: nil,
-				TmpfsOptions:  nil,
-			},
-			{
-				Type:        mount.TypeBind,
-				Source:      m.dockerContainerConfig.HostLogDir,
-				Target:      m.dockerContainerConfig.DockerLogDir,
-				ReadOnly:    false,
-				Consistency: mount.ConsistencyFull,
-				BindOptions: &mount.BindOptions{
-					Propagation:  mount.PropagationRPrivate,
-					NonRecursive: false,
-				},
-				VolumeOptions: nil,
-				TmpfsOptions:  nil,
-			},
-		},
-		PortBindings: nat.PortMap{
-			openPort: []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: hostPort,
-				},
-			},
-			sdkOpenPort: []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: sdkHostPort,
-				},
-			},
-		},
-	}, nil, nil, m.dockerContainerConfig.ContainerName)
-
-	if err != nil {
-		m.mgrLogger.Errorf("create container [%s] failed", m.dockerContainerConfig.ContainerName)
-		return err
-	}
-
-	m.mgrLogger.Infof("create container [%s] success :)", m.dockerContainerConfig.ContainerName)
-	return nil
-}
+//func (m *DockerManager) createPProfContainer() error {
+//	hostPort := config.PProfPort
+//	openPort := nat.Port(hostPort + "/tcp")
+//
+//	sdkHostPort := config.SDKPort
+//	sdkOpenPort := nat.Port(sdkHostPort + "/tcp")
+//
+//	envs := m.constructEnvs(true)
+//	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, config.PProfPort))
+//	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvEnablePprof, true))
+//
+//	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
+//		Cmd:          nil,
+//		Image:        m.dockerContainerConfig.ImageName,
+//		Env:          envs,
+//		AttachStdout: m.dockerContainerConfig.AttachStdOut,
+//		AttachStderr: m.dockerContainerConfig.AttachStderr,
+//		ExposedPorts: nat.PortSet{
+//			openPort:    struct{}{},
+//			sdkOpenPort: struct{}{},
+//		},
+//	}, &container.HostConfig{
+//		Privileged: true,
+//		Mounts: []mount.Mount{
+//			{
+//				Type:        mount.TypeBind,
+//				Source:      m.dockerContainerConfig.HostMountDir,
+//				Target:      m.dockerContainerConfig.DockerMountDir,
+//				ReadOnly:    false,
+//				Consistency: mount.ConsistencyFull,
+//				BindOptions: &mount.BindOptions{
+//					Propagation:  mount.PropagationRPrivate,
+//					NonRecursive: false,
+//				},
+//				VolumeOptions: nil,
+//				TmpfsOptions:  nil,
+//			},
+//			{
+//				Type:        mount.TypeBind,
+//				Source:      m.dockerContainerConfig.HostLogDir,
+//				Target:      m.dockerContainerConfig.DockerLogDir,
+//				ReadOnly:    false,
+//				Consistency: mount.ConsistencyFull,
+//				BindOptions: &mount.BindOptions{
+//					Propagation:  mount.PropagationRPrivate,
+//					NonRecursive: false,
+//				},
+//				VolumeOptions: nil,
+//				TmpfsOptions:  nil,
+//			},
+//		},
+//		PortBindings: nat.PortMap{
+//			openPort: []nat.PortBinding{
+//				{
+//					HostIP:   "0.0.0.0",
+//					HostPort: hostPort,
+//				},
+//			},
+//			sdkOpenPort: []nat.PortBinding{
+//				{
+//					HostIP:   "0.0.0.0",
+//					HostPort: sdkHostPort,
+//				},
+//			},
+//		},
+//	}, nil, nil, m.dockerContainerConfig.ContainerName)
+//
+//	if err != nil {
+//		m.mgrLogger.Errorf("create container [%s] failed", m.dockerContainerConfig.ContainerName)
+//		return err
+//	}
+//
+//	m.mgrLogger.Infof("create container [%s] success :)", m.dockerContainerConfig.ContainerName)
+//	return nil
+//}
 
 func validateVMSettings(config *config.DockerVMConfig,
 	dockerContainerConfig *config.DockerContainerConfig, chainId string) error {

@@ -1036,42 +1036,61 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
 	contractPathWithVersion := filepath.Join(contractDir, contractFullName)
 
-	// save bytecode to disk
-	err := r.saveBytesToDisk(byteCode, contractZipPath)
+	_, err := os.Stat(contractPathWithVersion)
 	if err != nil {
-		r.Log.Errorf("fail to save bytecode to disk: %s", err)
-		response.Message = err.Error()
-		return response
+		if errors.Is(err, os.ErrNotExist) {
+			// save bytecode to disk
+			err := r.saveBytesToDisk(byteCode, contractZipPath)
+			if err != nil {
+				r.Log.Errorf("fail to save bytecode to disk: %s", err)
+				response.Message = err.Error()
+				return response
+			}
+
+			// extract 7z file
+			unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
+			err = r.runCmd(unzipCommand)
+			if err != nil {
+				r.Log.Errorf("fail to extract contract: %s", err)
+				response.Message = err.Error()
+				return response
+			}
+
+			// remove 7z file
+			err = os.Remove(contractZipPath)
+			if err != nil {
+				r.Log.Errorf("fail to remove zipped file: %s", err)
+				response.Message = err.Error()
+				return response
+			}
+
+			// replace contract name to contractName:version
+			err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
+			if err != nil {
+				r.Log.Errorf("fail to rename original file name: %s, "+
+					"please make sure contract name should be same as zipped file", err)
+				response.Message = err.Error()
+				return response
+			}
+
+		} else {
+			// file may or may not exist.
+			r.Log.Errorf("read file failed", err)
+			response.Message = err.Error()
+			return response
+
+		}
 	}
 
-	// extract 7z file
-	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
-	err = r.runCmd(unzipCommand)
+	contractByteCode, err := os.ReadFile(contractPathWithVersion)
 	if err != nil {
-		r.Log.Errorf("fail to extract contract: %s", err)
-		response.Message = err.Error()
-		return response
-	}
-
-	// remove 7z file
-	err = os.Remove(contractZipPath)
-	if err != nil {
-		r.Log.Errorf("fail to remove zipped file: %s", err)
-		response.Message = err.Error()
-		return response
-	}
-
-	// replace contract name to contractName:version
-	err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
-	if err != nil {
-		r.Log.Errorf("fail to rename original file name: %s, "+
-			"please make sure contract name should be same as zipped file", err)
+		r.Log.Errorf("fail to load contract executable file: %s, ", err)
 		response.Message = err.Error()
 		return response
 	}
 
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
-	response.Payload = []byte(contractFullName)
+	response.Payload = contractByteCode
 
 	return response
 }

@@ -67,6 +67,7 @@ func (cm *ContractManager) GetContract(txId, contractName string) (string, error
 	cPath, err, _ := cm.getContractLock.Do(contractName, func() (interface{}, error) {
 		defer cm.getContractLock.Forget(contractName)
 
+		// todo 改个名字 其实不是从db里取
 		return cm.lookupContractFromDB(txId, contractName)
 	})
 	if err != nil {
@@ -78,29 +79,37 @@ func (cm *ContractManager) GetContract(txId, contractName string) (string, error
 }
 
 func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (string, error) {
-	getByteCodeMsg := &protogo.CDMMessage{
-		TxId:    txId,
-		Type:    protogo.CDMType_CDM_TYPE_GET_BYTECODE,
-		Payload: []byte(contractName),
-	}
 
-	// send request to chain maker
-	responseChan := make(chan *protogo.CDMMessage)
-	cm.scheduler.RegisterResponseCh(txId, responseChan)
-
-	cm.scheduler.GetByteCodeReqCh() <- getByteCodeMsg
-
-	returnMsg := <-responseChan
-
-	if returnMsg.Payload == nil {
-		return "", errors.New("fail to get bytecode")
-	}
-
-	// set contract mod
 	contractPath := filepath.Join(mountDir, contractName)
-	err := cm.setFileMod(contractPath)
+	_, err := os.Stat(contractPath)
 	if err != nil {
-		return "", err
+		if errors.Is(err, os.ErrNotExist) {
+			getByteCodeMsg := &protogo.CDMMessage{
+				TxId:    txId,
+				Type:    protogo.CDMType_CDM_TYPE_GET_BYTECODE,
+				Payload: []byte(contractName),
+			}
+
+			// send request to chain maker
+			responseChan := make(chan *protogo.CDMMessage)
+			cm.scheduler.RegisterResponseCh(txId, responseChan)
+
+			cm.scheduler.GetByteCodeReqCh() <- getByteCodeMsg
+
+			returnMsg := <-responseChan
+
+			if returnMsg.Payload == nil {
+				return "", errors.New("fail to get bytecode")
+			} else {
+				content := returnMsg.Payload
+				err := ioutil.WriteFile(contractPath, content, 0755)
+				if err != nil {
+					return "", err
+				}
+			}
+		}
+	} else {
+		return "", errors.New("fail to get contract from path")
 	}
 
 	// save contract file path to map

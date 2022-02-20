@@ -14,6 +14,8 @@ type DockerVMConfig struct {
 	LogInConsole          bool   `mapstructure:"log_in_console"`
 	LogLevel              string `mapstructure:"log_level"`
 	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
+	DockerVMHost          string `mapstructure:"docker_vm_host"`
+	DockerVMPort          uint32 `mapstructure:"docker_vm_port"`
 	UserNum               uint32 `mapstructure:"user_num"`
 	TxTimeLimit           uint32 `mapstructure:"time_limit"`
 	MaxConcurrency        uint32 `mapstructure:"max_concurrency"`
@@ -55,9 +57,10 @@ const (
 	// SockName domain socket file name
 	SockName = "cdm.sock"
 
-	MaxSendSize = 10
-	MaxRecvSize = 10
+	MaxSendSize = 20
+	MaxRecvSize = 20
 
+	TestHost  = "9.134.208.193"
 	TestPort  = "22356"
 	PProfPort = "23356"
 	SDKPort   = "24356"
