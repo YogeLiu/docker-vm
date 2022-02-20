@@ -88,12 +88,12 @@ func (cdm *CDMApi) recvMsgRoutine() {
 			}
 
 			if errRecv != nil {
-				cdm.logger.Errorf("fail to recv msg: [%v]", err)
+				cdm.logger.Errorf("fail to recv msg: [%v]", errRecv)
 				cdm.closeConnection()
 				continue
 			}
 
-			cdm.logger.Debugf("recv msg [%s]", recvMsg)
+			cdm.logger.Debugf("recv msg [%s] [%s]", recvMsg.TxId, recvMsg.Type)
 
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_REQUEST:
