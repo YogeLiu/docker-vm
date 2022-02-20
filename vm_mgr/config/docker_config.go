@@ -38,8 +38,8 @@ const (
 	// SockName domain socket file name
 	SockName = "cdm.sock"
 
-	MaxSendSize = 10
-	MaxRecvSize = 10
+	MaxSendSize = 20
+	MaxRecvSize = 20
 	// TestPath docker log dir for test
 	TestPath = "/"
 )
