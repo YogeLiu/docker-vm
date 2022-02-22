@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
+
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
@@ -55,15 +57,17 @@ func (u *UsersManager) CreateNewUsers() error {
 	const baseUid = 10000
 
 	var wg sync.WaitGroup
+	createdUserNum := atomic.NewInt64(0)
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func(i int) {
 			for j := 0; j < u.userNum/10; j++ {
 				newUserId := baseUid + i*u.userNum/10 + j
 				err = u.generateNewUser(newUserId)
-
 				if err != nil {
 					u.logger.Errorf("fail to create user [%d]", newUserId)
+				} else {
+					createdUserNum.Add(1)
 				}
 			}
 			wg.Done()
@@ -71,7 +75,8 @@ func (u *UsersManager) CreateNewUsers() error {
 	}
 
 	wg.Wait()
-	u.logger.Infof("init uids time: [%s]", time.Since(startTime))
+	u.logger.Infof("init uids success, time: [%s], total user num: [%s]", time.Since(startTime),
+		createdUserNum.String())
 
 	return nil
 }
@@ -88,7 +93,7 @@ func (u *UsersManager) generateNewUser(newUserId int) error {
 	// it may fail to create user in centos, so add retry until it success
 	for !createSuccess {
 		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Warnf("attemp to create user fail: [%+v], err: [%s]", newUser, err)
+			u.logger.Warnf("attemp to create user fail: [%+v], err: [%s] and begin to retry", newUser, err)
 			continue
 		}
 
