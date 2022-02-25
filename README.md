@@ -1,7 +1,5 @@
 # vm-docker-go 单独部署
 
-
-
 ## 1. 新增配置
 
 新增配置
@@ -23,8 +21,6 @@ vm:
   user_num: 100
   time_limit: 2
   max_concurrency: 50
-
-
 ```
 
 ## 2. 启动方式
@@ -47,4 +43,19 @@ docker 参数，如果不设置会采用默认参数：
 docker run --env-file ./env.list -p22356:22356 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.0_alpha_qc
 ```
 
+
+
+启动四个容器的脚本，分别监听22351 - 22354:
+
+
+```shell
+docker run -e ENV_ENABLE_UDS=false -e ENV_USER_NUM=100 -e ENV_TX_TIME_LIMIT=2 -e ENV_LOG_LEVEL=DEBUG -e ENV_LOG_IN_CONSOLE=false -e ENV_MAX_CONCURRENCY=50 -p22356:22351 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.0_alpha_qc
+
+docker run -e ENV_ENABLE_UDS=false -e ENV_USER_NUM=100 -e ENV_TX_TIME_LIMIT=2 -e ENV_LOG_LEVEL=DEBUG -e ENV_LOG_IN_CONSOLE=false -e ENV_MAX_CONCURRENCY=50 -p22356:22352 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.0_alpha_qc
+
+docker run -e ENV_ENABLE_UDS=false -e ENV_USER_NUM=100 -e ENV_TX_TIME_LIMIT=2 -e ENV_LOG_LEVEL=DEBUG -e ENV_LOG_IN_CONSOLE=false -e ENV_MAX_CONCURRENCY=50 -p22356:22353 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.0_alpha_qc
+
+docker run -e ENV_ENABLE_UDS=false -e ENV_USER_NUM=100 -e ENV_TX_TIME_LIMIT=2 -e ENV_LOG_LEVEL=DEBUG -e ENV_LOG_IN_CONSOLE=false -e ENV_MAX_CONCURRENCY=50 -p22356:22354 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.0_alpha_qc
+
+```
 
