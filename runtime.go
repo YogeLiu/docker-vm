@@ -55,7 +55,7 @@ type CDMClient interface {
 
 	GetStateResponseSendCh() chan *protogo.CDMMessage
 
-	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage)
+	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error
 
 	GetCMConfig() *config.DockerVMConfig
 }
@@ -135,7 +135,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// register result chan
 	responseCh := make(chan *protogo.CDMMessage)
-	r.Client.RegisterRecvChan(txId, responseCh)
+	err = r.Client.RegisterRecvChan(txId, responseCh)
+	if err != nil {
+		return r.errorResult(contractResult, err, err.Error())
+	}
 
 	// send message to tx chan
 	sendCh := r.Client.GetTxSendCh()
