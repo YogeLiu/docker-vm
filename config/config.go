@@ -60,8 +60,6 @@ const (
 	MaxSendSize = 20
 	MaxRecvSize = 20
 
-	TestHost  = "9.134.208.193"
-	TestPort  = "22356"
 	PProfPort = "23356"
 	SDKPort   = "24356"
 

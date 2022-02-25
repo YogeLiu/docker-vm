@@ -151,10 +151,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		case recvMsg := <-responseCh:
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
-				r.Log.Debugf("tx [%s] start get bytecode [%v]", txId, recvMsg)
+				r.Log.Debugf("tx [%s] start get bytecode [%v]", txId, recvMsg.TxId)
 				getByteCodeResponse := r.handleGetByteCodeRequest(txId, recvMsg, byteCode)
 				r.Client.GetStateResponseSendCh() <- getByteCodeResponse
-				r.Log.Debugf("tx [%s] finish get bytecode [%v]", txId, getByteCodeResponse)
+				r.Log.Debugf("tx [%s] finish get bytecode [%v]", txId, getByteCodeResponse.ResultCode)
 
 			case protogo.CDMType_CDM_TYPE_GET_STATE:
 				r.Log.Debugf("tx [%s] start get state [%v]", txId, recvMsg)

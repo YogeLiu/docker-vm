@@ -267,7 +267,7 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 	// add test port just for mac development and pprof
 	// if using this feature, make sure close enable_uds in yml
 	if !enableUDS {
-		containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", "Port", config.TestPort))
+		containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", "Port", m.dockerVMConfig.DockerVMPort))
 	}
 
 	return containerConfig
