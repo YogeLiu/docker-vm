@@ -12,9 +12,12 @@ import (
 	"io"
 	"net"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+	"go.uber.org/atomic"
 
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
@@ -27,6 +30,7 @@ const (
 )
 
 type CDMClient struct {
+	count               *atomic.Uint64
 	chainId             string
 	txSendCh            chan *protogo.CDMMessage // used to send tx to docker-go instance
 	stateResponseSendCh chan *protogo.CDMMessage // used to receive message from docker-go
@@ -42,6 +46,7 @@ type CDMClient struct {
 func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 
 	return &CDMClient{
+		count:               atomic.NewUint64(0),
 		chainId:             chainId,
 		txSendCh:            make(chan *protogo.CDMMessage, txSize),   // tx request
 		stateResponseSendCh: make(chan *protogo.CDMMessage, txSize*8), // get_state response and bytecode response
@@ -247,4 +252,13 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 // GetCDMClientStream get rpc stream
 func GetCDMClientStream(conn *grpc.ClientConn) (protogo.CDMRpc_CDMCommunicateClient, error) {
 	return protogo.NewCDMRpcClient(conn).CDMCommunicate(context.Background())
+}
+
+func (c *CDMClient) GetUniqueTxKey(txId string) string {
+	var sb strings.Builder
+	nextCount := c.count.Add(1)
+	sb.WriteString(txId)
+	sb.WriteString("#")
+	sb.WriteString(strconv.FormatUint(nextCount, 10))
+	return sb.String()
 }

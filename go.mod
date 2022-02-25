@@ -23,6 +23,7 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.7.0
+	go.uber.org/atomic v1.7.0
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
 	golang.org/x/time v0.0.0-20210608053304-ed9ce3a009e4 // indirect
 	google.golang.org/grpc v1.41.0
