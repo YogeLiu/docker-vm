@@ -40,6 +40,8 @@ const (
 
 	MaxSendSize = 20
 	MaxRecvSize = 20
+
+	DefaultListenPort = "22359"
 	// TestPath docker log dir for test
 	TestPath = "/"
 )

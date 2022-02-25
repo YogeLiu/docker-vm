@@ -38,10 +38,10 @@ func NewCDMServer() (*CDMServer, error) {
 	var err error
 
 	if !enableUnixDomainSocket {
-		port := os.Getenv("Port")
+		port := os.Getenv("ENV_Docker_VM_Port")
 
 		if port == "" {
-			return nil, errors.New("server listen port not provided")
+			port = config.DefaultListenPort
 		}
 
 		endPoint := fmt.Sprintf(":%s", port)
