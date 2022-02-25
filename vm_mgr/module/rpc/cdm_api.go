@@ -56,11 +56,6 @@ func (cdm *CDMApi) CDMCommunicate(stream protogo.CDMRpc_CDMCommunicateServer) er
 	return nil
 }
 
-func (cdm *CDMApi) closeConnection() {
-	close(cdm.stop)
-	cdm.stream = nil
-}
-
 // recv three types of msg
 // type1: txRequest
 // type2: get_state response
@@ -73,54 +68,47 @@ func (cdm *CDMApi) recvMsgRoutine() {
 
 	for {
 
-		select {
-		case <-cdm.stop:
+		revMsg, revErr := cdm.stream.Recv()
+
+		if revErr == io.EOF {
+			cdm.logger.Errorf("cdm server receive eof and exit receive goroutine")
+			close(cdm.stop)
 			cdm.wg.Done()
-			cdm.logger.Debugf("stop receiving cdm message ")
 			return
+		}
+
+		if revErr != nil {
+			cdm.logger.Errorf("cdm server receive err and exit receive goroutine %s", revErr)
+			close(cdm.stop)
+			cdm.wg.Done()
+			return
+		}
+
+		cdm.logger.Debugf("cdm server recv msg [%s]", revMsg)
+
+		switch revMsg.Type {
+		case protogo.CDMType_CDM_TYPE_TX_REQUEST:
+			err = cdm.handleTxRequest(revMsg)
+		case protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE:
+			err = cdm.handleGetStateResponse(revMsg)
+		case protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE:
+			err = cdm.handleGetByteCodeResponse(revMsg)
+		case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR_RESPONSE:
+			err = cdm.handleCreateKvIteratorResponse(revMsg)
+		case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR_RESPONSE:
+			err = cdm.handleConsumeKvIteratorResponse(revMsg)
+		case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_TER_RESPONSE:
+			err = cdm.handleCreateKeyHistoryKvIterResponse(revMsg)
+		case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE:
+			err = cdm.handleConsumeKeyHistoryKvIterResponse(revMsg)
+		case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE:
+			err = cdm.handleGetSenderAddrResponse(revMsg)
 		default:
-			recvMsg, errRecv := cdm.stream.Recv()
+			err = errors.New("unknown message type")
+		}
 
-			if errRecv == io.EOF {
-				cdm.logger.Debugf("receive eof")
-				cdm.closeConnection()
-				continue
-			}
-
-			if errRecv != nil {
-				cdm.logger.Errorf("fail to recv msg: [%v]", err)
-				cdm.closeConnection()
-				continue
-			}
-
-			cdm.logger.Debugf("recv msg [%s]", recvMsg)
-
-			switch recvMsg.Type {
-			case protogo.CDMType_CDM_TYPE_TX_REQUEST:
-				err = cdm.handleTxRequest(recvMsg)
-			case protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE:
-				err = cdm.handleGetStateResponse(recvMsg)
-			case protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE:
-				err = cdm.handleGetByteCodeResponse(recvMsg)
-			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR_RESPONSE:
-				err = cdm.handleCreateKvIteratorResponse(recvMsg)
-			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR_RESPONSE:
-				err = cdm.handleConsumeKvIteratorResponse(recvMsg)
-			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_TER_RESPONSE:
-				err = cdm.handleCreateKeyHistoryKvIterResponse(recvMsg)
-			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE:
-				err = cdm.handleConsumeKeyHistoryKvIterResponse(recvMsg)
-			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE:
-				err = cdm.handleGetSenderAddrResponse(recvMsg)
-
-			default:
-				err = errors.New("unknown message type")
-			}
-
-			if err != nil {
-				cdm.logger.Errorf("fail to recv msg in handler: [%s]", err)
-			}
-
+		if err != nil {
+			cdm.logger.Errorf("fail to recv msg in handler: [%s]", err)
 		}
 
 	}
@@ -176,13 +164,6 @@ func (cdm *CDMApi) sendMessage(msg *protogo.CDMMessage) error {
 
 // unmarshal cdm message to send txRequest to txReqCh
 func (cdm *CDMApi) handleTxRequest(cdmMessage *protogo.CDMMessage) error {
-
-	//var txRequest protogo.TxRequest
-	//err := proto.Unmarshal(cdmMessage.Payload, &txRequest)
-	//if err != nil {
-	//	cdm.logger.Errorf("fail to unmarshal cdmMessage.Payload [%s] to protogo.TxRequest ", cdmMessage.Payload)
-	//	return err
-	//}
 
 	txRequest := cdmMessage.TxRequest
 	cdm.logger.Debugf("[%s] cdm server receive tx from chain", txRequest.TxId)
