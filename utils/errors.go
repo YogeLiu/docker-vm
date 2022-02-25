@@ -3,5 +3,5 @@ package utils
 import "errors"
 
 var (
-	DuplicateTxIdError = errors.New("duplicate txId")
+	ErrDuplicateTxId = errors.New("duplicate txId")
 )

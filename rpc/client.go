@@ -78,7 +78,7 @@ func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessag
 	_, ok := c.recvChMap[txId]
 	if ok {
 		c.logger.Errorf("[%s] fail to register receive chan cause chan already registered", txId)
-		return utils.DuplicateTxIdError
+		return utils.ErrDuplicateTxId
 	}
 
 	c.recvChMap[txId] = recvCh
@@ -125,18 +125,6 @@ func (c *CDMClient) StartClient() bool {
 	go c.revMsgRoutine()
 
 	return true
-}
-
-func (c *CDMClient) closeConnection() {
-	c.logger.Errorf("client close grpc connection")
-	// close two goroutine
-	close(c.stop)
-	// close stream
-	err := c.stream.CloseSend()
-	if err != nil {
-		c.logger.Errorf("fail to close send stream %s", err)
-		return
-	}
 }
 
 //todo: test if server is killed, does sendMsg receive error or not
