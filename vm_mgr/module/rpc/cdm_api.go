@@ -74,6 +74,7 @@ func (cdm *CDMApi) receiveMsgRoutine() {
 		select {
 		case <-cdm.stopReceive:
 			cdm.logger.Debugf("close cdm server receive goroutine")
+			cdm.wg.Done()
 			return
 		default:
 			receivedMsg, revErr := cdm.stream.Recv()
@@ -151,6 +152,7 @@ func (cdm *CDMApi) sendMsgRoutine() {
 				errStatus.Message(), errStatus.Code())
 			if errStatus.Code() != codes.ResourceExhausted {
 				close(cdm.stopReceive)
+				cdm.wg.Done()
 				return
 			}
 		}
