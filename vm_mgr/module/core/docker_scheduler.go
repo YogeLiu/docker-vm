@@ -122,15 +122,6 @@ func (s *DockerScheduler) StartScheduler() {
 
 }
 
-// StopScheduler todo may doesn't need
-func (s *DockerScheduler) StopScheduler() {
-	s.logger.Debugf("stop docker scheduler")
-	close(s.txResponseCh)
-	close(s.txReqCh)
-	close(s.getStateReqCh)
-	close(s.getByteCodeReqCh)
-}
-
 func (s *DockerScheduler) listenIncomingTxRequest() {
 	s.logger.Debugf("start listen incoming tx request")
 

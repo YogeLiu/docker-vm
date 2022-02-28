@@ -123,6 +123,5 @@ func (m *ManagerImpl) InitContainer() {
 func (m *ManagerImpl) StopManager() {
 	m.cdmRpcServer.StopCDMServer()
 	m.dmsRpcServer.StopDMSServer()
-	m.scheduler.StopScheduler()
 	m.logger.Info("All is stopped!")
 }

@@ -16,6 +16,9 @@ import (
 	"strings"
 	"sync"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 	"go.uber.org/atomic"
 
@@ -36,11 +39,12 @@ type CDMClient struct {
 	stateResponseSendCh chan *protogo.CDMMessage // used to receive message from docker-go
 	lock                sync.RWMutex
 	// key: txId, value: chan, used to receive tx response from docker-go
-	recvChMap map[string]chan *protogo.CDMMessage
-	stream    protogo.CDMRpc_CDMCommunicateClient
-	logger    *logger.CMLogger
-	stop      chan struct{}
-	config    *config.DockerVMConfig
+	recvChMap   map[string]chan *protogo.CDMMessage
+	stream      protogo.CDMRpc_CDMCommunicateClient
+	logger      *logger.CMLogger
+	stopSend    chan struct{}
+	stopReceive chan struct{}
+	config      *config.DockerVMConfig
 }
 
 func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
@@ -53,7 +57,8 @@ func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 		recvChMap:           make(map[string]chan *protogo.CDMMessage),
 		stream:              nil,
 		logger:              logger.GetLoggerByChain(logger.MODULE_VM, chainId),
-		stop:                nil,
+		stopSend:            make(chan struct{}),
+		stopReceive:         make(chan struct{}),
 		config:              vmConfig,
 	}
 }
@@ -118,11 +123,10 @@ func (c *CDMClient) StartClient() bool {
 	}
 
 	c.stream = stream
-	c.stop = make(chan struct{})
 
 	go c.sendMsgRoutine()
 
-	go c.revMsgRoutine()
+	go c.receiveMsgRoutine()
 
 	return true
 }
@@ -142,62 +146,74 @@ func (c *CDMClient) sendMsgRoutine() {
 		case stateMsg := <-c.stateResponseSendCh:
 			c.logger.Debugf("[%s] send request to docker manager", stateMsg.TxId)
 			err = c.sendCDMMsg(stateMsg)
-		case <-c.stop:
+		case <-c.stopSend:
 			c.logger.Debugf("close cdm send goroutine")
 			return
 		}
 
 		if err != nil {
-			c.logger.Errorf("fail to send msg: %s", err)
-			// todo: exit goroutine and reconnect with server
+			errStatus, _ := status.FromError(err)
+			c.logger.Errorf("fail to send msg: err: %s, err massage: %s, err code: %s", err,
+				errStatus.Message(), errStatus.Code())
+			if errStatus.Code() != codes.ResourceExhausted {
+				close(c.stopReceive)
+				return
+			}
 		}
 	}
 }
 
-func (c *CDMClient) revMsgRoutine() {
+func (c *CDMClient) receiveMsgRoutine() {
 
 	c.logger.Infof("start receiving cdm message ")
 
 	var waitCh chan *protogo.CDMMessage
 
 	for {
-		revMsg, revErr := c.stream.Recv()
 
-		if revErr == io.EOF {
-			c.logger.Error("client receive eof and exit receive goroutine")
-			close(c.stop)
+		select {
+		case <-c.stopReceive:
+			c.logger.Debugf("close cdm client receive goroutine")
 			return
-		}
-
-		if revErr != nil {
-			c.logger.Errorf("client receive err and exit receive goroutine %s", revErr)
-			close(c.stop)
-			return
-		}
-
-		c.logger.Debugf("[%s] receive msg from docker manager", revMsg.TxId)
-
-		switch revMsg.Type {
-		case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-			waitCh = c.getRecvChan(revMsg.TxId)
-			if waitCh == nil {
-				c.logger.Errorf("[%s] fail to retrieve response chan, response chan is nil", revMsg.TxId)
-				continue
-			}
-			waitCh <- revMsg
-			c.deleteRecvChan(revMsg.TxId)
-		case protogo.CDMType_CDM_TYPE_GET_STATE, protogo.CDMType_CDM_TYPE_GET_BYTECODE,
-			protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
-			protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
-			protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-			waitCh = c.getRecvChan(revMsg.TxId)
-			if waitCh == nil {
-				c.logger.Errorf("[%s] fail to retrieve response chan, response chan is nil", revMsg.TxId)
-				continue
-			}
-			waitCh <- revMsg
 		default:
-			c.logger.Errorf("unknown message type")
+			receivedMsg, revErr := c.stream.Recv()
+
+			if revErr == io.EOF {
+				c.logger.Error("client receive eof and exit receive goroutine")
+				close(c.stopSend)
+				return
+			}
+
+			if revErr != nil {
+				c.logger.Errorf("client receive err and exit receive goroutine %s", revErr)
+				close(c.stopSend)
+				return
+			}
+
+			c.logger.Debugf("[%s] receive msg from docker manager", receivedMsg.TxId)
+
+			switch receivedMsg.Type {
+			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
+				waitCh = c.getRecvChan(receivedMsg.TxId)
+				if waitCh == nil {
+					c.logger.Errorf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
+					continue
+				}
+				waitCh <- receivedMsg
+				c.deleteRecvChan(receivedMsg.TxId)
+			case protogo.CDMType_CDM_TYPE_GET_STATE, protogo.CDMType_CDM_TYPE_GET_BYTECODE,
+				protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
+				protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
+				protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
+				waitCh = c.getRecvChan(receivedMsg.TxId)
+				if waitCh == nil {
+					c.logger.Errorf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
+					continue
+				}
+				waitCh <- receivedMsg
+			default:
+				c.logger.Errorf("unknown message type, received msg: [%v]", receivedMsg)
+			}
 		}
 	}
 }

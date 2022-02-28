@@ -371,7 +371,7 @@ func TestCDMApi_recvMsgRoutine(t *testing.T) {
 				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
-			cdm.recvMsgRoutine()
+			cdm.receiveMsgRoutine()
 		})
 	}
 }

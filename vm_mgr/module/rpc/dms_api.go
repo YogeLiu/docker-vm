@@ -66,7 +66,6 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 	}
 
 	msgAvail := make(chan *recvMsg, 1)
-	defer close(msgAvail)
 
 	receiveMessage := func() {
 		in, err := stream.Recv()

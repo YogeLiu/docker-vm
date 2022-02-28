@@ -78,7 +78,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
 	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
 	originalTxId := txSimContext.GetTx().Payload.TxId
-	uniqueTxId := r.Client.GetUniqueTxKey(originalTxId)
+	uniqueTxKey := r.Client.GetUniqueTxKey(originalTxId)
 
 	// contract response
 	contractResult = &commonPb.ContractResult{
@@ -120,7 +120,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// construct cdm message
 	txRequest := &protogo.TxRequest{
-		TxId:            uniqueTxId,
+		TxId:            uniqueTxKey,
 		ContractName:    contract.Name,
 		ContractVersion: contract.Version,
 		Method:          method,
@@ -133,14 +133,14 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		},
 	}
 	cdmMessage := &protogo.CDMMessage{
-		TxId:      uniqueTxId,
+		TxId:      uniqueTxKey,
 		Type:      protogo.CDMType_CDM_TYPE_TX_REQUEST,
 		TxRequest: txRequest,
 	}
 
 	// register result chan
 	responseCh := make(chan *protogo.CDMMessage)
-	err = r.Client.RegisterRecvChan(uniqueTxId, responseCh)
+	err = r.Client.RegisterRecvChan(uniqueTxKey, responseCh)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
@@ -159,14 +159,14 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		case recvMsg := <-responseCh:
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
-				r.Log.Debugf("tx [%s] start get bytecode [%v]", uniqueTxId, recvMsg)
-				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxId, recvMsg, byteCode, txSimContext)
+				r.Log.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
+				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
 				r.Client.GetStateResponseSendCh() <- getByteCodeResponse
-				r.Log.Debugf("tx [%s] finish get bytecode [%v]", uniqueTxId, getByteCodeResponse)
+				r.Log.Debugf("tx [%s] finish get bytecode [%v]", uniqueTxKey, getByteCodeResponse)
 
 			case protogo.CDMType_CDM_TYPE_GET_STATE:
-				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxId, recvMsg)
-				getStateResponse, pass := r.handleGetStateRequest(uniqueTxId, recvMsg, txSimContext)
+				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
+				getStateResponse, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
 
 				if pass {
 					gasUsed, err = gas.GetStateGasUsed(gasUsed, getStateResponse.Payload)
@@ -178,10 +178,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				}
 
 				r.Client.GetStateResponseSendCh() <- getStateResponse
-				r.Log.Debugf("tx [%s] finish get state [%v]", uniqueTxId, getStateResponse)
+				r.Log.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
 
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-				r.Log.Debugf("[%s] start handle response [%v]", uniqueTxId, recvMsg)
+				r.Log.Debugf("[%s] start handle response [%v]", uniqueTxKey, recvMsg)
 				// construct response
 				txResponse := recvMsg.TxResponse
 				// tx fail, just return without merge read write map and events
@@ -190,7 +190,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					contractResult.Result = txResponse.Result
 					contractResult.Message = txResponse.Message
 					contractResult.GasUsed = gasUsed
-					r.Log.Errorf("[%s] return error response [%v]", uniqueTxId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 					return contractResult, protocol.ExecOrderTxTypeNormal
 				}
 
@@ -202,7 +202,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
-					r.Log.Errorf("[%s] return error response [%v]", uniqueTxId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 					return r.errorResult(contractResult, err, "fail to put in sim context")
 				}
 
@@ -211,7 +211,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 				if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
 					err = fmt.Errorf("too many event data")
-					r.Log.Errorf("[%s] return error response [%v]", uniqueTxId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 					return r.errorResult(contractResult, err, "fail to put event data")
 				}
 
@@ -227,7 +227,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					// emit event gas used calc and check gas limit
 					gasUsed, err = gas.EmitEventGasUsed(gasUsed, contractEvent)
 					if err != nil {
-						r.Log.Errorf("[%s] return error response [%v]", uniqueTxId, contractResult)
+						r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 						contractResult.GasUsed = gasUsed
 						return r.errorResult(contractResult, err, err.Error())
 					}
@@ -238,49 +238,47 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				contractResult.GasUsed = gasUsed
 				contractResult.ContractEvent = contractEvents
 
-				close(responseCh)
-
-				r.Log.Debugf("[%s] finish handle response [%v]", uniqueTxId, contractResult)
+				r.Log.Debugf("[%s] finish handle response [%v]", uniqueTxKey, contractResult)
 				return contractResult, specialTxType
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
-				r.Log.Debugf("tx [%s] start create kv iterator [%v]", uniqueTxId, recvMsg)
+				r.Log.Debugf("tx [%s] start create kv iterator [%v]", uniqueTxKey, recvMsg)
 				var createKvIteratorResponse *protogo.CDMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
-				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxId, recvMsg, txSimContext, gasUsed)
+				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
 				r.Client.GetStateResponseSendCh() <- createKvIteratorResponse
-				r.Log.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxId, createKvIteratorResponse)
+				r.Log.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxKey, createKvIteratorResponse)
 
 			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
-				r.Log.Debugf("tx [%s] start consume kv iterator [%v]", uniqueTxId, recvMsg)
+				r.Log.Debugf("tx [%s] start consume kv iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKvIteratorResponse *protogo.CDMMessage
-				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(uniqueTxId, recvMsg, txSimContext, gasUsed)
+				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
 				r.Client.GetStateResponseSendCh() <- consumeKvIteratorResponse
-				r.Log.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxId, consumeKvIteratorResponse)
+				r.Log.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxKey, consumeKvIteratorResponse)
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
-				r.Log.Debugf("tx [%s] start create key history iterator [%v]", uniqueTxId, recvMsg)
+				r.Log.Debugf("tx [%s] start create key history iterator [%v]", uniqueTxKey, recvMsg)
 				var createKeyHistoryIterResp *protogo.CDMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
-				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxId, recvMsg, txSimContext, gasUsed)
+				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 				r.Client.GetStateResponseSendCh() <- createKeyHistoryIterResp
-				r.Log.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxId, createKeyHistoryIterResp)
+				r.Log.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxKey, createKeyHistoryIterResp)
 
 			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER:
-				r.Log.Debugf("tx [%s] start consume key history iterator [%v]", uniqueTxId, recvMsg)
+				r.Log.Debugf("tx [%s] start consume key history iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKeyHistoryResp *protogo.CDMMessage
-				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(uniqueTxId, recvMsg, txSimContext, gasUsed)
+				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 				r.Client.GetStateResponseSendCh() <- consumeKeyHistoryResp
-				r.Log.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxId, consumeKeyHistoryResp)
+				r.Log.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxKey, consumeKeyHistoryResp)
 
 			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-				r.Log.Debugf("tx [%s] start get sender address [%v]", uniqueTxId, recvMsg)
+				r.Log.Debugf("tx [%s] start get sender address [%v]", uniqueTxKey, recvMsg)
 				var getSenderAddressResp *protogo.CDMMessage
-				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxId, txSimContext, gasUsed)
+				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxKey, txSimContext, gasUsed)
 				r.Client.GetStateResponseSendCh() <- getSenderAddressResp
-				r.Log.Debugf("tx [%s] finish get sender address [%v]", uniqueTxId, getSenderAddressResp)
+				r.Log.Debugf("tx [%s] finish get sender address [%v]", uniqueTxKey, getSenderAddressResp)
 
 			default:
 				contractResult.GasUsed = gasUsed
