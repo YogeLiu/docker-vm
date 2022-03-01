@@ -62,7 +62,7 @@ func (pm *ProcessManager) SetScheduler(scheduler protocol.Scheduler) {
 func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
 	pm.balanceRWMutex.Lock()
 	defer pm.balanceRWMutex.Unlock()
-	// processNamePrefix: contractName:contractVersion
+	// processNamePrefix: contractName#contractVersion
 	contractKey := utils.ConstructContractKey(txRequest.ContractName, txRequest.ContractVersion)
 	// process exist, put current tx into process waiting queue and return
 	processBalance := pm.balanceTable[contractKey]
