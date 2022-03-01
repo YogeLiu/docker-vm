@@ -19,6 +19,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	DefaultMaxSendSize = 4
+	DefaultMaxRecvSize = 4
+)
+
 // WriteToFile WriteFile write value to file
 func WriteToFile(path string, value int) error {
 	if err := ioutil.WriteFile(path, []byte(fmt.Sprintf("%d", value)), 0755); err != nil {
@@ -131,4 +136,22 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 func GetContractKeyFromProcessName(processName string) string {
 	nameList := strings.Split(processName, "#")
 	return ConstructContractKey(nameList[0], nameList[1])
+}
+
+func GetMaxSendMsgSizeFromEnv() int {
+	maxSendSizeFromEnv := os.Getenv(config.ENV_MAX_SEND_MSG_SIZE)
+	maxSendSize, err := strconv.Atoi(maxSendSizeFromEnv)
+	if err != nil {
+		return DefaultMaxSendSize
+	}
+	return maxSendSize
+}
+
+func GetMaxRecvMsgSizeFromEnv() int {
+	maxRecvSizeFromEnv := os.Getenv(config.ENV_MAX_RECV_MSG_SIZE)
+	maxRecvSize, err := strconv.Atoi(maxRecvSizeFromEnv)
+	if err != nil {
+		return DefaultMaxRecvSize
+	}
+	return maxRecvSize
 }

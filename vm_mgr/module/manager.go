@@ -10,6 +10,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
 	security2 "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
 
@@ -44,6 +45,9 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	scheduler := core.NewDockerScheduler(processManager)
 	processManager.SetScheduler(scheduler)
 	contractManager.SetScheduler(scheduler)
+
+	managerLogger.Debugf("init grpc server, max send size [%dM], max recv size[%dM]",
+		utils.GetMaxSendMsgSizeFromEnv(), utils.GetMaxRecvMsgSizeFromEnv())
 
 	// new docker manager to sandbox server
 	dmsRpcServer, err := rpc.NewDMSServer()
