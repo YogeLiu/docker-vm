@@ -97,14 +97,17 @@ func (c *CDMClient) getRecvChan(txId string) chan *protogo.CDMMessage {
 	return c.recvChMap[txId]
 }
 
-func (c *CDMClient) deleteRecvChan(txId string) {
+func (c *CDMClient) getReceiveChanAndDelete(txId string) chan *protogo.CDMMessage {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.logger.Debugf("delete receive chan for [%s]", txId)
-	_, ok := c.recvChMap[txId]
+	c.logger.Debugf("get receive chan for [%s] and delete", txId)
+	receiveChan, ok := c.recvChMap[txId]
 	if ok {
 		delete(c.recvChMap, txId)
+		return receiveChan
 	}
+	c.logger.Warnf("cannot find receive chan for [%s] and return nil", txId)
+	return nil
 }
 
 func (c *CDMClient) StartClient() bool {
@@ -194,13 +197,12 @@ func (c *CDMClient) receiveMsgRoutine() {
 
 			switch receivedMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-				waitCh = c.getRecvChan(receivedMsg.TxId)
+				waitCh = c.getReceiveChanAndDelete(receivedMsg.TxId)
 				if waitCh == nil {
 					c.logger.Errorf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
 					continue
 				}
 				waitCh <- receivedMsg
-				c.deleteRecvChan(receivedMsg.TxId)
 			case protogo.CDMType_CDM_TYPE_GET_STATE, protogo.CDMType_CDM_TYPE_GET_BYTECODE,
 				protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
 				protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
