@@ -66,7 +66,7 @@ func GetLogHandler() *zap.SugaredLogger {
 	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
 }
 
-// ConstructContractKey contractName:contractVersion
+// ConstructContractKey contractName#contractVersion
 func ConstructContractKey(contractName, contractVersion string) string {
 	var sb strings.Builder
 	sb.WriteString(contractName)
@@ -75,7 +75,7 @@ func ConstructContractKey(contractName, contractVersion string) string {
 	return sb.String()
 }
 
-// ConstructProcessName contractName:contractVersion#timestamp:index
+// ConstructProcessName contractName#contractVersion#timestamp:index
 func ConstructProcessName(contractName, contractVersion string, index uint64) string {
 	var sb strings.Builder
 	sb.WriteString(contractName)
@@ -88,7 +88,7 @@ func ConstructProcessName(contractName, contractVersion string, index uint64) st
 	return sb.String()
 }
 
-// ConstructOriginalProcessName contractName:contractVersion#timestamp:index#txCount
+// ConstructOriginalProcessName contractName#contractVersion#timestamp:index#txCount
 func ConstructOriginalProcessName(processName string, txCount uint64) string {
 	var sb strings.Builder
 	sb.WriteString(processName)
@@ -97,7 +97,7 @@ func ConstructOriginalProcessName(processName string, txCount uint64) string {
 	return sb.String()
 }
 
-// ConstructConcatOriginalAndCrossProcessName contractName:contractVersion#timestamp:index#txCount&txId:timestamp:depth
+// ConstructConcatOriginalAndCrossProcessName contractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
 func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProcessName string) string {
 	var sb strings.Builder
 	sb.WriteString(originalProcessName)
