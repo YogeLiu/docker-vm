@@ -296,9 +296,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.Log.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
 					uniqueTxKey)
 				contractResult.GasUsed = gasUsed
-				return r.errorResult(
-					contractResult,
-					fmt.Errorf("tx timeout"),
+				return r.errorResult(contractResult, fmt.Errorf("tx timeout"),
 					"fail to receive response",
 				)
 			}
