@@ -110,6 +110,19 @@ func (c *CDMClient) getAndDeleteRecvChan(txId string) chan *protogo.CDMMessage {
 	return nil
 }
 
+func (c *CDMClient) DeleteRecvChan(txId string) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.logger.Debugf("[%s] delete receive chan", txId)
+	_, ok := c.recvChMap[txId]
+	if ok {
+		delete(c.recvChMap, txId)
+		return true
+	}
+	c.logger.Debugf("[%s] delete receive chan fail, receive chan is already deleted", txId)
+	return false
+}
+
 func (c *CDMClient) StartClient() bool {
 
 	c.logger.Debugf("start cdm rpc..")

@@ -59,6 +59,8 @@ type CDMClient interface {
 
 	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error
 
+	DeleteRecvChan(txId string) bool
+
 	GetCMConfig() *config.DockerVMConfig
 
 	GetUniqueTxKey(txId string) string
@@ -289,15 +291,17 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				)
 			}
 		case <-timeoutC:
-			contractResult.GasUsed = gasUsed
-			return r.errorResult(
-				contractResult,
-				fmt.Errorf("docker-vm-go timeout"),
-				"fail to receive response",
-			)
+			deleted := r.Client.DeleteRecvChan(uniqueTxKey)
+			if deleted {
+				r.Log.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
+					uniqueTxKey)
+				contractResult.GasUsed = gasUsed
+				return r.errorResult(contractResult, fmt.Errorf("tx timeout"),
+					"fail to receive response",
+				)
+			}
 		}
 	}
-
 }
 
 func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType) *protogo.CDMMessage {
