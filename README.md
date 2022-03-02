@@ -4,8 +4,9 @@
 
 新增配置
 
-docker_vm_port： 合约管理服务端口号
-docker_vm_host:   合约管理服务
+docker_vm_host:  合约管理服务
+docker_vm_port:  合约管理服务端口号
+
 
 ```yml
 vm:
@@ -15,8 +16,8 @@ vm:
   dockervm_log_path: ../log/org1/dockervm
   log_in_console: true
   log_level: DEBUG
-  docker_vm_port: 22356
   docker_vm_host: 10.197.78.11
+  docker_vm_port: 22356
   uds_open: true                             
   user_num: 100
   time_limit: 2

@@ -244,36 +244,6 @@ func (m *DockerManager) initMountDirectory() error {
 
 // ------------------ utility functions --------------
 
-func (m *DockerManager) constructEnvs(enableUDS bool) []string {
-
-	configsMap := make(map[string]string)
-
-	configsMap[""] = fmt.Sprintf("udsopen=%v", m.dockerVMConfig.DockerVMUDSOpen)
-
-	var containerConfig []string
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
-		config.ENV_ENABLE_UDS, m.dockerVMConfig.DockerVMUDSOpen))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_USER_NUM, m.dockerVMConfig.UserNum))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s",
-		config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
-		config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_MAX_CONCURRENCY, m.dockerVMConfig.MaxConcurrency))
-
-	// add test port just for mac development and pprof
-	// if using this feature, make sure close enable_uds in yml
-	if !enableUDS {
-		containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", "Port", m.dockerVMConfig.DockerVMPort))
-	}
-
-	return containerConfig
-
-}
-
 func (m *DockerManager) createDir(directory string) error {
 	exist, err := m.exists(directory)
 	if err != nil {

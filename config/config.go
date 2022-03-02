@@ -13,7 +13,6 @@ type DockerVMConfig struct {
 	DockerVMLogPath       string `mapstructure:"dockervm_log_path"`
 	LogInConsole          bool   `mapstructure:"log_in_console"`
 	LogLevel              string `mapstructure:"log_level"`
-	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
 	DockerVMHost          string `mapstructure:"docker_vm_host"`
 	DockerVMPort          uint32 `mapstructure:"docker_vm_port"`
 	UserNum               uint32 `mapstructure:"user_num"`
@@ -41,24 +40,16 @@ type DockerContainerConfig struct {
 type Bool int32
 
 const (
-	ENV_ENABLE_UDS      = "ENV_ENABLE_UDS"
-	ENV_USER_NUM        = "ENV_USER_NUM"
-	ENV_TX_TIME_LIMIT   = "ENV_TX_TIME_LIMIT"
-	ENV_LOG_LEVEL       = "ENV_LOG_LEVEL"
-	ENV_LOG_IN_CONSOLE  = "ENV_LOG_IN_CONSOLE"
-	ENV_MAX_CONCURRENCY = "ENV_MAX_CONCURRENCY"
-	EnvEnablePprof      = "ENV_ENABLE_PPROF"
-	EnvPprofPort        = "ENV_PPROF_PORT"
+	EnvEnablePprof = "ENV_ENABLE_PPROF"
+	EnvPprofPort   = "ENV_PPROF_PORT"
 
 	// ContractsDir dir save executable contract
 	ContractsDir = "contracts"
 	// SockDir dir save domain socket file
 	SockDir = "sock"
-	// SockName domain socket file name
-	SockName = "cdm.sock"
 
-	MaxSendSize = 20
-	MaxRecvSize = 20
+	MaxSendSize = 100
+	MaxRecvSize = 100
 
 	PProfPort = "23356"
 	SDKPort   = "24356"

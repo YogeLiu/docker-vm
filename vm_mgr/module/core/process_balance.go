@@ -6,10 +6,11 @@
 package core
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"fmt"
 	"os"
 	"strconv"
+
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 )
 
 // ProcessBalance control load balance of process which related to same contract
@@ -91,8 +92,8 @@ func (pb *ProcessBalance) Size() int64 {
 func getMaxPeer() int64 {
 	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
 	maxConcurrency, err := strconv.Atoi(mc)
-	if err != nil {
-		maxConcurrency = defaultMaxProcess
+	if err != nil || maxConcurrency == 0 {
+		maxConcurrency = config.DefaultMaxConcurrency
 	}
 	return int64(maxConcurrency)
 }
