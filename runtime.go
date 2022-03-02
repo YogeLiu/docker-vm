@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1082,7 +1083,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		}
 	}
 
-	contractByteCode, err := os.ReadFile(contractPathWithVersion)
+	contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
 	if err != nil {
 		r.Log.Errorf("fail to load contract executable file: %s, ", err)
 		response.Message = err.Error()
