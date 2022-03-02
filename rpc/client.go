@@ -231,8 +231,8 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(config.MaxRecvSize*1024*1024),
-			grpc.MaxCallSendMsgSize(config.MaxSendSize*1024*1024),
+			grpc.MaxCallRecvMsgSize(int(utils.GetMaxRecvMsgSizeFromConfig(c.config)*1024*1024)),
+			grpc.MaxCallSendMsgSize(int(utils.GetMaxSendMsgSizeFromConfig(c.config)*1024*1024)),
 		),
 	}
 

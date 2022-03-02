@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+
 	"github.com/docker/go-connections/nat"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
@@ -425,6 +427,10 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 		config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
 		config.ENV_MAX_CONCURRENCY, m.dockerVMConfig.MaxConcurrency))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
+		config.ENV_MAX_SEND_MSG_SIZE, utils.GetMaxSendMsgSizeFromConfig(m.dockerVMConfig)))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
+		config.ENV_MAX_RECV_MSG_SIZE, utils.GetMaxRecvMsgSizeFromConfig(m.dockerVMConfig)))
 
 	// add test port just for mac development and pprof
 	// if using this feature, make sure close enable_uds in yml
