@@ -19,6 +19,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	DefaultMaxSendSize = 4
+	DefaultMaxRecvSize = 4
+)
+
 // WriteToFile WriteFile write value to file
 func WriteToFile(path string, value int) error {
 	if err := ioutil.WriteFile(path, []byte(fmt.Sprintf("%d", value)), 0755); err != nil {
@@ -66,7 +71,7 @@ func GetLogHandler() *zap.SugaredLogger {
 	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
 }
 
-// ConstructContractKey contractName:contractVersion
+// ConstructContractKey contractName#contractVersion
 func ConstructContractKey(contractName, contractVersion string) string {
 	var sb strings.Builder
 	sb.WriteString(contractName)
@@ -75,7 +80,7 @@ func ConstructContractKey(contractName, contractVersion string) string {
 	return sb.String()
 }
 
-// ConstructProcessName contractName:contractVersion#timestamp:index
+// ConstructProcessName contractName#contractVersion#timestamp:index
 func ConstructProcessName(contractName, contractVersion string, index uint64) string {
 	var sb strings.Builder
 	sb.WriteString(contractName)
@@ -88,7 +93,7 @@ func ConstructProcessName(contractName, contractVersion string, index uint64) st
 	return sb.String()
 }
 
-// ConstructOriginalProcessName contractName:contractVersion#timestamp:index#txCount
+// ConstructOriginalProcessName contractName#contractVersion#timestamp:index#txCount
 func ConstructOriginalProcessName(processName string, txCount uint64) string {
 	var sb strings.Builder
 	sb.WriteString(processName)
@@ -97,7 +102,7 @@ func ConstructOriginalProcessName(processName string, txCount uint64) string {
 	return sb.String()
 }
 
-// ConstructConcatOriginalAndCrossProcessName contractName:contractVersion#timestamp:index#txCount&txId:timestamp:depth
+// ConstructConcatOriginalAndCrossProcessName contractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
 func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProcessName string) string {
 	var sb strings.Builder
 	sb.WriteString(originalProcessName)
@@ -131,4 +136,22 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 func GetContractKeyFromProcessName(processName string) string {
 	nameList := strings.Split(processName, "#")
 	return ConstructContractKey(nameList[0], nameList[1])
+}
+
+func GetMaxSendMsgSizeFromEnv() int {
+	maxSendSizeFromEnv := os.Getenv(config.ENV_MAX_SEND_MSG_SIZE)
+	maxSendSize, err := strconv.Atoi(maxSendSizeFromEnv)
+	if err != nil {
+		return DefaultMaxSendSize
+	}
+	return maxSendSize
+}
+
+func GetMaxRecvMsgSizeFromEnv() int {
+	maxRecvSizeFromEnv := os.Getenv(config.ENV_MAX_RECV_MSG_SIZE)
+	maxRecvSize, err := strconv.Atoi(maxRecvSizeFromEnv)
+	if err != nil {
+		return DefaultMaxRecvSize
+	}
+	return maxRecvSize
 }

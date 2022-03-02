@@ -10,14 +10,10 @@ type DockerVMConfig struct {
 	EnableDockerVM        bool   `mapstructure:"enable_dockervm"`
 	DockerVMContainerName string `mapstructure:"dockervm_container_name"`
 	DockerVMMountPath     string `mapstructure:"dockervm_mount_path"`
-	DockerVMLogPath       string `mapstructure:"dockervm_log_path"`
-	LogInConsole          bool   `mapstructure:"log_in_console"`
-	LogLevel              string `mapstructure:"log_level"`
 	DockerVMHost          string `mapstructure:"docker_vm_host"`
 	DockerVMPort          uint32 `mapstructure:"docker_vm_port"`
-	UserNum               uint32 `mapstructure:"user_num"`
-	TxTimeLimit           uint32 `mapstructure:"time_limit"`
-	MaxConcurrency        uint32 `mapstructure:"max_concurrency"`
+	MaxSendMsgSize        uint32 `mapstructure:"max_send_msg_size"`
+	MaxRecvMsgSize        uint32 `mapstructure:"max_recv_msg_size"`
 }
 
 // DockerContainerConfig docker container settings
@@ -27,14 +23,10 @@ type DockerContainerConfig struct {
 	ShowStdout   bool
 	ShowStderr   bool
 
-	ImageName     string
-	ContainerName string
-	VMMgrDir      string
+	VMMgrDir string
 
 	DockerMountDir string
-	DockerLogDir   string
 	HostMountDir   string
-	HostLogDir     string
 }
 
 type Bool int32
@@ -47,9 +39,6 @@ const (
 	ContractsDir = "contracts"
 	// SockDir dir save domain socket file
 	SockDir = "sock"
-
-	MaxSendSize = 100
-	MaxRecvSize = 100
 
 	PProfPort = "23356"
 	SDKPort   = "24356"

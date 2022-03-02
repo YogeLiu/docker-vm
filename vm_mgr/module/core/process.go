@@ -332,8 +332,6 @@ func (p *Process) killCrossProcess() {
 	if err != nil {
 		p.logger.Errorf("[%s] fail to kill cross process: [%s]", p.processName, err)
 	}
-	close(p.notifyCh)
-
 }
 
 // kill main process when process encounter error

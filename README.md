@@ -41,7 +41,7 @@ docker 参数，如果不设置会采用默认参数：
 启动命令
 
 ```shell
-docker run --env-file ./env.list -p22356:22356 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.0_alpha_qc
+docker run -it -e ENV_LOG_LEVEL=DEBUG -e ENV_LOG_IN_CONSOLE=true -p22359:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.0_alpha_qc
 ```
 
 

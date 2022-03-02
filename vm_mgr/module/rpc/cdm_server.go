@@ -13,6 +13,8 @@ import (
 	"os"
 	"time"
 
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
@@ -61,20 +63,13 @@ func NewCDMServer() (*CDMServer, error) {
 
 	//set enforcement policy
 	kep := keepalive.EnforcementPolicy{
-		MinTime: ServerMinInterval,
-		// allow keepalive w/o rpc
+		MinTime:             ServerMinInterval,
 		PermitWithoutStream: true,
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
-
-	//set default connection timeout
-
 	serverOpts = append(serverOpts, grpc.ConnectionTimeout(ConnectionTimeout))
-	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.MaxSendSize*1024*1024))
-	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.MaxRecvSize*1024*1024))
-	//serverOpts = append(serverOpts, grpc.InitialWindowSize(100*1024*1024))
-	//serverOpts = append(serverOpts, grpc.InitialConnWindowSize(100*1024*1024))
-	//serverOpts = append(serverOpts, grpc.MaxConcurrentStreams(100))
+	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(utils.GetMaxSendMsgSizeFromEnv()*1024*1024))
+	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(utils.GetMaxRecvMsgSizeFromEnv()*1024*1024))
 
 	server := grpc.NewServer(serverOpts...)
 

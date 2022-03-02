@@ -8,11 +8,12 @@ package rpc
 
 import (
 	"errors"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"time"
+
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
@@ -35,12 +36,12 @@ func NewDMSServer() (*DMSServer, error) {
 
 	listenAddress, err := net.ResolveUnixAddr("unix", dmsSockPath)
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		return nil, err
 	}
 
 	listener, err := CreateUnixListener(listenAddress, dmsSockPath)
 	if err != nil {
-		log.Fatalf("Failed to listen1: %v", err)
+		return nil, err
 	}
 
 	//set up server options for keepalive and TLS
@@ -55,14 +56,13 @@ func NewDMSServer() (*DMSServer, error) {
 
 	//set enforcement policy
 	kep := keepalive.EnforcementPolicy{
-		MinTime: ServerMinInterval,
-		// allow keepalive w/o rpc
+		MinTime:             ServerMinInterval,
 		PermitWithoutStream: true,
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
-
-	//set default connection timeout
 	serverOpts = append(serverOpts, grpc.ConnectionTimeout(ConnectionTimeout))
+	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(utils.GetMaxSendMsgSizeFromEnv()*1024*1024))
+	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(utils.GetMaxRecvMsgSizeFromEnv()*1024*1024))
 
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.MaxSendSize*1024*1024))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.MaxRecvSize*1024*1024))

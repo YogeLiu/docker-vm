@@ -22,6 +22,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
 	commonCrt "chainmaker.org/chainmaker/common/v2/cert"
 	"chainmaker.org/chainmaker/common/v2/crypto"
@@ -56,9 +58,13 @@ type CDMClient interface {
 
 	GetStateResponseSendCh() chan *protogo.CDMMessage
 
-	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage)
+	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error
+
+	DeleteRecvChan(txId string) bool
 
 	GetCMConfig() *config.DockerVMConfig
+
+	GetUniqueTxKey(txId string) string
 }
 
 // RuntimeInstance docker-go runtime
@@ -74,7 +80,8 @@ type RuntimeInstance struct {
 func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
 	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
-	txId := txSimContext.GetTx().Payload.TxId
+	originalTxId := txSimContext.GetTx().Payload.TxId
+	uniqueTxKey := r.Client.GetUniqueTxKey(originalTxId)
 
 	// contract response
 	contractResult = &commonPb.ContractResult{
@@ -116,7 +123,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// construct cdm message
 	txRequest := &protogo.TxRequest{
-		TxId:            txId,
+		TxId:            uniqueTxKey,
 		ContractName:    contract.Name,
 		ContractVersion: contract.Version,
 		Method:          method,
@@ -129,14 +136,17 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		},
 	}
 	cdmMessage := &protogo.CDMMessage{
-		TxId:      txId,
+		TxId:      uniqueTxKey,
 		Type:      protogo.CDMType_CDM_TYPE_TX_REQUEST,
 		TxRequest: txRequest,
 	}
 
 	// register result chan
 	responseCh := make(chan *protogo.CDMMessage)
-	r.Client.RegisterRecvChan(txId, responseCh)
+	err = r.Client.RegisterRecvChan(uniqueTxKey, responseCh)
+	if err != nil {
+		return r.errorResult(contractResult, err, err.Error())
+	}
 
 	// send message to tx chan
 	sendCh := r.Client.GetTxSendCh()
@@ -152,14 +162,14 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		case recvMsg := <-responseCh:
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
-				r.Log.Debugf("tx [%s] start get bytecode [%v]", txId, recvMsg.TxId)
-				getByteCodeResponse := r.handleGetByteCodeRequest(txId, recvMsg, byteCode)
+				r.Log.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
+				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
 				r.Client.GetStateResponseSendCh() <- getByteCodeResponse
-				r.Log.Debugf("tx [%s] finish get bytecode [%v]", txId, getByteCodeResponse.ResultCode)
+				r.Log.Debugf("tx [%s] finish get bytecode [%v]", uniqueTxKey, getByteCodeResponse)
 
 			case protogo.CDMType_CDM_TYPE_GET_STATE:
-				r.Log.Debugf("tx [%s] start get state [%v]", txId, recvMsg)
-				getStateResponse, pass := r.handleGetStateRequest(txId, recvMsg, txSimContext)
+				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
+				getStateResponse, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
 
 				if pass {
 					gasUsed, err = gas.GetStateGasUsed(gasUsed, getStateResponse.Payload)
@@ -171,10 +181,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				}
 
 				r.Client.GetStateResponseSendCh() <- getStateResponse
-				r.Log.Debugf("tx [%s] finish get state [%v]", txId, getStateResponse)
+				r.Log.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
 
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-				r.Log.Debugf("[%s] start handle response [%v]", txId, recvMsg)
+				r.Log.Debugf("[%s] start handle response [%v]", uniqueTxKey, recvMsg)
 				// construct response
 				txResponse := recvMsg.TxResponse
 				// tx fail, just return without merge read write map and events
@@ -183,7 +193,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					contractResult.Result = txResponse.Result
 					contractResult.Message = txResponse.Message
 					contractResult.GasUsed = gasUsed
-					r.Log.Errorf("[%s] return error response [%v]", txId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 					return contractResult, protocol.ExecOrderTxTypeNormal
 				}
 
@@ -195,7 +205,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
-					r.Log.Errorf("[%s] return error response [%v]", txId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 					return r.errorResult(contractResult, err, "fail to put in sim context")
 				}
 
@@ -204,14 +214,14 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 				if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
 					err = fmt.Errorf("too many event data")
-					r.Log.Errorf("[%s] return error response [%v]", txId, contractResult)
+					r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 					return r.errorResult(contractResult, err, "fail to put event data")
 				}
 
 				for _, event := range txResponse.Events {
 					contractEvent := &commonPb.ContractEvent{
 						Topic:           event.Topic,
-						TxId:            txId,
+						TxId:            originalTxId,
 						ContractName:    event.ContractName,
 						ContractVersion: event.ContractVersion,
 						EventData:       event.Data,
@@ -220,7 +230,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					// emit event gas used calc and check gas limit
 					gasUsed, err = gas.EmitEventGasUsed(gasUsed, contractEvent)
 					if err != nil {
-						r.Log.Errorf("[%s] return error response [%v]", txId, contractResult)
+						r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 						contractResult.GasUsed = gasUsed
 						return r.errorResult(contractResult, err, err.Error())
 					}
@@ -231,49 +241,47 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				contractResult.GasUsed = gasUsed
 				contractResult.ContractEvent = contractEvents
 
-				close(responseCh)
-
-				r.Log.Debugf("[%s] finish handle response [%v]", txId, contractResult)
+				r.Log.Debugf("[%s] finish handle response [%v]", uniqueTxKey, contractResult)
 				return contractResult, specialTxType
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
-				r.Log.Debugf("tx [%s] start create kv iterator [%v]", txId, recvMsg)
+				r.Log.Debugf("tx [%s] start create kv iterator [%v]", uniqueTxKey, recvMsg)
 				var createKvIteratorResponse *protogo.CDMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
-				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(txId, recvMsg, txSimContext, gasUsed)
+				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
 				r.Client.GetStateResponseSendCh() <- createKvIteratorResponse
-				r.Log.Debugf("tx [%s] finish create kv iterator [%v]", txId, createKvIteratorResponse)
+				r.Log.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxKey, createKvIteratorResponse)
 
 			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
-				r.Log.Debugf("tx [%s] start consume kv iterator [%v]", txId, recvMsg)
+				r.Log.Debugf("tx [%s] start consume kv iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKvIteratorResponse *protogo.CDMMessage
-				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(txId, recvMsg, txSimContext, gasUsed)
+				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
 				r.Client.GetStateResponseSendCh() <- consumeKvIteratorResponse
-				r.Log.Debugf("tx [%s] finish consume kv iterator [%v]", txId, consumeKvIteratorResponse)
+				r.Log.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxKey, consumeKvIteratorResponse)
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
-				r.Log.Debugf("tx [%s] start create key history iterator [%v]", txId, recvMsg)
+				r.Log.Debugf("tx [%s] start create key history iterator [%v]", uniqueTxKey, recvMsg)
 				var createKeyHistoryIterResp *protogo.CDMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
-				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(txId, recvMsg, txSimContext, gasUsed)
+				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 				r.Client.GetStateResponseSendCh() <- createKeyHistoryIterResp
-				r.Log.Debugf("tx [%s] finish create key history iterator [%v]", txId, createKeyHistoryIterResp)
+				r.Log.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxKey, createKeyHistoryIterResp)
 
 			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER:
-				r.Log.Debugf("tx [%s] start consume key history iterator [%v]", txId, recvMsg)
+				r.Log.Debugf("tx [%s] start consume key history iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKeyHistoryResp *protogo.CDMMessage
-				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(txId, recvMsg, txSimContext, gasUsed)
+				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 				r.Client.GetStateResponseSendCh() <- consumeKeyHistoryResp
-				r.Log.Debugf("tx [%s] finish consume key history iterator [%v]", txId, consumeKeyHistoryResp)
+				r.Log.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxKey, consumeKeyHistoryResp)
 
 			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-				r.Log.Debugf("tx [%s] start get sender address [%v]", txId, recvMsg)
+				r.Log.Debugf("tx [%s] start get sender address [%v]", uniqueTxKey, recvMsg)
 				var getSenderAddressResp *protogo.CDMMessage
-				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(txId, txSimContext, gasUsed)
+				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxKey, txSimContext, gasUsed)
 				r.Client.GetStateResponseSendCh() <- getSenderAddressResp
-				r.Log.Debugf("tx [%s] finish get sender address [%v]", txId, getSenderAddressResp)
+				r.Log.Debugf("tx [%s] finish get sender address [%v]", uniqueTxKey, getSenderAddressResp)
 
 			default:
 				contractResult.GasUsed = gasUsed
@@ -284,15 +292,17 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				)
 			}
 		case <-timeoutC:
-			contractResult.GasUsed = gasUsed
-			return r.errorResult(
-				contractResult,
-				fmt.Errorf("docker-vm-go timeout"),
-				"fail to receive response",
-			)
+			deleted := r.Client.DeleteRecvChan(uniqueTxKey)
+			if deleted {
+				r.Log.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
+					uniqueTxKey)
+				contractResult.GasUsed = gasUsed
+				return r.errorResult(contractResult, fmt.Errorf("tx timeout"),
+					"fail to receive response",
+				)
+			}
 		}
 	}
-
 }
 
 func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType) *protogo.CDMMessage {
@@ -1022,12 +1032,25 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 }
 
 func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo.CDMMessage,
-	byteCode []byte) *protogo.CDMMessage {
+	byteCode []byte, txSimContext protocol.TxSimContext) *protogo.CDMMessage {
+
+	var err error
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE)
 
-	contractFullName := string(recvMsg.Payload)             // contract1#1.0.0
-	contractName := strings.Split(contractFullName, "#")[0] // contract1
+	contractNameAndVersion := string(recvMsg.Payload)               // e.g: contract1#1.0.0
+	contractName := utils.SplitContractName(contractNameAndVersion) // e.g: contract1
+
+	if len(byteCode) == 0 {
+		r.Log.Warnf("[%s] bytecode is missing", txId)
+		byteCode, err = txSimContext.GetContractBytecode(contractName)
+		if err != nil || len(byteCode) == 0 {
+			r.Log.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
+				contractName)
+			response.Message = err.Error()
+			return response
+		}
+	}
 
 	hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
 	hostMountPath = filepath.Join(hostMountPath, r.ChainId)
@@ -1035,24 +1058,24 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	contractDir := filepath.Join(hostMountPath, mountContractDir)
 	contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
 	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
-	contractPathWithVersion := filepath.Join(contractDir, contractFullName)
+	contractPathWithVersion := filepath.Join(contractDir, contractNameAndVersion)
 
-	_, err := os.Stat(contractPathWithVersion)
+	_, err = os.Stat(contractPathWithVersion)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			// save bytecode to disk
-			err := r.saveBytesToDisk(byteCode, contractZipPath)
+			err = r.saveBytesToDisk(byteCode, contractZipPath)
 			if err != nil {
-				r.Log.Errorf("fail to save bytecode to disk: %s", err)
+				r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
 				response.Message = err.Error()
 				return response
 			}
 
 			// extract 7z file
-			unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
+			unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // e.g: contract1
 			err = r.runCmd(unzipCommand)
 			if err != nil {
-				r.Log.Errorf("fail to extract contract: %s", err)
+				r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
 				response.Message = err.Error()
 				return response
 			}
@@ -1060,7 +1083,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 			// remove 7z file
 			err = os.Remove(contractZipPath)
 			if err != nil {
-				r.Log.Errorf("fail to remove zipped file: %s", err)
+				r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
+					contractZipPath)
 				response.Message = err.Error()
 				return response
 			}
@@ -1068,14 +1092,15 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 			// replace contract name to contractName:version
 			err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
 			if err != nil {
-				r.Log.Errorf("fail to rename original file name: %s, "+
-					"please make sure contract name should be same as zipped file", err)
+				r.Log.Errorf("[%s] fail to rename contract name: %s, "+
+					"please make sure contract name should be same as contract name (first input name) while compiling",
+					txId, err)
 				response.Message = err.Error()
 				return response
 			}
 
 		} else {
-			// file may or may not exist.
+			// file may or may not exist, just run into another problem.
 			r.Log.Errorf("read file failed", err)
 			response.Message = err.Error()
 			return response

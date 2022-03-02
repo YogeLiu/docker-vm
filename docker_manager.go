@@ -9,7 +9,6 @@ package docker_go
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -37,16 +36,11 @@ const (
 
 )
 
-var (
-	imageName = fmt.Sprintf("chainmakerofficial/chainmaker-vm-docker-go:%s", imageVersion)
-)
-
 type DockerManager struct {
 	chainId   string
 	mgrLogger *logger.CMLogger
 
 	ctx context.Context
-	//dockerAPIClient *client.Client // docker client
 
 	cdmClient      *rpc.CDMClient // grpc client
 	clientInitOnce sync.Once
@@ -80,18 +74,11 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		return nil
 	}
 
-	//// init docker api client
-	//dockerAPIClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	//if err != nil {
-	//	return nil
-	//}
-
 	// init docker manager
 	newDockerManager := &DockerManager{
-		chainId:   chainId,
-		mgrLogger: dockerManagerLogger,
-		ctx:       context.Background(),
-		//dockerAPIClient:       dockerAPIClient,
+		chainId:               chainId,
+		mgrLogger:             dockerManagerLogger,
+		ctx:                   context.Background(),
 		cdmClient:             rpc.NewCDMClient(chainId, dockerVMConfig),
 		clientInitOnce:        sync.Once{},
 		cdmState:              false,
@@ -124,14 +111,6 @@ func (m *DockerManager) StartVM() error {
 	// if running, stop it,
 
 	// pprof 在容器里设置（也换成环境变量的方式）
-
-	// running container
-	m.mgrLogger.Infof("start running container [%s]", m.dockerContainerConfig.ContainerName)
-	//if err = m.dockerAPIClient.ContainerStart(m.ctx, m.dockerContainerConfig.ContainerName,
-	//	types.ContainerStartOptions{}); err != nil {
-	//	return err
-	//}
-
 	m.mgrLogger.Debugf("docker vm start success :)")
 
 	// display container info in the console
@@ -166,7 +145,6 @@ func (m *DockerManager) StopVM() error {
 	m.cdmState = false
 	m.clientInitOnce = sync.Once{}
 
-	m.mgrLogger.Info("stop and remove docker vm [%s]", m.dockerContainerConfig.ContainerName)
 	return nil
 }
 
@@ -229,14 +207,6 @@ func (m *DockerManager) initMountDirectory() error {
 		return err
 	}
 	m.mgrLogger.Debug("set sock dir: ", sockDir)
-
-	// create log directory
-	logDir := m.dockerContainerConfig.HostLogDir
-	err = m.createDir(logDir)
-	if err != nil {
-		return nil
-	}
-	m.mgrLogger.Debug("set log dir: ", logDir)
 
 	return nil
 
@@ -356,14 +326,8 @@ func validateVMSettings(config *config.DockerVMConfig,
 	dockerContainerConfig *config.DockerContainerConfig, chainId string) error {
 
 	var hostMountDir string
-	var hostLogDir string
-	var containerName string
 	if len(config.DockerVMMountPath) == 0 {
 		return errors.New("doesn't set host mount directory path correctly")
-	}
-
-	if len(config.DockerVMLogPath) == 0 {
-		return errors.New("doesn't set host log directory path correctly")
 	}
 
 	// set host mount directory path
@@ -374,24 +338,7 @@ func validateVMSettings(config *config.DockerVMConfig,
 		hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
 	}
 
-	// set host log directory
-	if !filepath.IsAbs(config.DockerVMLogPath) {
-		hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
-		hostLogDir = filepath.Join(hostLogDir, chainId)
-	} else {
-		hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
-	}
-
-	// set docker container name
-	if len(config.DockerVMContainerName) == 0 {
-		containerName = fmt.Sprintf("%s-%s", chainId, defaultContainerName)
-	} else {
-		containerName = fmt.Sprintf("%s-%s", chainId, config.DockerVMContainerName)
-	}
-
-	dockerContainerConfig.ContainerName = containerName
 	dockerContainerConfig.HostMountDir = hostMountDir
-	dockerContainerConfig.HostLogDir = hostLogDir
 
 	return nil
 }
@@ -404,14 +351,10 @@ func newDockerContainerConfig() *config.DockerContainerConfig {
 		ShowStdout:   true,
 		ShowStderr:   true,
 
-		ImageName:     imageName,
-		ContainerName: "",
-		VMMgrDir:      dockerContainerDir,
+		VMMgrDir: dockerContainerDir,
 
 		DockerMountDir: dockerMountDir,
-		DockerLogDir:   dockerLogDir,
 		HostMountDir:   "",
-		HostLogDir:     "",
 	}
 
 	return containerConfig

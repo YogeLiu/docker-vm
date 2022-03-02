@@ -20,6 +20,16 @@ type MockScheduler struct {
 	recorder *MockSchedulerMockRecorder
 }
 
+func (m *MockScheduler) ReturnErrorResponse(s string, s2 string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MockScheduler) ReturnErrorCrossContractResponse(txRequest *protogo0.TxRequest, resp *protogo.DMSMessage) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // MockSchedulerMockRecorder is the mock recorder for MockScheduler.
 type MockSchedulerMockRecorder struct {
 	mock *MockScheduler

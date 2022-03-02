@@ -118,14 +118,14 @@ func TestCDMApi_closeConnection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			_ = &CDMApi{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
 				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
-			cdm.closeConnection()
+			//cdm.closeConnection()
 		})
 	}
 }
@@ -371,7 +371,7 @@ func TestCDMApi_recvMsgRoutine(t *testing.T) {
 				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
-			cdm.recvMsgRoutine()
+			cdm.receiveMsgRoutine()
 		})
 	}
 }
