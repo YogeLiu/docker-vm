@@ -33,7 +33,7 @@ func NewUsersManager() *UsersManager {
 
 	userNumConfig := os.Getenv(config.ENV_USER_NUM)
 	userNum, err := strconv.Atoi(userNumConfig)
-	if err != nil || userNum == 0 {
+	if err != nil {
 		userNum = config.DefaultUserNum
 	}
 
