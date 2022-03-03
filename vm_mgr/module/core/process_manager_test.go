@@ -258,7 +258,7 @@ package core
 //		ProcessState:     0,
 //		TxWaitingQueue:   nil,
 //		waitingQueueSize: 0,
-//		txTrigger:        nil,
+//		nextTxTrigger:        nil,
 //		expireTimer:      nil,
 //		Handler:          nil,
 //		logger:           nil,

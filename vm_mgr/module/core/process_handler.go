@@ -42,7 +42,9 @@ const (
 )
 
 type ProcessInterface interface {
-	triggerProcessState()
+	triggerNewTx()
+
+	returnTxResponse(txResponse *protogo.TxResponse)
 
 	updateProcessState(state protogo.ProcessState)
 
@@ -141,9 +143,7 @@ func (h *ProcessHandler) handlePrepare(readyMsg *SDKProtogo.DMSMessage) error {
 		return h.HandleContract()
 	}
 
-	h.process.resetProcessTimer()
-	h.process.updateProcessState(protogo.ProcessState_PROCESS_STATE_READY)
-	h.process.triggerProcessState()
+	h.process.triggerNewTx()
 	return nil
 }
 
@@ -176,8 +176,6 @@ func (h *ProcessHandler) handleReady(readyMsg *SDKProtogo.DMSMessage) error {
 
 // HandleContract handle init, invoke, upgrade contract
 func (h *ProcessHandler) HandleContract() error {
-
-	h.startTimer()
 
 	switch h.TxRequest.Method {
 	case initContract:
@@ -363,6 +361,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		responseCh := h.scheduler.GetCrossContractResponseCh(responseChId)
 		responseCh <- completedMsg
 
+		// todo: check here
 		h.process.updateProcessState(protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED)
 		h.process.killCrossProcess()
 
@@ -404,19 +403,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		txResponse.Events = nil
 	}
 
-	responseCh := h.scheduler.GetTxResponseCh()
-	h.logger.Debugf("[%s] put tx response in response chan for in process [%s] with chan length[%d]", txResponse.TxId, h.processName, len(responseCh))
-
-	// give back result to scheduler  -- for multiple tx incoming
-	responseCh <- txResponse
-
-	h.logger.Debugf("[%s] end handle tx in process [%s]", txResponse.TxId, h.processName)
-
-	h.stopTimer()
-	h.process.resetProcessTimer()
-	h.process.updateProcessState(protogo.ProcessState_PROCESS_STATE_READY)
-	h.process.triggerProcessState()
-
+	h.process.returnTxResponse(txResponse)
 	return nil
 }
 

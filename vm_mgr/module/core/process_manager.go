@@ -198,65 +198,15 @@ func (pm *ProcessManager) ReleaseProcess(processName string) bool {
 }
 
 func (pm *ProcessManager) runningProcess(process *Process) {
-	// execute contract method, including init, invoke
-	go pm.listenProcessInvoke(process)
-	// launch process wait block until process finished
-runProcess:
-	err := process.LaunchProcess()
-
-	if err != nil && process.ProcessState != protogo.ProcessState_PROCESS_STATE_EXPIRE {
-		currentTx := process.Handler.TxRequest
-
-		pm.logger.Warnf("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName,
-			process.Handler.TxRequest.TxId, err)
-
-		processDepth := pm.getProcessDepth(currentTx.TxContext.OriginalProcessName)
-		if processDepth == nil {
-			pm.logger.Warnf("return back error result for process [%s] for tx [%s]", process.processName, currentTx.TxId)
-			pm.scheduler.ReturnErrorResponse(currentTx.TxId, err.Error())
-		} else {
-			errMsg := fmt.Sprintf("cross contract fail: err is:%s, cross processes: %s", err.Error(),
-				processDepth.GetConcatProcessName())
-			pm.logger.Warn(errMsg)
-			pm.scheduler.ReturnErrorResponse(currentTx.TxId, errMsg)
-		}
-
-		if process.ProcessState != protogo.ProcessState_PROCESS_STATE_FAIL {
-			// restart process and trigger next
-			pm.logger.Debugf("restart process [%s]", process.processName)
-			goto runProcess
-		}
-	}
-
-	// when process timeout, release resources
-	pm.logger.Debugf("release process: [%s]", process.processName)
-
-	if !pm.ReleaseProcess(process.processName) {
-		goto runProcess
-	}
-	_ = pm.usersManager.FreeUser(process.user)
-}
-
-func (pm *ProcessManager) listenProcessInvoke(process *Process) {
 	for {
-		select {
-		case <-process.txTrigger:
-			if process.ProcessState != protogo.ProcessState_PROCESS_STATE_READY {
-				continue
-			}
-			success, currentTxId, err := process.InvokeProcess()
+		process.ExecProcess(pm)
+		// when process timeout, release resources
+		pm.logger.Debugf("release process: [%s]", process.processName)
 
-			if !success {
-				return
-			}
-
-			if err != nil {
-				pm.scheduler.ReturnErrorResponse(currentTxId, err.Error())
-			}
-
-		case <-process.Handler.txExpireTimer.C:
-			process.StopProcess(false)
+		if !pm.ReleaseProcess(process.processName) {
+			continue
 		}
+		return
 	}
 }
 

@@ -13,6 +13,7 @@ var (
 	MissingContractVersionError    = errors.New("missing contact version")
 	ExceedMaxDepthError            = errors.New("exceed max depth")
 	ContractFileError              = errors.New("bad contract file")
+	ContractExecError              = errors.New("bad contract exec file")
 	ContractNotDeployedError       = errors.New("contract not deployed")
 	CrossContractRuntimePanicError = errors.New("cross contract runtime panic")
 
