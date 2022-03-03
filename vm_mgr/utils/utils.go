@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	DefaultMaxSendSize = 4
-	DefaultMaxRecvSize = 4
+	DefaultMaxSendSize = 20
+	DefaultMaxRecvSize = 20
 )
 
 // WriteToFile WriteFile write value to file

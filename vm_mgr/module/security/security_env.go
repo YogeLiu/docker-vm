@@ -78,8 +78,8 @@ func (s *SecurityEnv) InitConfig() error {
 	// set timeout
 	timeLimitConfig := os.Getenv(config.ENV_TX_TIME_LIMIT)
 	timeLimit, err := strconv.Atoi(timeLimitConfig)
-	if err != nil || timeLimit == 0 {
-		s.logger.Errorf("fail to convert timeLimitConfig: [%s], err: [%s]", timeLimitConfig, err)
+	if err != nil {
+		s.logger.Debugf("fail to convert timeLimitConfig: [%s], err: [%s]", timeLimitConfig, err)
 		timeLimit = config.DefaultTxTimeLimit
 	}
 	config.SandBoxTimeout = timeLimit
