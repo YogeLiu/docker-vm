@@ -651,7 +651,7 @@ func TestProcessHandler_resetHandler(t *testing.T) {
 			h := &ProcessHandler{
 				state: tt.fields.state,
 			}
-			h.resetHandler()
+			h.resetState()
 		})
 	}
 }

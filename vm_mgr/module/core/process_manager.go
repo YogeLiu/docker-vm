@@ -95,7 +95,7 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 	}
 	processBalance.AddProcess(process, processName)
 	process.AddTxWaitingQueue(txRequest)
-	go pm.runningProcess(process)
+	go process.ExecProcess()
 
 	return nil
 }
@@ -177,8 +177,8 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 	// register cross process
 	pm.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newCrossProcess)
 
-	err = newCrossProcess.LaunchProcess()
-	if err != nil {
+	exitErr := newCrossProcess.LaunchProcess()
+	if exitErr != nil {
 		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
 			crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
 		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
@@ -191,23 +191,15 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 
 // ReleaseProcess release balance process
 // @param: processName: contract:version#timestamp:index
-func (pm *ProcessManager) ReleaseProcess(processName string) bool {
+func (pm *ProcessManager) ReleaseProcess(processName string, user *security.User) bool {
 	pm.logger.Infof("release process: [%s]", processName)
 	contractKey := utils.GetContractKeyFromProcessName(processName)
-	return pm.removeProcessFromProcessBalance(contractKey, processName)
-}
-
-func (pm *ProcessManager) runningProcess(process *Process) {
-	for {
-		process.ExecProcess(pm)
-		// when process timeout, release resources
-		pm.logger.Debugf("release process: [%s]", process.processName)
-
-		if !pm.ReleaseProcess(process.processName) {
-			continue
-		}
-		return
+	released := pm.removeProcessFromProcessBalance(contractKey, processName)
+	if !released {
+		return false
 	}
+	_ = pm.usersManager.FreeUser(user)
+	return true
 }
 
 // GetProcess retrieve process from process manager, could be original process or cross process:

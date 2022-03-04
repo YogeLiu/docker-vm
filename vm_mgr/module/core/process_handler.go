@@ -543,7 +543,7 @@ func (h *ProcessHandler) handleGetSenderAddr(msg *SDKProtogo.DMSMessage) error {
 	return h.sendMessage(respMsg)
 }
 
-func (h *ProcessHandler) resetHandler() {
+func (h *ProcessHandler) resetState() {
 	h.state = created
 }
 
