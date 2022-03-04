@@ -114,8 +114,11 @@ func (c *CDMClient) DeleteRecvChan(txId string) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.logger.Debugf("[%s] delete receive chan", txId)
-	_, ok := c.recvChMap[txId]
+	responseCh, ok := c.recvChMap[txId]
 	if ok {
+		if len(responseCh) > 0 {
+			<-responseCh
+		}
 		delete(c.recvChMap, txId)
 		return true
 	}
