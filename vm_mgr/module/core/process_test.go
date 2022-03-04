@@ -67,7 +67,7 @@ package core
 //				contractVersion: "txRequest.ContractVersion",
 //				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
 //				TxWaitingQueue:  nil,
-//				txTrigger:       nil,
+//				nextTxTrigger:       nil,
 //				expireTimer:     timeTimer,
 //				logger:          log,
 //
@@ -133,7 +133,7 @@ package core
 //				contractVersion: "txRequest.ContractVersion",
 //				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
 //				TxWaitingQueue:  nil,
-//				txTrigger:       nil,
+//				nextTxTrigger:       nil,
 //				expireTimer:     nil,
 //				logger:          nil,
 //
@@ -151,7 +151,7 @@ package core
 //			tt.want.expireTimer = got.expireTimer
 //			tt.want.logger = got.logger
 //			tt.want.TxWaitingQueue = got.TxWaitingQueue
-//			tt.want.txTrigger = got.txTrigger
+//			tt.want.nextTxTrigger = got.nextTxTrigger
 //			tt.want.Handler = got.Handler
 //			if !reflect.DeepEqual(got, tt.want) {
 //				t.Errorf("NewProcess() = %v, want %v", got, tt.want)
@@ -171,7 +171,7 @@ package core
 //		cGroupPath           string
 //		ProcessState         protogo.ProcessState
 //		TxWaitingQueue       chan *protogo.TxRequest
-//		txTrigger            chan bool
+//		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
 //		logger               *zap.SugaredLogger
 //		Handler              *ProcessHandler
@@ -200,7 +200,7 @@ package core
 //				cGroupPath:           "",
 //				ProcessState:         protogo.ProcessState_PROCESS_STATE_CREATED,
 //				TxWaitingQueue:       make(chan *protogo.TxRequest),
-//				txTrigger:            nil,
+//				nextTxTrigger:            nil,
 //				expireTimer:          nil,
 //				logger:               log,
 //				Handler:              nil,
@@ -223,7 +223,7 @@ package core
 //				cGroupPath:           tt.fields.cGroupPath,
 //				ProcessState:         tt.fields.ProcessState,
 //				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-//				txTrigger:            tt.fields.txTrigger,
+//				nextTxTrigger:            tt.fields.nextTxTrigger,
 //				expireTimer:          tt.fields.expireTimer,
 //				logger:               tt.fields.logger,
 //				Handler:              tt.fields.Handler,
@@ -268,7 +268,7 @@ package core
 //		cGroupPath           string
 //		ProcessState         protogo.ProcessState
 //		TxWaitingQueue       chan *protogo.TxRequest
-//		txTrigger            chan bool
+//		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
 //		logger               *zap.SugaredLogger
 //		Handler              *ProcessHandler
@@ -308,7 +308,7 @@ package core
 //				cGroupPath:      "",
 //				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
 //				TxWaitingQueue:  make(chan *protogo.TxRequest),
-//				txTrigger:       nil,
+//				nextTxTrigger:       nil,
 //				expireTimer:     nil,
 //				logger:          log,
 //				Handler: &ProcessHandler{
@@ -338,7 +338,7 @@ package core
 //				cGroupPath:      "",
 //				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
 //				TxWaitingQueue:  requests,
-//				txTrigger:       nil,
+//				nextTxTrigger:       nil,
 //				expireTimer:     nil,
 //				logger:          log,
 //				Handler: &ProcessHandler{
@@ -369,7 +369,7 @@ package core
 //				cGroupPath:           tt.fields.cGroupPath,
 //				ProcessState:         tt.fields.ProcessState,
 //				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-//				txTrigger:            tt.fields.txTrigger,
+//				nextTxTrigger:            tt.fields.nextTxTrigger,
 //				expireTimer:          tt.fields.expireTimer,
 //				logger:               tt.fields.logger,
 //				Handler:              tt.fields.Handler,
@@ -381,7 +381,7 @@ package core
 //				balanceRWMutex:                tt.fields.balanceRWMutex,
 //			}
 //
-//			p.InvokeProcess()
+//			p.handleNewTx()
 //		})
 //	}
 //}
@@ -397,7 +397,7 @@ package core
 //		cGroupPath           string
 //		ProcessState         protogo.ProcessState
 //		TxWaitingQueue       chan *protogo.TxRequest
-//		txTrigger            chan bool
+//		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
 //		logger               *zap.SugaredLogger
 //		Handler              *ProcessHandler
@@ -423,7 +423,7 @@ package core
 //				cGroupPath:      "",
 //				ProcessState:    0,
 //				TxWaitingQueue:  nil,
-//				txTrigger:       nil,
+//				nextTxTrigger:       nil,
 //				expireTimer:     nil,
 //				logger:          log,
 //				Handler:         nil,
@@ -452,7 +452,7 @@ package core
 //				cGroupPath:           tt.fields.cGroupPath,
 //				ProcessState:         tt.fields.ProcessState,
 //				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-//				txTrigger:            tt.fields.txTrigger,
+//				nextTxTrigger:            tt.fields.nextTxTrigger,
 //				expireTimer:          tt.fields.expireTimer,
 //				logger:               tt.fields.logger,
 //				Handler:              tt.fields.Handler,
@@ -494,7 +494,7 @@ package core
 //		cGroupPath           string
 //		ProcessState         protogo.ProcessState
 //		TxWaitingQueue       chan *protogo.TxRequest
-//		txTrigger            chan bool
+//		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
 //		logger               *zap.SugaredLogger
 //		Handler              *ProcessHandler
@@ -591,7 +591,7 @@ package core
 //		cGroupPath           string
 //		ProcessState         protogo.ProcessState
 //		TxWaitingQueue       chan *protogo.TxRequest
-//		txTrigger            chan bool
+//		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
 //		logger               *zap.SugaredLogger
 //		Handler              *ProcessHandler
@@ -620,7 +620,7 @@ package core
 //				cGroupPath:           "",
 //				ProcessState:         0,
 //				TxWaitingQueue:       nil,
-//				txTrigger:            nil,
+//				nextTxTrigger:            nil,
 //				expireTimer:          nil,
 //				logger:               nil,
 //				Handler:              nil,
@@ -644,7 +644,7 @@ package core
 //				cGroupPath:           tt.fields.cGroupPath,
 //				ProcessState:         tt.fields.ProcessState,
 //				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-//				txTrigger:            tt.fields.txTrigger,
+//				nextTxTrigger:            tt.fields.nextTxTrigger,
 //				expireTimer:          tt.fields.expireTimer,
 //				logger:               tt.fields.logger,
 //				Handler:              tt.fields.Handler,
@@ -701,7 +701,7 @@ package core
 //	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
 //	type fields struct {
 //		ProcessState protogo.ProcessState
-//		txTrigger    chan bool
+//		nextTxTrigger    chan bool
 //		logger       *zap.SugaredLogger
 //	}
 //	tests := []struct {
@@ -713,7 +713,7 @@ package core
 //			fields: fields{
 //				ProcessState: protogo.ProcessState_PROCESS_STATE_CREATED,
 //				logger:       log,
-//				txTrigger:    make(chan bool, 0),
+//				nextTxTrigger:    make(chan bool, 0),
 //			},
 //		},
 //	}
@@ -722,15 +722,15 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
 //				ProcessState: tt.fields.ProcessState,
-//				txTrigger:    tt.fields.txTrigger,
+//				nextTxTrigger:    tt.fields.nextTxTrigger,
 //				logger:       tt.fields.logger,
 //			}
 //			go func() {
 //				for {
-//					<-p.txTrigger
+//					<-p.nextTxTrigger
 //				}
 //			}()
-//			p.triggerProcessState()
+//			p.triggerNextTx()
 //		})
 //	}
 //}

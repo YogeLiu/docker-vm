@@ -160,7 +160,7 @@ func (c *CDMClient) sendMsgRoutine() {
 			c.logger.Debugf("[%s] send tx request to docker manager", txMsg.TxId)
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
-			c.logger.Debugf("[%s] send request to docker manager", stateMsg.TxId)
+			c.logger.Debugf("[%s] send response to docker manager", stateMsg.TxId)
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.stopSend:
 			c.logger.Debugf("close cdm send goroutine")
@@ -212,7 +212,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
 				waitCh = c.getAndDeleteRecvChan(receivedMsg.TxId)
 				if waitCh == nil {
-					c.logger.Errorf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
+					c.logger.Warnf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
 					continue
 				}
 				waitCh <- receivedMsg
@@ -222,7 +222,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 				protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
 				waitCh = c.getRecvChan(receivedMsg.TxId)
 				if waitCh == nil {
-					c.logger.Errorf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
+					c.logger.Warnf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
 					continue
 				}
 				waitCh <- receivedMsg
