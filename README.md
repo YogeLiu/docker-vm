@@ -7,21 +7,16 @@
 docker_vm_host:  合约管理服务
 docker_vm_port:  合约管理服务端口号
 
+删除了chainmaker配置里用于配置合约管理container的参数
 
 ```yml
 vm:
   enable_dockervm: true
-  dockervm_container_name: chainmaker-vm-docker-go-container
   dockervm_mount_path: ../data/org1/docker-go     
-  dockervm_log_path: ../log/org1/dockervm
-  log_in_console: true
-  log_level: DEBUG
   docker_vm_host: 10.197.78.11
   docker_vm_port: 22356
-  uds_open: true                             
-  user_num: 100
-  time_limit: 2
-  max_concurrency: 50
+  max_send_msg_size: 20
+  max_recv_msg_size: 20
 ```
 
 ## 2. 启动方式
