@@ -215,7 +215,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
 				waitCh = c.getAndDeleteRecvChan(receivedMsg.TxId)
 				if waitCh == nil {
-					c.logger.Warnf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
+					c.logger.Warnf("[%s] fail to retrieve response chan, tx response chan is nil", receivedMsg.TxId)
 					continue
 				}
 				waitCh <- receivedMsg
