@@ -281,26 +281,34 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 
 	// validate cross contract params
 	var callContractRequest SDKProtogo.CallContractRequest
-	_ = proto.Unmarshal(callContractMsg.Payload, &callContractRequest)
+	err := proto.Unmarshal(callContractMsg.Payload, &callContractRequest)
+	if err != nil {
+		errorResponse := constructCallContractErrorResponse(err.Error(), callContractMsg.TxId,
+			callContractMsg.CurrentHeight)
+		return h.sendMessage(errorResponse)
+	}
 
 	contractName := callContractRequest.ContractName
 	contractVersion := callContractRequest.ContractVersion
 
 	if len(contractName) == 0 {
 		h.logger.Errorf(utils.MissingContractNameError.Error())
-		errorResponse := constructCallContractErrorResponse(utils.MissingContractNameError.Error(), callContractMsg.TxId, callContractMsg.CurrentHeight)
+		errorResponse := constructCallContractErrorResponse(utils.MissingContractNameError.Error(),
+			callContractMsg.TxId, callContractMsg.CurrentHeight)
 		return h.sendMessage(errorResponse)
 	}
 
 	if len(contractVersion) == 0 {
 		h.logger.Errorf(utils.MissingContractVersionError.Error())
-		errorResponse := constructCallContractErrorResponse(utils.MissingContractVersionError.Error(), callContractMsg.TxId, callContractMsg.CurrentHeight)
+		errorResponse := constructCallContractErrorResponse(utils.MissingContractVersionError.Error(),
+			callContractMsg.TxId, callContractMsg.CurrentHeight)
 		return h.sendMessage(errorResponse)
 	}
 
 	if callContractMsg.CurrentHeight >= chainProtocol.CallContractDepth {
 		h.logger.Errorf(utils.ExceedMaxDepthError.Error())
-		errorResponse := constructCallContractErrorResponse(utils.ExceedMaxDepthError.Error(), callContractMsg.TxId, callContractMsg.CurrentHeight)
+		errorResponse := constructCallContractErrorResponse(utils.ExceedMaxDepthError.Error(),
+			callContractMsg.TxId, callContractMsg.CurrentHeight)
 		return h.sendMessage(errorResponse)
 	}
 
@@ -332,10 +340,17 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 
 	// check response has error or not
 	var contractResponse SDKProtogo.ContractResponse
-	_ = proto.Unmarshal(calledContractResponse.Payload, &contractResponse)
+	err = proto.Unmarshal(calledContractResponse.Payload, &contractResponse)
+
+	if err != nil {
+		errorResponse := constructCallContractErrorResponse(err.Error(), callContractMsg.TxId,
+			callContractMsg.CurrentHeight)
+		return h.sendMessage(errorResponse)
+	}
 
 	if contractResponse.Response.Status != 200 {
-		errorResponse := constructCallContractErrorResponse(contractResponse.Response.Message, callContractMsg.TxId, callContractMsg.CurrentHeight)
+		errorResponse := constructCallContractErrorResponse(contractResponse.Response.Message, callContractMsg.TxId,
+			callContractMsg.CurrentHeight)
 		return h.sendMessage(errorResponse)
 	}
 
@@ -359,6 +374,11 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		h.logger.Debugf("process [%s] handle cross contract completed message [%s]", h.processName, completedMsg.TxId)
 		responseChId := crossContractChKey(h.TxRequest.TxId, h.TxRequest.TxContext.CurrentHeight)
 		responseCh := h.scheduler.GetCrossContractResponseCh(responseChId)
+		if responseCh == nil {
+			h.logger.Warnf("process [%s] fail to get response chan and abandon cross response [%s]",
+				h.processName, h.TxRequest.TxId)
+			return nil
+		}
 		responseCh <- completedMsg
 
 		h.process.updateProcessState(protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED)

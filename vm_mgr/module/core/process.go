@@ -68,11 +68,11 @@ type Process struct {
 	ProcessState   protogo.ProcessState
 	TxWaitingQueue chan *protogo.TxRequest
 	responseCh     chan *protogo.TxResponse
-	newTxTrigger   chan bool
 	exitCh         chan *ExitErr
+	newTxTrigger   chan bool
+	cmdReadyCh     chan bool
 	expireTimer    *time.Timer // process waiting time
 	Handler        *ProcessHandler
-	notifyCh       chan bool
 
 	logger *zap.SugaredLogger
 
@@ -104,7 +104,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 		exitCh:         make(chan *ExitErr),
 		expireTimer:    time.NewTimer(processWaitingTime * time.Second),
 		Handler:        nil,
-		notifyCh:       make(chan bool, 1),
+		cmdReadyCh:     make(chan bool, 1),
 
 		logger: logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
@@ -135,7 +135,7 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 
 		Handler:      nil,
-		notifyCh:     make(chan bool, 1),
+		cmdReadyCh:   make(chan bool, 1),
 		user:         user,
 		contractPath: contractPath,
 		cGroupPath:   filepath.Join(config.CGroupRoot, config.ProcsFile),
@@ -160,6 +160,7 @@ func (p *Process) ExecProcess() {
 
 func (p *Process) startProcess() {
 	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_CREATED)
+	p.Handler.resetState()
 	err := p.LaunchProcess()
 	p.exitCh <- err
 }
@@ -210,7 +211,7 @@ func (p *Process) LaunchProcess() *ExitErr {
 			desc: "",
 		}
 	}
-	p.notifyCh <- true
+	p.cmdReadyCh <- true
 
 	// add control group
 	if err = utils.WriteToFile(p.cGroupPath, cmd.Process.Pid); err != nil {
@@ -255,7 +256,7 @@ func (p *Process) listenProcess() {
 		select {
 		case <-p.newTxTrigger:
 			// condition: during cmd.wait
-			// 7. created success, trigger nex tx, previous state is created
+			// 7. created success, trigger new tx, previous state is created
 			// 8. running success, next tx fail, trigger new tx, previous state is running
 			p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
 			p.resetProcessTimer()
@@ -267,6 +268,11 @@ func (p *Process) listenProcess() {
 				p.Handler.scheduler.ReturnErrorResponse(currentTxId, err.Error())
 			}
 		case txResponse := <-p.responseCh:
+			if txResponse.TxId != p.Handler.TxRequest.TxId {
+				p.logger.Warnf("[%s] abandon tx response due to different tx id, response tx id [%s], "+
+					"current tx id [%s]", p.processName, txResponse.TxId, p.Handler.TxRequest.TxId)
+				continue
+			}
 			// 11. after timeout, abandon tx response
 			if p.ProcessState != protogo.ProcessState_PROCESS_STATE_RUNNING {
 				continue
@@ -309,6 +315,12 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	if existErr.err == utils.ContractExecError {
 		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
 		p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, existErr.err.Error())
+
+		p.logger.Debugf("release process: [%s]", p.processName)
+		if !p.processMgr.ReleaseProcess(p.processName, p.user) {
+			go p.startProcess()
+			return false
+		}
 		return true
 	}
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
@@ -343,6 +355,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_RUNNING {
 		err = utils.RuntimePanicError
 		p.Handler.stopTimer()
+		<-p.cmdReadyCh
 	}
 
 	var errMsg string
@@ -356,8 +369,6 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		p.logger.Error(errMsg)
 	}
 	p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, errMsg)
-
-	p.Handler.resetState()
 
 	go p.startProcess()
 
@@ -437,17 +448,17 @@ func (p *Process) StopProcess(processTimeout bool) {
 
 // kill cross process and free process in cross process table
 func (p *Process) killCrossProcess() {
-	<-p.notifyCh
+	<-p.cmdReadyCh
 	p.logger.Debugf("[%s] receive process notify and kill cross process", p.processName)
 	err := p.cmd.Process.Kill()
 	if err != nil {
-		p.logger.Errorf("[%s] fail to kill cross process: [%s]", p.processName, err)
+		p.logger.Warnf("[%s] fail to kill cross process: [%s]", p.processName, err)
 	}
 }
 
 // kill main process when process encounter error
 func (p *Process) killProcess(isTxTimeout bool) {
-	<-p.notifyCh
+	<-p.cmdReadyCh
 	p.logger.Debugf("[%s] kill original process", p.processName)
 	err := p.cmd.Process.Kill()
 	if err != nil {

@@ -177,6 +177,9 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 	// register cross process
 	pm.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newCrossProcess)
 
+	// 1. success finished
+	// 2. panic
+	// 3. timeout
 	exitErr := newCrossProcess.LaunchProcess()
 	if exitErr != nil {
 		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),

@@ -107,9 +107,10 @@ func (s *DockerScheduler) RegisterCrossContractResponseCh(responseId string, res
 
 // GetCrossContractResponseCh get cross contract response chan
 func (s *DockerScheduler) GetCrossContractResponseCh(responseId string) chan *SDKProtogo.DMSMessage {
-
-	responseCh, _ := s.responseChMap.Load(responseId)
-	s.responseChMap.Delete(responseId)
+	responseCh, loaded := s.responseChMap.LoadAndDelete(responseId)
+	if !loaded {
+		return nil
+	}
 	return responseCh.(chan *SDKProtogo.DMSMessage)
 }
 
@@ -173,6 +174,10 @@ func (s *DockerScheduler) ReturnErrorCrossContractResponse(crossContractTx *prot
 
 	responseChId := crossContractChKey(crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
 	responseCh := s.GetCrossContractResponseCh(responseChId)
-
+	if responseCh == nil {
+		s.logger.Warnf("scheduler fail to get response chan and abandon cross err response [%s]",
+			errResponse.TxId)
+		return
+	}
 	responseCh <- errResponse
 }
