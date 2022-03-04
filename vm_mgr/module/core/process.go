@@ -238,6 +238,7 @@ func (p *Process) LaunchProcess() *ExitErr {
 		}
 	}
 
+	// cross process can only be killed: success finished or original process timeout
 	if p.ProcessState != protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED {
 		p.logger.Errorf("[%s] cross process fail: tx [%s], [%s], [%s]", p.processName,
 			p.Handler.TxRequest.TxId, stderr.String(), err)

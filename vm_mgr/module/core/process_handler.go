@@ -361,7 +361,6 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		responseCh := h.scheduler.GetCrossContractResponseCh(responseChId)
 		responseCh <- completedMsg
 
-		// todo: check here
 		h.process.updateProcessState(protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED)
 		h.process.killCrossProcess()
 
