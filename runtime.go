@@ -141,7 +141,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	}
 
 	// register result chan
-	responseCh := make(chan *protogo.CDMMessage)
+	responseCh := make(chan *protogo.CDMMessage, 1)
 	err = r.Client.RegisterRecvChan(uniqueTxKey, responseCh)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())

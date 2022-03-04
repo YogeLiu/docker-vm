@@ -114,11 +114,8 @@ func (c *CDMClient) DeleteRecvChan(txId string) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.logger.Debugf("[%s] delete receive chan", txId)
-	responseCh, ok := c.recvChMap[txId]
+	_, ok := c.recvChMap[txId]
 	if ok {
-		if len(responseCh) > 0 {
-			<-responseCh
-		}
 		delete(c.recvChMap, txId)
 		return true
 	}
@@ -215,7 +212,8 @@ func (c *CDMClient) receiveMsgRoutine() {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
 				waitCh = c.getAndDeleteRecvChan(receivedMsg.TxId)
 				if waitCh == nil {
-					c.logger.Warnf("[%s] fail to retrieve response chan, tx response chan is nil", receivedMsg.TxId)
+					c.logger.Warnf("[%s] fail to retrieve response chan, tx response chan is nil",
+						receivedMsg.TxId)
 					continue
 				}
 				waitCh <- receivedMsg
