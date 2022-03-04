@@ -84,7 +84,7 @@ func (h *ProcessHandler) SetStream(stream SDKProtogo.DMSRpc_DMSCommunicateServer
 }
 
 func (h *ProcessHandler) sendMessage(msg *SDKProtogo.DMSMessage) error {
-	h.logger.Debugf("send message [%s] process [%s]", msg, h.processName)
+	h.logger.Debugf("send message [%s] process [%s]", msg.TxId, h.processName)
 	return h.stream.Send(msg)
 }
 

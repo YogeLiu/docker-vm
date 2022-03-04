@@ -24,22 +24,18 @@ import (
 )
 
 type CDMApi struct {
-	logger      *zap.SugaredLogger
-	scheduler   protocol.Scheduler
-	stream      protogo.CDMRpc_CDMCommunicateServer
-	stopSend    chan struct{}
-	stopReceive chan struct{}
-	wg          *sync.WaitGroup
+	logger    *zap.SugaredLogger
+	scheduler protocol.Scheduler
+	stream    protogo.CDMRpc_CDMCommunicateServer
+	wg        *sync.WaitGroup
 }
 
 func NewCDMApi(scheduler protocol.Scheduler) *CDMApi {
 	return &CDMApi{
-		scheduler:   scheduler,
-		logger:      logger.NewDockerLogger(logger.MODULE_CDM_API, config.DockerLogDir),
-		stream:      nil,
-		stopSend:    make(chan struct{}),
-		stopReceive: make(chan struct{}),
-		wg:          new(sync.WaitGroup),
+		scheduler: scheduler,
+		logger:    logger.NewDockerLogger(logger.MODULE_CDM_API, config.DockerLogDir),
+		stream:    nil,
+		wg:        new(sync.WaitGroup),
 	}
 }
 
@@ -71,57 +67,49 @@ func (cdm *CDMApi) receiveMsgRoutine() {
 	var err error
 
 	for {
-		select {
-		case <-cdm.stopReceive:
-			cdm.logger.Debugf("close cdm server receive goroutine")
+		receivedMsg, revErr := cdm.stream.Recv()
+
+		if revErr == io.EOF {
+			cdm.logger.Errorf("cdm server receive eof and exit receive goroutine")
 			cdm.wg.Done()
 			return
+		}
+
+		if revErr != nil {
+			cdm.logger.Errorf("cdm server receive err and exit receive goroutine %s", revErr)
+			cdm.wg.Done()
+			return
+		}
+
+		cdm.logger.Debugf("cdm server recv msg [%s]", receivedMsg.TxId)
+
+		switch receivedMsg.Type {
+		case protogo.CDMType_CDM_TYPE_TX_REQUEST:
+			err = cdm.handleTxRequest(receivedMsg)
+		case protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE:
+			err = cdm.handleGetStateResponse(receivedMsg)
+		case protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE:
+			err = cdm.handleGetByteCodeResponse(receivedMsg)
+		case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR_RESPONSE:
+			err = cdm.handleCreateKvIteratorResponse(receivedMsg)
+		case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR_RESPONSE:
+			err = cdm.handleConsumeKvIteratorResponse(receivedMsg)
+		case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_TER_RESPONSE:
+			err = cdm.handleCreateKeyHistoryKvIterResponse(receivedMsg)
+		case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE:
+			err = cdm.handleConsumeKeyHistoryKvIterResponse(receivedMsg)
+		case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE:
+			err = cdm.handleGetSenderAddrResponse(receivedMsg)
 		default:
-			receivedMsg, revErr := cdm.stream.Recv()
+			errMsg := fmt.Sprintf("unknown message type, received msg: [%s]", receivedMsg)
+			err = errors.New(errMsg)
+		}
 
-			if revErr == io.EOF {
-				cdm.logger.Errorf("cdm server receive eof and exit receive goroutine")
-				close(cdm.stopSend)
-				cdm.wg.Done()
-				return
-			}
-
-			if revErr != nil {
-				cdm.logger.Errorf("cdm server receive err and exit receive goroutine %s", revErr)
-				close(cdm.stopSend)
-				cdm.wg.Done()
-				return
-			}
-
-			cdm.logger.Debugf("cdm server recv msg [%s]", receivedMsg)
-
-			switch receivedMsg.Type {
-			case protogo.CDMType_CDM_TYPE_TX_REQUEST:
-				err = cdm.handleTxRequest(receivedMsg)
-			case protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE:
-				err = cdm.handleGetStateResponse(receivedMsg)
-			case protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE:
-				err = cdm.handleGetByteCodeResponse(receivedMsg)
-			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR_RESPONSE:
-				err = cdm.handleCreateKvIteratorResponse(receivedMsg)
-			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR_RESPONSE:
-				err = cdm.handleConsumeKvIteratorResponse(receivedMsg)
-			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_TER_RESPONSE:
-				err = cdm.handleCreateKeyHistoryKvIterResponse(receivedMsg)
-			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE:
-				err = cdm.handleConsumeKeyHistoryKvIterResponse(receivedMsg)
-			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE:
-				err = cdm.handleGetSenderAddrResponse(receivedMsg)
-			default:
-				errMsg := fmt.Sprintf("unknown message type, received msg: [%s]", receivedMsg)
-				err = errors.New(errMsg)
-			}
-
-			if err != nil {
-				cdm.logger.Errorf("fail to recv msg in handler: [%s]", err)
-			}
+		if err != nil {
+			cdm.logger.Errorf("fail to recv msg in handler: [%s]", err)
 		}
 	}
+
 }
 
 func (cdm *CDMApi) sendMsgRoutine() {
@@ -140,18 +128,13 @@ func (cdm *CDMApi) sendMsgRoutine() {
 			err = cdm.sendMessage(getStateReqMsg)
 		case getByteCodeReqMsg := <-cdm.scheduler.GetByteCodeReqCh():
 			err = cdm.sendMessage(getByteCodeReqMsg)
-		case <-cdm.stopSend:
-			cdm.wg.Done()
-			cdm.logger.Debugf("stop cdm server send goroutine")
-			return
 		}
 
 		if err != nil {
 			errStatus, _ := status.FromError(err)
-			cdm.logger.Errorf("fail to send msg: err: %s, err massage: %s, err code: %s", err,
+			cdm.logger.Errorf("fail to send msg: err: %s, err message: %s, err code: %s", err,
 				errStatus.Message(), errStatus.Code())
 			if errStatus.Code() != codes.ResourceExhausted {
-				close(cdm.stopReceive)
 				cdm.wg.Done()
 				return
 			}
@@ -173,7 +156,7 @@ func (cdm *CDMApi) constructCDMMessage(txResponseMsg *protogo.TxResponse) *proto
 }
 
 func (cdm *CDMApi) sendMessage(msg *protogo.CDMMessage) error {
-	cdm.logger.Debugf("cdm send message [%s]", msg)
+	cdm.logger.Debugf("cdm send message [%s]", msg.TxId)
 	return cdm.stream.Send(msg)
 }
 

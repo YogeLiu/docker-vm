@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -44,7 +45,6 @@ type DockerManager struct {
 
 	cdmClient      *rpc.CDMClient // grpc client
 	clientInitOnce sync.Once
-	cdmState       bool
 
 	dockerVMConfig        *config.DockerVMConfig        // original config from local config
 	dockerContainerConfig *config.DockerContainerConfig // container setting
@@ -81,7 +81,6 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		ctx:                   context.Background(),
 		cdmClient:             rpc.NewCDMClient(chainId, dockerVMConfig),
 		clientInitOnce:        sync.Once{},
-		cdmState:              false,
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
 	}
@@ -142,7 +141,7 @@ func (m *DockerManager) StopVM() error {
 	//	return err
 	//}
 
-	m.cdmState = false
+	//m.cdmState = false
 	m.clientInitOnce = sync.Once{}
 
 	return nil
@@ -167,15 +166,32 @@ func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, c
 // StartCDMClient start CDM grpc rpc
 func (m *DockerManager) startCDMClient() {
 
-	m.clientInitOnce.Do(func() {
-		state := m.cdmClient.StartClient()
-		m.cdmState = state
-		m.mgrLogger.Debugf("cdm rpc state is: %v", state)
-	})
+	for !m.getCDMState() {
+		m.mgrLogger.Debugf("cdm rpc state is: %v, try reconnecting...", m.getCDMState())
+		m.cdmClient.ConnStatus = m.cdmClient.StartClient()
+		time.Sleep(2 * time.Second)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-m.cdmClient.ReconnectChan:
+				m.cdmClient.ConnStatus = false
+				//	reconnect
+				m.cdmClient.ReconnectChan = make(chan bool)
+				for !m.getCDMState() {
+					m.mgrLogger.Debugf("cdm rpc state is: %v, try reconnecting...", m.getCDMState())
+					m.cdmClient.ConnStatus = m.cdmClient.StartClient()
+					time.Sleep(2 * time.Second)
+				}
+			}
+		}
+	}()
+
 }
 
 func (m *DockerManager) getCDMState() bool {
-	return m.cdmState
+	return m.cdmClient.ConnStatus
 }
 
 // InitMountDirectory init mount directory and subdirectories

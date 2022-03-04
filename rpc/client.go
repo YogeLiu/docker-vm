@@ -8,8 +8,8 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,12 +37,12 @@ type CDMClient struct {
 	stateResponseSendCh chan *protogo.CDMMessage // used to receive message from docker-go
 	lock                sync.RWMutex
 	// key: txId, value: chan, used to receive tx response from docker-go
-	recvChMap   map[string]chan *protogo.CDMMessage
-	stream      protogo.CDMRpc_CDMCommunicateClient
-	logger      *logger.CMLogger
-	stopSend    chan struct{}
-	stopReceive chan struct{}
-	config      *config.DockerVMConfig
+	recvChMap     map[string]chan *protogo.CDMMessage
+	stream        protogo.CDMRpc_CDMCommunicateClient
+	logger        *logger.CMLogger
+	config        *config.DockerVMConfig
+	ReconnectChan chan bool
+	ConnStatus    bool
 }
 
 func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
@@ -55,9 +55,9 @@ func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 		recvChMap:           make(map[string]chan *protogo.CDMMessage),
 		stream:              nil,
 		logger:              logger.GetLoggerByChain(logger.MODULE_VM, chainId),
-		stopSend:            make(chan struct{}),
-		stopReceive:         make(chan struct{}),
 		config:              vmConfig,
+		ReconnectChan:       make(chan bool),
+		ConnStatus:          false,
 	}
 }
 
@@ -74,6 +74,11 @@ func (c *CDMClient) GetCMConfig() *config.DockerVMConfig {
 }
 
 func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error {
+	// todo 添加client 是否还存活的验证，如果不存活，返回失败信息。
+	if c.ConnStatus == false {
+		c.logger.Errorf("cdm client stream not ready, waiting reconnct, txid: %s", txId)
+		return errors.New("cdm client not connected")
+	}
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.logger.Debugf("register receive chan for [%s]", txId)
@@ -160,17 +165,19 @@ func (c *CDMClient) sendMsgRoutine() {
 		case stateMsg := <-c.stateResponseSendCh:
 			c.logger.Debugf("[%s] send request to docker manager", stateMsg.TxId)
 			err = c.sendCDMMsg(stateMsg)
-		case <-c.stopSend:
+		case <-c.ReconnectChan:
 			c.logger.Debugf("close cdm send goroutine")
 			return
 		}
 
 		if err != nil {
 			errStatus, _ := status.FromError(err)
-			c.logger.Errorf("fail to send msg: err: %s, err massage: %s, err code: %s", err,
+			c.logger.Errorf("fail to send msg: err: %s, err message: %s, err code: %s", err,
 				errStatus.Message(), errStatus.Code())
 			if errStatus.Code() != codes.ResourceExhausted {
-				close(c.stopReceive)
+				// run into error need reconnect
+				c.ConnStatus = false
+				close(c.ReconnectChan)
 				return
 			}
 		}
@@ -186,21 +193,17 @@ func (c *CDMClient) receiveMsgRoutine() {
 	for {
 
 		select {
-		case <-c.stopReceive:
+		case <-c.ReconnectChan:
 			c.logger.Debugf("close cdm client receive goroutine")
 			return
 		default:
 			receivedMsg, revErr := c.stream.Recv()
 
-			if revErr == io.EOF {
-				c.logger.Error("client receive eof and exit receive goroutine")
-				close(c.stopSend)
-				return
-			}
-
 			if revErr != nil {
+				// run into error need reconnect
 				c.logger.Errorf("client receive err and exit receive goroutine %s", revErr)
-				close(c.stopSend)
+				c.ConnStatus = false
+				close(c.ReconnectChan)
 				return
 			}
 
@@ -232,7 +235,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 }
 
 func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
-	c.logger.Debugf("send message: [%s]", msg)
+	c.logger.Debugf("send message: [%s]", msg.TxId)
 	return c.stream.Send(msg)
 }
 
