@@ -7,9 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
+	"strconv"
 	"sync"
 
 	"google.golang.org/grpc/codes"
@@ -114,7 +117,7 @@ func (cdm *CDMApi) receiveMsgRoutine() {
 
 func (cdm *CDMApi) sendMsgRoutine() {
 
-	cdm.logger.Infof("start sending cdm message")
+	cdm.logger.Infof("start sending cdm message, goid: %d", cdm.getGoID())
 
 	var err error
 
@@ -158,6 +161,16 @@ func (cdm *CDMApi) constructCDMMessage(txResponseMsg *protogo.TxResponse) *proto
 func (cdm *CDMApi) sendMessage(msg *protogo.CDMMessage) error {
 	cdm.logger.Debugf("cdm send message [%s]", msg.TxId)
 	return cdm.stream.Send(msg)
+}
+
+// temporarily, just for debug
+func (cdm *CDMApi) getGoID() uint64 {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+	return n
 }
 
 // unmarshal cdm message to send txRequest to txReqCh

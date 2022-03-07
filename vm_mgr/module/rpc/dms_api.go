@@ -47,7 +47,6 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 	processName := string(registerMsg.Payload)
 
 	// check cross contract or original contract
-	// todo
 	process := s.processManager.GetProcess(processName)
 	handler := process.Handler
 	handler.SetStream(stream)
