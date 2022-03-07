@@ -135,6 +135,12 @@ func (c *CDMClient) StartClient() bool {
 		return false
 	}
 
+	// todo 是否一定需要添加 connection close 逻辑
+	//go func() {
+	//	<- c.ReconnectChan
+	//	conn.Close()
+	//}()
+
 	stream, err := GetCDMClientStream(conn)
 	if err != nil {
 		c.logger.Errorf("fail to get connection stream: %s", err)
