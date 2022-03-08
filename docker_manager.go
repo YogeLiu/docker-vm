@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
@@ -41,9 +42,6 @@ const (
 	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
 	defaultContainerName = "chainmaker-vm-docker-go-container"
 	imageVersion         = "v2.2.0_alpha_qc"
-
-	enablePProf = false // switch for enable pprof, just for testing
-
 )
 
 var (
@@ -168,7 +166,7 @@ func (m *DockerManager) StartVM() error {
 	m.mgrLogger.Debugf("create container [%s]", m.dockerContainerConfig.ContainerName)
 
 	if m.dockerVMConfig.DockerVMUDSOpen {
-		if enablePProf {
+		if m.dockerVMConfig.EnablePprof {
 			err = m.createPProfContainer()
 		} else {
 			err = m.createContainer()
@@ -587,14 +585,14 @@ func (m *DockerManager) createTestContainer() error {
 // create container with pprof feature
 // which is open network and open an ip port in docker container
 func (m *DockerManager) createPProfContainer() error {
-	hostPort := config.PProfPort
+	hostPort := strconv.Itoa(int(m.dockerVMConfig.DockerVMPprofPort))
 	openPort := nat.Port(hostPort + "/tcp")
 
-	sdkHostPort := config.SDKPort
+	sdkHostPort := strconv.Itoa(int(m.dockerVMConfig.SandBoxPprofPort))
 	sdkOpenPort := nat.Port(sdkHostPort + "/tcp")
 
 	envs := m.constructEnvs(true)
-	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, config.PProfPort))
+	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, hostPort))
 	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvEnablePprof, true))
 
 	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
@@ -697,6 +695,16 @@ func validateVMSettings(config *config.DockerVMConfig,
 		containerName = fmt.Sprintf("%s-%s", chainId, defaultContainerName)
 	} else {
 		containerName = fmt.Sprintf("%s-%s", chainId, config.DockerVMContainerName)
+	}
+
+	if config.EnablePprof {
+		if config.DockerVMPprofPort == 0 {
+			return errors.New("docker vm pprof port cannot be 0")
+		}
+
+		if config.SandBoxPprofPort == 0 {
+			return errors.New("sandbox pprof port cannot be 0")
+		}
 	}
 
 	dockerContainerConfig.ContainerName = containerName

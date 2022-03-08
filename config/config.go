@@ -19,6 +19,9 @@ type DockerVMConfig struct {
 	MaxConcurrency        uint32 `mapstructure:"max_concurrency"`
 	MaxSendMsgSize        uint32 `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize        uint32 `mapstructure:"max_recv_msg_size"`
+	EnablePprof           bool   `mapstructure:"enable_pprof"`
+	DockerVMPprofPort     uint32 `mapstructure:"docker_vm_pprof_port"`
+	SandBoxPprofPort      uint32 `mapstructure:"sandbox_pprof_port"`
 }
 
 // DockerContainerConfig docker container settings
@@ -59,9 +62,7 @@ const (
 	// SockName domain socket file name
 	SockName = "cdm.sock"
 
-	TestPort  = "22356"
-	PProfPort = "23356"
-	SDKPort   = "24356"
+	TestPort = "22356"
 
 	// stateKvIterator method
 	FuncKvIteratorCreate    = "createKvIterator"
