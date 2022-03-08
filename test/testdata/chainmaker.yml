@@ -130,7 +130,7 @@ vm:
   max_concurrency: 50
   max_send_msg_size: 10
   max_recv_msg_size: 10
-  enable_pprof: false
+  enable_pprof: true
   docker_vm_pprof_port: 23356
   sandbox_pprof_port: 24356
 
