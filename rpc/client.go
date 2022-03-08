@@ -258,9 +258,16 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 	}
 
 	ip := c.config.DockerVMHost
+	port := c.config.DockerVMPort
+	if ip == "" {
+		ip = "127.0.0.1"
+	}
+	if port == 0 {
+		port = 22351
+	}
 	url := fmt.Sprintf("%s:%d", ip, c.config.DockerVMPort)
 
-	c.logger.Debugf("connect docker vm manager: %s", url)
+	c.logger.Infof("connect docker vm manager: %s", url)
 	return grpc.Dial(url, dialOpts...)
 
 }
