@@ -38,7 +38,7 @@ import (
 const (
 	processWaitingTime      = 60 * 10
 	processWaitingQueueSize = 1000
-	triggerNewProcessSize   = 3
+	triggerNewProcessSize   = 1
 )
 
 type ExitErr struct {
