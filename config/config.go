@@ -25,23 +25,17 @@ type DockerContainerConfig struct {
 
 	VMMgrDir string
 
-	DockerMountDir string
-	HostMountDir   string
+	HostMountDir string
 }
 
 type Bool int32
 
 const (
-	EnvEnablePprof = "ENV_ENABLE_PPROF"
-	EnvPprofPort   = "ENV_PPROF_PORT"
 
 	// ContractsDir dir save executable contract
 	ContractsDir = "contracts"
 	// SockDir dir save domain socket file
 	SockDir = "sock"
-
-	PProfPort = "23356"
-	SDKPort   = "24356"
 
 	// stateKvIterator method
 	FuncKvIteratorCreate    = "createKvIterator"

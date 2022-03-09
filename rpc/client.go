@@ -166,10 +166,10 @@ func (c *CDMClient) sendMsgRoutine() {
 	for {
 		select {
 		case txMsg := <-c.txSendCh:
-			c.logger.Debugf("[%s] send tx request to docker manager", txMsg.TxId)
+			c.logger.Infof("[%s] send tx req, chan len: [%d]", txMsg.TxId, len(c.txSendCh))
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
-			c.logger.Debugf("[%s] send response to docker manager", stateMsg.TxId)
+			c.logger.Infof("[%s] send syscall resp, chan len: [%d]", stateMsg.TxId, len(c.stateResponseSendCh))
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.ReconnectChan:
 			c.logger.Debugf("close cdm send goroutine")

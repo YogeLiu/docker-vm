@@ -27,14 +27,8 @@ import (
 )
 
 const (
-	dockerMountDir       = "/mount"
-	dockerLogDir         = "/log"
-	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
-	defaultContainerName = "chainmaker-vm-docker-go-container"
-	imageVersion         = "v2.2.0_alpha_qc"
-
-	enablePProf = false // switch for enable pprof, just for testing
-
+	dockerMountDir     = "/mount"
+	dockerContainerDir = "../module/vm/docker-go/vm_mgr"
 )
 
 type DockerManager struct {
@@ -102,24 +96,8 @@ func (m *DockerManager) StartVM() error {
 	}
 	m.mgrLogger.Info("start docker vm...")
 
-	// 以另外一种方式 判断容器服务有没有启动，并在日志 打印版本等信息
+	// todo verify vm contract service info
 
-	// todo 校验信息：链id，等其他信息
-
-	// check container is running or not
-	// if running, stop it,
-
-	// pprof 在容器里设置（也换成环境变量的方式）
-	m.mgrLogger.Debugf("docker vm start success :)")
-
-	// display container info in the console
-	//go func() {
-	//	err = m.displayInConsole(m.dockerContainerConfig.ContainerName)
-	//	if err != nil {
-	//		m.mgrLogger.Errorf("docker vm fail: %s", err)
-	//		return
-	//	}
-	//}()
 	return nil
 }
 
@@ -128,20 +106,7 @@ func (m *DockerManager) StopVM() error {
 	if m == nil {
 		return nil
 	}
-	//var err error
 
-	// todo 是否需要停掉 合约管理容器： 如何停掉，停掉是否要删掉容器，那是否需要开启任务处理
-	//err := m.stopContainer()
-	//if err != nil {
-	//	return err
-	//}
-
-	//err = m.removeImage()
-	//if err != nil {
-	//	return err
-	//}
-
-	//m.cdmState = false
 	m.clientInitOnce = sync.Once{}
 
 	return nil
@@ -172,6 +137,7 @@ func (m *DockerManager) startCDMClient() {
 		time.Sleep(2 * time.Second)
 	}
 
+	// add reconnect when send or receive msg failed
 	go func() {
 		for {
 			select {
@@ -195,7 +161,6 @@ func (m *DockerManager) getCDMState() bool {
 }
 
 // InitMountDirectory init mount directory and subdirectories
-// todo 创建路径的操作需不需要在容器里再做一遍
 func (m *DockerManager) initMountDirectory() error {
 
 	var err error
@@ -260,84 +225,6 @@ func (m *DockerManager) exists(path string) (bool, error) {
 	return false, err
 }
 
-// create container with pprof feature
-// which is open network and open an ip port in docker container
-//func (m *DockerManager) createPProfContainer() error {
-//	hostPort := config.PProfPort
-//	openPort := nat.Port(hostPort + "/tcp")
-//
-//	sdkHostPort := config.SDKPort
-//	sdkOpenPort := nat.Port(sdkHostPort + "/tcp")
-//
-//	envs := m.constructEnvs(true)
-//	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, config.PProfPort))
-//	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvEnablePprof, true))
-//
-//	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
-//		Cmd:          nil,
-//		Image:        m.dockerContainerConfig.ImageName,
-//		Env:          envs,
-//		AttachStdout: m.dockerContainerConfig.AttachStdOut,
-//		AttachStderr: m.dockerContainerConfig.AttachStderr,
-//		ExposedPorts: nat.PortSet{
-//			openPort:    struct{}{},
-//			sdkOpenPort: struct{}{},
-//		},
-//	}, &container.HostConfig{
-//		Privileged: true,
-//		Mounts: []mount.Mount{
-//			{
-//				Type:        mount.TypeBind,
-//				Source:      m.dockerContainerConfig.HostMountDir,
-//				Target:      m.dockerContainerConfig.DockerMountDir,
-//				ReadOnly:    false,
-//				Consistency: mount.ConsistencyFull,
-//				BindOptions: &mount.BindOptions{
-//					Propagation:  mount.PropagationRPrivate,
-//					NonRecursive: false,
-//				},
-//				VolumeOptions: nil,
-//				TmpfsOptions:  nil,
-//			},
-//			{
-//				Type:        mount.TypeBind,
-//				Source:      m.dockerContainerConfig.HostLogDir,
-//				Target:      m.dockerContainerConfig.DockerLogDir,
-//				ReadOnly:    false,
-//				Consistency: mount.ConsistencyFull,
-//				BindOptions: &mount.BindOptions{
-//					Propagation:  mount.PropagationRPrivate,
-//					NonRecursive: false,
-//				},
-//				VolumeOptions: nil,
-//				TmpfsOptions:  nil,
-//			},
-//		},
-//		PortBindings: nat.PortMap{
-//			openPort: []nat.PortBinding{
-//				{
-//					HostIP:   "0.0.0.0",
-//					HostPort: hostPort,
-//				},
-//			},
-//			sdkOpenPort: []nat.PortBinding{
-//				{
-//					HostIP:   "0.0.0.0",
-//					HostPort: sdkHostPort,
-//				},
-//			},
-//		},
-//	}, nil, nil, m.dockerContainerConfig.ContainerName)
-//
-//	if err != nil {
-//		m.mgrLogger.Errorf("create container [%s] failed", m.dockerContainerConfig.ContainerName)
-//		return err
-//	}
-//
-//	m.mgrLogger.Infof("create container [%s] success :)", m.dockerContainerConfig.ContainerName)
-//	return nil
-//}
-
 func validateVMSettings(config *config.DockerVMConfig,
 	dockerContainerConfig *config.DockerContainerConfig, chainId string) error {
 
@@ -369,8 +256,7 @@ func newDockerContainerConfig() *config.DockerContainerConfig {
 
 		VMMgrDir: dockerContainerDir,
 
-		DockerMountDir: dockerMountDir,
-		HostMountDir:   "",
+		HostMountDir: "",
 	}
 
 	return containerConfig

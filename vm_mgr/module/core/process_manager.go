@@ -148,11 +148,10 @@ func (pm *ProcessManager) createNewProcess(processName string, txRequest *protog
 func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
 	// validate contract deployed or not
 	contractKey := utils.ConstructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
-	contractPath, exist := pm.contractManager.checkContractDeployed(contractKey)
-
-	if !exist {
-		pm.logger.Errorf(utils.ContractNotDeployedError.Error())
-		errResponse := constructCallContractErrorResponse(utils.ContractNotDeployedError.Error(), crossContractTx.TxId,
+	contractPath, err := pm.contractManager.GetContract(crossContractTx.TxId, contractKey)
+	if err != nil {
+		pm.logger.Errorf(err.Error())
+		errResponse := constructCallContractErrorResponse(err.Error(), crossContractTx.TxId,
 			crossContractTx.TxContext.CurrentHeight)
 		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
 		return
