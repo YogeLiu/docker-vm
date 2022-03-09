@@ -76,8 +76,6 @@ type RuntimeInstance struct {
 
 // Invoke process one tx in docker and return result
 // nolint: gocyclo, revive
-// todo byteCode 参数在非安装调用的逻辑时 为空，需要从存储中读取
-// todo 升级如果失败，会存在文件已经被覆盖删掉了，导致旧版本的合约也没办法调用
 func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
 	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
