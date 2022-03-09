@@ -38,8 +38,6 @@ const (
 	// SockName domain socket file name
 	SockName = "cdm.sock"
 
-	MaxSendSize = 10
-	MaxRecvSize = 10
 	// TestPath docker log dir for test
 	TestPath = "/"
 )
@@ -58,12 +56,14 @@ var (
 )
 
 const (
-	ENV_ENABLE_UDS      = "ENV_ENABLE_UDS"
-	ENV_USER_NUM        = "ENV_USER_NUM"
-	ENV_TX_TIME_LIMIT   = "ENV_TX_TIME_LIMIT"
-	ENV_LOG_LEVEL       = "ENV_LOG_LEVEL"
-	ENV_LOG_IN_CONSOLE  = "ENV_LOG_IN_CONSOLE"
-	ENV_MAX_CONCURRENCY = "ENV_MAX_CONCURRENCY"
+	ENV_ENABLE_UDS        = "ENV_ENABLE_UDS"
+	ENV_USER_NUM          = "ENV_USER_NUM"
+	ENV_TX_TIME_LIMIT     = "ENV_TX_TIME_LIMIT"
+	ENV_LOG_LEVEL         = "ENV_LOG_LEVEL"
+	ENV_LOG_IN_CONSOLE    = "ENV_LOG_IN_CONSOLE"
+	ENV_MAX_CONCURRENCY   = "ENV_MAX_CONCURRENCY"
+	ENV_MAX_SEND_MSG_SIZE = "ENV_MAX_SEND_MSG_SIZE"
+	ENV_MAX_RECV_MSG_SIZE = "ENV_MAX_RECV_MSG_SIZE"
 
 	EnvEnablePprof = "ENV_ENABLE_PPROF"
 	EnvPprofPort   = "ENV_PPROF_PORT"

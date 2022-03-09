@@ -47,7 +47,6 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 	processName := string(registerMsg.Payload)
 
 	// check cross contract or original contract
-	// todo
 	process := s.processManager.GetProcess(processName)
 	handler := process.Handler
 	handler.SetStream(stream)
@@ -66,7 +65,6 @@ func (s *DMSApi) DMSCommunicate(stream protogo.DMSRpc_DMSCommunicateServer) erro
 	}
 
 	msgAvail := make(chan *recvMsg, 1)
-	defer close(msgAvail)
 
 	receiveMessage := func() {
 		in, err := stream.Recv()

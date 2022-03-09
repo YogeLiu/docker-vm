@@ -7,9 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"runtime"
+	"strconv"
 	"sync"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 
@@ -20,33 +27,33 @@ import (
 )
 
 type CDMApi struct {
-	logger    *zap.SugaredLogger
-	scheduler protocol.Scheduler
-	stream    protogo.CDMRpc_CDMCommunicateServer
-	stop      chan struct{}
-	wg        *sync.WaitGroup
+	logger      *zap.SugaredLogger
+	scheduler   protocol.Scheduler
+	stream      protogo.CDMRpc_CDMCommunicateServer
+	stopSend    chan struct{}
+	stopReceive chan struct{}
+	wg          *sync.WaitGroup
 }
 
 func NewCDMApi(scheduler protocol.Scheduler) *CDMApi {
 	return &CDMApi{
-		scheduler: scheduler,
-		logger:    logger.NewDockerLogger(logger.MODULE_CDM_API, config.DockerLogDir),
-		stream:    nil,
-		stop:      nil,
-		wg:        new(sync.WaitGroup),
+		scheduler:   scheduler,
+		logger:      logger.NewDockerLogger(logger.MODULE_CDM_API, config.DockerLogDir),
+		stream:      nil,
+		stopSend:    make(chan struct{}),
+		stopReceive: make(chan struct{}),
+		wg:          new(sync.WaitGroup),
 	}
 }
 
 // CDMCommunicate docker manager stream function
 func (cdm *CDMApi) CDMCommunicate(stream protogo.CDMRpc_CDMCommunicateServer) error {
 
-	// init cdm api stop chan and stream
-	cdm.stop = make(chan struct{})
 	cdm.stream = stream
 
 	cdm.wg.Add(2)
 
-	go cdm.recvMsgRoutine()
+	go cdm.receiveMsgRoutine()
 
 	go cdm.sendMsgRoutine()
 
@@ -56,104 +63,106 @@ func (cdm *CDMApi) CDMCommunicate(stream protogo.CDMRpc_CDMCommunicateServer) er
 	return nil
 }
 
-func (cdm *CDMApi) closeConnection() {
-	close(cdm.stop)
-	cdm.stream = nil
-}
-
 // recv three types of msg
 // type1: txRequest
 // type2: get_state response
 // type3: get_bytecode response or path
-func (cdm *CDMApi) recvMsgRoutine() {
+func (cdm *CDMApi) receiveMsgRoutine() {
 
 	cdm.logger.Infof("start receiving cdm message ")
 
 	var err error
 
 	for {
-
 		select {
-		case <-cdm.stop:
+		case <-cdm.stopReceive:
+			cdm.logger.Debugf("close cdm server receive goroutine")
 			cdm.wg.Done()
-			cdm.logger.Debugf("stop receiving cdm message ")
 			return
 		default:
-			recvMsg, errRecv := cdm.stream.Recv()
+			receivedMsg, revErr := cdm.stream.Recv()
 
-			if errRecv == io.EOF {
-				cdm.logger.Debugf("receive eof")
-				cdm.closeConnection()
-				continue
+			if revErr == io.EOF {
+				cdm.logger.Errorf("cdm server receive eof and exit receive goroutine")
+				close(cdm.stopSend)
+				cdm.wg.Done()
+				return
 			}
 
-			if errRecv != nil {
-				cdm.logger.Errorf("fail to recv msg: [%v]", err)
-				cdm.closeConnection()
-				continue
+			if revErr != nil {
+				cdm.logger.Errorf("cdm server receive err and exit receive goroutine %s", revErr)
+				close(cdm.stopSend)
+				cdm.wg.Done()
+				return
 			}
 
-			cdm.logger.Debugf("recv msg [%s]", recvMsg)
+			cdm.logger.Debugf("cdm server recv msg [%s]", receivedMsg)
 
-			switch recvMsg.Type {
+			switch receivedMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_REQUEST:
-				err = cdm.handleTxRequest(recvMsg)
+				err = cdm.handleTxRequest(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE:
-				err = cdm.handleGetStateResponse(recvMsg)
+				err = cdm.handleGetStateResponse(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE:
-				err = cdm.handleGetByteCodeResponse(recvMsg)
+				err = cdm.handleGetByteCodeResponse(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR_RESPONSE:
-				err = cdm.handleCreateKvIteratorResponse(recvMsg)
+				err = cdm.handleCreateKvIteratorResponse(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR_RESPONSE:
-				err = cdm.handleConsumeKvIteratorResponse(recvMsg)
+				err = cdm.handleConsumeKvIteratorResponse(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_TER_RESPONSE:
-				err = cdm.handleCreateKeyHistoryKvIterResponse(recvMsg)
+				err = cdm.handleCreateKeyHistoryKvIterResponse(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE:
-				err = cdm.handleConsumeKeyHistoryKvIterResponse(recvMsg)
+				err = cdm.handleConsumeKeyHistoryKvIterResponse(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE:
-				err = cdm.handleGetSenderAddrResponse(recvMsg)
-
+				err = cdm.handleGetSenderAddrResponse(receivedMsg)
 			default:
-				err = errors.New("unknown message type")
+				errMsg := fmt.Sprintf("unknown message type, received msg: [%s]", receivedMsg)
+				err = errors.New(errMsg)
 			}
 
 			if err != nil {
 				cdm.logger.Errorf("fail to recv msg in handler: [%s]", err)
 			}
-
 		}
-
 	}
 }
 
 func (cdm *CDMApi) sendMsgRoutine() {
 
-	cdm.logger.Infof("start sending cdm message")
+	cdm.logger.Infof("start sending cdm message, goid: %d", cdm.getGoID())
 
 	var err error
 
 	for {
 		select {
 		case txResponseMsg := <-cdm.scheduler.GetTxResponseCh():
-			cdm.logger.Debugf("[%s] retrieve response from chan and send to chain", txResponseMsg.TxId)
+			cdm.logger.Infof("[%s] send tx resp, chan len: [%d]", txResponseMsg.TxId,
+				len(cdm.scheduler.GetTxResponseCh()))
 			cdmMsg := cdm.constructCDMMessage(txResponseMsg)
 			err = cdm.sendMessage(cdmMsg)
 		case getStateReqMsg := <-cdm.scheduler.GetGetStateReqCh():
+			cdm.logger.Infof("[%s] send syscall req, chan len: [%d]", getStateReqMsg.TxId,
+				len(cdm.scheduler.GetGetStateReqCh()))
 			err = cdm.sendMessage(getStateReqMsg)
 		case getByteCodeReqMsg := <-cdm.scheduler.GetByteCodeReqCh():
 			err = cdm.sendMessage(getByteCodeReqMsg)
-		case <-cdm.stop:
+		case <-cdm.stopSend:
 			cdm.wg.Done()
-			cdm.logger.Debugf("stop sending cdm message ")
+			cdm.logger.Debugf("stop cdm server send goroutine")
 			return
 		}
 
 		if err != nil {
-			cdm.logger.Errorf("fail to send msg: [%s]", err)
+			errStatus, _ := status.FromError(err)
+			cdm.logger.Errorf("fail to send msg: err: %s, err massage: %s, err code: %s", err,
+				errStatus.Message(), errStatus.Code())
+			if errStatus.Code() != codes.ResourceExhausted {
+				close(cdm.stopReceive)
+				cdm.wg.Done()
+				return
+			}
 		}
-
 	}
-
 }
 
 func (cdm *CDMApi) constructCDMMessage(txResponseMsg *protogo.TxResponse) *protogo.CDMMessage {
@@ -174,15 +183,18 @@ func (cdm *CDMApi) sendMessage(msg *protogo.CDMMessage) error {
 	return cdm.stream.Send(msg)
 }
 
+// temporarily, just for debug
+func (cdm *CDMApi) getGoID() uint64 {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+	return n
+}
+
 // unmarshal cdm message to send txRequest to txReqCh
 func (cdm *CDMApi) handleTxRequest(cdmMessage *protogo.CDMMessage) error {
-
-	//var txRequest protogo.TxRequest
-	//err := proto.Unmarshal(cdmMessage.Payload, &txRequest)
-	//if err != nil {
-	//	cdm.logger.Errorf("fail to unmarshal cdmMessage.Payload [%s] to protogo.TxRequest ", cdmMessage.Payload)
-	//	return err
-	//}
 
 	txRequest := cdmMessage.TxRequest
 	cdm.logger.Debugf("[%s] cdm server receive tx from chain", txRequest.TxId)

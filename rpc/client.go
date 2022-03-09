@@ -12,7 +12,15 @@ import (
 	"io"
 	"net"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+	"go.uber.org/atomic"
 
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
@@ -25,28 +33,32 @@ const (
 )
 
 type CDMClient struct {
+	count               *atomic.Uint64
 	chainId             string
 	txSendCh            chan *protogo.CDMMessage // used to send tx to docker-go instance
 	stateResponseSendCh chan *protogo.CDMMessage // used to receive message from docker-go
 	lock                sync.RWMutex
 	// key: txId, value: chan, used to receive tx response from docker-go
-	recvChMap map[string]chan *protogo.CDMMessage
-	stream    protogo.CDMRpc_CDMCommunicateClient
-	logger    *logger.CMLogger
-	stop      chan struct{}
-	config    *config.DockerVMConfig
+	recvChMap   map[string]chan *protogo.CDMMessage
+	stream      protogo.CDMRpc_CDMCommunicateClient
+	logger      *logger.CMLogger
+	stopSend    chan struct{}
+	stopReceive chan struct{}
+	config      *config.DockerVMConfig
 }
 
 func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 
 	return &CDMClient{
+		count:               atomic.NewUint64(0),
 		chainId:             chainId,
 		txSendCh:            make(chan *protogo.CDMMessage, txSize),   // tx request
 		stateResponseSendCh: make(chan *protogo.CDMMessage, txSize*8), // get_state response and bytecode response
 		recvChMap:           make(map[string]chan *protogo.CDMMessage),
 		stream:              nil,
 		logger:              logger.GetLoggerByChain(logger.MODULE_VM, chainId),
-		stop:                nil,
+		stopSend:            make(chan struct{}),
+		stopReceive:         make(chan struct{}),
 		config:              vmConfig,
 	}
 }
@@ -59,30 +71,56 @@ func (c *CDMClient) GetStateResponseSendCh() chan *protogo.CDMMessage {
 	return c.stateResponseSendCh
 }
 
-func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	c.logger.Debugf("register receive chan for [%s]", txId)
-	c.recvChMap[txId] = recvCh
-}
-
 func (c *CDMClient) GetCMConfig() *config.DockerVMConfig {
 	return c.config
 }
 
-func (c *CDMClient) deleteRecvChan(txId string) {
+func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	c.logger.Debugf("register receive chan for [%s]", txId)
 
-	c.logger.Debugf("delete receive chan for [%s]", txId)
-	delete(c.recvChMap, txId)
+	_, ok := c.recvChMap[txId]
+	if ok {
+		c.logger.Errorf("[%s] fail to register receive chan cause chan already registered", txId)
+		return utils.ErrDuplicateTxId
+	}
+
+	c.recvChMap[txId] = recvCh
+	return nil
 }
 
 func (c *CDMClient) getRecvChan(txId string) chan *protogo.CDMMessage {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
+	c.logger.Debugf("get receive chan for [%s]", txId)
 	return c.recvChMap[txId]
+}
+
+func (c *CDMClient) getAndDeleteRecvChan(txId string) chan *protogo.CDMMessage {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.logger.Debugf("get receive chan for [%s] and delete", txId)
+	receiveChan, ok := c.recvChMap[txId]
+	if ok {
+		delete(c.recvChMap, txId)
+		return receiveChan
+	}
+	c.logger.Warnf("cannot find receive chan for [%s] and return nil", txId)
+	return nil
+}
+
+func (c *CDMClient) DeleteRecvChan(txId string) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.logger.Debugf("[%s] delete receive chan", txId)
+	_, ok := c.recvChMap[txId]
+	if ok {
+		delete(c.recvChMap, txId)
+		return true
+	}
+	c.logger.Debugf("[%s] delete receive chan fail, receive chan is already deleted", txId)
+	return false
 }
 
 func (c *CDMClient) StartClient() bool {
@@ -101,120 +139,99 @@ func (c *CDMClient) StartClient() bool {
 	}
 
 	c.stream = stream
-	c.stop = make(chan struct{})
 
 	go c.sendMsgRoutine()
 
-	go c.recvMsgRoutine()
+	go c.receiveMsgRoutine()
 
 	return true
 }
 
-func (c *CDMClient) closeConnection() {
-	// close two goroutine
-	close(c.stop)
-	// close stream
-	err := c.stream.CloseSend()
-	if err != nil {
-		return
-	}
-}
-
+//todo: test if server is killed, does sendMsg receive error or not
 func (c *CDMClient) sendMsgRoutine() {
 
-	c.logger.Debugf("start sending cdm message ")
-	// listen three chan:
-	// txSendCh: used to send tx to docker manager
-	// stateResponseSendCh: used to send get state response or bytecode response to docker manager
-	// stopCh
+	c.logger.Infof("start sending cdm message ")
 
 	var err error
 
 	for {
 		select {
 		case txMsg := <-c.txSendCh:
-			c.logger.Debugf("[%s] send tx request to docker manager", txMsg.TxId)
+			c.logger.Infof("[%s] send tx req, chan len: [%d]", txMsg.TxId, len(c.txSendCh))
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
-			c.logger.Debugf("[%s] send request to docker manager", stateMsg.TxId)
+			c.logger.Infof("[%s] send syscall resp, chan len: [%d]", stateMsg.TxId, len(c.stateResponseSendCh))
 			err = c.sendCDMMsg(stateMsg)
-		case <-c.stop:
-			c.logger.Debugf("close send cdm msg")
+		case <-c.stopSend:
+			c.logger.Debugf("close cdm send goroutine")
 			return
 		}
 
 		if err != nil {
-			c.logger.Errorf("fail to send msg: %s", err)
+			errStatus, _ := status.FromError(err)
+			c.logger.Errorf("fail to send msg: err: %s, err massage: %s, err code: %s", err,
+				errStatus.Message(), errStatus.Code())
+			if errStatus.Code() != codes.ResourceExhausted {
+				close(c.stopReceive)
+				return
+			}
 		}
 	}
-
 }
 
-func (c *CDMClient) recvMsgRoutine() {
+func (c *CDMClient) receiveMsgRoutine() {
 
-	c.logger.Debugf("start receiving cdm message ")
+	c.logger.Infof("start receiving cdm message ")
 
-	var err error
+	var waitCh chan *protogo.CDMMessage
 
 	for {
 
 		select {
-		case <-c.stop:
-			c.logger.Debugf("close recv cdm msg")
+		case <-c.stopReceive:
+			c.logger.Debugf("close cdm client receive goroutine")
 			return
 		default:
-			recvMsg, recvErr := c.stream.Recv()
+			receivedMsg, revErr := c.stream.Recv()
 
-			if recvErr == io.EOF {
-				c.closeConnection()
-				continue
+			if revErr == io.EOF {
+				c.logger.Error("client receive eof and exit receive goroutine")
+				close(c.stopSend)
+				return
 			}
 
-			if recvErr != nil {
-				c.closeConnection()
-				continue
+			if revErr != nil {
+				c.logger.Errorf("client receive err and exit receive goroutine %s", revErr)
+				close(c.stopSend)
+				return
 			}
 
-			c.logger.Debugf("[%s] receive msg from docker manager", recvMsg.TxId)
+			c.logger.Debugf("[%s] receive msg from docker manager", receivedMsg.TxId)
 
-			switch recvMsg.Type {
+			switch receivedMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-				waitCh := c.getRecvChan(recvMsg.TxId)
-				waitCh <- recvMsg
-				c.deleteRecvChan(recvMsg.TxId)
-			case protogo.CDMType_CDM_TYPE_GET_STATE:
-				waitCh := c.getRecvChan(recvMsg.TxId)
-				waitCh <- recvMsg
-			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
-				waitCh := c.getRecvChan(recvMsg.TxId)
-				waitCh <- recvMsg
-			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
-				waitCh := c.getRecvChan(recvMsg.TxId)
-				waitCh <- recvMsg
-			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
-				waitCh := c.getRecvChan(recvMsg.TxId)
-				waitCh <- recvMsg
-			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
-				waitCh := c.getRecvChan(recvMsg.TxId)
-				waitCh <- recvMsg
-			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER:
-				waitCh := c.getRecvChan(recvMsg.TxId)
-				waitCh <- recvMsg
-			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-				waitCh := c.getRecvChan(recvMsg.TxId)
-				waitCh <- recvMsg
-
+				waitCh = c.getAndDeleteRecvChan(receivedMsg.TxId)
+				if waitCh == nil {
+					c.logger.Warnf("[%s] fail to retrieve response chan, tx response chan is nil",
+						receivedMsg.TxId)
+					continue
+				}
+				waitCh <- receivedMsg
+			case protogo.CDMType_CDM_TYPE_GET_STATE, protogo.CDMType_CDM_TYPE_GET_BYTECODE,
+				protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
+				protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
+				protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
+				waitCh = c.getRecvChan(receivedMsg.TxId)
+				if waitCh == nil {
+					c.logger.Warnf("[%s] fail to retrieve response chan, response chan is nil", receivedMsg.TxId)
+					continue
+				}
+				waitCh <- receivedMsg
 			default:
-				c.logger.Errorf("unknown message type")
+				c.logger.Errorf("unknown message type, received msg: [%v]", receivedMsg)
 			}
-
-			if err != nil {
-				c.logger.Error(err)
-			}
-
 		}
 	}
-
 }
 
 func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
@@ -227,10 +244,9 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 
 	dialOpts := []grpc.DialOption{
 		grpc.WithInsecure(),
-		grpc.FailOnNonTempDialError(true),
 		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(config.MaxRecvSize*1024*1024),
-			grpc.MaxCallSendMsgSize(config.MaxSendSize*1024*1024),
+			grpc.MaxCallRecvMsgSize(int(utils.GetMaxRecvMsgSizeFromConfig(c.config)*1024*1024)),
+			grpc.MaxCallSendMsgSize(int(utils.GetMaxSendMsgSizeFromConfig(c.config)*1024*1024)),
 		),
 	}
 
@@ -256,4 +272,13 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 // GetCDMClientStream get rpc stream
 func GetCDMClientStream(conn *grpc.ClientConn) (protogo.CDMRpc_CDMCommunicateClient, error) {
 	return protogo.NewCDMRpcClient(conn).CDMCommunicate(context.Background())
+}
+
+func (c *CDMClient) GetUniqueTxKey(txId string) string {
+	var sb strings.Builder
+	nextCount := c.count.Add(1)
+	sb.WriteString(txId)
+	sb.WriteString("#")
+	sb.WriteString(strconv.FormatUint(nextCount, 10))
+	return sb.String()
 }
