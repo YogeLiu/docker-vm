@@ -38,7 +38,7 @@ func NewCDMServer() (*CDMServer, error) {
 		endPoint string
 	)
 
-	port := os.Getenv("ENV_Docker_VM_Port")
+	port := os.Getenv(config.ENV_VM_SERVICE_PORT)
 
 	if port == "" {
 		endPoint = fmt.Sprintf(":%d", config.DefaultListenPort)
