@@ -7,11 +7,9 @@ import (
 )
 
 const (
-	DefaultMaxSendSize    = 4
-	DefaultMaxRecvSize    = 4
-	DefaultUserNum        = 1000
-	DefaultTxTimeLimit    = 5
-	DefaultMaxConcurrency = 500
+	DefaultMaxSendSize   = 4
+	DefaultMaxRecvSize   = 4
+	DefaultMaxConnection = 1
 )
 
 func SplitContractName(contractNameAndVersion string) string {
@@ -33,23 +31,9 @@ func GetMaxRecvMsgSizeFromConfig(config *config.DockerVMConfig) uint32 {
 	return config.MaxRecvMsgSize
 }
 
-func GetMaxConcurrencyFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.MaxConcurrency == 0 {
-		return DefaultMaxConcurrency
+func GetMaxConnectionFromConfig(config *config.DockerVMConfig) uint32 {
+	if config.MaxConnection == 0 {
+		return DefaultMaxConnection
 	}
-	return config.MaxConcurrency
-}
-
-func GetTxTimeLimitFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.TxTimeLimit == 0 {
-		return DefaultTxTimeLimit
-	}
-	return config.TxTimeLimit
-}
-
-func GetUserNumFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.UserNum == 0 {
-		return DefaultUserNum
-	}
-	return config.UserNum
+	return config.MaxConnection
 }

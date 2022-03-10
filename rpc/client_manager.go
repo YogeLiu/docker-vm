@@ -27,10 +27,9 @@ const (
 )
 
 const (
-	maxClientNum = 10
-	clientDelta  = 10
-	txSize       = 15000
-	eventSize    = 100
+	clientDelta = 10
+	txSize      = 15000
+	eventSize   = 100
 )
 
 type ClientManager struct {
@@ -194,7 +193,7 @@ func (cm *ClientManager) listen() {
 
 func (cm *ClientManager) increaseConnection() error {
 	cm.logger.Debugf("increase new connection")
-	if len(cm.aliveClientMap) >= maxClientNum {
+	if len(cm.aliveClientMap) >= int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig())) {
 		return utils.ErrClientReachLimit
 	}
 	newIndex := cm.getNextIndex()
@@ -203,7 +202,7 @@ func (cm *ClientManager) increaseConnection() error {
 		return err
 	}
 	cm.aliveClientMap[newIndex] = newClient
-	if len(cm.aliveClientMap) == maxClientNum {
+	if len(cm.aliveClientMap) == int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig())) {
 		cm.aliveClientReachLimit = true
 	}
 	return nil
