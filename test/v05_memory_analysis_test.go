@@ -75,7 +75,7 @@ func TestDockerGoMemory(t *testing.T) {
 		fmt.Printf("deploy user contract successfully\n")
 	}
 
-	testMultipleTxs(mockLogger)
+	//testMultipleTxs(mockLogger)
 
 	fmt.Println("tear down")
 	tearDownTest()

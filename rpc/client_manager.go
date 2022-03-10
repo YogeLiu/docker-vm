@@ -46,8 +46,6 @@ type ClientManager struct {
 	sysCallRespSendCh     chan *protogo.CDMMessage            // used to receive message from docker-go
 	receiveChMap          map[string]chan *protogo.CDMMessage // used to receive tx response from docker-go
 	eventCh               chan *Event                         // used to receive event
-	stopAllSend           chan struct{}
-	stopAllReceive        chan struct{}
 }
 
 func NewClientManager(chainId string, vmConfig *config.DockerVMConfig) *ClientManager {
@@ -63,8 +61,6 @@ func NewClientManager(chainId string, vmConfig *config.DockerVMConfig) *ClientMa
 		sysCallRespSendCh:     make(chan *protogo.CDMMessage, txSize*8),
 		receiveChMap:          make(map[string]chan *protogo.CDMMessage),
 		eventCh:               make(chan *Event, eventSize),
-		stopAllSend:           make(chan struct{}),
-		stopAllReceive:        make(chan struct{}),
 	}
 }
 
@@ -79,20 +75,6 @@ func (cm *ClientManager) Start() error {
 	go cm.listen()
 
 	return nil
-}
-
-func (cm *ClientManager) Stop() error {
-	// 1. stop all client
-	// 2. clean alive client map
-	// 3. stop event listen
-	return nil
-}
-
-func (cm *ClientManager) HasConnection() bool {
-	if cm.aliveClientMap != nil && len(cm.aliveClientMap) > 0 {
-		return true
-	}
-	return false
 }
 
 func (cm *ClientManager) GetUniqueTxKey(txId string) string {
@@ -187,8 +169,6 @@ func (cm *ClientManager) listen() {
 	cm.logger.Infof("client manager begin listen event")
 	for {
 		select {
-		case <-cm.stopAllSend:
-		case <-cm.stopAllReceive:
 		case event := <-cm.eventCh:
 			switch event.eventType {
 			case connectionIncrease:
@@ -202,11 +182,14 @@ func (cm *ClientManager) listen() {
 					cm.logger.Errorf("fail to increase new client: %s", err)
 				}
 			case connectionStopped:
-				cm.dropConnection(event)
+				hasConnection := cm.dropConnection(event)
+				if !hasConnection {
+					cm.logger.Infof("exit client manager listen")
+					return
+				}
 			default:
 				cm.logger.Warnf("unknown event: %s", event)
 			}
-
 		}
 	}
 }
@@ -228,13 +211,13 @@ func (cm *ClientManager) increaseConnection() error {
 	return nil
 }
 
-func (cm *ClientManager) dropConnection(event *Event) {
+func (cm *ClientManager) dropConnection(event *Event) bool {
 	cm.logger.Debugf("drop connection: %d", event.id)
 	_, ok := cm.aliveClientMap[event.id]
 	if ok {
 		delete(cm.aliveClientMap, event.id)
-		return
 	}
+	return len(cm.aliveClientMap) > 0
 }
 
 func (cm *ClientManager) getNextIndex() uint64 {
