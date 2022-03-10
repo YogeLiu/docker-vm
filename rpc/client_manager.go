@@ -168,28 +168,26 @@ func (cm *ClientManager) DeleteReceiveChan(txId string) bool {
 func (cm *ClientManager) listen() {
 	cm.logger.Infof("client manager begin listen event")
 	for {
-		select {
-		case event := <-cm.eventCh:
-			switch event.eventType {
-			case connectionIncrease:
-				err := cm.increaseConnection()
-				if err == utils.ErrClientReachLimit {
-					cm.logger.Warnf("client already reach limit")
-					continue
-				}
-				if err != nil {
-					// todo: stop all
-					cm.logger.Errorf("fail to increase new client: %s", err)
-				}
-			case connectionStopped:
-				hasConnection := cm.dropConnection(event)
-				if !hasConnection {
-					cm.logger.Infof("exit client manager listen")
-					return
-				}
-			default:
-				cm.logger.Warnf("unknown event: %s", event)
+		event := <-cm.eventCh
+		switch event.eventType {
+		case connectionIncrease:
+			err := cm.increaseConnection()
+			if err == utils.ErrClientReachLimit {
+				cm.logger.Warnf("client already reach limit")
+				continue
 			}
+			if err != nil {
+				// todo: stop all
+				cm.logger.Errorf("fail to increase new client: %s", err)
+			}
+		case connectionStopped:
+			hasConnection := cm.dropConnection(event)
+			if !hasConnection {
+				cm.logger.Infof("exit client manager listen")
+				return
+			}
+		default:
+			cm.logger.Warnf("unknown event: %s", event)
 		}
 	}
 }
