@@ -8,6 +8,7 @@ package test
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -84,6 +85,26 @@ func TestDockerGoPutState(t *testing.T) {
 	value, ok = tmpSimContextMap[fmt.Sprintf("%s::", ContractNameTest)]
 	assert.True(t, ok)
 	assert.Equal(t, []byte("500"), value)
+
+	parameters5 := generateInitParams()
+	parameters5["method"] = []byte("put_state")
+	parameters5["key"] = []byte("key1")
+	parameters5["field"] = []byte("field1")
+
+	generateValue := func(size int) string {
+		var sb strings.Builder
+		for i := 0; i < size; i++ {
+			sb.WriteString("a")
+		}
+		return sb.String()
+	}
+	fiveMData := generateValue(5000000)
+	parameters5["value"] = []byte(fiveMData)
+
+	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1")), []byte(fiveMData))
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+		parameters5, mockTxContext, uint64(123))
+	assert.Equal(t, uint32(0), result.Code)
 
 	tearDownTest()
 }

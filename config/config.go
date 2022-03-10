@@ -17,6 +17,11 @@ type DockerVMConfig struct {
 	UserNum               uint32 `mapstructure:"user_num"`
 	TxTimeLimit           uint32 `mapstructure:"time_limit"`
 	MaxConcurrency        uint32 `mapstructure:"max_concurrency"`
+	MaxSendMsgSize        uint32 `mapstructure:"max_send_msg_size"`
+	MaxRecvMsgSize        uint32 `mapstructure:"max_recv_msg_size"`
+	EnablePprof           bool   `mapstructure:"enable_pprof"`
+	DockerVMPprofPort     uint32 `mapstructure:"docker_vm_pprof_port"`
+	SandBoxPprofPort      uint32 `mapstructure:"sandbox_pprof_port"`
 }
 
 // DockerContainerConfig docker container settings
@@ -39,14 +44,16 @@ type DockerContainerConfig struct {
 type Bool int32
 
 const (
-	ENV_ENABLE_UDS      = "ENV_ENABLE_UDS"
-	ENV_USER_NUM        = "ENV_USER_NUM"
-	ENV_TX_TIME_LIMIT   = "ENV_TX_TIME_LIMIT"
-	ENV_LOG_LEVEL       = "ENV_LOG_LEVEL"
-	ENV_LOG_IN_CONSOLE  = "ENV_LOG_IN_CONSOLE"
-	ENV_MAX_CONCURRENCY = "ENV_MAX_CONCURRENCY"
-	EnvEnablePprof      = "ENV_ENABLE_PPROF"
-	EnvPprofPort        = "ENV_PPROF_PORT"
+	ENV_ENABLE_UDS        = "ENV_ENABLE_UDS"
+	ENV_USER_NUM          = "ENV_USER_NUM"
+	ENV_TX_TIME_LIMIT     = "ENV_TX_TIME_LIMIT"
+	ENV_LOG_LEVEL         = "ENV_LOG_LEVEL"
+	ENV_LOG_IN_CONSOLE    = "ENV_LOG_IN_CONSOLE"
+	ENV_MAX_CONCURRENCY   = "ENV_MAX_CONCURRENCY"
+	EnvEnablePprof        = "ENV_ENABLE_PPROF"
+	EnvPprofPort          = "ENV_PPROF_PORT"
+	ENV_MAX_SEND_MSG_SIZE = "ENV_MAX_SEND_MSG_SIZE"
+	ENV_MAX_RECV_MSG_SIZE = "ENV_MAX_RECV_MSG_SIZE"
 
 	// ContractsDir dir save executable contract
 	ContractsDir = "contracts"
@@ -55,12 +62,7 @@ const (
 	// SockName domain socket file name
 	SockName = "cdm.sock"
 
-	MaxSendSize = 10
-	MaxRecvSize = 10
-
-	TestPort  = "22356"
-	PProfPort = "23356"
-	SDKPort   = "24356"
+	TestPort = "22356"
 
 	// stateKvIterator method
 	FuncKvIteratorCreate    = "createKvIterator"

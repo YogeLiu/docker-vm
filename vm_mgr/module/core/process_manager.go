@@ -1,7 +1,10 @@
 /*
-	Copyright (C) BABEC. All rights reserved.
-	SPDX-License-Identifier: Apache-2.0
+Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
 */
+
 package core
 
 import (
@@ -62,7 +65,7 @@ func (pm *ProcessManager) SetScheduler(scheduler protocol.Scheduler) {
 func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
 	pm.balanceRWMutex.Lock()
 	defer pm.balanceRWMutex.Unlock()
-	// processNamePrefix: contractName:contractVersion
+	// processNamePrefix: contractName#contractVersion
 	contractKey := utils.ConstructContractKey(txRequest.ContractName, txRequest.ContractVersion)
 	// process exist, put current tx into process waiting queue and return
 	processBalance := pm.balanceTable[contractKey]
@@ -95,7 +98,7 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 	}
 	processBalance.AddProcess(process, processName)
 	process.AddTxWaitingQueue(txRequest)
-	go pm.runningProcess(process)
+	go process.ExecProcess()
 
 	return nil
 }
@@ -149,11 +152,10 @@ func (pm *ProcessManager) createNewProcess(processName string, txRequest *protog
 func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
 	// validate contract deployed or not
 	contractKey := utils.ConstructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
-	contractPath, exist := pm.contractManager.checkContractDeployed(contractKey)
-
-	if !exist {
-		pm.logger.Errorf(utils.ContractNotDeployedError.Error())
-		errResponse := constructCallContractErrorResponse(utils.ContractNotDeployedError.Error(), crossContractTx.TxId,
+	contractPath, err := pm.contractManager.GetContract(crossContractTx.TxId, contractKey)
+	if err != nil {
+		pm.logger.Errorf(err.Error())
+		errResponse := constructCallContractErrorResponse(err.Error(), crossContractTx.TxId,
 			crossContractTx.TxContext.CurrentHeight)
 		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
 		return
@@ -177,8 +179,11 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 	// register cross process
 	pm.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newCrossProcess)
 
-	err = newCrossProcess.LaunchProcess()
-	if err != nil {
+	// 1. success finished
+	// 2. panic
+	// 3. timeout
+	exitErr := newCrossProcess.LaunchProcess()
+	if exitErr != nil {
 		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
 			crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
 		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
@@ -191,73 +196,15 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 
 // ReleaseProcess release balance process
 // @param: processName: contract:version#timestamp:index
-func (pm *ProcessManager) ReleaseProcess(processName string) bool {
+func (pm *ProcessManager) ReleaseProcess(processName string, user *security.User) bool {
 	pm.logger.Infof("release process: [%s]", processName)
 	contractKey := utils.GetContractKeyFromProcessName(processName)
-	return pm.removeProcessFromProcessBalance(contractKey, processName)
-}
-
-func (pm *ProcessManager) runningProcess(process *Process) {
-	// execute contract method, including init, invoke
-	go pm.listenProcessInvoke(process)
-	// launch process wait block until process finished
-runProcess:
-	err := process.LaunchProcess()
-
-	if err != nil && process.ProcessState != protogo.ProcessState_PROCESS_STATE_EXPIRE {
-		currentTx := process.Handler.TxRequest
-
-		pm.logger.Warnf("scheduler noticed process [%s] stop, tx [%s], err [%s]", process.processName,
-			process.Handler.TxRequest.TxId, err)
-
-		processDepth := pm.getProcessDepth(currentTx.TxContext.OriginalProcessName)
-		if processDepth == nil {
-			pm.logger.Warnf("return back error result for process [%s] for tx [%s]", process.processName, currentTx.TxId)
-			pm.scheduler.ReturnErrorResponse(currentTx.TxId, err.Error())
-		} else {
-			errMsg := fmt.Sprintf("cross contract fail: err is:%s, cross processes: %s", err.Error(),
-				processDepth.GetConcatProcessName())
-			pm.logger.Warn(errMsg)
-			pm.scheduler.ReturnErrorResponse(currentTx.TxId, errMsg)
-		}
-
-		if process.ProcessState != protogo.ProcessState_PROCESS_STATE_FAIL {
-			// restart process and trigger next
-			pm.logger.Debugf("restart process [%s]", process.processName)
-			goto runProcess
-		}
+	released := pm.removeProcessFromProcessBalance(contractKey, processName)
+	if !released {
+		return false
 	}
-
-	// when process timeout, release resources
-	pm.logger.Debugf("release process: [%s]", process.processName)
-
-	if !pm.ReleaseProcess(process.processName) {
-		goto runProcess
-	}
-	_ = pm.usersManager.FreeUser(process.user)
-}
-
-func (pm *ProcessManager) listenProcessInvoke(process *Process) {
-	for {
-		select {
-		case <-process.txTrigger:
-			if process.ProcessState != protogo.ProcessState_PROCESS_STATE_READY {
-				continue
-			}
-			success, currentTxId, err := process.InvokeProcess()
-
-			if !success {
-				return
-			}
-
-			if err != nil {
-				pm.scheduler.ReturnErrorResponse(currentTxId, err.Error())
-			}
-
-		case <-process.Handler.txExpireTimer.C:
-			process.StopProcess(false)
-		}
-	}
+	_ = pm.usersManager.FreeUser(user)
+	return true
 }
 
 // GetProcess retrieve process from process manager, could be original process or cross process:
