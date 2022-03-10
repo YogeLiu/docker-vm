@@ -29,7 +29,6 @@ import (
 type CDMApi struct {
 	logger      *zap.SugaredLogger
 	scheduler   protocol.Scheduler
-	stream      protogo.CDMRpc_CDMCommunicateServer
 	stopSend    chan struct{}
 	stopReceive chan struct{}
 	wg          *sync.WaitGroup
@@ -39,7 +38,6 @@ func NewCDMApi(scheduler protocol.Scheduler) *CDMApi {
 	return &CDMApi{
 		scheduler:   scheduler,
 		logger:      logger.NewDockerLogger(logger.MODULE_CDM_API, config.DockerLogDir),
-		stream:      nil,
 		stopSend:    make(chan struct{}),
 		stopReceive: make(chan struct{}),
 		wg:          new(sync.WaitGroup),
@@ -51,13 +49,11 @@ func (cdm *CDMApi) CDMCommunicate(stream protogo.CDMRpc_CDMCommunicateServer) er
 
 	cdm.logger.Infof("new cdm connection start")
 
-	cdm.stream = stream
-
 	cdm.wg.Add(2)
 
-	go cdm.receiveMsgRoutine()
+	go cdm.receiveMsgRoutine(stream)
 
-	go cdm.sendMsgRoutine()
+	go cdm.sendMsgRoutine(stream)
 
 	cdm.wg.Wait()
 
@@ -69,7 +65,7 @@ func (cdm *CDMApi) CDMCommunicate(stream protogo.CDMRpc_CDMCommunicateServer) er
 // type1: txRequest
 // type2: get_state response
 // type3: get_bytecode response or path
-func (cdm *CDMApi) receiveMsgRoutine() {
+func (cdm *CDMApi) receiveMsgRoutine(stream protogo.CDMRpc_CDMCommunicateServer) {
 
 	cdm.logger.Infof("start receiving cdm message ")
 
@@ -82,7 +78,7 @@ func (cdm *CDMApi) receiveMsgRoutine() {
 			cdm.wg.Done()
 			return
 		default:
-			receivedMsg, revErr := cdm.stream.Recv()
+			receivedMsg, revErr := stream.Recv()
 
 			if revErr == io.EOF {
 				cdm.logger.Errorf("cdm server receive eof and exit receive goroutine")
@@ -129,7 +125,7 @@ func (cdm *CDMApi) receiveMsgRoutine() {
 	}
 }
 
-func (cdm *CDMApi) sendMsgRoutine() {
+func (cdm *CDMApi) sendMsgRoutine(stream protogo.CDMRpc_CDMCommunicateServer) {
 
 	cdm.logger.Infof("start sending cdm message, goid: %d", cdm.getGoID())
 
@@ -138,16 +134,16 @@ func (cdm *CDMApi) sendMsgRoutine() {
 	for {
 		select {
 		case txResponseMsg := <-cdm.scheduler.GetTxResponseCh():
-			cdm.logger.Debugf("[%s] send tx resp, chan len: [%d]", txResponseMsg.TxId,
-				len(cdm.scheduler.GetTxResponseCh()))
+			//cdm.logger.Infof("[%s] send tx resp, chan len: [%d]", txResponseMsg.TxId,
+			//	len(cdm.scheduler.GetTxResponseCh()))
 			cdmMsg := cdm.constructCDMMessage(txResponseMsg)
-			err = cdm.sendMessage(cdmMsg)
+			err = cdm.sendMessage(cdmMsg, stream)
 		case getStateReqMsg := <-cdm.scheduler.GetGetStateReqCh():
-			cdm.logger.Debugf("[%s] send syscall req, chan len: [%d]", getStateReqMsg.TxId,
-				len(cdm.scheduler.GetGetStateReqCh()))
-			err = cdm.sendMessage(getStateReqMsg)
+			//cdm.logger.Infof("[%s] send syscall req, chan len: [%d]", getStateReqMsg.TxId,
+			//	len(cdm.scheduler.GetGetStateReqCh()))
+			err = cdm.sendMessage(getStateReqMsg, stream)
 		case getByteCodeReqMsg := <-cdm.scheduler.GetByteCodeReqCh():
-			err = cdm.sendMessage(getByteCodeReqMsg)
+			err = cdm.sendMessage(getByteCodeReqMsg, stream)
 		case <-cdm.stopSend:
 			cdm.wg.Done()
 			cdm.logger.Debugf("stop cdm server send goroutine")
@@ -176,9 +172,9 @@ func (cdm *CDMApi) constructCDMMessage(txResponseMsg *protogo.TxResponse) *proto
 	return cdmMsg
 }
 
-func (cdm *CDMApi) sendMessage(msg *protogo.CDMMessage) error {
+func (cdm *CDMApi) sendMessage(msg *protogo.CDMMessage, stream protogo.CDMRpc_CDMCommunicateServer) error {
 	cdm.logger.Debugf("cdm send message [%s]", msg)
-	return cdm.stream.Send(msg)
+	return stream.Send(msg)
 }
 
 // temporarily, just for debug

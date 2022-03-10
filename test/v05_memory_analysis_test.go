@@ -88,8 +88,8 @@ func testMultipleTxs(mockLogger *logger.CMLogger) {
 
 	mockTxContext.EXPECT().Put(contractName, []byte("key"), []byte("name")).Return(nil).AnyTimes()
 
-	loopNum := 100
-	threadNum := 100
+	loopNum := 300
+	threadNum := 300
 
 	for loopIndex := 0; loopIndex < loopNum; loopIndex++ {
 

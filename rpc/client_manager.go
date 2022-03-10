@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	maxClientNum = 2
+	maxClientNum = 10
 	clientDelta  = 10
 	txSize       = 15000
 	eventSize    = 100
