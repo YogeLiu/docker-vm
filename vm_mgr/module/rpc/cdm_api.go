@@ -49,6 +49,8 @@ func NewCDMApi(scheduler protocol.Scheduler) *CDMApi {
 // CDMCommunicate docker manager stream function
 func (cdm *CDMApi) CDMCommunicate(stream protogo.CDMRpc_CDMCommunicateServer) error {
 
+	cdm.logger.Infof("new cdm connection start")
+
 	cdm.stream = stream
 
 	cdm.wg.Add(2)
@@ -166,15 +168,11 @@ func (cdm *CDMApi) sendMsgRoutine() {
 }
 
 func (cdm *CDMApi) constructCDMMessage(txResponseMsg *protogo.TxResponse) *protogo.CDMMessage {
-
-	//payload, _ := txResponseMsg.Marshal()
-
 	cdmMsg := &protogo.CDMMessage{
 		TxId:       txResponseMsg.TxId,
 		Type:       protogo.CDMType_CDM_TYPE_TX_RESPONSE,
 		TxResponse: txResponseMsg,
 	}
-
 	return cdmMsg
 }
 

@@ -96,8 +96,7 @@ func (s *DockerScheduler) RegisterResponseCh(responseId string, responseCh chan 
 // GetResponseChByTxId get response chan by tx id
 func (s *DockerScheduler) GetResponseChByTxId(txId string) chan *protogo.CDMMessage {
 
-	responseCh, _ := s.responseChMap.Load(txId)
-	s.responseChMap.Delete(txId)
+	responseCh, _ := s.responseChMap.LoadAndDelete(txId)
 	return responseCh.(chan *protogo.CDMMessage)
 }
 

@@ -75,7 +75,7 @@ func TestDockerGoMemory(t *testing.T) {
 		fmt.Printf("deploy user contract successfully\n")
 	}
 
-	//testMultipleTxs(mockLogger)
+	testMultipleTxs(mockLogger)
 
 	fmt.Println("tear down")
 	tearDownTest()
@@ -83,13 +83,13 @@ func TestDockerGoMemory(t *testing.T) {
 
 func testMultipleTxs(mockLogger *logger.CMLogger) {
 	fmt.Println("--------- Ready to analysis --------------")
-	time.Sleep(20 * time.Second)
+	time.Sleep(5 * time.Second)
 	fmt.Println("---------- Start -------------------------")
 
 	mockTxContext.EXPECT().Put(contractName, []byte("key"), []byte("name")).Return(nil).AnyTimes()
 
-	loopNum := 2000
-	threadNum := 300
+	loopNum := 100
+	threadNum := 100
 
 	for loopIndex := 0; loopIndex < loopNum; loopIndex++ {
 

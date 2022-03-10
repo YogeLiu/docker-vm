@@ -55,9 +55,9 @@ type DockerManager struct {
 	ctx             context.Context
 	dockerAPIClient *client.Client // docker client
 
-	cdmClient      *rpc.CDMClient // grpc client
-	clientInitOnce sync.Once
-	cdmState       bool
+	clientManager       *rpc.ClientManager // grpc client
+	clientInitOnce      sync.Once
+	clientManagerStatus bool
 
 	dockerVMConfig        *config.DockerVMConfig        // original config from local config
 	dockerContainerConfig *config.DockerContainerConfig // container setting
@@ -99,9 +99,9 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		mgrLogger:             dockerManagerLogger,
 		ctx:                   context.Background(),
 		dockerAPIClient:       dockerAPIClient,
-		cdmClient:             rpc.NewCDMClient(chainId, dockerVMConfig),
+		clientManager:         rpc.NewClientManager(chainId, dockerVMConfig),
 		clientInitOnce:        sync.Once{},
-		cdmState:              false,
+		clientManagerStatus:   false,
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
 	}
@@ -223,7 +223,7 @@ func (m *DockerManager) StopVM() error {
 	//	return err
 	//}
 
-	m.cdmState = false
+	m.clientManagerStatus = false
 	m.clientInitOnce = sync.Once{}
 
 	m.mgrLogger.Info("stop and remove docker vm [%s]", m.dockerContainerConfig.ContainerName)
@@ -235,29 +235,35 @@ func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, c
 	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
 
 	// add client state logic
-	if !m.getCDMState() {
-		m.startCDMClient()
+	// todo: re think the logic when cannot build the connection to docker
+	if !m.getClientManagerState() {
+		m.startClientManager()
 	}
 
 	return &RuntimeInstance{
-		ChainId: chainId,
-		Client:  m.cdmClient,
-		Log:     logger,
+		ChainId:       chainId,
+		ClientManager: m.clientManager,
+		Log:           logger,
 	}, nil
 }
 
 // StartCDMClient start CDM grpc rpc
-func (m *DockerManager) startCDMClient() {
+func (m *DockerManager) startClientManager() {
 
 	m.clientInitOnce.Do(func() {
-		state := m.cdmClient.StartClient()
-		m.cdmState = state
-		m.mgrLogger.Debugf("cdm rpc state is: %v", state)
+		err := m.clientManager.Start()
+		if err != nil {
+			m.mgrLogger.Errorf("fail to start client manager: %s", err)
+			m.clientManagerStatus = false
+			return
+		}
+		m.clientManagerStatus = true
+		m.mgrLogger.Debugf("connection state is: %v", true)
 	})
 }
 
-func (m *DockerManager) getCDMState() bool {
-	return m.cdmState
+func (m *DockerManager) getClientManagerState() bool {
+	return m.clientManagerStatus
 }
 
 // ------------------ image functions --------------
