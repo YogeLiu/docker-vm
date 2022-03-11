@@ -9,9 +9,9 @@ import (
 const (
 	DefaultMaxSendSize    = 4
 	DefaultMaxRecvSize    = 4
-	DefaultUserNum        = 100
-	DefaultTxTimeLimit    = 2
-	DefaultMaxConcurrency = 50
+	DefaultUserNum        = 1000
+	DefaultTxTimeLimit    = 5
+	DefaultMaxConcurrency = 500
 )
 
 func SplitContractName(contractNameAndVersion string) string {
