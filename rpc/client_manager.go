@@ -27,9 +27,9 @@ const (
 )
 
 const (
-	clientDelta = 10
-	txSize      = 15000
-	eventSize   = 100
+	clientIncreaseDelta = 10
+	txSize              = 15000
+	eventSize           = 100
 )
 
 type ClientManager struct {
@@ -104,7 +104,7 @@ func (cm *ClientManager) PutEvent(event *Event) {
 func (cm *ClientManager) PutTxRequest(txRequest *protogo.CDMMessage) {
 	cm.logger.Debugf("[%s] put tx in send chan with length [%d]", txRequest.TxId, len(cm.txSendCh))
 	cm.txSendCh <- txRequest
-	if !cm.aliveClientReachLimit && len(cm.txSendCh) > clientDelta {
+	if !cm.aliveClientReachLimit && len(cm.txSendCh) > clientIncreaseDelta {
 		cm.eventCh <- &Event{
 			id:        0,
 			eventType: connectionIncrease,

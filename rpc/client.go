@@ -112,10 +112,6 @@ func (c *CDMClient) sendMsgRoutine() {
 				errStatus.Message(), errStatus.Code())
 			if errStatus.Code() != codes.ResourceExhausted {
 				close(c.stopReceive)
-				c.clientMgr.PutEvent(&Event{
-					id:        c.id,
-					eventType: connectionStopped,
-				})
 				return
 			}
 		}
