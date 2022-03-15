@@ -92,17 +92,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	var err error
 	// init func gas used calc and check gas limit
-	if gasUsed, err = gas.InitFuncGasUsed(gasUsed, parameters,
-		gas.ContractParamCreatorOrgId,
-		gas.ContractParamCreatorRole,
-		gas.ContractParamCreatorPk,
-		gas.ContractParamSenderOrgId,
-		gas.ContractParamSenderRole,
-		gas.ContractParamSenderPk,
-		gas.ContractParamBlockHeight,
-		gas.ContractParamTxId,
-		gas.ContractParamTxTimeStamp,
-	); err != nil {
+	if gasUsed, err = gas.InitFuncGasUsed(gasUsed); err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
 	}

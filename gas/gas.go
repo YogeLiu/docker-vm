@@ -21,15 +21,6 @@ const (
 	GetStateGasPrice              uint64 = 1
 	PutStateGasPrice              uint64 = 10
 	DelStateGasPrice              uint64 = 10
-	GetCreatorOrgIdGasPrice       uint64 = 1
-	GetCreatorRoleGasPrice        uint64 = 1
-	GetCreatorPkGasPrice          uint64 = 1
-	GetSenderOrgIdGasPrice        uint64 = 1
-	GetSenderRoleGasPrice         uint64 = 1
-	GetSenderPkGasPrice           uint64 = 1
-	GetBlockHeightGasPrice        uint64 = 1
-	GetTxIdGasPrice               uint64 = 1
-	GetTimeStampPrice             uint64 = 1
 	EmitEventGasPrice             uint64 = 5
 	LogGasPrice                   uint64 = 5
 	KvIteratorCreateGasPrice      uint64 = 1
@@ -43,23 +34,15 @@ const (
 	KeyHistoryIterCloseGasPrice   uint64 = 1
 	GetSenderAddressGasPrice      uint64 = 1
 
-	// special parameters passed to contract
-	ContractParamCreatorOrgId = "__creator_org_id__"
-	ContractParamCreatorRole  = "__creator_role__"
-	ContractParamCreatorPk    = "__creator_pk__"
-	ContractParamSenderOrgId  = "__sender_org_id__"
-	ContractParamSenderRole   = "__sender_role__"
-	ContractParamSenderPk     = "__sender_pk__"
-	ContractParamBlockHeight  = "__block_height__"
-	ContractParamTxId         = "__tx_id__"
-	ContractParamTxTimeStamp  = "__tx_time_stamp__"
-
 	// method
 	initContract    = "init_contract"
 	upgradeContract = "upgrade"
 
 	// invoke contract base gas used
 	invokeBaseGas uint64 = 10000
+
+	// init function gas used
+	initFuncGas uint64 = 1250
 )
 
 func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
@@ -152,12 +135,8 @@ func EmitEventGasUsed(gasUsed uint64, contractEvent *common.ContractEvent) (uint
 	return gasUsed, nil
 }
 
-func InitFuncGasUsed(gasUsed uint64, parameters map[string][]byte, keys ...string) (uint64, error) {
-	if !checkKeys(parameters, keys...) {
-		return 0, errors.New("check init key exist")
-	}
-
-	gasUsed = getInitFuncGasUsed(gasUsed, parameters)
+func InitFuncGasUsed(gasUsed uint64) (uint64, error) {
+	gasUsed = getInitFuncGasUsed(gasUsed)
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
@@ -182,27 +161,9 @@ func ContractGasUsed(gasUsed uint64, method string, contractName string, byteCod
 	return gasUsed, nil
 }
 
-func checkKeys(args map[string][]byte, keys ...string) bool {
-	for _, key := range keys {
-		if _, ok := args[key]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func getInitFuncGasUsed(gasUsed uint64, args map[string][]byte) uint64 {
+func getInitFuncGasUsed(gasUsed uint64) uint64 {
 	return gasUsed +
-		invokeBaseGas +
-		uint64(len(args[ContractParamCreatorOrgId]))*GetCreatorOrgIdGasPrice +
-		uint64(len(args[ContractParamBlockHeight]))*GetBlockHeightGasPrice +
-		uint64(len(args[ContractParamCreatorPk]))*GetCreatorPkGasPrice +
-		uint64(len(args[ContractParamCreatorRole]))*GetCreatorRoleGasPrice +
-		uint64(len(args[ContractParamSenderOrgId]))*GetSenderOrgIdGasPrice +
-		uint64(len(args[ContractParamTxId]))*GetTxIdGasPrice +
-		uint64(len(args[ContractParamSenderRole]))*GetSenderRoleGasPrice +
-		uint64(len(args[ContractParamSenderPk]))*GetSenderPkGasPrice +
-		uint64(len(args[ContractParamTxTimeStamp]))*GetTimeStampPrice
+		invokeBaseGas + initFuncGas
 }
 
 func CheckGasLimit(gasUsed uint64) bool {
