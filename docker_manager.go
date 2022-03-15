@@ -416,15 +416,15 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
 		config.ENV_ENABLE_UDS, m.dockerVMConfig.DockerVMUDSOpen))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_USER_NUM, m.dockerVMConfig.UserNum))
+		config.ENV_USER_NUM, utils.GetUserNumFromConfig(m.dockerVMConfig)))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
+		config.ENV_TX_TIME_LIMIT, utils.GetTxTimeLimitFromConfig(m.dockerVMConfig)))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s",
 		config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
 		config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_MAX_CONCURRENCY, m.dockerVMConfig.MaxConcurrency))
+		config.ENV_MAX_CONCURRENCY, utils.GetMaxConcurrencyFromConfig(m.dockerVMConfig)))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
 		config.ENV_MAX_SEND_MSG_SIZE, utils.GetMaxSendMsgSizeFromConfig(m.dockerVMConfig)))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
