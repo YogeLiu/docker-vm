@@ -1,0 +1,227 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo";
+
+service DockerVMRpc {
+    rpc DockerVMCommunicate(stream DockerVMMessage) returns(stream DockerVMMessage) {};
+}
+
+//DockerVMMessage means message between chainmaker and docker vm
+message DockerVMMessage {
+
+    string tx_id = 1;
+
+    DockerVMType type = 2;
+
+    uint32 current_depth = 3;
+
+    // if not used, set to nil
+    SysCallMessage sys_call_message = 4;
+
+    // if not used, set to nil
+    TxRequest request = 5;
+
+    // if not used, set to nil
+    TxResponse response = 6;
+}
+
+message SysCallMessage {
+    DockerVMCode code = 1;
+
+    string message = 2;
+
+    // if not used, set to nil
+    map<string, bytes> payload = 3;
+
+}
+
+
+enum DockerVMType {
+    UNDEFINED = 0;
+
+    REGISTER = 1;
+
+    REGISTERED = 2;
+
+    PREPARE = 3;
+
+    READY = 4;
+
+    INIT = 5;
+
+    INVOKE = 6;
+
+    TX_REQUEST = 7;
+
+    TX_RESPONSE = 8;
+
+    GET_STATE = 9;
+
+    GET_STATE_RESPONSE = 10;
+
+    GET_BYTECODE = 11;
+
+    GET_BYTECODE_RESPONSE = 12;
+
+    CALL_CONTRACT_REQUEST = 13;
+
+    CALL_CONTRACT_RESPONSE = 14;
+
+    COMPLETED = 15;
+
+    ERROR = 16;
+
+    CREATE_KV_ITERATOR = 17;
+
+    CREATE_KV_ITERATOR_RESPONSE = 18;
+
+    CONSUME_KV_ITERATOR = 19;
+
+    CONSUME_KV_ITERATOR_RESPONSE = 20;
+
+    CREATE_KEY_HISTORY_ITER = 21;
+
+    CREATE_KEY_HISTORY_TER_RESPONSE = 22;
+
+    CONSUME_KEY_HISTORY_ITER = 23;
+
+    CONSUME_KEY_HISTORY_ITER_RESPONSE = 24;
+
+    GET_SENDER_ADDRESS = 25;
+
+    GET_SENDER_ADDRESS_RESPONSE = 26;
+}
+
+
+
+
+
+// TX_REQUEST
+message TxRequest {
+
+    string contract_name = 1;
+
+    string method = 2;
+
+    map<string, bytes> parameters = 3;
+
+    // cross contract in use
+    TxContext tx_context = 4;
+}
+
+message TxContext {
+    map<string, bytes> write_map = 1;
+
+    map<string, bytes> read_map = 2;
+
+    string original_process_name = 3;
+}
+
+// TX_RESPONSE
+message TxResponse {
+
+    string tx_id = 1;
+
+    DockerVMCode code = 2;
+
+    bytes result = 3;
+
+    string message = 4;
+
+    map<string, bytes> write_map = 5;
+
+    repeated DockerContractEvent events = 6;
+
+}
+
+message DockerContractEvent {
+    // Event topic
+    string topic = 1;
+    // Event contract name
+    string contract_name = 2;
+    // Event payload
+    repeated string data = 3;
+}
+
+
+enum DockerVMCode {
+    OK = 0;
+    FAIL = 1;
+}
+
+enum ProcessState {
+
+    PROCESS_STATE_CREATED = 0;
+
+    PROCESS_STATE_RUNNING = 1;
+
+    PROCESS_STATE_READY = 2;
+
+    PROCESS_STATE_EXPIRE = 3;
+
+    PROCESS_STATE_TX_TIMEOUT = 4;
+
+    PROCESS_STATE_WAITING = 5;
+
+    PROCESS_STATE_CROSS_FINISHED = 6;
+
+    PROCESS_STATE_CROSS_FAIL = 7;
+
+    PROCESS_STATE_FAIL = 8;
+}
+
+
+
+
+// ============== DMS pb ==============
+// --------------------  request message ---------------------
+message Input {
+    map<string, bytes> args = 1;
+}
+
+message CallContractRequest {
+    string contract_name = 1;
+    // args
+    map<string, bytes> args = 2;
+}
+
+// --------------------  result message ---------------------
+
+// user method response
+message Response {
+    // A status code that should follow the HTTP status codes.
+    int32 status = 1;
+
+    // A message associated with the response code. error has message
+    string message = 2;
+
+    // A payload that can be used to include metadata with this response. success with payload
+    bytes payload = 3;
+}
+
+// real user contract response
+message ContractResponse {
+
+    // always has response
+    Response response = 1;
+
+    // always has write map
+    map<string, bytes> write_map = 2;
+
+    // only cross contracts has read map
+    map<string, bytes> read_map = 3;
+
+    // always has events
+    repeated Event events = 4;
+}
+
+message Event {
+    // Event topic
+    string topic = 1;
+    // Event contract name
+    string contract_name = 2;
+    // Event payload
+    repeated string data = 3;
+}
