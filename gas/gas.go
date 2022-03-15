@@ -38,8 +38,8 @@ const (
 	initContract    = "init_contract"
 	upgradeContract = "upgrade"
 
-	// invoke contract base gas used
-	invokeBaseGas uint64 = 10000
+	// default gas used
+	defaultGas uint64 = 100000
 
 	// init function gas used
 	initFuncGas uint64 = 1250
@@ -135,8 +135,8 @@ func EmitEventGasUsed(gasUsed uint64, contractEvent *common.ContractEvent) (uint
 	return gasUsed, nil
 }
 
-func InitFuncGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed = getInitFuncGasUsed(gasUsed)
+func InitFuncGasUsed(gasUsed, configDefaultGas uint64) (uint64, error) {
+	gasUsed = getInitFuncGasUsed(gasUsed, configDefaultGas)
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
@@ -161,9 +161,13 @@ func ContractGasUsed(gasUsed uint64, method string, contractName string, byteCod
 	return gasUsed, nil
 }
 
-func getInitFuncGasUsed(gasUsed uint64) uint64 {
-	return gasUsed +
-		invokeBaseGas + initFuncGas
+func getInitFuncGasUsed(gasUsed, configDefaultGas uint64) uint64 {
+	// if config not set default gas
+	if configDefaultGas == 0 {
+		return gasUsed + defaultGas + initFuncGas
+	} else {
+		return gasUsed + configDefaultGas + initFuncGas
+	}
 }
 
 func CheckGasLimit(gasUsed uint64) bool {

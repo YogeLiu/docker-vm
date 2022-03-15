@@ -92,7 +92,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	var err error
 	// init func gas used calc and check gas limit
-	if gasUsed, err = gas.InitFuncGasUsed(gasUsed); err != nil {
+	if gasUsed, err = gas.InitFuncGasUsed(gasUsed, r.getChainConfigDefaultGas(txSimContext)); err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
 	}
@@ -1165,4 +1165,17 @@ func (r *RuntimeInstance) runCmd(command string) error {
 	}
 
 	return cmd.Wait()
+}
+
+func (r *RuntimeInstance) getChainConfigDefaultGas(TxSimContext protocol.TxSimContext) uint64 {
+	chainConfig, err := TxSimContext.GetBlockchainStore().GetLastChainConfig()
+	if err != nil {
+		r.Log.Debugf("get last chain config err [%v]", err.Error())
+		return 0
+	}
+	if chainConfig.AccountConfig != nil && chainConfig.AccountConfig.DefaultGas > 0 {
+		return chainConfig.AccountConfig.DefaultGas
+	}
+	r.Log.Debug("account config not set default gas value")
+	return 0
 }

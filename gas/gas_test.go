@@ -167,7 +167,8 @@ func TestPutStateGasUsed(t *testing.T) {
 
 func TestInitFuncGasUsed(t *testing.T) {
 	type args struct {
-		gasUsed uint64
+		gasUsed          uint64
+		configDefaultGas uint64
 	}
 	tests := []struct {
 		name    string
@@ -176,15 +177,18 @@ func TestInitFuncGasUsed(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "t1",
-			args:    args{gasUsed: 0},
-			want:    invokeBaseGas + initFuncGas,
+			name: "t1",
+			args: args{
+				gasUsed:          0,
+				configDefaultGas: defaultGas,
+			},
+			want:    defaultGas + initFuncGas,
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitFuncGasUsed(tt.args.gasUsed)
+			got, err := InitFuncGasUsed(tt.args.gasUsed, tt.args.configDefaultGas)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitFuncGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
