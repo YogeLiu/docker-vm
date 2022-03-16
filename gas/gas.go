@@ -165,9 +165,9 @@ func getInitFuncGasUsed(gasUsed, configDefaultGas uint64) uint64 {
 	// if config not set default gas
 	if configDefaultGas == 0 {
 		return gasUsed + defaultGas + initFuncGas
-	} else {
-		return gasUsed + configDefaultGas + initFuncGas
 	}
+	return gasUsed + configDefaultGas + initFuncGas
+
 }
 
 func CheckGasLimit(gasUsed uint64) bool {

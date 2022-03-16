@@ -1167,8 +1167,8 @@ func (r *RuntimeInstance) runCmd(command string) error {
 	return cmd.Wait()
 }
 
-func (r *RuntimeInstance) getChainConfigDefaultGas(TxSimContext protocol.TxSimContext) uint64 {
-	chainConfig, err := TxSimContext.GetBlockchainStore().GetLastChainConfig()
+func (r *RuntimeInstance) getChainConfigDefaultGas(txSimContext protocol.TxSimContext) uint64 {
+	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
 	if err != nil {
 		r.Log.Debugf("get last chain config err [%v]", err.Error())
 		return 0
