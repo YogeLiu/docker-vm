@@ -8,9 +8,7 @@ package rpc
 
 import (
 	"errors"
-	"fmt"
 	"net"
-	"os"
 	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
@@ -37,14 +35,6 @@ func NewCDMServer() (*CDMServer, error) {
 		err      error
 		endPoint string
 	)
-
-	port := os.Getenv(config.ENV_VM_SERVICE_PORT)
-
-	if port == "" {
-		endPoint = fmt.Sprintf(":%d", config.DefaultListenPort)
-	} else {
-		endPoint = fmt.Sprintf(":%s", port)
-	}
 
 	listener, err = net.Listen("tcp", endPoint)
 	if err != nil {

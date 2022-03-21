@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
 	"time"
-
-	_ "net/http/pprof"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 
@@ -22,9 +21,6 @@ func main() {
 
 	// init docker container logger
 	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER, config.DockerLogDir)
-
-	// start pprof
-	startPProf(managerLogger)
 
 	// new docker manager
 	manager, err := module.NewManager(managerLogger)

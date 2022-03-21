@@ -136,14 +136,15 @@ func (c *CDMClient) StartClient() bool {
 	}
 
 	// todo 是否一定需要添加 connection close 逻辑
-	//go func() {
-	//	<- c.ReconnectChan
-	//	conn.Close()
-	//}()
+	go func() {
+		<-c.ReconnectChan
+		conn.Close()
+	}()
 
 	stream, err := GetCDMClientStream(conn)
 	if err != nil {
 		c.logger.Errorf("fail to get connection stream: %s", err)
+		conn.Close()
 		return false
 	}
 
@@ -166,10 +167,10 @@ func (c *CDMClient) sendMsgRoutine() {
 	for {
 		select {
 		case txMsg := <-c.txSendCh:
-			c.logger.Infof("[%s] send tx req, chan len: [%d]", txMsg.TxId, len(c.txSendCh))
+			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txMsg.TxId, len(c.txSendCh))
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.stateResponseSendCh:
-			c.logger.Infof("[%s] send syscall resp, chan len: [%d]", stateMsg.TxId, len(c.stateResponseSendCh))
+			c.logger.Debugf("[%s] send syscall resp, chan len: [%d]", stateMsg.TxId, len(c.stateResponseSendCh))
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.ReconnectChan:
 			c.logger.Debugf("close cdm send goroutine")

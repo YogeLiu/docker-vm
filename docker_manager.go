@@ -96,6 +96,11 @@ func (m *DockerManager) StartVM() error {
 	}
 	m.mgrLogger.Info("start docker vm...")
 
+	// add client state logic
+	if !m.getCDMState() {
+		m.startCDMClient()
+	}
+
 	// todo verify vm contract service info
 
 	return nil
@@ -115,11 +120,6 @@ func (m *DockerManager) StopVM() error {
 func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method,
 	codePath string, contract *common.Contract,
 	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
-
-	// add client state logic
-	if !m.getCDMState() {
-		m.startCDMClient()
-	}
 
 	return &RuntimeInstance{
 		ChainId: chainId,
