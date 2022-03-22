@@ -57,3 +57,12 @@ docker run -d -e ENV_ENABLE_UDS=false -e ENV_USER_NUM=100 -e ENV_TX_TIME_LIMIT=2
 
 ```
 
+
+
+## 启用uds
+
+1. 建议将合约路径mount进容器中
+```shell
+docker run -it -e ENV_ENABLE_UDS=true -e ENV_LOG_LEVEL=DEBUG -e ENV_LOG_IN_CONSOLE=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.0_alpha-wx-org.chainmaker.org/data/wx-org.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.0_alpha_qc
+```
+2. 

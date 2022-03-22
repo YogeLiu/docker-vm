@@ -114,6 +114,11 @@ func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (stri
 		}
 	}
 
+	err = cm.setFileMod(contractPath)
+	if err != nil {
+		return "", err
+	}
+
 	// save contract file path to map
 	cm.contractsMap[contractName] = contractPath
 	//cm.logger.Debugf("get contract disk [%s], path is [%s]", contractName, contractPath)
