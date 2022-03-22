@@ -10,6 +10,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
 	security2 "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
 
@@ -25,11 +26,35 @@ type ManagerImpl struct {
 
 func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 
-	processManager := core.NewProcessManager(nil, nil)
+	// set config
+	securityEnv := security2.NewSecurityEnv()
+	err := securityEnv.InitConfig()
+	if err != nil {
+		managerLogger.Errorf("fail to init directory: %s", err)
+		return nil, err
+	}
+
+	// new users controller
+	usersManager := core.NewUsersManager()
+
+	contractManager := core.NewContractManager()
+	// new process pool
+	processManager := core.NewProcessManager(usersManager, contractManager)
 
 	// new scheduler
 	scheduler := core.NewDockerScheduler(processManager)
 	processManager.SetScheduler(scheduler)
+	contractManager.SetScheduler(scheduler)
+
+	managerLogger.Debugf("init grpc server, max send size [%dM], max recv size[%dM]",
+		utils.GetMaxSendMsgSizeFromEnv(), utils.GetMaxRecvMsgSizeFromEnv())
+
+	// new docker manager to sandbox server
+	dmsRpcServer, err := rpc.NewDMSServer()
+	if err != nil {
+		managerLogger.Errorf("fail to init new DMSServer, err: [%s]", err)
+		return nil, err
+	}
 
 	// new chain maker to docker manager server
 	cdmRpcServer, err := rpc.NewCDMServer()
@@ -40,10 +65,10 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 
 	manager := &ManagerImpl{
 		cdmRpcServer:   cdmRpcServer,
-		dmsRpcServer:   nil,
+		dmsRpcServer:   dmsRpcServer,
 		scheduler:      scheduler,
-		userController: nil,
-		securityEnv:    nil,
+		userController: usersManager,
+		securityEnv:    securityEnv,
 		processManager: processManager,
 		logger:         managerLogger,
 	}
@@ -63,6 +88,25 @@ func (m *ManagerImpl) InitContainer() {
 	if err = m.cdmRpcServer.StartCDMServer(cdmApiInstance); err != nil {
 		errorC <- err
 	}
+
+	// start dms server
+	dmsApiInstance := rpc.NewDMSApi(m.processManager)
+	if err = m.dmsRpcServer.StartDMSServer(dmsApiInstance); err != nil {
+		errorC <- err
+	}
+
+	// init sandBox
+	if err = m.securityEnv.InitSecurityEnv(); err != nil {
+		errorC <- err
+	}
+
+	// create new users
+	go func() {
+		err = m.userController.CreateNewUsers()
+		if err != nil {
+			errorC <- err
+		}
+	}()
 
 	// start scheduler
 	m.scheduler.StartScheduler()

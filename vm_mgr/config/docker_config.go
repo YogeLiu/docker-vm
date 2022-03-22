@@ -68,6 +68,7 @@ var (
 )
 
 const (
+	ENV_ENABLE_UDS        = "ENV_ENABLE_UDS"
 	ENV_USER_NUM          = "ENV_USER_NUM"
 	ENV_TX_TIME_LIMIT     = "ENV_TX_TIME_LIMIT"
 	ENV_LOG_LEVEL         = "ENV_LOG_LEVEL"

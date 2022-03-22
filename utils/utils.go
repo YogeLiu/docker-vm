@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
@@ -28,4 +29,17 @@ func GetMaxRecvMsgSizeFromConfig(config *config.DockerVMConfig) uint32 {
 		return DefaultMaxRecvSize
 	}
 	return config.MaxRecvMsgSize
+}
+
+func GetURLFromConfig(config *config.DockerVMConfig) string {
+	ip := config.DockerVMHost
+	port := config.DockerVMPort
+	if ip == "" {
+		ip = "127.0.0.1"
+	}
+	if port == 0 {
+		port = 22351
+	}
+	url := fmt.Sprintf("%s:%d", ip, config.DockerVMPort)
+	return url
 }

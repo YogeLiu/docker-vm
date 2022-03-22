@@ -9,7 +9,8 @@ package rpc
 import (
 	"context"
 	"errors"
-	"fmt"
+	"net"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -74,9 +75,8 @@ func (c *CDMClient) GetCMConfig() *config.DockerVMConfig {
 }
 
 func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error {
-	// todo 添加client 是否还存活的验证，如果不存活，返回失败信息。
 	if c.ConnStatus == false {
-		c.logger.Errorf("cdm client stream not ready, waiting reconnct, txid: %s", txId)
+		c.logger.Errorf("cdm client stream not ready, waiting reconnect, txid: %s", txId)
 		return errors.New("cdm client not connected")
 	}
 	c.lock.Lock()
@@ -258,18 +258,24 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 		),
 	}
 
-	ip := c.config.DockerVMHost
-	port := c.config.DockerVMPort
-	if ip == "" {
-		ip = "127.0.0.1"
-	}
-	if port == 0 {
-		port = 22351
-	}
-	url := fmt.Sprintf("%s:%d", ip, c.config.DockerVMPort)
+	if c.config.DockerVMUDSOpen {
+		// connect unix domain socket
+		dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
+			unixAddress, _ := net.ResolveUnixAddr("unix", sock)
+			conn, err := net.DialUnix("unix", nil, unixAddress)
+			return conn, err
+		}))
 
-	c.logger.Infof("connect docker vm manager: %s", url)
-	return grpc.Dial(url, dialOpts...)
+		sockAddress := filepath.Join(c.config.DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
+
+		c.logger.Infof("connect docker vm manager: %s", sockAddress)
+		return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
+	} else {
+		// connect vm from tcp
+		url := utils.GetURLFromConfig(c.config)
+		c.logger.Infof("connect docker vm manager: %s", url)
+		return grpc.Dial(url, dialOpts...)
+	}
 
 }
 
@@ -285,4 +291,8 @@ func (c *CDMClient) GetUniqueTxKey(txId string) string {
 	sb.WriteString("#")
 	sb.WriteString(strconv.FormatUint(nextCount, 10))
 	return sb.String()
+}
+
+func (c *CDMClient) NeedSendContractByteCode() bool {
+	return !c.config.DockerVMUDSOpen
 }

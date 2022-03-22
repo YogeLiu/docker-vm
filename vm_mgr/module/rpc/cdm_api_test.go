@@ -69,7 +69,6 @@ func TestCDMApi_CDMCommunicate(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
-				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
 
@@ -82,12 +81,6 @@ func TestCDMApi_CDMCommunicate(t *testing.T) {
 				sendWait.Done()
 			}(sendWait)
 			sendWait.Wait()
-
-			go func() {
-				for {
-					cdm.stop <- struct{}{}
-				}
-			}()
 
 			if err := cdm.CDMCommunicate(tt.args.stream); (err != nil) != tt.wantErr {
 				t.Errorf("CDMCommunicate() error = %v, wantErr %v", err, tt.wantErr)
@@ -122,7 +115,6 @@ func TestCDMApi_closeConnection(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
-				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
 			//cdm.closeConnection()
@@ -168,7 +160,6 @@ func TestCDMApi_constructCDMMessage(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
-				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
 
@@ -277,7 +268,6 @@ func TestCDMApi_handleGetStateResponse(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
-				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
 			if err := cdm.handleGetStateResponse(tt.args.cdmMessage); (err != nil) != tt.wantErr {
@@ -331,7 +321,6 @@ func TestCDMApi_handleTxRequest(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
-				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
 
@@ -368,7 +357,6 @@ func TestCDMApi_recvMsgRoutine(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
-				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
 			cdm.receiveMsgRoutine()
@@ -415,7 +403,6 @@ func TestCDMApi_sendMessage(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
-				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
 			if err := cdm.sendMessage(tt.args.msg); (err != nil) != tt.wantErr {
@@ -445,7 +432,6 @@ func TestCDMApi_sendMsgRoutine(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
-				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
 			cdm.sendMsgRoutine()

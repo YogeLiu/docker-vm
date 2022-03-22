@@ -8,7 +8,11 @@ package rpc
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
@@ -30,15 +34,40 @@ type CDMServer struct {
 // NewCDMServer build new chainmaker to docker manager rpc server
 func NewCDMServer() (*CDMServer, error) {
 
-	var listener net.Listener
-	var (
-		err      error
-		endPoint string
-	)
+	enableUnixDomainSocket, _ := strconv.ParseBool(os.Getenv(config.ENV_ENABLE_UDS))
 
-	listener, err = net.Listen("tcp", endPoint)
-	if err != nil {
-		return nil, err
+	var listener net.Listener
+	var err error
+
+	if enableUnixDomainSocket {
+		absCdmUDSPath := filepath.Join(config.SockBaseDir, config.SockName)
+
+		listenAddress, err := net.ResolveUnixAddr("unix", absCdmUDSPath)
+		if err != nil {
+			return nil, err
+		}
+
+		listener, err = CreateUnixListener(listenAddress, absCdmUDSPath)
+		if err != nil {
+			return nil, err
+		}
+
+	} else {
+		var endPoint string
+
+		port := os.Getenv(config.ENV_VM_SERVICE_PORT)
+
+		if port != "" {
+			endPoint = port
+		} else {
+			endPoint = fmt.Sprintf(":%d", config.DefaultListenPort)
+		}
+
+		listener, err = net.Listen("tcp", endPoint)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	//set up server options for keepalive and TLS

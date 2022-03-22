@@ -109,9 +109,9 @@ func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (stri
 					return "", err
 				}
 			}
+		} else {
+			return "", errors.New("fail to get contract from path")
 		}
-	} else {
-		return "", errors.New("fail to get contract from path")
 	}
 
 	// save contract file path to map

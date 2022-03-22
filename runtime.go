@@ -65,6 +65,8 @@ type CDMClient interface {
 	GetCMConfig() *config.DockerVMConfig
 
 	GetUniqueTxKey(txId string) string
+
+	NeedSendContractByteCode() bool
 }
 
 // RuntimeInstance docker-go runtime
@@ -1108,15 +1110,20 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		}
 	}
 
-	contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
-	if err != nil {
-		r.Log.Errorf("fail to load contract executable file: %s, ", err)
-		response.Message = err.Error()
-		return response
-	}
+	if r.Client.NeedSendContractByteCode() {
+		contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
+		if err != nil {
+			r.Log.Errorf("fail to load contract executable file: %s, ", err)
+			response.Message = err.Error()
+			return response
+		}
 
-	response.ResultCode = protocol.ContractSdkSignalResultSuccess
-	response.Payload = contractByteCode
+		response.ResultCode = protocol.ContractSdkSignalResultSuccess
+		response.Payload = contractByteCode
+	} else {
+		response.ResultCode = protocol.ContractSdkSignalResultSuccess
+		response.Payload = []byte(contractNameAndVersion)
+	}
 
 	return response
 }

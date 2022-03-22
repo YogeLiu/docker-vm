@@ -10,6 +10,7 @@ type DockerVMConfig struct {
 	EnableDockerVM        bool   `mapstructure:"enable_dockervm"`
 	DockerVMContainerName string `mapstructure:"dockervm_container_name"`
 	DockerVMMountPath     string `mapstructure:"dockervm_mount_path"`
+	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
 	DockerVMHost          string `mapstructure:"docker_vm_host"`
 	DockerVMPort          uint32 `mapstructure:"docker_vm_port"`
 	MaxSendMsgSize        uint32 `mapstructure:"max_send_msg_size"`
@@ -36,6 +37,8 @@ const (
 	ContractsDir = "contracts"
 	// SockDir dir save domain socket file
 	SockDir = "sock"
+	// SockName domain socket file name
+	SockName = "cdm.sock"
 
 	// stateKvIterator method
 	FuncKvIteratorCreate    = "createKvIterator"
