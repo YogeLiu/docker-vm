@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
@@ -82,7 +83,10 @@ func (cm *ContractManager) GetContract(txId, contractName string) (string, error
 
 func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (string, error) {
 
+	enableUnixDomainSocket, _ := strconv.ParseBool(os.Getenv(config.ENV_ENABLE_UDS))
+
 	contractPath := filepath.Join(mountDir, contractName)
+
 	_, err := os.Stat(contractPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -103,20 +107,22 @@ func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (stri
 			if returnMsg.Payload == nil {
 				return "", errors.New("fail to get bytecode")
 			} else {
-				content := returnMsg.Payload
-				err := ioutil.WriteFile(contractPath, content, 0755)
-				if err != nil {
-					return "", err
+				if enableUnixDomainSocket {
+					err = cm.setFileMod(contractPath)
+					if err != nil {
+						return "", err
+					}
+				} else {
+					content := returnMsg.Payload
+					err := ioutil.WriteFile(contractPath, content, 0755)
+					if err != nil {
+						return "", err
+					}
 				}
 			}
 		} else {
 			return "", errors.New("fail to get contract from path")
 		}
-	}
-
-	err = cm.setFileMod(contractPath)
-	if err != nil {
-		return "", err
 	}
 
 	// save contract file path to map
