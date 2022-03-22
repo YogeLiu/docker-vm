@@ -4,15 +4,17 @@ Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Package rpc includes 2 rpc servers, one for chainmaker client(1-1), the other one for sandbox (1-n)
 package rpc
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"reflect"
 	"sync"
 	"testing"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"github.com/golang/mock/gomock"
 	"go.uber.org/zap"
@@ -37,7 +39,7 @@ func TestCDMApi_CDMCommunicate(t *testing.T) {
 
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
 		stop      chan struct{}
 		wg        *sync.WaitGroup
@@ -65,7 +67,7 @@ func TestCDMApi_CDMCommunicate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			cdm := &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
@@ -89,8 +91,8 @@ func TestCDMApi_CDMCommunicate(t *testing.T) {
 				}
 			}()
 
-			if err := cdm.CDMCommunicate(tt.args.stream); (err != nil) != tt.wantErr {
-				t.Errorf("CDMCommunicate() error = %v, wantErr %v", err, tt.wantErr)
+			if err := cdm.ContractEngineRpcCommunicate(tt.args.stream); (err != nil) != tt.wantErr {
+				t.Errorf("ContractEngineRpcCommunicate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -99,7 +101,7 @@ func TestCDMApi_CDMCommunicate(t *testing.T) {
 func TestCDMApi_closeConnection(t *testing.T) {
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
 		stop      chan struct{}
 		wg        *sync.WaitGroup
@@ -118,7 +120,7 @@ func TestCDMApi_closeConnection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = &CDMApi{
+			_ = &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
@@ -133,7 +135,7 @@ func TestCDMApi_closeConnection(t *testing.T) {
 func TestCDMApi_constructCDMMessage(t *testing.T) {
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
 		stop      chan struct{}
 		wg        *sync.WaitGroup
@@ -164,7 +166,7 @@ func TestCDMApi_constructCDMMessage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			cdm := &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
@@ -196,7 +198,7 @@ func TestCDMApi_handleGetByteCodeResponse(t *testing.T) {
 
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 	}
 	type args struct {
 		cdmMessage *protogo.CDMMessage
@@ -220,7 +222,7 @@ func TestCDMApi_handleGetByteCodeResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			cdm := &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 			}
@@ -246,7 +248,7 @@ func TestCDMApi_handleGetStateResponse(t *testing.T) {
 
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
 		stop      chan struct{}
 		wg        *sync.WaitGroup
@@ -273,7 +275,7 @@ func TestCDMApi_handleGetStateResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			cdm := &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
@@ -296,7 +298,7 @@ func TestCDMApi_handleTxRequest(t *testing.T) {
 
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
 		stop      chan struct{}
 		wg        *sync.WaitGroup
@@ -327,7 +329,7 @@ func TestCDMApi_handleTxRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			cdm := &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
@@ -351,7 +353,7 @@ func TestCDMApi_handleTxRequest(t *testing.T) {
 func TestCDMApi_recvMsgRoutine(t *testing.T) {
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
 		stop      chan struct{}
 		wg        *sync.WaitGroup
@@ -364,7 +366,7 @@ func TestCDMApi_recvMsgRoutine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			cdm := &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
@@ -384,7 +386,7 @@ func TestCDMApi_sendMessage(t *testing.T) {
 
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
 		stop      chan struct{}
 		wg        *sync.WaitGroup
@@ -399,7 +401,7 @@ func TestCDMApi_sendMessage(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "sendMessage",
+			name: "sendMsg",
 			fields: fields{
 				logger: utils.GetLogHandler(),
 				stream: stream,
@@ -411,15 +413,15 @@ func TestCDMApi_sendMessage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			cdm := &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
 				stop:      tt.fields.stop,
 				wg:        tt.fields.wg,
 			}
-			if err := cdm.sendMessage(tt.args.msg); (err != nil) != tt.wantErr {
-				t.Errorf("sendMessage() error = %v, wantErr %v", err, tt.wantErr)
+			if err := cdm.sendMsg(tt.args.msg); (err != nil) != tt.wantErr {
+				t.Errorf("sendMsg() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -428,7 +430,7 @@ func TestCDMApi_sendMessage(t *testing.T) {
 func TestCDMApi_sendMsgRoutine(t *testing.T) {
 	type fields struct {
 		logger    *zap.SugaredLogger
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
 		stop      chan struct{}
 		wg        *sync.WaitGroup
@@ -441,7 +443,7 @@ func TestCDMApi_sendMsgRoutine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
+			cdm := &ChainRPCService{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 				stream:    tt.fields.stream,
@@ -459,20 +461,20 @@ func TestNewCDMApi(t *testing.T) {
 	scheduler := s.getScheduler()
 
 	type args struct {
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 	}
 
 	tests := []struct {
 		name string
 		args args
-		want *CDMApi
+		want *ChainRPCService
 	}{
 		{
 			name: "testNewCDMAp",
 			args: args{
 				scheduler: scheduler,
 			},
-			want: &CDMApi{
+			want: &ChainRPCService{
 				scheduler: scheduler,
 			},
 		},
@@ -480,12 +482,12 @@ func TestNewCDMApi(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewCDMApi(tt.args.scheduler)
+			got := NewChainRPCService(tt.args.scheduler)
 			tt.want.logger = got.logger
 			tt.want.wg = got.wg
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCDMApi() = %v, want %v", got, tt.want)
+				t.Errorf("NewChainRPCService() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -499,8 +501,8 @@ func newMockScheduler(t *testing.T) *mockScheduler {
 	return &mockScheduler{c: gomock.NewController(t)}
 }
 
-func (s *mockScheduler) getScheduler() *protocol.MockScheduler {
-	return protocol.NewMockScheduler(s.c)
+func (s *mockScheduler) getScheduler() *interfaces.MockScheduler {
+	return interfaces.NewMockScheduler(s.c)
 }
 
 func (s *mockScheduler) finish() {

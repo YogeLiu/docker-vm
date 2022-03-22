@@ -22,18 +22,18 @@ import (
 const (
 	// docker module for logging
 
-	MODULE_MANAGER          = "[Docker MANAGER]"
-	MODULE_SCHEDULER        = "[Docker Scheduler]"
-	MODULE_USERCONTROLLER   = "[Docker User Controller]"
-	MODULE_PROCESS_MANAGER  = "[Docker Process Manager]"
-	MODULE_PROCESS          = "[Docker Process]"
-	MODULE_DMS_HANDLER      = "[Docker DMS Handler]"
-	MODULE_DMS_SERVER       = "[Docker DMS Server]"
-	MODULE_CDM_SERVER       = "[Docker CDM Server]"
-	MODULE_CDM_API          = "[Docker CDM Api]"
-	MODULE_SECURITY_ENV     = "[Docker Security Env]"
-	MODULE_CONTRACT_MANAGER = "[Docker Contract Manager]"
-	MODULE_CONTRACT         = "[Docker Contract]"
+	MODULE_MANAGER             = "[Docker MANAGER]"
+	MODULE_SCHEDULER           = "[Docker Scheduler]"
+	MODULE_USERCONTROLLER      = "[Docker User Controller]"
+	MODULE_PROCESS_MANAGER     = "[Docker Process Manager]"
+	MODULE_PROCESS             = "[Docker Process]"
+	MODULE_SANDBOX_RPC_HANDLER = "[Docker Sandbox RPC Handler]"
+	MODULE_SANDBOX_RPC_SERVER  = "[Docker Sandbox Rpc Server]"
+	MODULE_CHAIN_RPC_SERVER    = "[Docker Chain RPC Server]"
+	MODULE_CHAIN_RPC_SERVICE   = "[Docker Chain RPC Service]"
+	MODULE_SECURITY_ENV        = "[Docker Security Env]"
+	MODULE_CONTRACT_MANAGER    = "[Docker Contract Manager]"
+	MODULE_CONTRACT            = "[Docker Contract]"
 )
 
 const (

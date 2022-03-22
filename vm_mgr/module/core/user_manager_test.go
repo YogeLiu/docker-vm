@@ -221,7 +221,7 @@ func TestUsersManager_GetAvailableUser(t *testing.T) {
 func TestUsersManager_constructNewUser(t *testing.T) {
 	userId := 666
 	userName := fmt.Sprintf("u-%d", userId)
-	sockPath := filepath.Join(config.DMSDir, config.DMSSockPath)
+	sockPath := filepath.Join(config.SandboxRPCDir, config.SandboxRPCSockPath)
 
 	currentPath, _ := os.Getwd()
 	userNumConfig := os.Getenv(config.ENV_USER_NUM)

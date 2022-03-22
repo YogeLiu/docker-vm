@@ -17,7 +17,7 @@ package core
 //	"go.uber.org/zap"
 //	"golang.org/x/sync/singleflight"
 //
-//	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+//	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/log"
 //	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 //	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 //	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
@@ -46,7 +46,7 @@ package core
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
 //		contractsMap    map[string]string
-//		logger          *zap.SugaredLogger
+//		log          *zap.SugaredLogger
 //		scheduler       *protocol.MockScheduler
 //	}
 //
@@ -70,7 +70,7 @@ package core
 //				contractsMap: map[string]string{
 //					contractName: contractValue,
 //				},
-//				logger:    utils.GetLogHandler(),
+//				log:    utils.GetLogHandler(),
 //				scheduler: scheduler,
 //			},
 //			args: args{
@@ -89,7 +89,7 @@ package core
 //		//		contractsMap: map[string]string{
 //		//			contractName: contractValue,
 //		//		},
-//		//		logger:    utils.GetLogHandler(),
+//		//		log:    utils.GetLogHandler(),
 //		//		scheduler: scheduler,
 //		//	},
 //		//	args: args{
@@ -107,7 +107,7 @@ package core
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
 //				contractsMap:    tt.fields.contractsMap,
-//				logger:          tt.fields.logger,
+//				log:          tt.fields.log,
 //				scheduler:       tt.fields.scheduler,
 //			}
 //			got, err := cm.GetContract(tt.args.txId, tt.args.contractName)
@@ -127,7 +127,7 @@ package core
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
 //		contractsMap    map[string]string
-//		logger          *zap.SugaredLogger
+//		log          *zap.SugaredLogger
 //		scheduler       protocol.Scheduler
 //	}
 //	type args struct {
@@ -148,7 +148,7 @@ package core
 //				contractsMap: map[string]string{
 //					contractName: contractValue,
 //				},
-//				logger:    nil,
+//				log:    nil,
 //				scheduler: nil,
 //			},
 //			args: args{
@@ -164,7 +164,7 @@ package core
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
 //				contractsMap:    tt.fields.contractsMap,
-//				logger:          tt.fields.logger,
+//				log:          tt.fields.log,
 //				scheduler:       tt.fields.scheduler,
 //			}
 //			got, got1 := cm.checkContractDeployed(tt.args.contractName)
@@ -185,7 +185,7 @@ package core
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
 //		contractsMap    map[string]string
-//		logger          *zap.SugaredLogger
+//		log          *zap.SugaredLogger
 //		scheduler       protocol.Scheduler
 //	}
 //	tests := []struct {
@@ -201,7 +201,7 @@ package core
 //				contractsMap: map[string]string{
 //					contractName: contractValue,
 //				},
-//				logger:    logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath),
+//				log:    log.NewDockerLogger(log.MODULE_CONTRACT_MANAGER, logPath),
 //				scheduler: nil,
 //			},
 //			wantErr: false,
@@ -214,7 +214,7 @@ package core
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
 //				contractsMap:    tt.fields.contractsMap,
-//				logger:          tt.fields.logger,
+//				log:          tt.fields.log,
 //				scheduler:       tt.fields.scheduler,
 //			}
 //
@@ -233,7 +233,7 @@ package core
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
 //		contractsMap    map[string]string
-//		logger          *zap.SugaredLogger
+//		log          *zap.SugaredLogger
 //		scheduler       *protocol.MockScheduler
 //	}
 //	type args struct {
@@ -255,7 +255,7 @@ package core
 //		//		contractsMap: map[string]string{
 //		//			contractName: contractValue,
 //		//		},
-//		//		logger:    logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath),
+//		//		log:    log.NewDockerLogger(log.MODULE_CONTRACT_MANAGER, logPath),
 //		//		scheduler: protocol.NewMockScheduler(gomock.NewController(t)),
 //		//	},
 //		//	args: args{
@@ -272,7 +272,7 @@ package core
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
 //				contractsMap:    tt.fields.contractsMap,
-//				logger:          tt.fields.logger,
+//				log:          tt.fields.log,
 //				scheduler:       tt.fields.scheduler,
 //			}
 //			got, err := cm.lookupContractFromDB(tt.args.txId, tt.args.contractName)
@@ -293,7 +293,7 @@ package core
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
 //		contractsMap    map[string]string
-//		logger          *zap.SugaredLogger
+//		log          *zap.SugaredLogger
 //		scheduler       protocol.Scheduler
 //	}
 //	type args struct {
@@ -311,7 +311,7 @@ package core
 //				lock:            sync.RWMutex{},
 //				getContractLock: singleflight.Group{},
 //				contractsMap:    nil,
-//				logger:          nil,
+//				log:          nil,
 //				scheduler:       nil,
 //			},
 //			args:    args{filePath: currentPath},
@@ -324,7 +324,7 @@ package core
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
 //				contractsMap:    tt.fields.contractsMap,
-//				logger:          tt.fields.logger,
+//				log:          tt.fields.log,
 //				scheduler:       tt.fields.scheduler,
 //			}
 //			if err := cm.setFileMod(tt.args.filePath); (err != nil) != tt.wantErr {
@@ -337,7 +337,7 @@ package core
 //func TestNewContractManager(t *testing.T) {
 //	currentPath, _ := os.Getwd()
 //	logPath := currentPath + testPath
-//	log := logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath)
+//	log := log.NewDockerLogger(log.MODULE_CONTRACT_MANAGER, logPath)
 //	tests := []struct {
 //		name string
 //		want *ContractManager
@@ -346,7 +346,7 @@ package core
 //			name: "NewContractManager",
 //			want: &ContractManager{
 //				contractsMap: make(map[string]string),
-//				logger:       log,
+//				log:       log,
 //			},
 //		},
 //	}
@@ -356,7 +356,7 @@ package core
 //
 //			mountDir = currentPath
 //			got := NewContractManager(currentPath)
-//			got.logger = log
+//			got.log = log
 //
 //			if !reflect.DeepEqual(got, tt.want) {
 //				t.Errorf("NewContractManager() = %v, want %v", got, tt.want)

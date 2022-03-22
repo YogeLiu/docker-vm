@@ -2,7 +2,7 @@
 // Source: ./interfaces.go
 
 // Package mock_protocol is a generated GoMock package.
-package protocol
+package interfaces
 
 import (
 	reflect "reflect"

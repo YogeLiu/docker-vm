@@ -261,7 +261,7 @@ package core
 //		nextTxTrigger:        nil,
 //		expireTimer:      nil,
 //		Handler:          nil,
-//		logger:           nil,
+//		log:           nil,
 //		processMgr:       nil,
 //		done:             0,
 //		balanceRWMutex:            sync.Mutex{},

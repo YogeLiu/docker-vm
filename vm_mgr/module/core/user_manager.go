@@ -117,7 +117,7 @@ func (u *UsersManager) generateNewUser(newUserId int) error {
 func (u *UsersManager) constructNewUser(userId int) *security.User {
 
 	userName := fmt.Sprintf("u-%d", userId)
-	sockPath := filepath.Join(config.DMSDir, config.DMSSockPath)
+	sockPath := filepath.Join(config.SandboxRPCDir, config.SandboxRPCSockPath)
 
 	return &security.User{
 		Uid:      userId,

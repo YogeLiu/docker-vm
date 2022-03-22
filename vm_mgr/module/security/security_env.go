@@ -88,14 +88,14 @@ func (s *SecurityEnv) InitConfig() error {
 		s.logger.Errorf("fail to set dms directory, err: [%s]", err)
 		return err
 	}
-	s.logger.Debug("set dms dir: ", config.DMSDir)
+	s.logger.Debug("set dms dir: ", config.SandboxRPCDir)
 
 	return nil
 
 }
 
 func (s *SecurityEnv) setDMSDir() error {
-	return os.Mkdir(config.DMSDir, 0755)
+	return os.Mkdir(config.SandboxRPCDir, 0755)
 }
 
 func (s *SecurityEnv) setTmpMod() error {

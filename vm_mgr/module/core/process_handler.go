@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"fmt"
 	"math"
 	"strconv"
@@ -62,17 +63,17 @@ type ProcessHandler struct {
 	state         state
 	logger        *zap.SugaredLogger
 	TxRequest     *protogo.TxRequest
-	stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-	scheduler     protocol.Scheduler
-	process       ProcessInterface
+	stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+	scheduler interfaces.Scheduler
+	process   ProcessInterface
 	txExpireTimer *time.Timer
 }
 
-func NewProcessHandler(txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
+func NewProcessHandler(txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
 	processName string, process ProcessInterface) *ProcessHandler {
 	handler := &ProcessHandler{
 		processName:   processName,
-		logger:        logger.NewDockerLogger(logger.MODULE_DMS_HANDLER, config.DockerLogDir),
+		logger:        logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_HANDLER, config.DockerLogDir),
 		TxRequest:     txRequest,
 		state:         created,
 		scheduler:     scheduler,

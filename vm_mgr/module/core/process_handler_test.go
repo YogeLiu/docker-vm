@@ -22,7 +22,7 @@ import (
 func TestNewProcessHandler(t *testing.T) {
 	type args struct {
 		txRequest *protogo.TxRequest
-		scheduler protocol.Scheduler
+		scheduler interfaces.Scheduler
 		process   ProcessInterface
 	}
 	tests := []struct {
@@ -62,9 +62,9 @@ func TestProcessHandler_HandleContract(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	tests := []struct {
@@ -184,9 +184,9 @@ func TestProcessHandler_HandleMessage(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -242,9 +242,9 @@ func TestProcessHandler_SetStream(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -293,9 +293,9 @@ func TestProcessHandler_handleCallContract(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -332,9 +332,9 @@ func TestProcessHandler_handleCompleted(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -376,9 +376,9 @@ func TestProcessHandler_handleCreated(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -471,7 +471,7 @@ func TestProcessHandler_handleGetState(t *testing.T) {
 		TxId: txId,
 	}
 
-	scheduler := protocol.NewMockScheduler(c)
+	scheduler := interfaces.NewMockScheduler(c)
 	scheduler.EXPECT().RegisterResponseCh(txId, gomock.Any()).Return().AnyTimes()
 	scheduler.EXPECT().GetGetStateReqCh().Return(responseCh).AnyTimes()
 	//scheduler.EXPECT().GetResponseChByTxId(txId).Return(messages).AnyTimes()
@@ -484,9 +484,9 @@ func TestProcessHandler_handleGetState(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -502,7 +502,7 @@ func TestProcessHandler_handleGetState(t *testing.T) {
 		//	name: "testHandleGetState",
 		//	fields: fields{
 		//		state:  created,
-		//		logger: utils.GetLogHandler(),
+		//		log: utils.GetLogHandler(),
 		//		TxRequest: &protogo.TxRequest{
 		//			TxId:            txId,
 		//			ContractName:    contractName,
@@ -557,9 +557,9 @@ func TestProcessHandler_handlePrepare(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -596,9 +596,9 @@ func TestProcessHandler_handleReady(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -667,9 +667,9 @@ func TestProcessHandler_sendInit(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	tests := []struct {
@@ -725,9 +725,9 @@ func TestProcessHandler_sendInvoke(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 
@@ -787,9 +787,9 @@ func TestProcessHandler_sendMessage(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	type args struct {
@@ -837,9 +837,9 @@ func TestProcessHandler_startTimer(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	tests := []struct {
@@ -869,9 +869,9 @@ func TestProcessHandler_stopTimer(t *testing.T) {
 		state         state
 		logger        *zap.SugaredLogger
 		TxRequest     *protogo.TxRequest
-		stream        SDKProtogo.DMSRpc_DMSCommunicateServer
-		scheduler     protocol.Scheduler
-		process       ProcessInterface
+		stream    SDKProtogo.DMSRpc_DMSCommunicateServer
+		scheduler interfaces.Scheduler
+		process   ProcessInterface
 		txExpireTimer *time.Timer
 	}
 	tests := []struct {

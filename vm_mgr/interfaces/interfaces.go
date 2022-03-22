@@ -3,7 +3,7 @@ Copyright (C) BABEC. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package protocol
+package interfaces
 
 import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
@@ -41,6 +41,21 @@ type Scheduler interface {
 	ReturnErrorResponse(string, string)
 
 	ReturnErrorCrossContractResponse(txRequest *protogo.TxRequest, resp *SDKProtogo.DMSMessage)
+}
+
+type RequestScheduler interface {
+	PutMsg(msg *protogo.DockerVMMessage) error
+}
+
+type ProcessManager interface {
+	PutMsg(msg *protogo.DockerVMMessage) error
+	GetProcessByName(name string) (Process, error)
+}
+
+type Process interface {
+	PutMsg(msg *protogo.DockerVMMessage) error
+	SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer)
+	GetName() string
 }
 
 type UserController interface {

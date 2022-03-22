@@ -15,7 +15,7 @@ message DockerVMMessage {
 
     DockerVMType type = 2;
 
-    uint32 current_depth = 3;
+    ProcessInfo process_info = 3;
 
     // if not used, set to nil
     SysCallMessage sys_call_message = 4;
@@ -28,17 +28,27 @@ message DockerVMMessage {
 }
 
 message SysCallMessage {
+
     DockerVMCode code = 1;
 
     string message = 2;
 
     // if not used, set to nil
     map<string, bytes> payload = 3;
+}
 
+message ProcessInfo {
+
+    uint32 current_depth = 1;
+
+    string current_process_name = 2;
+
+    string parent_process_name = 3;
 }
 
 
 enum DockerVMType {
+
     UNDEFINED = 0;
 
     REGISTER = 1;
@@ -57,11 +67,11 @@ enum DockerVMType {
 
     TX_RESPONSE = 8;
 
-    GET_STATE = 9;
+    GET_STATE_REQUEST = 9;
 
     GET_STATE_RESPONSE = 10;
 
-    GET_BYTECODE = 11;
+    GET_BYTECODE_REQUEST = 11;
 
     GET_BYTECODE_RESPONSE = 12;
 
@@ -115,8 +125,6 @@ message TxContext {
     map<string, bytes> write_map = 1;
 
     map<string, bytes> read_map = 2;
-
-    string original_process_name = 3;
 }
 
 // TX_RESPONSE

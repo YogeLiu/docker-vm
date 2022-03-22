@@ -10,6 +10,7 @@ package core
 import (
 	"bufio"
 	"bytes"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"fmt"
 	"io"
 	"os/exec"
@@ -85,7 +86,7 @@ type Process struct {
 }
 
 // NewProcess new process, process working on main contract which is not called cross contract
-func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
+func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
 	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
@@ -120,7 +121,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 }
 
 // NewCrossProcess new cross process, process working on called cross process
-func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
+func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
 	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{

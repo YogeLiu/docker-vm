@@ -15,8 +15,8 @@ import (
 )
 
 type ManagerImpl struct {
-	cdmRpcServer   *rpc.CDMServer
-	dmsRpcServer   *rpc.DMSServer
+	cdmRpcServer   *rpc.ChainRPCServer
+	dmsRpcServer   *rpc.SandboxRPCServer
 	scheduler      *core.DockerScheduler
 	userController *core.UsersManager
 	securityEnv    *security2.SecurityEnv
@@ -50,16 +50,16 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 		utils.GetMaxSendMsgSizeFromEnv(), utils.GetMaxRecvMsgSizeFromEnv())
 
 	// new docker manager to sandbox server
-	dmsRpcServer, err := rpc.NewDMSServer()
+	dmsRpcServer, err := rpc.NewSandboxRPCServer()
 	if err != nil {
-		managerLogger.Errorf("fail to init new DMSServer, err: [%s]", err)
+		managerLogger.Errorf("fail to init new SandboxRPCServer, err: [%s]", err)
 		return nil, err
 	}
 
 	// new chain maker to docker manager server
-	cdmRpcServer, err := rpc.NewCDMServer()
+	cdmRpcServer, err := rpc.NewChainRPCServer()
 	if err != nil {
-		managerLogger.Errorf("fail to init new CDMServer, err: [%s]", err)
+		managerLogger.Errorf("fail to init new ChainRPCServer, err: [%s]", err)
 		return nil, err
 	}
 
@@ -84,14 +84,14 @@ func (m *ManagerImpl) InitContainer() {
 	var err error
 
 	// start cdm server
-	cdmApiInstance := rpc.NewCDMApi(m.scheduler)
-	if err = m.cdmRpcServer.StartCDMServer(cdmApiInstance); err != nil {
+	cdmApiInstance := rpc.NewChainRPCService(m.scheduler)
+	if err = m.cdmRpcServer.StartChainRPCServer(cdmApiInstance); err != nil {
 		errorC <- err
 	}
 
 	// start dms server
-	dmsApiInstance := rpc.NewDMSApi(m.processManager)
-	if err = m.dmsRpcServer.StartDMSServer(dmsApiInstance); err != nil {
+	dmsApiInstance := rpc.NewSandboxRPCService(m.processManager)
+	if err = m.dmsRpcServer.StartSandboxRPCServer(dmsApiInstance); err != nil {
 		errorC <- err
 	}
 
@@ -125,7 +125,7 @@ func (m *ManagerImpl) InitContainer() {
 
 // StopManager stop all servers
 func (m *ManagerImpl) StopManager() {
-	m.cdmRpcServer.StopCDMServer()
-	m.dmsRpcServer.StopDMSServer()
+	m.cdmRpcServer.StopChainRPCServer()
+	m.dmsRpcServer.StopSandboxRPCServer()
 	m.logger.Info("All is stopped!")
 }

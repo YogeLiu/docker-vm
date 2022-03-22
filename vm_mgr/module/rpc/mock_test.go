@@ -46,7 +46,7 @@ func (m *MockCDMRpcClient) CDMCommunicate(ctx context.Context, opts ...grpc.Call
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "CDMCommunicate", varargs...)
+	ret := m.ctrl.Call(m, "ContractEngineRpcCommunicate", varargs...)
 	ret0, _ := ret[0].(protogo.CDMRpc_CDMCommunicateClient)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -56,7 +56,7 @@ func (m *MockCDMRpcClient) CDMCommunicate(ctx context.Context, opts ...grpc.Call
 func (mr *MockCDMRpcClientMockRecorder) CDMCommunicate(ctx interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CDMCommunicate", reflect.TypeOf((*MockCDMRpcClient)(nil).CDMCommunicate), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContractEngineRpcCommunicate", reflect.TypeOf((*MockCDMRpcClient)(nil).CDMCommunicate), varargs...)
 }
 
 // MockCDMRpc_CDMCommunicateClient is a mock of CDMRpc_CDMCommunicateClient interface.
@@ -222,7 +222,7 @@ func (m *MockCDMRpcServer) EXPECT() *MockCDMRpcServerMockRecorder {
 // CDMCommunicate mocks base method.
 func (m *MockCDMRpcServer) CDMCommunicate(arg0 protogo.CDMRpc_CDMCommunicateServer) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CDMCommunicate", arg0)
+	ret := m.ctrl.Call(m, "ContractEngineRpcCommunicate", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -230,7 +230,7 @@ func (m *MockCDMRpcServer) CDMCommunicate(arg0 protogo.CDMRpc_CDMCommunicateServ
 // CDMCommunicate indicates an expected call of CDMCommunicate.
 func (mr *MockCDMRpcServerMockRecorder) CDMCommunicate(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CDMCommunicate", reflect.TypeOf((*MockCDMRpcServer)(nil).CDMCommunicate), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContractEngineRpcCommunicate", reflect.TypeOf((*MockCDMRpcServer)(nil).CDMCommunicate), arg0)
 }
 
 // MockCDMRpc_CDMCommunicateServer is a mock of CDMRpc_CDMCommunicateServer interface.

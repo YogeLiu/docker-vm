@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 const (
-
 	// CGroupRoot cgroup location is not allow user to change
 	CGroupRoot = "/sys/fs/cgroup/memory/chainmaker"
 	// ProcsFile process file
@@ -19,10 +18,10 @@ const (
 	// RssLimit rss limit file
 	RssLimit = 50000 // 10 MB
 
-	// DMSDir docker manager sandbox dir
-	DMSDir = "/dms"
-	// DMSSockPath docker manager sandbox domain socket path
-	DMSSockPath = "dms.sock"
+	// SandboxRPCDir docker manager sandbox dir
+	SandboxRPCDir = "/dms"
+	// SandboxRPCSockPath docker manager sandbox domain socket path
+	SandboxRPCSockPath = "dms.sock"
 
 	// DockerMountDir mount directory in docker
 	DockerMountDir = "/mount"
@@ -35,8 +34,8 @@ const (
 	ContractsDir = "contracts"
 	// SockDir dir save domain socket file
 	SockDir = "sock"
-	// SockName domain socket file name
-	SockName = "cdm.sock"
+	// ChainRPCSockName domain socket file name
+	ChainRPCSockName = "cdm.sock"
 
 	// TestPath docker log dir for test
 	TestPath = "/"

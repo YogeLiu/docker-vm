@@ -18,7 +18,7 @@ package core
 //	"time"
 //
 //	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
+//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/log"
 //	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/security"
 //	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
 //	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
@@ -28,7 +28,7 @@ package core
 //)
 //
 //func TestNewCrossProcess(t *testing.T) {
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
+//	log := log.NewDockerLogger(log.MODULE_PROCESS, config.DockerLogDir)
 //	timeTimer := time.NewTimer(processWaitingTime * time.Second)
 //	type args struct {
 //		user         *security.User
@@ -69,7 +69,7 @@ package core
 //				TxWaitingQueue:  nil,
 //				nextTxTrigger:       nil,
 //				expireTimer:     timeTimer,
-//				logger:          log,
+//				log:          log,
 //
 //				Handler:              nil,
 //				user:                 nil,
@@ -85,7 +85,7 @@ package core
 //
 //			got := NewCrossProcess(tt.args.user, tt.args.txRequest, tt.args.scheduler, tt.args.processName, tt.args.contractPath, tt.args.processPool)
 //			got.Handler = tt.want.Handler
-//			got.logger = log
+//			got.log = log
 //			got.expireTimer = timeTimer
 //			if !reflect.DeepEqual(got, tt.want) {
 //				t.Errorf("NewCrossProcess() = %v, want %v", got, tt.want)
@@ -135,7 +135,7 @@ package core
 //				TxWaitingQueue:  nil,
 //				nextTxTrigger:       nil,
 //				expireTimer:     nil,
-//				logger:          nil,
+//				log:          nil,
 //
 //				Handler:              nil,
 //				user:                 nil,
@@ -149,7 +149,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			got := NewProcess(tt.args.user, tt.args.txRequest, tt.args.scheduler, tt.args.processName, tt.args.contractPath, tt.args.processPool)
 //			tt.want.expireTimer = got.expireTimer
-//			tt.want.logger = got.logger
+//			tt.want.log = got.log
 //			tt.want.TxWaitingQueue = got.TxWaitingQueue
 //			tt.want.nextTxTrigger = got.nextTxTrigger
 //			tt.want.Handler = got.Handler
@@ -162,7 +162,7 @@ package core
 //
 //func TestProcess_AddTxWaitingQueue(t *testing.T) {
 //	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+//	log := log.NewDockerLogger(log.MODULE_PROCESS, basePath+testPath)
 //	type fields struct {
 //		processName          string
 //		contractName         string
@@ -173,7 +173,7 @@ package core
 //		TxWaitingQueue       chan *protogo.TxRequest
 //		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
+//		log               *zap.SugaredLogger
 //		Handler              *ProcessHandler
 //		user                 *security.User
 //		cmd                  *exec.Cmd
@@ -202,7 +202,7 @@ package core
 //				TxWaitingQueue:       make(chan *protogo.TxRequest),
 //				nextTxTrigger:            nil,
 //				expireTimer:          nil,
-//				logger:               log,
+//				log:               log,
 //				Handler:              nil,
 //				user:                 nil,
 //				cmd:                  nil,
@@ -225,7 +225,7 @@ package core
 //				TxWaitingQueue:       tt.fields.TxWaitingQueue,
 //				nextTxTrigger:            tt.fields.nextTxTrigger,
 //				expireTimer:          tt.fields.expireTimer,
-//				logger:               tt.fields.logger,
+//				log:               tt.fields.log,
 //				Handler:              tt.fields.Handler,
 //				user:                 tt.fields.user,
 //				cmd:                  tt.fields.cmd,
@@ -270,7 +270,7 @@ package core
 //		TxWaitingQueue       chan *protogo.TxRequest
 //		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
+//		log               *zap.SugaredLogger
 //		Handler              *ProcessHandler
 //		user                 *security.User
 //		cmd                  *exec.Cmd
@@ -310,10 +310,10 @@ package core
 //				TxWaitingQueue:  make(chan *protogo.TxRequest),
 //				nextTxTrigger:       nil,
 //				expireTimer:     nil,
-//				logger:          log,
+//				log:          log,
 //				Handler: &ProcessHandler{
 //					state:         "",
-//					logger:        nil,
+//					log:        nil,
 //					TxRequest:     nil,
 //					stream:        nil,
 //					scheduler:     nil,
@@ -340,10 +340,10 @@ package core
 //				TxWaitingQueue:  requests,
 //				nextTxTrigger:       nil,
 //				expireTimer:     nil,
-//				logger:          log,
+//				log:          log,
 //				Handler: &ProcessHandler{
 //					state:         "",
-//					logger:        nil,
+//					log:        nil,
 //					TxRequest:     nil,
 //					stream:        nil,
 //					scheduler:     nil,
@@ -371,7 +371,7 @@ package core
 //				TxWaitingQueue:       tt.fields.TxWaitingQueue,
 //				nextTxTrigger:            tt.fields.nextTxTrigger,
 //				expireTimer:          tt.fields.expireTimer,
-//				logger:               tt.fields.logger,
+//				log:               tt.fields.log,
 //				Handler:              tt.fields.Handler,
 //				user:                 tt.fields.user,
 //				cmd:                  tt.fields.cmd,
@@ -388,7 +388,7 @@ package core
 //
 //func TestProcess_LaunchProcess(t *testing.T) {
 //	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+//	log := log.NewDockerLogger(log.MODULE_PROCESS, basePath+testPath)
 //	type fields struct {
 //		processName          string
 //		contractName         string
@@ -399,7 +399,7 @@ package core
 //		TxWaitingQueue       chan *protogo.TxRequest
 //		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
+//		log               *zap.SugaredLogger
 //		Handler              *ProcessHandler
 //		user                 *security.User
 //		cmd                  *exec.Cmd
@@ -425,7 +425,7 @@ package core
 //				TxWaitingQueue:  nil,
 //				nextTxTrigger:       nil,
 //				expireTimer:     nil,
-//				logger:          log,
+//				log:          log,
 //				Handler:         nil,
 //				user: &security.User{
 //					Uid:      0,
@@ -454,7 +454,7 @@ package core
 //				TxWaitingQueue:       tt.fields.TxWaitingQueue,
 //				nextTxTrigger:            tt.fields.nextTxTrigger,
 //				expireTimer:          tt.fields.expireTimer,
-//				logger:               tt.fields.logger,
+//				log:               tt.fields.log,
 //				Handler:              tt.fields.Handler,
 //				user:                 tt.fields.user,
 //				cmd:                  tt.fields.cmd,
@@ -472,7 +472,7 @@ package core
 //
 //func TestProcess_StopProcess(t *testing.T) {
 //	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+//	log := log.NewDockerLogger(log.MODULE_PROCESS, basePath+testPath)
 //	poolInterface := NewMockProcessPoolInterface(gomock.NewController(t))
 //	poolInterface.EXPECT().RetrieveProcessContext(processName).Return(&ProcessContext{
 //		processList: [6]*Process{
@@ -496,7 +496,7 @@ package core
 //		TxWaitingQueue       chan *protogo.TxRequest
 //		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
+//		log               *zap.SugaredLogger
 //		Handler              *ProcessHandler
 //		user                 *security.User
 //		cmd                  *exec.Cmd
@@ -517,7 +517,7 @@ package core
 //			name: "testStopProcess",
 //			fields: fields{
 //				processName:          processName,
-//				logger:               log,
+//				log:               log,
 //				processPoolInterface: poolInterface,
 //			},
 //			args: args{processTimeout: true},
@@ -526,7 +526,7 @@ package core
 //			name: "testStopProcess",
 //			fields: fields{
 //				processName:          processName,
-//				logger:               log,
+//				log:               log,
 //				processPoolInterface: poolInterface,
 //			},
 //			args: args{processTimeout: false},
@@ -537,7 +537,7 @@ package core
 //			p := &Process{
 //				processName:          tt.fields.processName,
 //				processPoolInterface: tt.fields.processPoolInterface,
-//				logger:               tt.fields.logger,
+//				log:               tt.fields.log,
 //			}
 //			p.StopProcess(tt.args.processTimeout)
 //		})
@@ -546,9 +546,9 @@ package core
 //
 //func TestProcess_killCrossProcess(t *testing.T) {
 //	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+//	log := log.NewDockerLogger(log.MODULE_PROCESS, basePath+testPath)
 //	type fields struct {
-//		logger *zap.SugaredLogger
+//		log *zap.SugaredLogger
 //		cmd    *exec.Cmd
 //	}
 //	tests := []struct {
@@ -558,7 +558,7 @@ package core
 //		{
 //			name: "testKillCrossProcess",
 //			fields: fields{
-//				logger: log,
+//				log: log,
 //				cmd: &exec.Cmd{
 //					Process: &os.Process{},
 //				},
@@ -568,7 +568,7 @@ package core
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
-//				logger: tt.fields.logger,
+//				log: tt.fields.log,
 //				cmd:    tt.fields.cmd,
 //			}
 //			p.killCrossProcess()
@@ -593,7 +593,7 @@ package core
 //		TxWaitingQueue       chan *protogo.TxRequest
 //		nextTxTrigger            chan bool
 //		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
+//		log               *zap.SugaredLogger
 //		Handler              *ProcessHandler
 //		user                 *security.User
 //		cmd                  *exec.Cmd
@@ -622,7 +622,7 @@ package core
 //				TxWaitingQueue:       nil,
 //				nextTxTrigger:            nil,
 //				expireTimer:          nil,
-//				logger:               nil,
+//				log:               nil,
 //				Handler:              nil,
 //				user:                 nil,
 //				cmd:                  nil,
@@ -646,7 +646,7 @@ package core
 //				TxWaitingQueue:       tt.fields.TxWaitingQueue,
 //				nextTxTrigger:            tt.fields.nextTxTrigger,
 //				expireTimer:          tt.fields.expireTimer,
-//				logger:               tt.fields.logger,
+//				log:               tt.fields.log,
 //				Handler:              tt.fields.Handler,
 //				user:                 tt.fields.user,
 //				cmd:                  tt.fields.cmd,
@@ -698,11 +698,11 @@ package core
 //
 //func TestProcess_triggerProcessState(t *testing.T) {
 //	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+//	log := log.NewDockerLogger(log.MODULE_PROCESS, basePath+testPath)
 //	type fields struct {
 //		ProcessState protogo.ProcessState
 //		nextTxTrigger    chan bool
-//		logger       *zap.SugaredLogger
+//		log       *zap.SugaredLogger
 //	}
 //	tests := []struct {
 //		name   string
@@ -712,7 +712,7 @@ package core
 //			name: "testTriggerProcessState",
 //			fields: fields{
 //				ProcessState: protogo.ProcessState_PROCESS_STATE_CREATED,
-//				logger:       log,
+//				log:       log,
 //				nextTxTrigger:    make(chan bool, 0),
 //			},
 //		},
@@ -723,7 +723,7 @@ package core
 //			p := &Process{
 //				ProcessState: tt.fields.ProcessState,
 //				nextTxTrigger:    tt.fields.nextTxTrigger,
-//				logger:       tt.fields.logger,
+//				log:       tt.fields.log,
 //			}
 //			go func() {
 //				for {
@@ -736,10 +736,10 @@ package core
 //}
 //
 //func TestProcess_updateProcessState(t *testing.T) {
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
+//	log := log.NewDockerLogger(log.MODULE_PROCESS, config.DockerLogDir)
 //	type fields struct {
 //		ProcessState protogo.ProcessState
-//		logger       *zap.SugaredLogger
+//		log       *zap.SugaredLogger
 //	}
 //
 //	type args struct {
@@ -755,7 +755,7 @@ package core
 //			name: "testUpdateProcessState",
 //			fields: fields{
 //				ProcessState: 0,
-//				logger:       log,
+//				log:       log,
 //			},
 //		},
 //	}
@@ -764,7 +764,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
 //				ProcessState: tt.fields.ProcessState,
-//				logger:       tt.fields.logger,
+//				log:       tt.fields.log,
 //			}
 //			p.updateProcessState(protogo.ProcessState_PROCESS_STATE_CREATED)
 //		})

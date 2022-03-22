@@ -8,17 +8,18 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
-	"go.uber.org/zap"
+	//"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -29,16 +30,17 @@ var (
 type ContractManager struct {
 	lock            sync.RWMutex
 	getContractLock singleflight.Group
-	contractsMap    map[string]string
-	logger          *zap.SugaredLogger
-	scheduler       protocol.Scheduler
+	contractsMap map[string]string
+	log          protocol.Logger
+	//log          *zap.SugaredLogger
+	scheduler interfaces.Scheduler
 }
 
 // NewContractManager new contract manager
 func NewContractManager() *ContractManager {
 	contractManager := &ContractManager{
 		contractsMap: make(map[string]string),
-		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, config.DockerLogDir),
+		log:          logger.GetLogger(MODULE_CONTRACT_MANAGER),
 	}
 
 	mountDir = config.ContractBaseDir
@@ -47,7 +49,7 @@ func NewContractManager() *ContractManager {
 	return contractManager
 }
 
-func (cm *ContractManager) SetScheduler(scheduler protocol.Scheduler) {
+func (cm *ContractManager) SetScheduler(scheduler interfaces.Scheduler) {
 	cm.scheduler = scheduler
 }
 
@@ -61,7 +63,7 @@ func (cm *ContractManager) GetContract(txId, contractName string) (string, error
 	// get contract path from map
 	contractPath, ok := cm.contractsMap[contractName]
 	if ok {
-		cm.logger.Debugf("get contract from memory [%s], path is [%s]", contractName, contractPath)
+		cm.log.Debugf("get contract from memory [%s], path is [%s]", contractName, contractPath)
 		return contractPath, nil
 	}
 
@@ -72,7 +74,7 @@ func (cm *ContractManager) GetContract(txId, contractName string) (string, error
 		return cm.lookupContractFromDB(txId, contractName)
 	})
 	if err != nil {
-		cm.logger.Errorf("fail to get contract path from chain maker, contract name : [%s] -- txId [%s] ", contractName, txId)
+		cm.log.Errorf("fail to get contract path from chain maker, contract name : [%s] -- txId [%s] ", contractName, txId)
 		return "", err
 	}
 
@@ -107,7 +109,7 @@ func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (stri
 
 	// save contract file path to map
 	cm.contractsMap[contractName] = contractPath
-	//cm.logger.Debugf("get contract disk [%s], path is [%s]", contractName, contractPath)
+	//cm.log.Debugf("get contract disk [%s], path is [%s]", contractName, contractPath)
 
 	return contractPath, nil
 }
@@ -117,7 +119,7 @@ func (cm *ContractManager) setFileMod(filePath string) error {
 
 	err := os.Chmod(filePath, 0755)
 	if err != nil {
-		cm.logger.Errorf("fail to set contract mod , filePath : [%s] ", filePath)
+		cm.log.Errorf("fail to set contract mod , filePath : [%s] ", filePath)
 		return err
 	}
 
@@ -128,7 +130,7 @@ func (cm *ContractManager) initialContractMap() error {
 
 	files, err := ioutil.ReadDir(mountDir)
 	if err != nil {
-		cm.logger.Errorf("fail to scan contract dir")
+		cm.log.Errorf("fail to scan contract dir")
 		return err
 	}
 	for _, f := range files {
@@ -137,7 +139,7 @@ func (cm *ContractManager) initialContractMap() error {
 		cm.contractsMap[contractName] = contractPath
 	}
 
-	cm.logger.Debugf("init contract map with size [%d]", len(cm.contractsMap))
+	cm.log.Debugf("init contract map with size [%d]", len(cm.contractsMap))
 
 	return nil
 }

@@ -30,8 +30,8 @@ type ProcessManager struct {
 	crossRWMutex   sync.RWMutex
 
 	contractManager *ContractManager
-	usersManager    protocol.UserController
-	scheduler       protocol.Scheduler
+	usersManager    interfaces.UserController
+	scheduler       interfaces.Scheduler
 	// map[string]*ProcessBalance:
 	// string: processNamePrefix: contractName:contractVersion
 	// peerBalance:
@@ -58,7 +58,7 @@ func NewProcessManager(usersManager *UsersManager, contractManager *ContractMana
 	}
 }
 
-func (pm *ProcessManager) SetScheduler(scheduler protocol.Scheduler) {
+func (pm *ProcessManager) SetScheduler(scheduler interfaces.Scheduler) {
 	pm.scheduler = scheduler
 }
 

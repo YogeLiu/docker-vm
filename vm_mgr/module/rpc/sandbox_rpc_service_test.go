@@ -4,6 +4,7 @@ Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Package rpc includes 2 rpc servers, one for chainmaker client(1-1), the other one for sandbox (1-n)
 package rpc
 
 import (
@@ -72,10 +73,10 @@ func TestNewDMSApi(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewDMSApi(tt.args.processPool)
+			got := NewSandboxRPCService(tt.args.processPool)
 			got.logger = log
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDMSApi() = %v, want %v", got, tt.want)
+				t.Errorf("NewSandboxRPCService() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -4,6 +4,7 @@ Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Package rpc includes 2 rpc servers, one for chainmaker client(1-1), the other one for sandbox (1-n)
 package rpc
 
 import (
@@ -22,13 +23,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestCDMServer_StartCDMServer(t *testing.T) {
+func TestChainRPCServer_StartChainRPCServer(t *testing.T) {
 	s := newMockScheduler(t)
 	defer s.finish()
 	scheduler := s.getScheduler()
 
 	os.Setenv("Port", "8080")
-	server, err := NewCDMServer()
+	server, err := NewChainRPCServer()
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -41,7 +42,7 @@ func TestCDMServer_StartCDMServer(t *testing.T) {
 	}
 
 	type args struct {
-		apiInstance *CDMApi
+		apiInstance *ChainRPCService
 	}
 
 	tests := []struct {
@@ -58,21 +59,21 @@ func TestCDMServer_StartCDMServer(t *testing.T) {
 				logger:   utils.GetLogHandler(),
 			},
 			args: args{
-				apiInstance: NewCDMApi(scheduler),
+				apiInstance: NewChainRPCService(scheduler),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMServer{
+			cdm := &ChainRPCServer{
 				Listener: tt.fields.Listener,
 				Server:   tt.fields.Server,
 				logger:   tt.fields.logger,
 			}
 
 			os.Setenv("UdsOpen", "true")
-			if err := cdm.StartCDMServer(tt.args.apiInstance); (err != nil) != tt.wantErr {
-				t.Errorf("StartCDMServer() error = %v, wantErr %v", err, tt.wantErr)
+			if err := cdm.StartChainRPCServer(tt.args.apiInstance); (err != nil) != tt.wantErr {
+				t.Errorf("StartChainRPCServer() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -80,7 +81,7 @@ func TestCDMServer_StartCDMServer(t *testing.T) {
 
 func TestCDMServer_StopCDMServer(t *testing.T) {
 	os.Setenv("Port", "8083")
-	server, err := NewCDMServer()
+	server, err := NewChainRPCServer()
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -105,19 +106,19 @@ func TestCDMServer_StopCDMServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMServer{
+			cdm := &ChainRPCServer{
 				Listener: tt.fields.Listener,
 				Server:   tt.fields.Server,
 				logger:   tt.fields.logger,
 			}
-			cdm.StopCDMServer()
+			cdm.StopChainRPCServer()
 		})
 	}
 }
 
 func TestNewCDMServer(t *testing.T) {
 	os.Setenv("Port", "8099")
-	server, err := NewCDMServer()
+	server, err := NewChainRPCServer()
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -125,7 +126,7 @@ func TestNewCDMServer(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		want    *CDMServer
+		want    *ChainRPCServer
 		wantErr bool
 	}{
 		{
@@ -138,21 +139,21 @@ func TestNewCDMServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Setenv("Port", "8089")
-			got, err := NewCDMServer()
+			got, err := NewChainRPCServer()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCDMServer() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewChainRPCServer() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if got == nil {
-				t.Errorf("NewCDMServer() got = %v, want %v", got, tt.want)
+				t.Errorf("NewChainRPCServer() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-// NewCDMServer build new chainmaker to docker manager rpc server
-func newCDMServer(defaultPort string) (*CDMServer, error) {
+// NewChainRPCServer build new chainmaker to docker manager rpc server
+func newCDMServer(defaultPort string) (*ChainRPCServer, error) {
 	enableUnixDomainSocket, _ := strconv.ParseBool(os.Getenv("UdsOpen"))
 
 	var listener net.Listener
@@ -171,7 +172,7 @@ func newCDMServer(defaultPort string) (*CDMServer, error) {
 		}
 	} else {
 
-		absCdmUDSPath := filepath.Join(config.SockBaseDir, config.SockName)
+		absCdmUDSPath := filepath.Join(config.SockBaseDir, config.ChainRPCSockName)
 
 		listenAddress, err := net.ResolveUnixAddr("unix", absCdmUDSPath)
 		if err != nil {
@@ -197,7 +198,7 @@ func newCDMServer(defaultPort string) (*CDMServer, error) {
 
 	//set enforcement policy
 	kep := keepalive.EnforcementPolicy{
-		MinTime: ServerMinInterval,
+		MinTime: config.ServerMinInterval,
 		// allow keepalive w/o rpc
 		PermitWithoutStream: true,
 	}
@@ -210,13 +211,13 @@ func newCDMServer(defaultPort string) (*CDMServer, error) {
 	maxSendSize, _ := strconv.Atoi(maxSendSizeConfig)
 	maxRecvSize, _ := strconv.Atoi(maxRecvSizeConfig)
 
-	serverOpts = append(serverOpts, grpc.ConnectionTimeout(ConnectionTimeout))
+	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.ConnectionTimeout))
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(maxSendSize*1024*1024))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(maxRecvSize*1024*1024))
 
 	server := grpc.NewServer(serverOpts...)
 
-	return &CDMServer{
+	return &ChainRPCServer{
 		Listener: listener,
 		Server:   server,
 		logger:   utils.GetLogHandler(),
