@@ -55,7 +55,7 @@ type DockerManager struct {
 	ctx             context.Context
 	dockerAPIClient *client.Client // docker client
 
-	cdmClient      *rpc.CDMClient // grpc client
+	cdmClient      *rpc.ContractEngineClient // grpc client
 	clientInitOnce sync.Once
 	cdmState       bool
 
@@ -242,7 +242,7 @@ func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, c
 	return &RuntimeInstance{
 		ChainId: chainId,
 		Client:  m.cdmClient,
-		Log:     logger,
+		Logger:  logger,
 	}, nil
 }
 
