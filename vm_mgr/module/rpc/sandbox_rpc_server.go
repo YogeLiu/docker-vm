@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+// SandboxRPCServer is server of bidirectional streaming RPC (sandbox <=> contract engine)
 type SandboxRPCServer struct {
 	Listener net.Listener
 	Server   *grpc.Server

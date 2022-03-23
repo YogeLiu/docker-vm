@@ -8,150 +8,209 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
-	"errors"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sync"
 
-	"chainmaker.org/chainmaker/protocol/v2"
+	"go.uber.org/zap"
+
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/logger/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	//"go.uber.org/zap"
-	"golang.org/x/sync/singleflight"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
 
-var (
-	mountDir string
-)
+const contractManagerEventChSize = 64
 
+// ContractManager manage all contracts with LRU cache
 type ContractManager struct {
-	lock            sync.RWMutex
-	getContractLock singleflight.Group
-	contractsMap map[string]string
-	log          protocol.Logger
-	//log          *zap.SugaredLogger
-	scheduler interfaces.Scheduler
+	contractsLRU    *utils.Cache                  // contract LRU cache, make sure the contracts doesn't take up too much disk space
+	logger          *zap.SugaredLogger            // contract manager logger
+	scheduler       interfaces.Scheduler          // request scheduler
+	chainRPCService *rpc.ChainRPCService          // chain rpc service
+	eventCh         chan *protogo.DockerVMMessage // contract invoking handler
+	mountDir        string                        // contract mount Dir
 }
 
 // NewContractManager new contract manager
-func NewContractManager() *ContractManager {
+func NewContractManager(service *rpc.ChainRPCService) *ContractManager {
 	contractManager := &ContractManager{
-		contractsMap: make(map[string]string),
-		log:          logger.GetLogger(MODULE_CONTRACT_MANAGER),
+		contractsLRU:    utils.NewCache(utils.GetMaxLocalContractNumFromEnv()),
+		logger:          logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, config.DockerLogDir),
+		chainRPCService: service,
+		eventCh:         make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
+		mountDir:        config.ContractBaseDir,
 	}
-
-	mountDir = config.ContractBaseDir
-
-	_ = contractManager.initialContractMap()
+	_ = contractManager.initContractLRU()
 	return contractManager
 }
 
+// SetScheduler set request scheduler
 func (cm *ContractManager) SetScheduler(scheduler interfaces.Scheduler) {
 	cm.scheduler = scheduler
 }
 
-// GetContract get contract path in volume,
-// if it exists in volume, return path
-// if not exist in volume, request from chain maker state library
-func (cm *ContractManager) GetContract(txId, contractName string) (string, error) {
-	cm.lock.RLock()
-	defer cm.lock.RUnlock()
-
-	// get contract path from map
-	contractPath, ok := cm.contractsMap[contractName]
-	if ok {
-		cm.log.Debugf("get contract from memory [%s], path is [%s]", contractName, contractPath)
-		return contractPath, nil
-	}
-
-	// get contract path from chain maker
-	cPath, err, _ := cm.getContractLock.Do(contractName, func() (interface{}, error) {
-		defer cm.getContractLock.Forget(contractName)
-
-		return cm.lookupContractFromDB(txId, contractName)
-	})
-	if err != nil {
-		cm.log.Errorf("fail to get contract path from chain maker, contract name : [%s] -- txId [%s] ", contractName, txId)
-		return "", err
-	}
-
-	return cPath.(string), nil
+// Start contract manager, listen event chan,
+// event chan msg types: DockerVMType_GET_BYTECODE_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
+func (cm *ContractManager) Start() {
+	go func() {
+		select {
+		case msg := <-cm.eventCh:
+			switch msg.Type {
+			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
+				// handle get contract request:
+				// len(path) == 0: contract not found in lru cache, try to request bytecode from chain
+				// len(path) != 0: contract found in lru cache, send contract ready signal to request group
+				path, err := cm.handleGetContractReq(msg)
+				if err != nil {
+					cm.logger.Errorf("failed to handle get bytecode request, %s", err)
+					break
+				}
+				if len(path) == 0 {
+					cm.logger.Debugf("send get bytecode request to chain, contract name: [%s], txId [%s] ",
+						msg.GetRequest().GetContractName(), msg.TxId)
+					break
+				}
+				if err = cm.sendContractReadySignal(msg.GetRequest().GetContractName()); err != nil {
+					cm.logger.Errorf("failed to handle get bytecode request, %s", err)
+				}
+			case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+				err := cm.handleGetContractResp(msg)
+				if err != nil {
+					cm.logger.Errorf("failed to handle get bytecode response, %s", err)
+					break
+				}
+			default:
+				cm.logger.Errorf("unkown msg type")
+			}
+		}
+	}()
 }
 
-func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (string, error) {
-	getByteCodeMsg := &protogo.CDMMessage{
-		TxId:    txId,
-		Type:    protogo.CDMType_CDM_TYPE_GET_BYTECODE,
-		Payload: []byte(contractName),
+// PutMsg put invoking requests into chan, waiting for contract manager to handle request
+//  @param msg types include DockerVMType_GET_BYTECODE_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
+//  @return error
+func (cm *ContractManager) PutMsg(msg interface{}) error {
+	switch msg.(type) {
+	case *protogo.DockerVMMessage:
+		m, _ := msg.(*protogo.DockerVMMessage)
+		cm.eventCh <- m
+	default:
+		cm.logger.Errorf("unknown msg type")
 	}
-
-	// send request to chain maker
-	responseChan := make(chan *protogo.CDMMessage)
-	cm.scheduler.RegisterResponseCh(txId, responseChan)
-
-	cm.scheduler.GetByteCodeReqCh() <- getByteCodeMsg
-
-	returnMsg := <-responseChan
-
-	if returnMsg.Payload == nil {
-		return "", errors.New("fail to get bytecode")
-	}
-
-	// set contract mod
-	contractPath := filepath.Join(mountDir, contractName)
-	err := cm.setFileMod(contractPath)
-	if err != nil {
-		return "", err
-	}
-
-	// save contract file path to map
-	cm.contractsMap[contractName] = contractPath
-	//cm.log.Debugf("get contract disk [%s], path is [%s]", contractName, contractPath)
-
-	return contractPath, nil
-}
-
-// SetFileRunnable make file runnable, file permission is 755
-func (cm *ContractManager) setFileMod(filePath string) error {
-
-	err := os.Chmod(filePath, 0755)
-	if err != nil {
-		cm.log.Errorf("fail to set contract mod , filePath : [%s] ", filePath)
-		return err
-	}
-
 	return nil
 }
 
-func (cm *ContractManager) initialContractMap() error {
-
-	files, err := ioutil.ReadDir(mountDir)
+// initContractLRU loads contract files from disk to lru
+func (cm *ContractManager) initContractLRU() error {
+	files, err := ioutil.ReadDir(cm.mountDir)
 	if err != nil {
-		cm.log.Errorf("fail to scan contract dir")
-		return err
-	}
-	for _, f := range files {
-		contractName := f.Name()
-		contractPath := filepath.Join(mountDir, contractName)
-		cm.contractsMap[contractName] = contractPath
+		return fmt.Errorf("fail to scan contract dir [%s], %v", cm.mountDir)
 	}
 
-	cm.log.Debugf("init contract map with size [%d]", len(cm.contractsMap))
-
+	// contracts that exceed the limit will be cleaned up
+	for i, f := range files {
+		name := f.Name()
+		path := filepath.Join(cm.mountDir, name)
+		if i < cm.contractsLRU.MaxEntries {
+			cm.contractsLRU.Add(name, path)
+			continue
+		}
+		if err = cm.removeContractFromDisk(path); err != nil {
+			return fmt.Errorf("fail to clean contract files, file path: [%s], %v", path, err)
+		}
+	}
+	cm.logger.Debugf("init contract LRU with size [%d]", cm.contractsLRU.Len())
 	return nil
 }
 
-func (cm *ContractManager) checkContractDeployed(contractName string) (string, bool) {
-	cm.lock.RLock()
-	defer cm.lock.RUnlock()
-
-	contractPath, ok := cm.contractsMap[contractName]
-
-	if ok {
-		return contractPath, true
+// handleGetContractReq return contract path,
+// if it exists in contract LRU, return path
+// if not exists, request from chain
+func (cm *ContractManager) handleGetContractReq(msg *protogo.DockerVMMessage) (string, error) {
+	// get contract path from lru, return path
+	if contractPath, ok := cm.contractsLRU.Get(msg.GetRequest().GetContractName()); ok {
+		path := contractPath.(string)
+		cm.logger.Debugf("get contract [%s] from memory, path: [%s]",
+			msg.GetRequest().GetContractName(), path)
+		return path, nil
 	}
-	return "", false
+	// request contract from chain, return ""
+	err := cm.requestContractFromChain(msg)
+	if err != nil {
+		return "", fmt.Errorf("failed to request contract from chain, contract name : [%s], txId [%s] ",
+			msg.GetRequest().GetContractName(), msg.GetTxId())
+	}
+	return "", nil
+}
+
+// handleGetContractResp handle get contract msg, save in lru,
+// if contract lru is full, pop oldest contracts from lru, delete from disk.
+func (cm *ContractManager) handleGetContractResp(msg *protogo.DockerVMMessage) error {
+
+	// if contracts lru is full, delete oldest contract
+	if cm.contractsLRU.Len() == cm.contractsLRU.MaxEntries {
+		oldestContractPath := cm.contractsLRU.GetOldest()
+		if oldestContractPath == nil {
+			return fmt.Errorf("oldest contract is nil")
+		}
+
+		cm.contractsLRU.RemoveOldest()
+
+		if err := cm.removeContractFromDisk(oldestContractPath.(string)); err != nil {
+			return fmt.Errorf("failed to remove file, %v", err)
+		}
+		cm.logger.Debugf("removed oldest contract from disk and lru")
+	}
+
+	// save contract in lru (contract file already saved in disk by chain)
+	path := filepath.Join(cm.mountDir, msg.GetResponse().GetContractName())
+	cm.contractsLRU.Add(msg.GetResponse().GetContractName(), path)
+	cm.logger.Debugf("new contract saved in lru and disk")
+
+	// send contract ready signal to request group
+	if err := cm.sendContractReadySignal(msg.GetRequest().GetContractName()); err != nil {
+		cm.logger.Errorf("failed to handle get bytecode request, %s", err)
+	}
+	return nil
+}
+
+// requestContractFromChain request contract from chain
+func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage) error {
+	// send request to chain
+	if err := cm.chainRPCService.PutMsg(msg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// sendContractReadySignal send contract ready signal to request group, request group can request process now.
+func (cm *ContractManager) sendContractReadySignal(contractName string) error {
+	if cm.scheduler == nil {
+		return fmt.Errorf("request scheduler have not been initialized")
+	}
+	requestGroup, err := cm.scheduler.GetRequestGroup(contractName)
+	if err != nil {
+		return fmt.Errorf("failed to get request group, %v", err)
+	}
+	err = requestGroup.PutMsg(contractName)
+	if err != nil {
+		return fmt.Errorf("failed to put msg into request group's event chan")
+	}
+	return nil
+}
+
+// removeContractFromDisk remove contract from disk
+func (cm *ContractManager) removeContractFromDisk(path string) error {
+	// chmod contract file
+	if err := os.Chmod(path, 0755); err != nil {
+		return fmt.Errorf("fail to set mod of %s, %v", path, err)
+	}
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("fail to remove file %s, %v", path, err)
+	}
+	return nil
 }

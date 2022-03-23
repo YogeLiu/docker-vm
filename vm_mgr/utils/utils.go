@@ -24,6 +24,7 @@ import (
 const (
 	DefaultMaxSendSize = 4
 	DefaultMaxRecvSize = 4
+	DefaultMaxLocalContractNum = 1024
 )
 
 // WriteToFile WriteFile write value to file
@@ -156,4 +157,13 @@ func GetMaxRecvMsgSizeFromEnv() int {
 		return DefaultMaxRecvSize
 	}
 	return maxRecvSize
+}
+
+func GetMaxLocalContractNumFromEnv() int {
+	maxLocalContractNumFromEnv := os.Getenv(config.ENV_MAX_LOCAL_CONTRACT_NUM)
+	maxLocalContractNum, err := strconv.Atoi(maxLocalContractNumFromEnv)
+	if err != nil {
+		return DefaultMaxLocalContractNum
+	}
+	return maxLocalContractNum
 }

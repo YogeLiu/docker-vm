@@ -281,7 +281,7 @@ package core
 //func TestDockerScheduler_RegisterCrossContractResponseCh(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -308,7 +308,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -327,7 +327,7 @@ package core
 //func TestDockerScheduler_RegisterResponseCh(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -354,7 +354,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -373,7 +373,7 @@ package core
 //func TestDockerScheduler_StartScheduler(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -395,7 +395,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -414,7 +414,7 @@ package core
 //func TestDockerScheduler_StopScheduler(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -436,7 +436,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -455,7 +455,7 @@ package core
 //func TestDockerScheduler_constructContractKey(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -483,7 +483,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			s := &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -505,7 +505,7 @@ package core
 //func TestDockerScheduler_constructCrossContractProcessName(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -532,7 +532,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			s := &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -554,7 +554,7 @@ package core
 //func TestDockerScheduler_constructErrorResponse(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -582,7 +582,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			s := &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -604,7 +604,7 @@ package core
 //func TestDockerScheduler_constructProcessName(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -631,7 +631,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			s := &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -653,7 +653,7 @@ package core
 //func TestDockerScheduler_handleCallCrossContract(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -679,7 +679,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -698,7 +698,7 @@ package core
 //func TestDockerScheduler_handleTx(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -724,7 +724,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -743,7 +743,7 @@ package core
 //func TestDockerScheduler_initProcess(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -769,7 +769,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -788,7 +788,7 @@ package core
 //func TestDockerScheduler_listenIncomingTxRequest(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -810,7 +810,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -829,7 +829,7 @@ package core
 //func TestDockerScheduler_listenProcessInvoke(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -855,7 +855,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -874,7 +874,7 @@ package core
 //func TestDockerScheduler_returnErrorCrossContractResponse(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -901,7 +901,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,
@@ -920,7 +920,7 @@ package core
 //func TestDockerScheduler_returnErrorTxResponse(t *testing.T) {
 //	type fields struct {
 //		lock             sync.Mutex
-//		log           *zap.SugaredLogger
+//		logger           *zap.SugaredLogger
 //		singleFlight     singleflight.Group
 //		usersManager   protocol.UserController
 //		contractManager  *ContractManager
@@ -947,7 +947,7 @@ package core
 //		t.Run(tt.name, func(t *testing.T) {
 //			_ = &DockerScheduler{
 //				lock:             tt.fields.lock,
-//				log:           tt.fields.log,
+//				logger:           tt.fields.logger,
 //				singleFlight:     tt.fields.singleFlight,
 //				usersManager:   tt.fields.usersManager,
 //				contractManager:  tt.fields.contractManager,

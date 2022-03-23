@@ -8,39 +8,14 @@ package interfaces
 import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
 )
 
 type Scheduler interface {
-	// GetTxReqCh get tx req chan
-	GetTxReqCh() chan *protogo.TxRequest
+	GetRequestGroup(contractName string) (RequestGroup, error)
+}
 
-	// GetTxResponseCh get tx response chan
-	GetTxResponseCh() chan *protogo.TxResponse
-
-	// GetGetStateReqCh get get_state request chan
-	GetGetStateReqCh() chan *protogo.CDMMessage
-
-	// RegisterResponseCh register response chan
-	RegisterResponseCh(txId string, responseCh chan *protogo.CDMMessage)
-
-	// RegisterCrossContractResponseCh register cross contract response chan
-	RegisterCrossContractResponseCh(responseId string, responseCh chan *SDKProtogo.DMSMessage)
-
-	// GetCrossContractResponseCh get cross contract response chan
-	GetCrossContractResponseCh(responseId string) chan *SDKProtogo.DMSMessage
-
-	// GetResponseChByTxId get response chan
-	GetResponseChByTxId(txId string) chan *protogo.CDMMessage
-
-	// GetByteCodeReqCh get get_bytecode request chan
-	GetByteCodeReqCh() chan *protogo.CDMMessage
-
-	GetCrossContractReqCh() chan *protogo.TxRequest
-
-	ReturnErrorResponse(string, string)
-
-	ReturnErrorCrossContractResponse(txRequest *protogo.TxRequest, resp *SDKProtogo.DMSMessage)
+type RequestGroup interface {
+	PutMsg(msg interface{}) error
 }
 
 type RequestScheduler interface {

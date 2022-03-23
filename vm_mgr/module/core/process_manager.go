@@ -140,7 +140,7 @@ func (pm *ProcessManager) createNewProcess(processName string, txRequest *protog
 
 	// get contract deploy path
 	contractKey := utils.ConstructContractKey(txRequest.ContractName, txRequest.ContractVersion)
-	contractPath, err = pm.contractManager.GetContract(txRequest.TxId, contractKey)
+	contractPath, err = pm.contractManager.handleGetContractReq(txRequest.TxId, contractKey)
 	if err != nil || len(contractPath) == 0 {
 		pm.logger.Errorf("fail to get contract path, contractName is [%s], err is [%s]", contractKey, err)
 		return nil, utils.ContractFileError
@@ -152,7 +152,7 @@ func (pm *ProcessManager) createNewProcess(processName string, txRequest *protog
 func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
 	// validate contract deployed or not
 	contractKey := utils.ConstructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
-	contractPath, err := pm.contractManager.GetContract(crossContractTx.TxId, contractKey)
+	contractPath, err := pm.contractManager.handleGetContractReq(crossContractTx.TxId, contractKey)
 	if err != nil {
 		pm.logger.Errorf(err.Error())
 		errResponse := constructCallContractErrorResponse(err.Error(), crossContractTx.TxId,

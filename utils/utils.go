@@ -12,6 +12,7 @@ const (
 	DefaultUserNum        = 1000
 	DefaultTxTimeLimit    = 5
 	DefaultMaxConcurrency = 500
+	DefaultMaxLocalContractNum = 1024
 )
 
 func SplitContractName(contractNameAndVersion string) string {
@@ -52,4 +53,11 @@ func GetUserNumFromConfig(config *config.DockerVMConfig) uint32 {
 		return DefaultUserNum
 	}
 	return config.UserNum
+}
+
+func GetMaxLocalContractNumFromConfig(config *config.DockerVMConfig) uint32 {
+	if config.MaxLocalContractNum == 0 {
+		return DefaultMaxLocalContractNum
+	}
+	return config.MaxLocalContractNum
 }

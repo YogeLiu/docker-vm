@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
-// ChainRPCServer is server of bidirectional streaming RPC
+// ChainRPCServer is server of bidirectional streaming RPC (chain <=> contract engine)
 type ChainRPCServer struct {
 	Listener net.Listener       // chain network listener for stream-oriented protocols
 	Server   *grpc.Server       // grpc server for chain

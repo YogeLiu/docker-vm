@@ -40,7 +40,6 @@ type ChainRPCService struct {
 //  @param scheduler is tx request scheduler
 //  @param manager is process manager
 //  @return *ChainRPCService
-//
 func NewChainRPCService(scheduler interfaces.RequestScheduler, manager interfaces.ProcessManager) *ChainRPCService {
 	return &ChainRPCService{
 		logger:     logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVICE, config.DockerLogDir),

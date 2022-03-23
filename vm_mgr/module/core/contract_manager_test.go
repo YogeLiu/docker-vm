@@ -17,7 +17,7 @@ package core
 //	"go.uber.org/zap"
 //	"golang.org/x/sync/singleflight"
 //
-//	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/log"
+//	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 //	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 //	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 //	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
@@ -45,8 +45,8 @@ package core
 //	type fields struct {
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
-//		contractsMap    map[string]string
-//		log          *zap.SugaredLogger
+//		contractsLRU    map[string]string
+//		logger          *zap.SugaredLogger
 //		scheduler       *protocol.MockScheduler
 //	}
 //
@@ -67,10 +67,10 @@ package core
 //			fields: fields{
 //				lock:            sync.RWMutex{},
 //				getContractLock: singleflight.Group{},
-//				contractsMap: map[string]string{
+//				contractsLRU: map[string]string{
 //					contractName: contractValue,
 //				},
-//				log:    utils.GetLogHandler(),
+//				logger:    utils.GetLogHandler(),
 //				scheduler: scheduler,
 //			},
 //			args: args{
@@ -86,10 +86,10 @@ package core
 //		//	fields: fields{
 //		//		lock:            sync.RWMutex{},
 //		//		getContractLock: singleflight.Group{},
-//		//		contractsMap: map[string]string{
+//		//		contractsLRU: map[string]string{
 //		//			contractName: contractValue,
 //		//		},
-//		//		log:    utils.GetLogHandler(),
+//		//		logger:    utils.GetLogHandler(),
 //		//		scheduler: scheduler,
 //		//	},
 //		//	args: args{
@@ -106,17 +106,17 @@ package core
 //			cm := &ContractManager{
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
-//				contractsMap:    tt.fields.contractsMap,
-//				log:          tt.fields.log,
+//				contractsLRU:    tt.fields.contractsLRU,
+//				logger:          tt.fields.logger,
 //				scheduler:       tt.fields.scheduler,
 //			}
-//			got, err := cm.GetContract(tt.args.txId, tt.args.contractName)
+//			got, err := cm.handleGetContractReq(tt.args.txId, tt.args.contractName)
 //			if (err != nil) != tt.wantErr {
-//				t.Errorf("GetContract() error = %v, wantErr %v", err, tt.wantErr)
+//				t.Errorf("handleGetContractReq() error = %v, wantErr %v", err, tt.wantErr)
 //				return
 //			}
 //			if got != tt.want {
-//				t.Errorf("GetContract() got = %v, want %v", got, tt.want)
+//				t.Errorf("handleGetContractReq() got = %v, want %v", got, tt.want)
 //			}
 //		})
 //	}
@@ -126,8 +126,8 @@ package core
 //	type fields struct {
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
-//		contractsMap    map[string]string
-//		log          *zap.SugaredLogger
+//		contractsLRU    map[string]string
+//		logger          *zap.SugaredLogger
 //		scheduler       protocol.Scheduler
 //	}
 //	type args struct {
@@ -145,10 +145,10 @@ package core
 //			fields: fields{
 //				lock:            sync.RWMutex{},
 //				getContractLock: singleflight.Group{},
-//				contractsMap: map[string]string{
+//				contractsLRU: map[string]string{
 //					contractName: contractValue,
 //				},
-//				log:    nil,
+//				logger:    nil,
 //				scheduler: nil,
 //			},
 //			args: args{
@@ -163,8 +163,8 @@ package core
 //			cm := &ContractManager{
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
-//				contractsMap:    tt.fields.contractsMap,
-//				log:          tt.fields.log,
+//				contractsLRU:    tt.fields.contractsLRU,
+//				logger:          tt.fields.logger,
 //				scheduler:       tt.fields.scheduler,
 //			}
 //			got, got1 := cm.checkContractDeployed(tt.args.contractName)
@@ -184,8 +184,8 @@ package core
 //	type fields struct {
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
-//		contractsMap    map[string]string
-//		log          *zap.SugaredLogger
+//		contractsLRU    map[string]string
+//		logger          *zap.SugaredLogger
 //		scheduler       protocol.Scheduler
 //	}
 //	tests := []struct {
@@ -198,10 +198,10 @@ package core
 //			fields: fields{
 //				lock:            sync.RWMutex{},
 //				getContractLock: singleflight.Group{},
-//				contractsMap: map[string]string{
+//				contractsLRU: map[string]string{
 //					contractName: contractValue,
 //				},
-//				log:    log.NewDockerLogger(log.MODULE_CONTRACT_MANAGER, logPath),
+//				logger:    logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath),
 //				scheduler: nil,
 //			},
 //			wantErr: false,
@@ -213,14 +213,14 @@ package core
 //			cm := &ContractManager{
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
-//				contractsMap:    tt.fields.contractsMap,
-//				log:          tt.fields.log,
+//				contractsLRU:    tt.fields.contractsLRU,
+//				logger:          tt.fields.logger,
 //				scheduler:       tt.fields.scheduler,
 //			}
 //
 //			mountDir = currentPath
-//			if err := cm.initialContractMap(); (err != nil) != tt.wantErr {
-//				t.Errorf("initialContractMap() error = %v, wantErr %v", err, tt.wantErr)
+//			if err := cm.initContractLRU(); (err != nil) != tt.wantErr {
+//				t.Errorf("initContractLRU() error = %v, wantErr %v", err, tt.wantErr)
 //			}
 //		})
 //	}
@@ -232,8 +232,8 @@ package core
 //	type fields struct {
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
-//		contractsMap    map[string]string
-//		log          *zap.SugaredLogger
+//		contractsLRU    map[string]string
+//		logger          *zap.SugaredLogger
 //		scheduler       *protocol.MockScheduler
 //	}
 //	type args struct {
@@ -252,10 +252,10 @@ package core
 //		//	fields: fields{
 //		//		lock:            sync.RWMutex{},
 //		//		getContractLock: singleflight.Group{},
-//		//		contractsMap: map[string]string{
+//		//		contractsLRU: map[string]string{
 //		//			contractName: contractValue,
 //		//		},
-//		//		log:    log.NewDockerLogger(log.MODULE_CONTRACT_MANAGER, logPath),
+//		//		logger:    logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath),
 //		//		scheduler: protocol.NewMockScheduler(gomock.NewController(t)),
 //		//	},
 //		//	args: args{
@@ -271,17 +271,17 @@ package core
 //			cm := &ContractManager{
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
-//				contractsMap:    tt.fields.contractsMap,
-//				log:          tt.fields.log,
+//				contractsLRU:    tt.fields.contractsLRU,
+//				logger:          tt.fields.logger,
 //				scheduler:       tt.fields.scheduler,
 //			}
-//			got, err := cm.lookupContractFromDB(tt.args.txId, tt.args.contractName)
+//			got, err := cm.requestContractFromChain(tt.args.txId, tt.args.contractName)
 //			if (err != nil) != tt.wantErr {
-//				t.Errorf("lookupContractFromDB() error = %v, wantErr %v", err, tt.wantErr)
+//				t.Errorf("requestContractFromChain() error = %v, wantErr %v", err, tt.wantErr)
 //				return
 //			}
 //			if got != tt.want {
-//				t.Errorf("lookupContractFromDB() got = %v, want %v", got, tt.want)
+//				t.Errorf("requestContractFromChain() got = %v, want %v", got, tt.want)
 //			}
 //		})
 //	}
@@ -292,8 +292,8 @@ package core
 //	type fields struct {
 //		lock            sync.RWMutex
 //		getContractLock singleflight.Group
-//		contractsMap    map[string]string
-//		log          *zap.SugaredLogger
+//		contractsLRU    map[string]string
+//		logger          *zap.SugaredLogger
 //		scheduler       protocol.Scheduler
 //	}
 //	type args struct {
@@ -310,8 +310,8 @@ package core
 //			fields: fields{
 //				lock:            sync.RWMutex{},
 //				getContractLock: singleflight.Group{},
-//				contractsMap:    nil,
-//				log:          nil,
+//				contractsLRU:    nil,
+//				logger:          nil,
 //				scheduler:       nil,
 //			},
 //			args:    args{filePath: currentPath},
@@ -323,8 +323,8 @@ package core
 //			cm := &ContractManager{
 //				lock:            tt.fields.lock,
 //				getContractLock: tt.fields.getContractLock,
-//				contractsMap:    tt.fields.contractsMap,
-//				log:          tt.fields.log,
+//				contractsLRU:    tt.fields.contractsLRU,
+//				logger:          tt.fields.logger,
 //				scheduler:       tt.fields.scheduler,
 //			}
 //			if err := cm.setFileMod(tt.args.filePath); (err != nil) != tt.wantErr {
@@ -337,7 +337,7 @@ package core
 //func TestNewContractManager(t *testing.T) {
 //	currentPath, _ := os.Getwd()
 //	logPath := currentPath + testPath
-//	log := log.NewDockerLogger(log.MODULE_CONTRACT_MANAGER, logPath)
+//	logger := logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, logPath)
 //	tests := []struct {
 //		name string
 //		want *ContractManager
@@ -345,8 +345,8 @@ package core
 //		{
 //			name: "NewContractManager",
 //			want: &ContractManager{
-//				contractsMap: make(map[string]string),
-//				log:       log,
+//				contractsLRU: make(map[string]string),
+//				logger:       logger,
 //			},
 //		},
 //	}
@@ -356,7 +356,7 @@ package core
 //
 //			mountDir = currentPath
 //			got := NewContractManager(currentPath)
-//			got.log = log
+//			got.logger = logger
 //
 //			if !reflect.DeepEqual(got, tt.want) {
 //				t.Errorf("NewContractManager() = %v, want %v", got, tt.want)

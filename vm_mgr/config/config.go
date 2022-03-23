@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 package config
 
+import "time"
+
 const (
 	// CGroupRoot cgroup location is not allow user to change
 	CGroupRoot = "/sys/fs/cgroup/memory/chainmaker"
@@ -39,6 +41,16 @@ const (
 
 	// TestPath docker log dir for test
 	TestPath = "/"
+
+	// ServerMinInterval is the server min interval
+	ServerMinInterval = time.Duration(1) * time.Minute
+	// ConnectionTimeout is the connection timeout time
+	ConnectionTimeout = 5 * time.Second
+	// ServerKeepAliveTime is the idle duration before server ping
+	ServerKeepAliveTime = 1 * time.Minute
+	// ServerKeepAliveTimeout is the ping timeout
+	ServerKeepAliveTimeout = 20 * time.Second
+
 )
 
 var (
@@ -66,4 +78,6 @@ const (
 
 	EnvEnablePprof = "ENV_ENABLE_PPROF"
 	EnvPprofPort   = "ENV_PPROF_PORT"
+
+	ENV_MAX_LOCAL_CONTRACT_NUM = "ENV_MAX_LOCAL_CONTRACT_NUM"
 )

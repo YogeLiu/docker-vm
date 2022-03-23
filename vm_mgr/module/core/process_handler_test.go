@@ -502,7 +502,7 @@ func TestProcessHandler_handleGetState(t *testing.T) {
 		//	name: "testHandleGetState",
 		//	fields: fields{
 		//		state:  created,
-		//		log: utils.GetLogHandler(),
+		//		logger: utils.GetLogHandler(),
 		//		TxRequest: &protogo.TxRequest{
 		//			TxId:            txId,
 		//			ContractName:    contractName,

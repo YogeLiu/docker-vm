@@ -429,6 +429,8 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 		config.ENV_MAX_SEND_MSG_SIZE, utils.GetMaxSendMsgSizeFromConfig(m.dockerVMConfig)))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
 		config.ENV_MAX_RECV_MSG_SIZE, utils.GetMaxRecvMsgSizeFromConfig(m.dockerVMConfig)))
+	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
+		config.ENV_MAX_LOCAL_CONTRACT_NUM, utils.GetMaxLocalContractNumFromConfig(m.dockerVMConfig)))
 
 	// add test port just for mac development and pprof
 	// if using this feature, make sure close enable_uds in yml
