@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package module
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
-	security2 "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
@@ -19,7 +20,7 @@ type ManagerImpl struct {
 	dmsRpcServer   *rpc.SandboxRPCServer
 	scheduler      *core.DockerScheduler
 	userController *core.UsersManager
-	securityEnv    *security2.SecurityEnv
+	securityEnv    *security.SecurityCenter
 	processManager *core.ProcessManager
 	logger         *zap.SugaredLogger
 }
@@ -27,12 +28,9 @@ type ManagerImpl struct {
 func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 
 	// set config
-	securityEnv := security2.NewSecurityEnv()
-	err := securityEnv.InitConfig()
-	if err != nil {
-		managerLogger.Errorf("fail to init directory: %s", err)
-		return nil, err
-	}
+	config.InitConfig()
+
+	securityEnv := security.NewSecurityCenter()
 
 	// new users controller
 	usersManager := core.NewUsersManager()
@@ -96,13 +94,13 @@ func (m *ManagerImpl) InitContainer() {
 	}
 
 	// init sandBox
-	if err = m.securityEnv.InitSecurityEnv(); err != nil {
+	if err = m.securityEnv.InitSecurityCenter(); err != nil {
 		errorC <- err
 	}
 
 	// create new users
 	go func() {
-		err = m.userController.CreateNewUsers()
+		err = m.userController.BatchCreateUsers()
 		if err != nil {
 			errorC <- err
 		}

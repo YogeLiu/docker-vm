@@ -15,29 +15,40 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"go.uber.org/zap"
-)
-
-const (
-	DefaultMaxSendSize = 4
-	DefaultMaxRecvSize = 4
-	DefaultMaxLocalContractNum = 1024
 )
 
 // WriteToFile WriteFile write value to file
-func WriteToFile(path string, value int) error {
-	if err := ioutil.WriteFile(path, []byte(fmt.Sprintf("%d", value)), 0755); err != nil {
+func WriteToFile(path string, value string) error {
+	if err := ioutil.WriteFile(path, []byte(value), 0755); err != nil {
 		return err
 	}
 	return nil
 }
 
-func WriteToFIle(path, info string) error {
-	if err := ioutil.WriteFile(path, []byte(info), 0755); err != nil {
+// Mkdir make directory
+func Mkdir(path string) error {
+	// if dir existed, remove first
+	_, err := os.Stat(path)
+	if err == nil {
+		err = RemoveDir(path)
 		return err
+	}
+
+	// make dir
+	if err = os.Mkdir(path, 0755); err != nil {
+		return fmt.Errorf("fail to create directory, [%s]", err)
+	}
+	return nil
+}
+
+// RemoveDir remove dir from disk
+func RemoveDir(path string) error {
+	// chmod contract file
+	if err := os.Chmod(path, 0755); err != nil {
+		return fmt.Errorf("fail to set mod of %s, %v", path, err)
+	}
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("fail to remove file %s, %v", path, err)
 	}
 	return nil
 }
@@ -65,14 +76,14 @@ func ProcessLoggerName(processName string) string {
 	return loggerName
 }
 
-func GetTestLogPath() string {
-	basePath, _ := os.Getwd()
-	return basePath + config.TestPath
-}
+//func GetTestLogPath() string {
+//	basePath, _ := os.Getwd()
+//	return basePath + config.TestPath
+//}
 
-func GetLogHandler() *zap.SugaredLogger {
-	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
-}
+//func GetLogHandler() *zap.SugaredLogger {
+//	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
+//}
 
 // ConstructContractKey contractName#contractVersion
 func ConstructContractKey(contractName, contractVersion string) string {
@@ -139,31 +150,4 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 func GetContractKeyFromProcessName(processName string) string {
 	nameList := strings.Split(processName, "#")
 	return ConstructContractKey(nameList[0], nameList[1])
-}
-
-func GetMaxSendMsgSizeFromEnv() int {
-	maxSendSizeFromEnv := os.Getenv(config.ENV_MAX_SEND_MSG_SIZE)
-	maxSendSize, err := strconv.Atoi(maxSendSizeFromEnv)
-	if err != nil {
-		return DefaultMaxSendSize
-	}
-	return maxSendSize
-}
-
-func GetMaxRecvMsgSizeFromEnv() int {
-	maxRecvSizeFromEnv := os.Getenv(config.ENV_MAX_RECV_MSG_SIZE)
-	maxRecvSize, err := strconv.Atoi(maxRecvSizeFromEnv)
-	if err != nil {
-		return DefaultMaxRecvSize
-	}
-	return maxRecvSize
-}
-
-func GetMaxLocalContractNumFromEnv() int {
-	maxLocalContractNumFromEnv := os.Getenv(config.ENV_MAX_LOCAL_CONTRACT_NUM)
-	maxLocalContractNum, err := strconv.Atoi(maxLocalContractNumFromEnv)
-	if err != nil {
-		return DefaultMaxLocalContractNum
-	}
-	return maxLocalContractNum
 }

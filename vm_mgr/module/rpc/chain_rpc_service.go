@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
@@ -42,7 +41,7 @@ type ChainRPCService struct {
 //  @return *ChainRPCService
 func NewChainRPCService(scheduler interfaces.RequestScheduler, manager interfaces.ProcessManager) *ChainRPCService {
 	return &ChainRPCService{
-		logger:     logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVICE, config.DockerLogDir),
+		logger:     logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVICE),
 		scheduler:  scheduler,
 		processMgr: manager,
 		eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),

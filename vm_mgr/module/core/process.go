@@ -15,6 +15,7 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -28,10 +29,6 @@ import (
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"go.uber.org/zap"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 )
@@ -50,7 +47,7 @@ type ExitErr struct {
 type ProcessMgrInterface interface {
 	getProcessDepth(initialProcessName string) *ProcessDepth
 
-	ReleaseProcess(processName string, user *security.User) bool
+	ReleaseProcess(processName string, user *User) bool
 }
 
 // Process id of process is index of process in process list
@@ -66,7 +63,7 @@ type Process struct {
 	contractPath    string
 
 	cGroupPath string
-	user       *security.User
+	user       *User
 	cmd        *exec.Cmd
 
 	ProcessState   protogo.ProcessState
@@ -86,7 +83,7 @@ type Process struct {
 }
 
 // NewProcess new process, process working on main contract which is not called cross contract
-func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
+func NewProcess(user *User, txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
 	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
@@ -110,7 +107,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler int
 		Handler:        nil,
 		cmdReadyCh:     make(chan bool, 1),
 
-		logger: logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		logger: logger.NewDockerLogger(logger.MODULE_PROCESS),
 
 		processMgr: processPool,
 	}
@@ -121,7 +118,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler int
 }
 
 // NewCrossProcess new cross process, process working on called cross process
-func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
+func NewCrossProcess(user *User, txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
 	processName, contractPath string, processPool ProcessMgrInterface) *Process {
 
 	process := &Process{
@@ -136,7 +133,7 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 		newTxTrigger:    nil,
 		exitCh:          nil,
 		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS),
 
 		Handler:      nil,
 		cmdReadyCh:   make(chan bool, 1),
@@ -218,7 +215,7 @@ func (p *Process) LaunchProcess() *ExitErr {
 	p.cmdReadyCh <- true
 
 	// add control group
-	if err = utils.WriteToFile(p.cGroupPath, cmd.Process.Pid); err != nil {
+	if err = utils.WriteToFile(p.cGroupPath, strconv.Itoa(cmd.Process.Pid)); err != nil {
 		p.logger.Errorf("fail to add cgroup: %s", err)
 		return &ExitErr{
 			err:  err,
@@ -426,7 +423,7 @@ func (p *Process) Size() int {
 }
 
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
-	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
+	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
 	rd := bufio.NewReader(contractPipe)
 	for {
 		str, err := rd.ReadString('\n')

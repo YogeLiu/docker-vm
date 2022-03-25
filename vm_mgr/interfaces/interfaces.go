@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package interfaces
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 )
 
@@ -35,7 +35,7 @@ type Process interface {
 
 type UserController interface {
 	// GetAvailableUser get available user
-	GetAvailableUser() (*security.User, error)
+	GetAvailableUser() (*core.User, error)
 	// FreeUser free user
-	FreeUser(user *security.User) error
+	AddAvailableUser(user *core.User) error
 }

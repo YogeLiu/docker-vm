@@ -73,7 +73,7 @@ func NewProcessHandler(txRequest *protogo.TxRequest, scheduler interfaces.Schedu
 	processName string, process ProcessInterface) *ProcessHandler {
 	handler := &ProcessHandler{
 		processName:   processName,
-		logger:        logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_HANDLER, config.DockerLogDir),
+		logger:        logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_HANDLER),
 		TxRequest:     txRequest,
 		state:         created,
 		scheduler:     scheduler,

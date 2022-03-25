@@ -8,14 +8,13 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"fmt"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
@@ -48,7 +47,7 @@ type ProcessManager struct {
 }
 
 func NewProcessManager(usersManager *UsersManager, contractManager *ContractManager) *ProcessManager {
-	pmLogger := logger.NewDockerLogger(logger.MODULE_PROCESS_MANAGER, config.DockerLogDir)
+	pmLogger := logger.NewDockerLogger(logger.MODULE_PROCESS_MANAGER)
 	return &ProcessManager{
 		usersManager:    usersManager,
 		contractManager: contractManager,
@@ -128,7 +127,7 @@ func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, pr
 func (pm *ProcessManager) createNewProcess(processName string, txRequest *protogo.TxRequest) (*Process, error) {
 	var (
 		err          error
-		user         *security.User
+		user         *User
 		contractPath string
 	)
 
@@ -191,19 +190,19 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 
 	txContext := newCrossProcess.Handler.TxRequest.TxContext
 	pm.ReleaseCrossProcess(newCrossProcess.processName, txContext.OriginalProcessName)
-	_ = pm.usersManager.FreeUser(newCrossProcess.user)
+	_ = pm.usersManager.AddAvailableUser(newCrossProcess.user)
 }
 
 // ReleaseProcess release balance process
 // @param: processName: contract:version#timestamp:index
-func (pm *ProcessManager) ReleaseProcess(processName string, user *security.User) bool {
+func (pm *ProcessManager) ReleaseProcess(processName string, user *User) bool {
 	pm.logger.Infof("release process: [%s]", processName)
 	contractKey := utils.GetContractKeyFromProcessName(processName)
 	released := pm.removeProcessFromProcessBalance(contractKey, processName)
 	if !released {
 		return false
 	}
-	_ = pm.usersManager.FreeUser(user)
+	_ = pm.usersManager.AddAvailableUser(user)
 	return true
 }
 

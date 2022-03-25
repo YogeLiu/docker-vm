@@ -28,7 +28,7 @@ package core
 //)
 //
 //func TestNewCrossProcess(t *testing.T) {
-//	logger := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
+//	logger := logger.NewDockerLogger(logger.MODULE_PROCESS)
 //	timeTimer := time.NewTimer(processWaitingTime * time.Second)
 //	type args struct {
 //		user         *security.User
@@ -736,7 +736,7 @@ package core
 //}
 //
 //func TestProcess_updateProcessState(t *testing.T) {
-//	logger := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
+//	logger := logger.NewDockerLogger(logger.MODULE_PROCESS)
 //	type fields struct {
 //		ProcessState protogo.ProcessState
 //		logger       *zap.SugaredLogger

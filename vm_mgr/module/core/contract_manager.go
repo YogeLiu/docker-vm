@@ -11,7 +11,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"go.uber.org/zap"
@@ -23,7 +22,10 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
 
-const contractManagerEventChSize = 64
+const (
+	ContractsDir = "contracts"	// ContractsDir dir save executable contract
+	contractManagerEventChSize = 64
+)
 
 // ContractManager manage all contracts with LRU cache
 type ContractManager struct {
@@ -38,11 +40,11 @@ type ContractManager struct {
 // NewContractManager new contract manager
 func NewContractManager(service *rpc.ChainRPCService) *ContractManager {
 	contractManager := &ContractManager{
-		contractsLRU:    utils.NewCache(utils.GetMaxLocalContractNumFromEnv()),
-		logger:          logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, config.DockerLogDir),
+		contractsLRU:    utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		logger:          logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER),
 		chainRPCService: service,
 		eventCh:         make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
-		mountDir:        config.ContractBaseDir,
+		mountDir:        filepath.Join(config.DockerMountDir, ContractsDir),
 	}
 	_ = contractManager.initContractLRU()
 	return contractManager
@@ -119,7 +121,7 @@ func (cm *ContractManager) initContractLRU() error {
 			cm.contractsLRU.Add(name, path)
 			continue
 		}
-		if err = cm.removeContractFromDisk(path); err != nil {
+		if err = utils.RemoveDir(path); err != nil {
 			return fmt.Errorf("fail to clean contract files, file path: [%s], %v", path, err)
 		}
 	}
@@ -160,7 +162,7 @@ func (cm *ContractManager) handleGetContractResp(msg *protogo.DockerVMMessage) e
 
 		cm.contractsLRU.RemoveOldest()
 
-		if err := cm.removeContractFromDisk(oldestContractPath.(string)); err != nil {
+		if err := utils.RemoveDir(oldestContractPath.(string)); err != nil {
 			return fmt.Errorf("failed to remove file, %v", err)
 		}
 		cm.logger.Debugf("removed oldest contract from disk and lru")
@@ -199,18 +201,6 @@ func (cm *ContractManager) sendContractReadySignal(contractName string) error {
 	err = requestGroup.PutMsg(contractName)
 	if err != nil {
 		return fmt.Errorf("failed to put msg into request group's event chan")
-	}
-	return nil
-}
-
-// removeContractFromDisk remove contract from disk
-func (cm *ContractManager) removeContractFromDisk(path string) error {
-	// chmod contract file
-	if err := os.Chmod(path, 0755); err != nil {
-		return fmt.Errorf("fail to set mod of %s, %v", path, err)
-	}
-	if err := os.Remove(path); err != nil {
-		return fmt.Errorf("fail to remove file %s, %v", path, err)
 	}
 	return nil
 }

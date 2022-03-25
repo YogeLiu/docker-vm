@@ -8,66 +8,82 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
 	"fmt"
-	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
 	"go.uber.org/atomic"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
+
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
 
-type UsersManager struct {
-	userQueue *utils.FixedFIFO
-	logger    *zap.SugaredLogger
-	userNum   int
+const baseUid = 10000                    // user id start from base uid
+const addUserFormat = "useradd -u %d %s" // add user cmd
+
+var batchCreateUsersThreadNum = utils.GetMaxConcurrencyFromEnv() // thread num for batch create users
+var createUserNumPerThread = protocol.CallContractDepth          // user num per thread
+
+// User is linux user
+type User struct {
+	Uid      int    // user id
+	Gid      int    // user group id
+	UserName string // username
+	SockPath string // sandbox rpc sock path
 }
 
-// NewUsersManager new user manager
+// NewUser returns new user
+func NewUser(id int) *User {
+	userName := fmt.Sprintf("u-%d", id)
+	sockPath := filepath.Join(rpc.SandboxRPCDir, rpc.SandboxRPCSockName)
+
+	return &User{
+		Uid:      id,
+		Gid:      id,
+		UserName: userName,
+		SockPath: sockPath,
+	}
+}
+
+// UsersManager is linux user manager
+type UsersManager struct {
+	userQueue *utils.FixedFIFO   // user queue, always pop oldest queue
+	logger    *zap.SugaredLogger // user manager logger
+	userNum   int                // total user num
+}
+
+// NewUsersManager returns user manager
 func NewUsersManager() *UsersManager {
 
-	userNumConfig := os.Getenv(config.ENV_USER_NUM)
-	userNum, err := strconv.Atoi(userNumConfig)
-	if err != nil {
-		userNum = 50
-	}
-
-	userQueue := utils.NewFixedFIFO(userNum)
+	userQueue := utils.NewFixedFIFO(utils.GetMaxUserNumFromEnv())
 
 	usersManager := &UsersManager{
 		userQueue: userQueue,
-		logger:    logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, config.DockerLogDir),
-		userNum:   userNum,
+		logger:    logger.NewDockerLogger(logger.MODULE_USERCONTROLLER),
+		userNum:   utils.GetMaxUserNumFromEnv(),
 	}
 
 	return usersManager
 }
 
-// CreateNewUsers create new users in docker from 10000 as uid
-func (u *UsersManager) CreateNewUsers() error {
-
+// BatchCreateUsers create new users in docker from 10000 as uid
+func (u *UsersManager) BatchCreateUsers() error {
 	var err error
-
 	startTime := time.Now()
-	const baseUid = 10000
-
 	var wg sync.WaitGroup
 	createdUserNum := atomic.NewInt64(0)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < batchCreateUsersThreadNum; i++ {
 		wg.Add(1)
 		go func(i int) {
-			for j := 0; j < u.userNum/10; j++ {
-				newUserId := baseUid + i*u.userNum/10 + j
-				err = u.generateNewUser(newUserId)
+			for j := 0; j < createUserNumPerThread; j++ {
+				id := baseUid + i*batchCreateUsersThreadNum + j
+				err = u.generateNewUser(id)
 				if err != nil {
-					u.logger.Errorf("fail to create user [%d]", newUserId)
+					u.logger.Errorf("fail to create user [%d]", id)
 				} else {
 					createdUserNum.Add(1)
 				}
@@ -75,78 +91,60 @@ func (u *UsersManager) CreateNewUsers() error {
 			wg.Done()
 		}(i)
 	}
-
 	wg.Wait()
-	u.logger.Infof("init uids success, time: [%s], total user num: [%s]", time.Since(startTime),
+
+	u.logger.Infof("init uids succeed, time: [%s], total user num: [%s]", time.Since(startTime),
 		createdUserNum.String())
 
 	return nil
 }
 
-func (u *UsersManager) generateNewUser(newUserId int) error {
+//  generateNewUser generate a new user of process
+func (u *UsersManager) generateNewUser(uid int) error {
 
-	const addUserFormat = "useradd -u %d %s"
-
-	newUser := u.constructNewUser(newUserId)
-	addUserCommand := fmt.Sprintf(addUserFormat, newUserId, newUser.UserName)
+	user := NewUser(uid)
+	addUserCommand := fmt.Sprintf(addUserFormat, uid, user.UserName)
 
 	createSuccess := false
 
 	// it may fail to create user in centos, so add retry until it success
 	for !createSuccess {
 		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Warnf("attemp to create user fail: [%+v], err: [%s] and begin to retry", newUser, err)
+			u.logger.Warnf("attemped to create user fail: [%+v], err: [%s] and begin to retry", user, err)
 			continue
 		}
 
 		createSuccess = true
 	}
-	u.logger.Debugf("success create user: %+v", newUser)
+	u.logger.Debugf("create user succeed: %+v", user)
 
 	// add created user to queue
-	err := u.userQueue.Enqueue(newUser)
+	err := u.userQueue.Enqueue(user)
 	if err != nil {
-		u.logger.Errorf("fail to add created user to queue, newUser : [%v]", newUser)
-		return err
+		return fmt.Errorf("fail to add created user %+v to queue, %v", user, err)
 	}
-	u.logger.Debugf("success add user to user queue: %+v", newUser)
+	u.logger.Debugf("success add user to user queue: %+v", user)
 
 	return nil
 }
 
-func (u *UsersManager) constructNewUser(userId int) *security.User {
-
-	userName := fmt.Sprintf("u-%d", userId)
-	sockPath := filepath.Join(config.SandboxRPCDir, config.SandboxRPCSockPath)
-
-	return &security.User{
-		Uid:      userId,
-		Gid:      userId,
-		UserName: userName,
-		SockPath: sockPath,
-	}
-}
-
 // GetAvailableUser pop user from queue header
-func (u *UsersManager) GetAvailableUser() (*security.User, error) {
-
+func (u *UsersManager) GetAvailableUser() (*User, error) {
 	user, err := u.userQueue.DequeueOrWaitForNextElement()
 	if err != nil {
-		u.logger.Errorf("fail to call DequeueOrWaitForNextElement")
-		return nil, err
+		return nil, fmt.Errorf("fail to call DequeueOrWaitForNextElement, %v", err)
 	}
 
 	u.logger.Debugf("get available user: [%v]", user)
-	return user.(*security.User), nil
+	return user.(*User), nil
 }
 
-// FreeUser add user to queue tail
-func (u *UsersManager) FreeUser(user *security.User) error {
+// AddAvailableUser add user to queue tail, user can be dequeue then
+func (u *UsersManager) AddAvailableUser(user *User) error {
 	err := u.userQueue.Enqueue(user)
 	if err != nil {
-		u.logger.Errorf("fail to call Enqueue")
-		return err
+		return fmt.Errorf("fail to enqueue user: %v", err)
 	}
-	u.logger.Debugf("free user: [%v]", user)
+	u.logger.Debugf("free user: %v", user)
 	return nil
 }

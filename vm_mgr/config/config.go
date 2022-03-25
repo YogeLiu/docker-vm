@@ -6,78 +6,160 @@ SPDX-License-Identifier: Apache-2.0
 
 package config
 
-import "time"
+import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"sync"
+	"time"
+)
 
 const (
-	// CGroupRoot cgroup location is not allow user to change
-	CGroupRoot = "/sys/fs/cgroup/memory/chainmaker"
-	// ProcsFile process file
-	ProcsFile = "cgroup.procs"
-	// MemoryLimitFile memory limit file
-	MemoryLimitFile = "memory.limit_in_bytes"
-	// SwapLimitFile swap setting file
-	SwapLimitFile = "memory.swappiness"
-	// RssLimit rss limit file
-	RssLimit = 50000 // 10 MB
-
-	// SandboxRPCDir docker manager sandbox dir
-	SandboxRPCDir = "/dms"
-	// SandboxRPCSockPath docker manager sandbox domain socket path
-	SandboxRPCSockPath = "dms.sock"
-
 	// DockerMountDir mount directory in docker
 	DockerMountDir = "/mount"
-	// DockerLogDir mount directory for log
-	DockerLogDir = "/log"
-	// LogFileName log name
-	LogFileName = "docker-go.log"
 
-	// ContractsDir dir save executable contract
-	ContractsDir = "contracts"
-	// SockDir dir save domain socket file
-	SockDir = "sock"
-	// ChainRPCSockName domain socket file name
-	ChainRPCSockName = "cdm.sock"
+	// ConfigFileName is the docker vm config file path
+	ConfigFileName = "vm"
 
-	// TestPath docker log dir for test
-	TestPath = "/"
-
-	// ServerMinInterval is the server min interval
-	ServerMinInterval = time.Duration(1) * time.Minute
-	// ConnectionTimeout is the connection timeout time
-	ConnectionTimeout = 5 * time.Second
-	// ServerKeepAliveTime is the idle duration before server ping
-	ServerKeepAliveTime = 1 * time.Minute
-	// ServerKeepAliveTimeout is the ping timeout
-	ServerKeepAliveTimeout = 20 * time.Second
-
+	// ConfigFileType is the docker vm config file type
+	ConfigFileType = "yml"
 )
 
-var (
-	// ContractBaseDir contract base directory, save here for easy use
-	ContractBaseDir string
-	// ShareBaseDir share base directory
-	ShareBaseDir string
-	// SockBaseDir domain socket directory
-	SockBaseDir string
-	// SandBoxTimeout sandbox timeout
-	SandBoxTimeout = 2
-	// SandBoxLogLevel sand box log level defaut is INFO
-	SandBoxLogLevel string
-)
+var DockerVMConfig *conf
+var once sync.Once
+
+type conf struct {
+	logger   *zap.SugaredLogger
+	RPC      rpcConf      `mapstructure:"rpc"`
+	Process  processConf  `mapstructure:"process"`
+	Log      logConf      `mapstructure:"log"`
+	Pprof    pprofConf    `mapstructure:"pprof"`
+	Contract contractConf `mapstructure:"contract"`
+}
+
+type ChainRPCProtocolType int
 
 const (
-	ENV_ENABLE_UDS        = "ENV_ENABLE_UDS"
-	ENV_USER_NUM          = "ENV_USER_NUM"
-	ENV_TX_TIME_LIMIT     = "ENV_TX_TIME_LIMIT"
-	ENV_LOG_LEVEL         = "ENV_LOG_LEVEL"
-	ENV_LOG_IN_CONSOLE    = "ENV_LOG_IN_CONSOLE"
-	ENV_MAX_CONCURRENCY   = "ENV_MAX_CONCURRENCY"
-	ENV_MAX_SEND_MSG_SIZE = "ENV_MAX_SEND_MSG_SIZE"
-	ENV_MAX_RECV_MSG_SIZE = "ENV_MAX_RECV_MSG_SIZE"
-
-	EnvEnablePprof = "ENV_ENABLE_PPROF"
-	EnvPprofPort   = "ENV_PPROF_PORT"
-
-	ENV_MAX_LOCAL_CONTRACT_NUM = "ENV_MAX_LOCAL_CONTRACT_NUM"
+	UDS ChainRPCProtocolType = iota
+	TCP
 )
+
+type rpcConf struct {
+	ChainRPCProtocol       ChainRPCProtocolType `mapstructure:"chain_rpc_protocol"`
+	ChainRPCPort           int                  `mapstructure:"chain_rpc_port"`
+	MaxSendMsgSize         int                  `mapstructure:"max_send_msg_size"`
+	MaxRecvMsgSize         int                  `mapstructure:"max_recv_msg_size"`
+	ServerMinInterval      int                  `mapstructure:"provider"`
+	ConnectionTimeout      int                  `mapstructure:"provider"`
+	ServerKeepAliveTime    int                  `mapstructure:"provider"`
+	ServerKeepAliveTimeout int                  `mapstructure:"provider"`
+}
+
+type processConf struct {
+	MaxOriginalProcessNum int `mapstructure:"max_original_process_num"`
+	BusyTimeout           int `mapstructure:"busy_timeout"`
+}
+
+type logConf struct {
+	ContractEngineLog logInstanceConf `mapstructure:"contract_engine"`
+	SandboxLog        logInstanceConf `mapstructure:"sandbox"`
+}
+
+type logInstanceConf struct {
+	Level   string `mapstructure:"level"`
+	Console bool   `mapstructure:"console"`
+}
+
+type pprofConf struct {
+	ContractEnginePprof pprofInstanceConf `mapstructure:"contract_engine"`
+	SandboxPprof        pprofInstanceConf `mapstructure:"sandbox"`
+}
+
+type pprofInstanceConf struct {
+	Enable bool `mapstructure:"enable"`
+	Port   int  `mapstructure:"port"`
+}
+
+type contractConf struct {
+	MaxFileNum int `mapstructure:"max_file_num"`
+}
+
+func InitConfig() {
+	once.Do(func() {
+		// init viper
+		viper.SetConfigName(ConfigFileName)
+		viper.AddConfigPath(DockerMountDir)
+		viper.SetConfigType(ConfigFileType)
+
+		// read config from file
+		DockerVMConfig = &conf{
+			logger: logger.NewDockerLogger(logger.MODULE_CONFIG),
+		}
+		if err := viper.ReadInConfig(); err != nil {
+			DockerVMConfig.logger.Fatalf("failed to read conf, %v", err)
+		}
+
+		DockerVMConfig.setDefaultConfigs()
+
+		// unmarshal config
+		err := viper.Unmarshal(&DockerVMConfig)
+		if err != nil {
+			DockerVMConfig.logger.Fatalf("failed to unmarshal conf file, %v", err)
+		}
+
+		DockerVMConfig.logger.Infof("vm conf loaded: %+v", DockerVMConfig)
+	})
+}
+
+func (c *conf) setDefaultConfigs() {
+
+	// set rpc default configs
+	const rpcPrefix = "rpc"
+	viper.SetDefault(rpcPrefix+".chain_rpc_protocol", 1)
+	viper.SetDefault(rpcPrefix+".chain_rpc_port", 8015)
+	viper.SetDefault(rpcPrefix+".max_send_msg_size", 4)
+	viper.SetDefault(rpcPrefix+".max_recv_msg_size", 4)
+	viper.SetDefault(rpcPrefix+".server_min_interval", 60)
+	viper.SetDefault(rpcPrefix+".connection_timeout", 5)
+	viper.SetDefault(rpcPrefix+".server_keep_alive_time", 60)
+	viper.SetDefault(rpcPrefix+".server_keep_alive_timeout", 20)
+
+	// set process default configs
+	const processPrefix = "process"
+	viper.SetDefault(processPrefix+".max_original_process_num", 50)
+	viper.SetDefault(processPrefix+".busy_timeout", 2)
+
+	// set log default configs
+	const logPrefix = "log"
+	viper.SetDefault(logPrefix+".contract_engine.level", "error")
+	viper.SetDefault(logPrefix+".sandbox.level", "error")
+
+	// set pprof default configs
+	const pprofPrefix = "pprof"
+	viper.SetDefault(pprofPrefix+".contract_engine.port", 21521)
+	viper.SetDefault(pprofPrefix+".sandbox.port", 21522)
+
+	// set contract default configs
+	const contractPrefix = "contract"
+	viper.SetDefault(contractPrefix+".max_file_num", 1024)
+}
+
+func (c *conf) GetServerMinInterval() time.Duration{
+	return time.Duration(c.RPC.ServerMinInterval) * time.Second
+}
+
+func (c *conf) GetConnectionTimeout() time.Duration{
+	return time.Duration(c.RPC.ConnectionTimeout) * time.Second
+}
+
+func (c *conf) GetServerKeepAliveTime() time.Duration{
+	return time.Duration(c.RPC.ServerKeepAliveTime) * time.Second
+}
+
+func (c *conf) GetServerKeepAliveTimeout() time.Duration{
+	return time.Duration(c.RPC.ServerKeepAliveTimeout) * time.Second
+}
+
+func (c *conf) GetBusyTimeout() time.Duration{
+	return time.Duration(c.Process.BusyTimeout) * time.Second
+}

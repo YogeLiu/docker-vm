@@ -22,6 +22,11 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+const (
+	SandboxRPCDir      = "/sandbox"     // SandboxRPCDir docker manager sandbox dir
+	SandboxRPCSockName = "sandbox.sock" // SandboxRPCSockName docker manager sandbox domain socket path
+)
+
 // SandboxRPCServer is server of bidirectional streaming RPC (sandbox <=> contract engine)
 type SandboxRPCServer struct {
 	Listener net.Listener
@@ -32,7 +37,12 @@ type SandboxRPCServer struct {
 // NewSandboxRPCServer build new chain to sandbox rpc server.
 func NewSandboxRPCServer() (*SandboxRPCServer, error) {
 
-	sandboxRPCSockPath := filepath.Join(config.SandboxRPCDir, config.SandboxRPCSockPath)
+	err := utils.Mkdir(SandboxRPCDir)
+	if err != nil {
+		return nil, err
+	}
+
+	sandboxRPCSockPath := filepath.Join(SandboxRPCDir, SandboxRPCSockName)
 
 	listenAddress, err := net.ResolveUnixAddr("unix", sandboxRPCSockPath)
 	if err != nil {
@@ -49,27 +59,27 @@ func NewSandboxRPCServer() (*SandboxRPCServer, error) {
 
 	// add keepalive
 	serverKeepAliveParameters := keepalive.ServerParameters{
-		Time:    config.ServerKeepAliveTime,
-		Timeout: config.ServerKeepAliveTimeout,
+		Time:    config.DockerVMConfig.GetServerKeepAliveTime(),
+		Timeout: config.DockerVMConfig.GetServerKeepAliveTimeout(),
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveParams(serverKeepAliveParameters))
 
 	//set enforcement policy
 	kep := keepalive.EnforcementPolicy{
-		MinTime:             config.ServerMinInterval,
+		MinTime:             config.DockerVMConfig.GetServerMinInterval(),
 		PermitWithoutStream: true,
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
-	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.ConnectionTimeout))
-	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(utils.GetMaxSendMsgSizeFromEnv()*1024*1024))
-	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(utils.GetMaxRecvMsgSizeFromEnv()*1024*1024))
+	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.DockerVMConfig.GetConnectionTimeout()))
+	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.DockerVMConfig.RPC.MaxSendMsgSize*1024*1024))
+	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.DockerVMConfig.RPC.MaxRecvMsgSize*1024*1024))
 
 	server := grpc.NewServer(serverOpts...)
 
 	return &SandboxRPCServer{
 		Listener: listener,
 		Server:   server,
-		logger:   logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER, config.DockerLogDir),
+		logger:   logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER),
 	}, nil
 }
 

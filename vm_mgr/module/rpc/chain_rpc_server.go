@@ -8,20 +8,21 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
-	"errors"
-	"fmt"
-	"net"
-	"os"
-	"path/filepath"
-	"strconv"
-
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"errors"
+	"fmt"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"net"
+	"path/filepath"
+)
+
+const (
+	ChainRPCDir      = "sock"       // /mount/sock
+	ChainRPCSockName = "chain.sock" // /mount/sock/chain.sock
 )
 
 // ChainRPCServer is server of bidirectional streaming RPC (chain <=> contract engine)
@@ -37,16 +38,13 @@ type ChainRPCServer struct {
 func NewChainRPCServer() (*ChainRPCServer, error) {
 
 	// choose unix domin socket or tcp
-	enableUnixDomainSocket, _ := strconv.ParseBool(os.Getenv(config.ENV_ENABLE_UDS))
+	netProtocol := config.DockerVMConfig.RPC.ChainRPCProtocol
 
 	var listener net.Listener
 	var err error
 
-	if !enableUnixDomainSocket {
-		port := os.Getenv("Port")
-		if port == "" {
-			return nil, errors.New("server listen port not provided")
-		}
+	if netProtocol == config.TCP {
+		port := config.DockerVMConfig.RPC.ChainRPCPort
 
 		endPoint := fmt.Sprintf(":%s", port)
 
@@ -54,7 +52,7 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 			return nil, err
 		}
 	} else {
-		absChainRPCUDSPath := filepath.Join(config.SockBaseDir, config.ChainRPCSockName)
+		absChainRPCUDSPath := filepath.Join(ChainRPCDir, ChainRPCSockName)
 
 		listenAddress, err := net.ResolveUnixAddr("unix", absChainRPCUDSPath)
 		if err != nil {
@@ -71,27 +69,27 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 
 	// add keepalive
 	serverKeepAliveParameters := keepalive.ServerParameters{
-		Time:    config.ServerKeepAliveTime,
-		Timeout: config.ServerKeepAliveTimeout,
+		Time:    config.DockerVMConfig.GetServerKeepAliveTime(),
+		Timeout: config.DockerVMConfig.GetServerKeepAliveTimeout(),
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveParams(serverKeepAliveParameters))
 
 	//set enforcement policy
 	kep := keepalive.EnforcementPolicy{
-		MinTime:             config.ServerMinInterval,
+		MinTime:             config.DockerVMConfig.GetServerMinInterval(),
 		PermitWithoutStream: true,
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
-	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.ConnectionTimeout))
-	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(utils.GetMaxSendMsgSizeFromEnv()*1024*1024))
-	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(utils.GetMaxRecvMsgSizeFromEnv()*1024*1024))
+	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.DockerVMConfig.GetConnectionTimeout()))
+	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.DockerVMConfig.RPC.MaxSendMsgSize*1024*1024))
+	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.DockerVMConfig.RPC.MaxRecvMsgSize*1024*1024))
 
 	server := grpc.NewServer(serverOpts...)
 
 	return &ChainRPCServer{
 		Listener: listener,
 		Server:   server,
-		logger:   logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVER, config.DockerLogDir),
+		logger:   logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVER),
 	}, nil
 }
 

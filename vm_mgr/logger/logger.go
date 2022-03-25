@@ -20,9 +20,14 @@ import (
 )
 
 const (
-	// docker module for logging
+	DockerLogDir = "/log"          // mount directory for log
+	LogFileName  = "docker-go.log" // log file name
 
+)
+const (
+	// docker module for logging
 	MODULE_MANAGER             = "[Docker MANAGER]"
+	MODULE_CONFIG              = "[Docker CONFIG]"
 	MODULE_SCHEDULER           = "[Docker Scheduler]"
 	MODULE_USERCONTROLLER      = "[Docker User Controller]"
 	MODULE_PROCESS_MANAGER     = "[Docker Process Manager]"
@@ -64,7 +69,7 @@ func InitialConfig(logPath string) {
 		displayInConsoleFromConfig = false
 	}
 
-	logName := config.LogFileName
+	logName := LogFileName
 	logPathFromConfig = filepath.Join(logPath, logName)
 
 	logLevelFromConfig = os.Getenv(config.ENV_LOG_LEVEL)
@@ -74,9 +79,9 @@ func InitialConfig(logPath string) {
 	config.SandBoxLogLevel = logLevelFromConfig
 }
 
-func NewDockerLogger(name, logPath string) *zap.SugaredLogger {
+func NewDockerLogger(name string) *zap.SugaredLogger {
 
-	InitialConfig(logPath)
+	InitialConfig(DockerLogDir)
 
 	var encoder zapcore.Encoder
 	if name == MODULE_CONTRACT {

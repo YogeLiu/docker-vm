@@ -416,15 +416,13 @@ func (m *DockerManager) constructEnvs(enableUDS bool) []string {
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
 		config.ENV_ENABLE_UDS, m.dockerVMConfig.DockerVMUDSOpen))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_USER_NUM, utils.GetUserNumFromConfig(m.dockerVMConfig)))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_TX_TIME_LIMIT, utils.GetTxTimeLimitFromConfig(m.dockerVMConfig)))
+		config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s",
 		config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
 		config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_MAX_CONCURRENCY, utils.GetMaxConcurrencyFromConfig(m.dockerVMConfig)))
+		config.ENV_MAX_CONCURRENCY, m.dockerVMConfig.MaxConcurrency))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
 		config.ENV_MAX_SEND_MSG_SIZE, utils.GetMaxSendMsgSizeFromConfig(m.dockerVMConfig)))
 	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
@@ -594,8 +592,8 @@ func (m *DockerManager) createPProfContainer() error {
 	sdkOpenPort := nat.Port(sdkHostPort + "/tcp")
 
 	envs := m.constructEnvs(true)
-	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvPprofPort, hostPort))
-	envs = append(envs, fmt.Sprintf("%s=%v", config.EnvEnablePprof, true))
+	envs = append(envs, fmt.Sprintf("%s=%v", config.ENV_PPROF_PORT, hostPort))
+	envs = append(envs, fmt.Sprintf("%s=%v", config.ENV_ENABLE_PPROF, true))
 
 	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
 		Cmd:          nil,

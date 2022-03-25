@@ -5,11 +5,11 @@
 package interfaces
 
 import (
+	security "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
 	reflect "reflect"
 
 	protogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
 
-	security "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	protogo0 "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -193,9 +193,9 @@ func (m *MockUserController) EXPECT() *MockUserControllerMockRecorder {
 }
 
 // FreeUser mocks base method.
-func (m *MockUserController) FreeUser(user *security.User) error {
+func (m *MockUserController) AddAvailableUser(user *security.User) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FreeUser", user)
+	ret := m.ctrl.Call(m, "AddAvailableUser", user)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -203,7 +203,7 @@ func (m *MockUserController) FreeUser(user *security.User) error {
 // FreeUser indicates an expected call of FreeUser.
 func (mr *MockUserControllerMockRecorder) FreeUser(user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FreeUser", reflect.TypeOf((*MockUserController)(nil).FreeUser), user)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddAvailableUser", reflect.TypeOf((*MockUserController)(nil).AddAvailableUser), user)
 }
 
 // GetAvailableUser mocks base method.

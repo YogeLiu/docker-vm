@@ -16,7 +16,6 @@ import (
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
@@ -28,7 +27,7 @@ func TestNewUsersManager(t *testing.T) {
 		userNum = 50
 	}
 
-	log := logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, config.DockerLogDir)
+	log := logger.NewDockerLogger(logger.MODULE_USERCONTROLLER)
 	userQueue := utils.NewFixedFIFO(userNum)
 	usersManager := &UsersManager{
 		userQueue: userQueue,
@@ -95,8 +94,8 @@ func TestUsersManager_CreateNewUsers(t *testing.T) {
 				logger:    tt.fields.logger,
 				userNum:   tt.fields.userNum,
 			}
-			if err := u.CreateNewUsers(); (err != nil) != tt.wantErr {
-				t.Errorf("CreateNewUsers() error = %v, wantErr %v", err, tt.wantErr)
+			if err := u.BatchCreateUsers(); (err != nil) != tt.wantErr {
+				t.Errorf("BatchCreateUsers() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -121,7 +120,7 @@ func TestUsersManager_FreeUser(t *testing.T) {
 	}
 
 	type args struct {
-		user *security.User
+		user *User
 	}
 	tests := []struct {
 		name    string
@@ -145,8 +144,8 @@ func TestUsersManager_FreeUser(t *testing.T) {
 				logger:    tt.fields.logger,
 				userNum:   tt.fields.userNum,
 			}
-			if err := u.FreeUser(tt.args.user); (err != nil) != tt.wantErr {
-				t.Errorf("FreeUser() error = %v, wantErr %v", err, tt.wantErr)
+			if err := u.AddAvailableUser(tt.args.user); (err != nil) != tt.wantErr {
+				t.Errorf("AddAvailableUser() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -173,7 +172,7 @@ func TestUsersManager_GetAvailableUser(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		want    *security.User
+		want    *User
 		wantErr bool
 	}{
 		{
@@ -183,7 +182,7 @@ func TestUsersManager_GetAvailableUser(t *testing.T) {
 				logger:    log,
 				userNum:   userNum,
 			},
-			want: &security.User{
+			want: &User{
 				Uid: userNum,
 				Gid: 0,
 			},
@@ -200,7 +199,7 @@ func TestUsersManager_GetAvailableUser(t *testing.T) {
 
 			go func() {
 				for {
-					_ = u.userQueue.Enqueue(&security.User{
+					_ = u.userQueue.Enqueue(&User{
 						Uid: userNum,
 					})
 				}
@@ -244,7 +243,7 @@ func TestUsersManager_constructNewUser(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   *security.User
+		want   *User
 	}{
 		{
 			name: "testconstructNewUser",
@@ -254,7 +253,7 @@ func TestUsersManager_constructNewUser(t *testing.T) {
 				userNum:   userNum,
 			},
 			args: args{userId: userId},
-			want: &security.User{
+			want: &User{
 				Uid:      userId,
 				Gid:      userId,
 				UserName: userName,

@@ -5,6 +5,8 @@ SPDX-License-Identifier: Apache-2.0
 */
 package config
 
+import "time"
+
 // DockerVMConfig match vm settings in chain maker yml
 type DockerVMConfig struct {
 	EnableDockerVM        bool   `mapstructure:"enable_dockervm"`
@@ -14,7 +16,6 @@ type DockerVMConfig struct {
 	LogInConsole          bool   `mapstructure:"log_in_console"`
 	LogLevel              string `mapstructure:"log_level"`
 	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
-	UserNum               uint32 `mapstructure:"user_num"`
 	TxTimeLimit           uint32 `mapstructure:"time_limit"`
 	MaxConcurrency        uint32 `mapstructure:"max_concurrency"`
 	MaxSendMsgSize        uint32 `mapstructure:"max_send_msg_size"`
@@ -45,17 +46,25 @@ type DockerContainerConfig struct {
 type Bool int32
 
 const (
+
 	ENV_ENABLE_UDS             = "ENV_ENABLE_UDS"
 	ENV_USER_NUM               = "ENV_USER_NUM"
 	ENV_TX_TIME_LIMIT          = "ENV_TX_TIME_LIMIT"
 	ENV_LOG_LEVEL              = "ENV_LOG_LEVEL"
 	ENV_LOG_IN_CONSOLE         = "ENV_LOG_IN_CONSOLE"
 	ENV_MAX_CONCURRENCY        = "ENV_MAX_CONCURRENCY"
-	EnvEnablePprof             = "ENV_ENABLE_PPROF"
-	EnvPprofPort               = "ENV_PPROF_PORT"
+	ENV_ENABLE_PPROF           = "ENV_ENABLE_PPROF"
+	ENV_PPROF_PORT             = "ENV_PPROF_PORT"
 	ENV_MAX_SEND_MSG_SIZE      = "ENV_MAX_SEND_MSG_SIZE"
 	ENV_MAX_RECV_MSG_SIZE      = "ENV_MAX_RECV_MSG_SIZE"
 	ENV_MAX_LOCAL_CONTRACT_NUM = "ENV_MAX_LOCAL_CONTRACT_NUM"
+
+	// Default configs
+	DefaultMaxSendSize    = 4
+	DefaultMaxRecvSize    = 4
+	DefaultTxTimeLimit    = 5
+	DefaultMaxConcurrency = 50
+	DefaultMaxLocalContractNum = 1024
 
 	// ContractsDir dir save executable contract
 	ContractsDir = "contracts"
@@ -81,6 +90,11 @@ const (
 	// int32 representation of bool
 	BoolTrue  Bool = 1
 	BoolFalse Bool = 0
+
+	// ServerMinInterval server min interval
+	ServerMinInterval = time.Duration(1) * time.Minute
+	// ConnectionTimeout connection timeout time
+	ConnectionTimeout = 5 * time.Second
 )
 
 const (

@@ -50,7 +50,7 @@ type DockerScheduler struct {
 // NewDockerScheduler new docker scheduler
 func NewDockerScheduler(processManager *ProcessManager) *DockerScheduler {
 	scheduler := &DockerScheduler{
-		logger:         logger.NewDockerLogger(logger.MODULE_SCHEDULER, config.DockerLogDir),
+		logger:         logger.NewDockerLogger(logger.MODULE_SCHEDULER),
 		processManager: processManager,
 
 		txReqCh:          make(chan *protogo.TxRequest, ReqChanSize),

@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
@@ -28,7 +27,7 @@ type SandboxRPCService struct {
 //  @return *SandboxRPCService
 func NewSandboxRPCService(manager interfaces.ProcessManager) *SandboxRPCService {
 	return &SandboxRPCService{
-		logger:     logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER, config.DockerLogDir),
+		logger:     logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER),
 		processMgr: manager,
 	}
 }
