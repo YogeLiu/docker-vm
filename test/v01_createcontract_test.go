@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os/exec"
 	"testing"
 
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
@@ -26,6 +27,7 @@ import (
 5 mock docker-go RuntimeInstace
 6 create a user contract
 7 deploy user contract
+8 stop the docker container
 */
 
 func setupTest(t *testing.T) {
@@ -43,7 +45,7 @@ func setupTest(t *testing.T) {
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")
-	dockerContainErr := mockDockerManager.StartVM()
+	dockerContainErr := StartVMContainer()
 	if dockerContainErr != nil {
 		log.Fatalf("start docmer manager instance failed %v\n", dockerContainErr)
 	}
@@ -76,6 +78,13 @@ func setupTest(t *testing.T) {
 	if result.Code == 0 {
 		fmt.Printf("deploy user contract successfully\n")
 	}
+
+	//step3: start docker VM
+	fmt.Printf("=== step 8 start Docker VM ===\n")
+	dockerContainerErr := StopVMContainer()
+	if dockerContainerErr != nil {
+		log.Fatalf("stop docmer manager instance failed %v\n", dockerContainErr)
+	}
 }
 
 func tearDownTest() {
@@ -102,4 +111,26 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 	fmt.Println(result)
 
 	tearDownTest()
+}
+
+func StartVMContainer() error {
+	cmd := exec.Command("docker run -itd --rm -p22359:22359 --privileged --name vm_test chainmakerofficial/chainmaker-vm-docker-go:v2.2.1")
+	stdout, err := cmd.Output()
+
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(stdout))
+	return nil
+}
+
+func StopVMContainer() error {
+	cmd := exec.Command("docker stop vm_test")
+	stdout, err := cmd.Output()
+
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(stdout))
+	return nil
 }

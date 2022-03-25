@@ -75,7 +75,7 @@ func (c *CDMClient) GetCMConfig() *config.DockerVMConfig {
 }
 
 func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error {
-	if c.ConnStatus == false {
+	if !c.ConnStatus {
 		c.logger.Errorf("cdm client stream not ready, waiting reconnect, txid: %s", txId)
 		return errors.New("cdm client not connected")
 	}
@@ -270,13 +270,12 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 
 		c.logger.Infof("connect docker vm manager: %s", sockAddress)
 		return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
-	} else {
-		// connect vm from tcp
-		url := utils.GetURLFromConfig(c.config)
-		c.logger.Infof("connect docker vm manager: %s", url)
-		return grpc.Dial(url, dialOpts...)
 	}
 
+	// connect vm from tcp
+	url := utils.GetURLFromConfig(c.config)
+	c.logger.Infof("connect docker vm manager: %s", url)
+	return grpc.Dial(url, dialOpts...)
 }
 
 // GetCDMClientStream get rpc stream

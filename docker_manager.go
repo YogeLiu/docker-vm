@@ -139,16 +139,14 @@ func (m *DockerManager) startCDMClient() {
 	// add reconnect when send or receive msg failed
 	go func() {
 		for {
-			select {
-			case <-m.cdmClient.ReconnectChan:
-				m.cdmClient.ConnStatus = false
-				//	reconnect
-				m.cdmClient.ReconnectChan = make(chan bool)
-				for !m.getCDMState() {
-					m.mgrLogger.Debugf("cdm rpc state is: %v, try reconnecting...", m.getCDMState())
-					m.cdmClient.ConnStatus = m.cdmClient.StartClient()
-					time.Sleep(2 * time.Second)
-				}
+			<-m.cdmClient.ReconnectChan
+			m.cdmClient.ConnStatus = false
+			//	reconnect
+			m.cdmClient.ReconnectChan = make(chan bool)
+			for !m.getCDMState() {
+				m.mgrLogger.Debugf("cdm rpc state is: %v, try reconnecting...", m.getCDMState())
+				m.cdmClient.ConnStatus = m.cdmClient.StartClient()
+				time.Sleep(2 * time.Second)
 			}
 		}
 	}()
