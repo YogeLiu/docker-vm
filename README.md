@@ -118,7 +118,6 @@ docker_vm_port: 22359
 
 ```
 uds_open: true
-#  dockervm_mount_path 存放合约文件和socket文件。如果开启本地socket，需要将该路径中的以chainid命名的文件夹 mount 到容器里的 /mount 目录下
 dockervm_mount_path: ../data/org1/docker-go  
 ```
 

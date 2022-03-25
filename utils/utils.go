@@ -38,8 +38,8 @@ func GetURLFromConfig(config *config.DockerVMConfig) string {
 		ip = "127.0.0.1"
 	}
 	if port == 0 {
-		port = 22351
+		port = 22359
 	}
-	url := fmt.Sprintf("%s:%d", ip, config.DockerVMPort)
+	url := fmt.Sprintf("%s:%d", ip, port)
 	return url
 }

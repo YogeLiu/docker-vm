@@ -27,7 +27,6 @@ import (
 )
 
 const (
-	dockerMountDir     = "/mount"
 	dockerContainerDir = "../module/vm/docker-go/vm_mgr"
 )
 
