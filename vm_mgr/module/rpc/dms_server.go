@@ -64,9 +64,6 @@ func NewDMSServer() (*DMSServer, error) {
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(utils.GetMaxSendMsgSizeFromEnv()*1024*1024))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(utils.GetMaxRecvMsgSizeFromEnv()*1024*1024))
 
-	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.MaxSendSize*1024*1024))
-	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.MaxRecvSize*1024*1024))
-
 	server := grpc.NewServer(serverOpts...)
 
 	return &DMSServer{
