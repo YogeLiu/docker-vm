@@ -180,9 +180,9 @@ func TestInitFuncGasUsed(t *testing.T) {
 			name: "t1",
 			args: args{
 				gasUsed:          0,
-				configDefaultGas: defaultGas,
+				configDefaultGas: defaultInvokeBaseGas,
 			},
-			want:    defaultGas + initFuncGas,
+			want:    defaultInvokeBaseGas + initFuncGas,
 			wantErr: false,
 		},
 	}
