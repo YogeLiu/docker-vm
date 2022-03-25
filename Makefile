@@ -46,7 +46,5 @@ gomod:
 	go get chainmaker.org/chainmaker/utils/v2@develop
 	go mod tidy
 
-
-
-
-
+ut:
+	echo "./ut_cover.sh"
