@@ -48,6 +48,7 @@ gomod:
 
 ut:
 	make build-image
-	docker run -itd -p22359:22359 --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+	docker run -itd --rm -p22359:22359 --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
 	./ut_cover.sh
+	docker stop chaimaker_vm_test
 	docker rm chaimaker_vm_test
