@@ -34,7 +34,7 @@ clean:
 ci:
 	make build-test
 	golangci-lint run ./...
-	go test -v ./...
+#	go test -v ./...
 	make clean
 
 gomod:
@@ -51,4 +51,3 @@ ut:
 	make build-image
 	docker run -itd -p22359:22359 --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
 	./ut_cover.sh
-	docker rm chaimaker_vm_test
