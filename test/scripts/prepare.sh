@@ -10,12 +10,12 @@ docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-docke
 
 if [ ! "$(docker ps -q -f name=${TESTCONTAINERNAME})" ]; then
   if [ "$(docker ps -aq -f status=running -f name=${TESTCONTAINERNAME})" ]; then
-    # stop container
+    echo "stop container"
     docker stop ${TESTCONTAINERNAME}
     sleep 2
   fi
   if [ "$(docker ps -aq -f status=exited -f name=${TESTCONTAINERNAME})" ]; then
-    # clean container
+    echo "clean container"
     docker rm ${TESTCONTAINERNAME}
     sleep 2
   fi
