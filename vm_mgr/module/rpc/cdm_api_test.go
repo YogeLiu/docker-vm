@@ -68,13 +68,11 @@ func TestCDMApi_CDMCommunicate(t *testing.T) {
 			cdm := &CDMApi{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
-				stream:    tt.fields.stream,
-				wg:        tt.fields.wg,
 			}
 
 			sendWait := &sync.WaitGroup{}
 			go func(group *sync.WaitGroup) {
-				cdm.stream.Send(&protogo.CDMMessage{})
+				stream.Send(&protogo.CDMMessage{})
 				<-cdm.scheduler.GetTxResponseCh()
 				<-cdm.scheduler.GetGetStateReqCh()
 				<-cdm.scheduler.GetByteCodeReqCh()
@@ -114,8 +112,6 @@ func TestCDMApi_closeConnection(t *testing.T) {
 			_ = &CDMApi{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
-				stream:    tt.fields.stream,
-				wg:        tt.fields.wg,
 			}
 			//cdm.closeConnection()
 		})
@@ -159,8 +155,6 @@ func TestCDMApi_constructCDMMessage(t *testing.T) {
 			cdm := &CDMApi{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
-				stream:    tt.fields.stream,
-				wg:        tt.fields.wg,
 			}
 
 			payload, _ := tt.args.txResponseMsg.Marshal()
@@ -267,8 +261,6 @@ func TestCDMApi_handleGetStateResponse(t *testing.T) {
 			cdm := &CDMApi{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
-				stream:    tt.fields.stream,
-				wg:        tt.fields.wg,
 			}
 			if err := cdm.handleGetStateResponse(tt.args.cdmMessage); (err != nil) != tt.wantErr {
 				t.Errorf("handleGetStateResponse() error = %v, wantErr %v", err, tt.wantErr)
@@ -320,8 +312,6 @@ func TestCDMApi_handleTxRequest(t *testing.T) {
 			cdm := &CDMApi{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
-				stream:    tt.fields.stream,
-				wg:        tt.fields.wg,
 			}
 
 			go func() {
@@ -356,10 +346,8 @@ func TestCDMApi_recvMsgRoutine(t *testing.T) {
 			cdm := &CDMApi{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
-				stream:    tt.fields.stream,
-				wg:        tt.fields.wg,
 			}
-			cdm.receiveMsgRoutine()
+			cdm.receiveMsgRoutine(tt.fields.stream, tt.fields.wg, tt.fields.stop)
 		})
 	}
 }
@@ -399,13 +387,11 @@ func TestCDMApi_sendMessage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cdm := &CDMApi{
-				logger:    tt.fields.logger,
-				scheduler: tt.fields.scheduler,
-				stream:    tt.fields.stream,
-				wg:        tt.fields.wg,
-			}
-			if err := cdm.sendMessage(tt.args.msg); (err != nil) != tt.wantErr {
+			//cdm := &CDMApi{
+			//	logger:    tt.fields.logger,
+			//	scheduler: tt.fields.scheduler,
+			//}
+			if err := stream.Send(tt.args.msg); (err != nil) != tt.wantErr {
 				t.Errorf("sendMessage() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -431,10 +417,8 @@ func TestCDMApi_sendMsgRoutine(t *testing.T) {
 			cdm := &CDMApi{
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
-				stream:    tt.fields.stream,
-				wg:        tt.fields.wg,
 			}
-			cdm.sendMsgRoutine()
+			cdm.sendMsgRoutine(tt.fields.stream, tt.fields.wg, tt.fields.stop)
 		})
 	}
 }
@@ -468,7 +452,6 @@ func TestNewCDMApi(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewCDMApi(tt.args.scheduler)
 			tt.want.logger = got.logger
-			tt.want.wg = got.wg
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewCDMApi() = %v, want %v", got, tt.want)

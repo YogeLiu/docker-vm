@@ -1064,50 +1064,49 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 
 	_, err = os.Stat(contractPathWithVersion)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			// save bytecode to disk
-			err = r.saveBytesToDisk(byteCode, contractZipPath)
-			if err != nil {
-				r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
-				response.Message = err.Error()
-				return response
-			}
-
-			// extract 7z file
-			unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // e.g: contract1
-			err = r.runCmd(unzipCommand)
-			if err != nil {
-				r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
-				response.Message = err.Error()
-				return response
-			}
-
-			// remove 7z file
-			err = os.Remove(contractZipPath)
-			if err != nil {
-				r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
-					contractZipPath)
-				response.Message = err.Error()
-				return response
-			}
-
-			// replace contract name to contractName:version
-			err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
-			if err != nil {
-				r.Log.Errorf("[%s] fail to rename contract name: %s, "+
-					"please make sure contract name should be same as contract name (first input name) while compiling",
-					txId, err)
-				response.Message = err.Error()
-				return response
-			}
-
-		} else {
+		if !errors.Is(err, os.ErrNotExist) {
 			// file may or may not exist, just run into another problem.
 			r.Log.Errorf("read file failed", err)
 			response.Message = err.Error()
 			return response
-
 		}
+
+		// save bytecode to disk
+		err = r.saveBytesToDisk(byteCode, contractZipPath)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
+			response.Message = err.Error()
+			return response
+		}
+
+		// extract 7z file
+		unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // e.g: contract1
+		err = r.runCmd(unzipCommand)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
+			response.Message = err.Error()
+			return response
+		}
+
+		// remove 7z file
+		err = os.Remove(contractZipPath)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
+				contractZipPath)
+			response.Message = err.Error()
+			return response
+		}
+
+		// replace contract name to contractName:version
+		err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to rename contract name: %s, "+
+				"please make sure contract name should be same as contract name (first input name) while compiling",
+				txId, err)
+			response.Message = err.Error()
+			return response
+		}
+
 	}
 
 	if r.Client.NeedSendContractByteCode() {
