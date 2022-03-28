@@ -94,11 +94,11 @@ func (c *CDMClient) sendMsgRoutine() {
 	for {
 		select {
 		case txMsg := <-c.clientMgr.GetTxSendCh():
-			c.logger.Infof("client[%d] [%s] send tx req, chan len: [%d]", c.id, txMsg.TxId,
+			c.logger.Debugf("client[%d] [%s] send tx req, chan len: [%d]", c.id, txMsg.TxId,
 				len(c.clientMgr.GetTxSendCh()))
 			err = c.sendCDMMsg(txMsg)
 		case stateMsg := <-c.clientMgr.GetSysCallRespSendCh():
-			c.logger.Infof("client[%d] [%s] send syscall resp, chan len: [%d]", c.id, stateMsg.TxId,
+			c.logger.Debugf("client[%d] [%s] send syscall resp, chan len: [%d]", c.id, stateMsg.TxId,
 				len(c.clientMgr.GetSysCallRespSendCh()))
 			err = c.sendCDMMsg(stateMsg)
 		case <-c.stopSend:
