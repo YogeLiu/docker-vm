@@ -122,6 +122,13 @@ func (c *CDMClient) receiveMsgRoutine() {
 
 	c.logger.Infof("client[%d] start receiving cdm message", c.id)
 
+	defer func() {
+		c.clientMgr.PutEvent(&Event{
+			id:        c.id,
+			eventType: connectionStopped,
+		})
+	}()
+
 	var waitCh chan *protogo.CDMMessage
 
 	for {
@@ -136,20 +143,12 @@ func (c *CDMClient) receiveMsgRoutine() {
 			if revErr == io.EOF {
 				c.logger.Error("client[%d] receive eof and exit receive goroutine", c.id)
 				close(c.stopSend)
-				c.clientMgr.PutEvent(&Event{
-					id:        c.id,
-					eventType: connectionStopped,
-				})
 				return
 			}
 
 			if revErr != nil {
 				c.logger.Errorf("client[%d] receive err and exit receive goroutine %s", c.id, revErr)
 				close(c.stopSend)
-				c.clientMgr.PutEvent(&Event{
-					id:        c.id,
-					eventType: connectionStopped,
-				})
 				return
 			}
 

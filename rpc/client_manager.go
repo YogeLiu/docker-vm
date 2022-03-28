@@ -23,51 +23,47 @@ type Event struct {
 
 const (
 	connectionStopped EventType = iota
-	connectionIncrease
 )
 
 const (
-	clientIncreaseDelta = 10
-	txSize              = 15000
-	eventSize           = 100
+	txSize    = 15000
+	eventSize = 100
 )
 
 type ClientManager struct {
-	chainId               string
-	logger                *logger.CMLogger
-	count                 *atomic.Uint64 // tx count
-	index                 uint64         // client index
-	receiveChanLock       sync.RWMutex
-	config                *config.DockerVMConfig
-	aliveClientReachLimit bool
-	aliveClientMap        map[uint64]*CDMClient               // used to restore alive client
-	txSendCh              chan *protogo.CDMMessage            // used to send tx to docker-go instance
-	sysCallRespSendCh     chan *protogo.CDMMessage            // used to receive message from docker-go
-	receiveChMap          map[string]chan *protogo.CDMMessage // used to receive tx response from docker-go
-	eventCh               chan *Event                         // used to receive event
+	chainId           string
+	logger            *logger.CMLogger
+	count             *atomic.Uint64 // tx count
+	index             uint64         // client index
+	receiveChanLock   sync.RWMutex
+	config            *config.DockerVMConfig
+	aliveClientMap    map[uint64]*CDMClient               // used to restore alive client
+	txSendCh          chan *protogo.CDMMessage            // used to send tx to docker-go instance
+	sysCallRespSendCh chan *protogo.CDMMessage            // used to receive message from docker-go
+	receiveChMap      map[string]chan *protogo.CDMMessage // used to receive tx response from docker-go
+	eventCh           chan *Event                         // used to receive event
 }
 
 func NewClientManager(chainId string, vmConfig *config.DockerVMConfig) *ClientManager {
 	return &ClientManager{
-		chainId:               chainId,
-		logger:                logger.GetLoggerByChain(logger.MODULE_VM, chainId),
-		count:                 atomic.NewUint64(0),
-		index:                 1,
-		config:                vmConfig,
-		aliveClientReachLimit: false,
-		aliveClientMap:        make(map[uint64]*CDMClient),
-		txSendCh:              make(chan *protogo.CDMMessage, txSize),
-		sysCallRespSendCh:     make(chan *protogo.CDMMessage, txSize*8),
-		receiveChMap:          make(map[string]chan *protogo.CDMMessage),
-		eventCh:               make(chan *Event, eventSize),
+		chainId:           chainId,
+		logger:            logger.GetLoggerByChain(logger.MODULE_VM, chainId),
+		count:             atomic.NewUint64(0),
+		index:             1,
+		config:            vmConfig,
+		aliveClientMap:    make(map[uint64]*CDMClient),
+		txSendCh:          make(chan *protogo.CDMMessage, txSize),
+		sysCallRespSendCh: make(chan *protogo.CDMMessage, txSize*8),
+		receiveChMap:      make(map[string]chan *protogo.CDMMessage),
+		eventCh:           make(chan *Event, eventSize),
 	}
 }
 
 func (cm *ClientManager) Start() error {
 	cm.logger.Infof("start client manager")
-	// 1. start one client
-	if err := cm.increaseConnection(); err != nil {
-		cm.logger.Errorf("fail to create first client: %s", err)
+	// 1. start all clients
+	if err := cm.establishConnections(); err != nil {
+		cm.logger.Errorf("fail to create client: %s", err)
 		return err
 	}
 	// 2. start event listen
@@ -104,12 +100,6 @@ func (cm *ClientManager) PutEvent(event *Event) {
 func (cm *ClientManager) PutTxRequest(txRequest *protogo.CDMMessage) {
 	cm.logger.Debugf("[%s] put tx in send chan with length [%d]", txRequest.TxId, len(cm.txSendCh))
 	cm.txSendCh <- txRequest
-	if !cm.aliveClientReachLimit && len(cm.txSendCh) > clientIncreaseDelta {
-		cm.eventCh <- &Event{
-			id:        0,
-			eventType: connectionIncrease,
-		}
-	}
 }
 
 func (cm *ClientManager) PutSysCallResponse(sysCallResp *protogo.CDMMessage) {
@@ -169,16 +159,6 @@ func (cm *ClientManager) listen() {
 	for {
 		event := <-cm.eventCh
 		switch event.eventType {
-		case connectionIncrease:
-			err := cm.increaseConnection()
-			if err == utils.ErrClientReachLimit {
-				cm.logger.Warnf("client already reach limit")
-				continue
-			}
-			if err != nil {
-				// todo: stop all
-				cm.logger.Errorf("fail to increase new client: %s", err)
-			}
 		case connectionStopped:
 			hasConnection := cm.dropConnection(event)
 			if !hasConnection {
@@ -191,19 +171,16 @@ func (cm *ClientManager) listen() {
 	}
 }
 
-func (cm *ClientManager) increaseConnection() error {
-	cm.logger.Debugf("increase new connection")
-	if len(cm.aliveClientMap) >= int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig())) {
-		return utils.ErrClientReachLimit
-	}
-	newIndex := cm.getNextIndex()
-	newClient := NewCDMClient(newIndex, cm.chainId, cm.logger, cm)
-	if err := newClient.StartClient(); err != nil {
-		return err
-	}
-	cm.aliveClientMap[newIndex] = newClient
-	if len(cm.aliveClientMap) == int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig())) {
-		cm.aliveClientReachLimit = true
+func (cm *ClientManager) establishConnections() error {
+	cm.logger.Debugf("establish new connections")
+	totalConnections := int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig()))
+	for i := 0; i < totalConnections; i++ {
+		newIndex := cm.getNextIndex()
+		newClient := NewCDMClient(newIndex, cm.chainId, cm.logger, cm)
+		if err := newClient.StartClient(); err != nil {
+			return err
+		}
+		cm.aliveClientMap[newIndex] = newClient
 	}
 	return nil
 }
