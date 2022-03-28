@@ -124,12 +124,12 @@ func (cdm *CDMApi) sendMsgRoutine() {
 	for {
 		select {
 		case txResponseMsg := <-cdm.scheduler.GetTxResponseCh():
-			cdm.logger.Infof("[%s] send tx resp, chan len: [%d]", txResponseMsg.TxId,
+			cdm.logger.Debugf("[%s] send tx resp, chan len: [%d]", txResponseMsg.TxId,
 				len(cdm.scheduler.GetTxResponseCh()))
 			cdmMsg := cdm.constructCDMMessage(txResponseMsg)
 			err = cdm.sendMessage(cdmMsg)
 		case getStateReqMsg := <-cdm.scheduler.GetGetStateReqCh():
-			cdm.logger.Infof("[%s] send syscall req, chan len: [%d]", getStateReqMsg.TxId,
+			cdm.logger.Debugf("[%s] send syscall req, chan len: [%d]", getStateReqMsg.TxId,
 				len(cdm.scheduler.GetGetStateReqCh()))
 			err = cdm.sendMessage(getStateReqMsg)
 		case getByteCodeReqMsg := <-cdm.scheduler.GetByteCodeReqCh():
