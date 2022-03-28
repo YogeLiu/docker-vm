@@ -58,9 +58,7 @@ func (pm *ProcessManager) SetScheduler(scheduler protocol.Scheduler) {
 	pm.scheduler = scheduler
 }
 
-// AddTx todo: if need return error here
 func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
-	//todo: if change lock to single flight
 	pm.balanceRWMutex.Lock()
 	defer pm.balanceRWMutex.Unlock()
 	// processNamePrefix: contractName#contractVersion
@@ -77,6 +75,7 @@ func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
 }
 
 func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, processBalance *ProcessBalance) error {
+
 	processBalance.AddTx(txRequest)
 
 	if !processBalance.needCreateNewProcess() {
@@ -86,42 +85,18 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 		processBalance.GetNextProcessIndex())
 	process, err := pm.createNewProcess(processName, txRequest, processBalance)
 	if err == utils.ContractFileError {
+		// remove current tx request from queue
+		<-processBalance.GetTxQueue()
 		return err
 	}
 	if err != nil {
 		return fmt.Errorf("faild to create process, err is: %s, txId: %s", err, txRequest.TxId)
 	}
 	processBalance.AddProcess(process, processName)
-	//process.AddTxWaitingQueue(txRequest)
 	go process.ExecProcess()
 
 	return nil
 }
-
-//func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, processBalance *ProcessBalance) error {
-//	process, err := processBalance.GetAvailableProcess()
-//	if err != nil {
-//		return err
-//	}
-//	if process != nil {
-//		process.AddTxWaitingQueue(txRequest)
-//		return nil
-//	}
-//	processName := utils.ConstructProcessName(txRequest.ContractName, txRequest.ContractVersion,
-//		processBalance.GetNextProcessIndex())
-//	process, err = pm.createNewProcess(processName, txRequest)
-//	if err == utils.ContractFileError {
-//		return err
-//	}
-//	if err != nil {
-//		return fmt.Errorf("faild to create process, err is: %s, txId: %s", err, txRequest.TxId)
-//	}
-//	processBalance.AddProcess(process, processName)
-//	process.AddTxWaitingQueue(txRequest)
-//	go process.ExecProcess()
-//
-//	return nil
-//}
 
 // CreateNewProcess create a new process
 func (pm *ProcessManager) createNewProcess(processName string, txRequest *protogo.TxRequest,
@@ -175,10 +150,6 @@ func (pm *ProcessManager) ReleaseProcess(processName string, user *security.User
 	//released := pm.removeProcessFromProcessBalance(contractKey, processName)
 	pm.removeProcessFromProcessBalance(contractKey, processName)
 	_ = pm.usersManager.FreeUser(user)
-	//if !released {
-	//	return false
-	//}
-	//return true
 }
 
 func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, processName string) {
@@ -192,9 +163,6 @@ func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, pr
 	if process == nil {
 		return
 	}
-	//if process.Size() > 0 {
-	//	return false
-	//}
 	processBalance.RemoveProcess(processName)
 	if processBalance.Size() == 0 {
 		delete(pm.balanceTable, contractKey)

@@ -39,8 +39,6 @@ func NewProcessBalance() *ProcessBalance {
 	}
 }
 
-// ====================== refactor functions ==================
-
 func (pb *ProcessBalance) GetTxQueue() chan *protogo.TxRequest {
 	return pb.txQueue
 }
@@ -66,42 +64,6 @@ func (pb *ProcessBalance) GetNextProcessIndex() uint64 {
 	pb.index++
 	return val
 }
-
-//func (pb *ProcessBalance) GetAvailableProcess() (*Process, error) {
-//	var resultProcessName string
-//	minSize := txQueueSize
-//	for processName, process := range pb.processes {
-//		processSize := process.Size()
-//		if processSize < minSize {
-//			minSize = processSize
-//			resultProcessName = processName
-//		}
-//	}
-//
-//	// found
-//	if len(resultProcessName) != 0 {
-//		if pb.needCreateNewProcess(int64(minSize)) {
-//			return nil, nil
-//		}
-//		return pb.GetProcess(resultProcessName), nil
-//	}
-//
-//	// not found: all processes is full and pb is full or pb is empty
-//	if pb.Size() < pb.maxProcess {
-//		return nil, nil
-//	}
-//	return nil, fmt.Errorf("faild to get process, the balance is full")
-//}
-
-//func (pb *ProcessBalance) needCreateNewProcess(processSize int64) bool {
-//	if pb.Size() >= pb.maxProcess {
-//		return false
-//	}
-//	if processSize > triggerNewProcessSize {
-//		return true
-//	}
-//	return false
-//}
 
 func (pb *ProcessBalance) needCreateNewProcess() bool {
 	if pb.Size() >= pb.maxProcess {

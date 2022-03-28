@@ -20,8 +20,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.uber.org/atomic"
-
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
@@ -58,7 +56,7 @@ type ProcessBalancer interface {
 // processName: contractName:contractVersion:index
 // crossProcessName: txId:currentHeight
 type Process struct {
-	txCount        *atomic.Uint64
+	txCount        uint64
 	processName    string
 	isCrossProcess bool
 
@@ -88,7 +86,7 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 	processName, contractPath string, processMgr ProcessMgr, processBalancer ProcessBalancer) *Process {
 
 	process := &Process{
-		txCount:        atomic.NewUint64(0),
+		txCount:        0,
 		processName:    processName,
 		isCrossProcess: false,
 
@@ -122,7 +120,7 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 	processName, contractPath string, processMgr ProcessMgr) *Process {
 
 	process := &Process{
-		txCount:        atomic.NewUint64(0),
+		txCount:        0,
 		processName:    processName,
 		isCrossProcess: true,
 
@@ -382,8 +380,8 @@ func (p *Process) handleNewTx() (string, error) {
 		p.logger.Debugf("[%s] process start handle tx [%s], waiting queue size [%d]", p.processName,
 			nextTx.TxId, len(p.processBalancer.GetTxQueue()))
 
-		newCount := p.txCount.Add(1)
-		nextTx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, newCount)
+		p.txCount++
+		nextTx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, p.txCount)
 		p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, nextTx.TxContext.OriginalProcessName)
 
 		p.Handler.TxRequest = nextTx
@@ -407,22 +405,6 @@ func (p *Process) handleNewTx() (string, error) {
 		return "", nil
 	}
 }
-
-//// AddTxWaitingQueue add tx with same contract to process waiting queue
-//func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
-//
-//	newCount := p.txCount.Add(1)
-//	tx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, newCount)
-//	p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, tx.TxContext.OriginalProcessName)
-//
-//	p.TxWaitingQueue <- tx
-//	p.logger.Debugf("[%s] add tx [%s] to waiting queue, new size [%d], "+
-//		"process state is [%s]", p.processName, tx.TxId, len(p.TxWaitingQueue), p.ProcessState)
-//}
-
-//func (p *Process) Size() int {
-//	return len(p.TxWaitingQueue)
-//}
 
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
