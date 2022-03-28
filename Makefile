@@ -1,4 +1,4 @@
-VERSION=v2.2.0_alpha_qc
+VERSION=v2.2.1
 
 build-test:
 	cd test/scripts && ./prepare.sh
@@ -36,6 +36,9 @@ ci:
 	golangci-lint run ./...
 	go test -v ./...
 	make clean
+
+ut:
+	go test -v ./...
 
 gomod:
 	go get chainmaker.org/chainmaker/common/v2@develop
