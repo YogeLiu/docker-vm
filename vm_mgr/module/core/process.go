@@ -15,9 +15,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
 
 	"go.uber.org/atomic"
 
@@ -26,8 +27,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"go.uber.org/zap"
-
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
@@ -36,9 +35,7 @@ import (
 )
 
 const (
-	processWaitingTime      = 60 * 10
-	processWaitingQueueSize = 1000
-	triggerNewProcessSize   = 1
+	processWaitingTime = 60 * 10
 )
 
 type ExitErr struct {
@@ -46,13 +43,18 @@ type ExitErr struct {
 	desc string
 }
 
-type ProcessMgrInterface interface {
-	getProcessDepth(initialProcessName string) *ProcessDepth
+type ProcessMgr interface {
+	GetProcessDepth(initialProcessName string) *ProcessDepth
 
-	ReleaseProcess(processName string, user *security.User) bool
+	ReleaseProcess(processName string, user *security.User)
 }
 
-// Process id of process is index of process in process list
+type ProcessBalancer interface {
+	GetTxQueue() chan *protogo.TxRequest
+}
+
+// Process
+// id of process is index of process in process list
 // processName: contractName:contractVersion:index
 // crossProcessName: txId:currentHeight
 type Process struct {
@@ -68,25 +70,22 @@ type Process struct {
 	user       *security.User
 	cmd        *exec.Cmd
 
-	ProcessState   protogo.ProcessState
-	TxWaitingQueue chan *protogo.TxRequest
-	responseCh     chan *protogo.TxResponse
-	exitCh         chan *ExitErr
-	newTxTrigger   chan bool
-	cmdReadyCh     chan bool
-	expireTimer    *time.Timer // process waiting time
-	Handler        *ProcessHandler
+	ProcessState protogo.ProcessState
+	responseCh   chan *protogo.TxResponse
+	exitCh       chan *ExitErr
+	newTxTrigger chan bool
+	cmdReadyCh   chan bool
+	expireTimer  *time.Timer // process waiting time
 
-	logger *zap.SugaredLogger
-
-	processMgr ProcessMgrInterface
-	done       uint32
-	mutex      sync.Mutex
+	Handler         *ProcessHandler
+	processMgr      ProcessMgr
+	processBalancer ProcessBalancer
+	logger          *zap.SugaredLogger
 }
 
 // NewProcess new process, process working on main contract which is not called cross contract
 func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	processName, contractPath string, processPool ProcessMgrInterface) *Process {
+	processName, contractPath string, processMgr ProcessMgr, processBalancer ProcessBalancer) *Process {
 
 	process := &Process{
 		txCount:        atomic.NewUint64(0),
@@ -100,18 +99,17 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 		cGroupPath: filepath.Join(config.CGroupRoot, config.ProcsFile),
 		user:       user,
 
-		ProcessState:   protogo.ProcessState_PROCESS_STATE_CREATED,
-		TxWaitingQueue: make(chan *protogo.TxRequest, processWaitingQueueSize),
-		responseCh:     make(chan *protogo.TxResponse),
-		newTxTrigger:   make(chan bool),
-		exitCh:         make(chan *ExitErr),
-		expireTimer:    time.NewTimer(processWaitingTime * time.Second),
-		Handler:        nil,
-		cmdReadyCh:     make(chan bool, 1),
+		ProcessState: protogo.ProcessState_PROCESS_STATE_CREATED,
+		responseCh:   make(chan *protogo.TxResponse),
+		newTxTrigger: make(chan bool),
+		exitCh:       make(chan *ExitErr),
+		expireTimer:  time.NewTimer(processWaitingTime * time.Second),
+		Handler:      nil,
+		cmdReadyCh:   make(chan bool, 1),
 
-		logger: logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
-
-		processMgr: processPool,
+		processMgr:      processMgr,
+		processBalancer: processBalancer,
+		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 	}
 
 	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
@@ -121,28 +119,31 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 
 // NewCrossProcess new cross process, process working on called cross process
 func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	processName, contractPath string, processPool ProcessMgrInterface) *Process {
+	processName, contractPath string, processMgr ProcessMgr) *Process {
 
 	process := &Process{
-		txCount:         atomic.NewUint64(0),
-		isCrossProcess:  true,
-		processName:     processName,
+		txCount:        atomic.NewUint64(0),
+		processName:    processName,
+		isCrossProcess: true,
+
 		contractName:    txRequest.ContractName,
 		contractVersion: txRequest.ContractVersion,
-		ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-		responseCh:      make(chan *protogo.TxResponse),
-		TxWaitingQueue:  nil,
-		newTxTrigger:    nil,
-		exitCh:          nil,
-		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+		contractPath:    contractPath,
 
+		cGroupPath: filepath.Join(config.CGroupRoot, config.ProcsFile),
+		user:       user,
+
+		ProcessState: protogo.ProcessState_PROCESS_STATE_CREATED,
+		responseCh:   make(chan *protogo.TxResponse),
+		newTxTrigger: nil,
+		exitCh:       nil,
+		expireTimer:  time.NewTimer(processWaitingTime * time.Second),
 		Handler:      nil,
 		cmdReadyCh:   make(chan bool, 1),
-		user:         user,
-		contractPath: contractPath,
-		cGroupPath:   filepath.Join(config.CGroupRoot, config.ProcsFile),
-		processMgr:   processPool,
+
+		processMgr:      processMgr,
+		processBalancer: nil,
+		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
 	}
 
 	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
@@ -298,7 +299,7 @@ func (p *Process) listenProcess() {
 				p.Handler.scheduler.ReturnErrorResponse(currentTxId, err.Error())
 			}
 		case <-p.Handler.txExpireTimer.C:
-			p.StopProcess(false)
+			p.stopProcess(false)
 		case err := <-p.exitCh:
 			processReleased := p.handleProcessExit(err)
 			if processReleased {
@@ -320,10 +321,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, existErr.err.Error())
 
 		p.logger.Debugf("release process: [%s]", p.processName)
-		if !p.processMgr.ReleaseProcess(p.processName, p.user) {
-			go p.startProcess()
-			return false
-		}
+		p.processMgr.ReleaseProcess(p.processName, p.user)
 		return true
 	}
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
@@ -339,10 +337,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		// when process timeout, release resources
 		p.logger.Debugf("release process: [%s]", p.processName)
 
-		if !p.processMgr.ReleaseProcess(p.processName, p.user) {
-			go p.startProcess()
-			return false
-		}
+		p.processMgr.ReleaseProcess(p.processName, p.user)
 		return true
 	}
 
@@ -362,7 +357,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	}
 
 	var errMsg string
-	processDepth := p.processMgr.getProcessDepth(currentTx.TxContext.OriginalProcessName)
+	processDepth := p.processMgr.GetProcessDepth(currentTx.TxContext.OriginalProcessName)
 	if processDepth == nil {
 		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
 		errMsg = err.Error()
@@ -383,8 +378,13 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 func (p *Process) handleNewTx() (string, error) {
 
 	select {
-	case nextTx := <-p.TxWaitingQueue:
-		p.logger.Debugf("[%s] process start handle tx [%s], waiting queue size [%d]", p.processName, nextTx.TxId, len(p.TxWaitingQueue))
+	case nextTx := <-p.processBalancer.GetTxQueue():
+		p.logger.Debugf("[%s] process start handle tx [%s], waiting queue size [%d]", p.processName,
+			nextTx.TxId, len(p.processBalancer.GetTxQueue()))
+
+		newCount := p.txCount.Add(1)
+		nextTx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, newCount)
+		p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, nextTx.TxContext.OriginalProcessName)
 
 		p.Handler.TxRequest = nextTx
 		p.Handler.startTimer()
@@ -403,26 +403,26 @@ func (p *Process) handleNewTx() (string, error) {
 		}
 		return "", nil
 	case <-p.expireTimer.C:
-		p.StopProcess(true)
+		p.stopProcess(true)
 		return "", nil
 	}
 }
 
-// AddTxWaitingQueue add tx with same contract to process waiting queue
-func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
+//// AddTxWaitingQueue add tx with same contract to process waiting queue
+//func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
+//
+//	newCount := p.txCount.Add(1)
+//	tx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, newCount)
+//	p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, tx.TxContext.OriginalProcessName)
+//
+//	p.TxWaitingQueue <- tx
+//	p.logger.Debugf("[%s] add tx [%s] to waiting queue, new size [%d], "+
+//		"process state is [%s]", p.processName, tx.TxId, len(p.TxWaitingQueue), p.ProcessState)
+//}
 
-	newCount := p.txCount.Add(1)
-	tx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, newCount)
-	p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, tx.TxContext.OriginalProcessName)
-
-	p.TxWaitingQueue <- tx
-	p.logger.Debugf("[%s] add tx [%s] to waiting queue, new size [%d], "+
-		"process state is [%s]", p.processName, tx.TxId, len(p.TxWaitingQueue), p.ProcessState)
-}
-
-func (p *Process) Size() int {
-	return len(p.TxWaitingQueue)
-}
+//func (p *Process) Size() int {
+//	return len(p.TxWaitingQueue)
+//}
 
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
@@ -438,8 +438,8 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	}
 }
 
-// StopProcess stop process
-func (p *Process) StopProcess(processTimeout bool) {
+// stopProcess stop process
+func (p *Process) stopProcess(processTimeout bool) {
 	p.logger.Debugf("[%s] stop process", p.processName)
 	if processTimeout {
 		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_EXPIRE)
@@ -474,7 +474,7 @@ func (p *Process) killProcess(isTxTimeout bool) {
 	}
 
 	originalProcessName := p.Handler.TxRequest.TxContext.OriginalProcessName
-	processDepth := p.processMgr.getProcessDepth(originalProcessName)
+	processDepth := p.processMgr.GetProcessDepth(originalProcessName)
 
 	if processDepth == nil {
 		return

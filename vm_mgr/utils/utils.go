@@ -24,6 +24,7 @@ import (
 const (
 	DefaultMaxSendSize = 4
 	DefaultMaxRecvSize = 4
+	DefaultMaxProcess  = 10
 )
 
 // WriteToFile WriteFile write value to file
@@ -156,4 +157,13 @@ func GetMaxRecvMsgSizeFromEnv() int {
 		return DefaultMaxRecvSize
 	}
 	return maxRecvSize
+}
+
+func GetMaxConcurrencyFromEnv() int64 {
+	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
+	maxConcurrency, err := strconv.Atoi(mc)
+	if err != nil {
+		maxConcurrency = DefaultMaxProcess
+	}
+	return int64(maxConcurrency)
 }
