@@ -106,6 +106,7 @@ func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	ctrl := gomock.NewController(t)
 	simContext := mock.NewMockTxSimContext(ctrl)
+	blockchainStore := mock.NewMockBlockchainStore(ctrl)
 
 	tmpSimContextMap = make(map[string][]byte)
 
@@ -125,6 +126,13 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 		}).AnyTimes()
 
 	simContext.EXPECT().GetBlockVersion().Return(uint32(230)).AnyTimes()
+	blockchainStore.EXPECT().GetLastChainConfig().Return(&configPb.ChainConfig{
+		AccountConfig: &configPb.GasAccountConfig{
+			DefaultGas: 200000,
+		},
+	}).AnyTimes()
+	simContext.EXPECT().GetBlockchainStore().Return(blockchainStore).AnyTimes()
+
 	return simContext
 
 }
