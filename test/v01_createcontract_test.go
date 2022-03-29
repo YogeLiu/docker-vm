@@ -83,7 +83,7 @@ func setupTest(t *testing.T) {
 func tearDownTest() {
 	err := mockDockerManager.StopVM()
 	if err != nil {
-		log.Fatalf("stop docmer manager instance failed %v\n", err)
+		log.Fatalf("stop docker manager instance failed %v\n", err)
 	}
 }
 

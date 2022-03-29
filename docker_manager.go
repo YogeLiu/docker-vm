@@ -33,6 +33,7 @@ const (
 type DockerManager struct {
 	chainId   string
 	mgrLogger *logger.CMLogger
+	Stop      bool
 
 	ctx context.Context
 
@@ -41,6 +42,7 @@ type DockerManager struct {
 
 	dockerVMConfig        *config.DockerVMConfig        // original config from local config
 	dockerContainerConfig *config.DockerContainerConfig // container setting
+
 }
 
 // NewDockerManager return docker manager and running a default container
@@ -112,6 +114,8 @@ func (m *DockerManager) StopVM() error {
 	}
 
 	m.clientInitOnce = sync.Once{}
+	m.Stop = true
+	m.cdmClient.StopSendResv()
 
 	return nil
 }
@@ -141,6 +145,10 @@ func (m *DockerManager) startCDMClient() {
 		for {
 			<-m.cdmClient.ReconnectChan
 			m.cdmClient.ConnStatus = false
+
+			if m.Stop {
+				return
+			}
 			//	reconnect
 			m.cdmClient.ReconnectChan = make(chan bool)
 			for !m.getCDMState() {
