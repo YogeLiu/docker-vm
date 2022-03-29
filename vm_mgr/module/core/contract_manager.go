@@ -110,18 +110,18 @@ func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (stri
 
 		if returnMsg.Payload == nil {
 			return "", errors.New("fail to get bytecode")
+		}
+
+		if enableUnixDomainSocket {
+			err = cm.setFileMod(contractPath)
+			if err != nil {
+				return "", err
+			}
 		} else {
-			if enableUnixDomainSocket {
-				err = cm.setFileMod(contractPath)
-				if err != nil {
-					return "", err
-				}
-			} else {
-				content := returnMsg.Payload
-				err := ioutil.WriteFile(contractPath, content, 0755)
-				if err != nil {
-					return "", err
-				}
+			content := returnMsg.Payload
+			err := ioutil.WriteFile(contractPath, content, 0755)
+			if err != nil {
+				return "", err
 			}
 		}
 

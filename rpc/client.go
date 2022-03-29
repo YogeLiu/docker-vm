@@ -250,7 +250,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 }
 
 func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
-	c.logger.Debugf("send message: [%s]， type: [%s]", msg.TxId, msg.Type)
+	c.logger.Debugf("send message: [%s], type: [%s]", msg.TxId, msg.Type)
 	return c.stream.Send(msg)
 }
 
