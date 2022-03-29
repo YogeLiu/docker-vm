@@ -130,7 +130,7 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 		AccountConfig: &configPb.GasAccountConfig{
 			DefaultGas: 200000,
 		},
-	}).AnyTimes()
+	}, nil).AnyTimes()
 	simContext.EXPECT().GetBlockchainStore().Return(blockchainStore).AnyTimes()
 
 	return simContext
