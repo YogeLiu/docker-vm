@@ -37,5 +37,10 @@ ci:
 	go test -v ./...
 	make clean
 
+ut:
+	make build-test
+	go test -v ./...
+	make clean
+
 gomod:
 	cd scripts && sh gomod_update.sh

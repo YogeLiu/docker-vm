@@ -6,7 +6,7 @@ require (
 	chainmaker.org/chainmaker/common/v2 v2.1.2-0.20220127064703-4da19a869e9d
 	chainmaker.org/chainmaker/localconf/v2 v2.1.1-0.20220129103344-6ec43cc786d6
 	chainmaker.org/chainmaker/logger/v2 v2.1.1-0.20220128022235-c984177a37cc
-	chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20220128100409-ce390cb69a32
+	chainmaker.org/chainmaker/pb-go/v2 v2.2.1-0.20220329030622-114531b64c06
 	chainmaker.org/chainmaker/protocol/v2 v2.1.2-0.20220128021940-8fd70a8c2c75
 	chainmaker.org/chainmaker/utils/v2 v2.0.0-20220128023017-5bf8279342f1
 	github.com/Microsoft/go-winio v0.5.1 // indirect
