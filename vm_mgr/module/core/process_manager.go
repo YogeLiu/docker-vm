@@ -85,7 +85,11 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 		processBalance.GetNextProcessIndex())
 	process, err := pm.createNewProcess(processName, txRequest, processBalance)
 	if err == utils.ContractFileError {
-		// remove current tx request from queue
+		// using existing process to handle tx
+		if processBalance.Size() > 0 {
+			return nil
+		}
+		// remove tx request from queue
 		<-processBalance.GetTxQueue()
 		return err
 	}

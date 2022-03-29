@@ -14,7 +14,7 @@ import (
 
 const (
 	processIncreaseDelta = 1
-	txQueueSize          = 10000
+	txQueueSize          = 100000
 )
 
 // ProcessBalance control load balance of process which related to same contract
@@ -69,7 +69,7 @@ func (pb *ProcessBalance) needCreateNewProcess() bool {
 	if pb.Size() >= pb.maxProcess {
 		return false
 	}
-	if len(pb.txQueue)/processIncreaseDelta == 0 {
+	if len(pb.txQueue) < processIncreaseDelta {
 		return false
 	}
 	return true
