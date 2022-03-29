@@ -56,7 +56,7 @@ func InitialConfig(logPath string) {
 	// init display in console config
 	b2, err := strconv.ParseBool(os.Getenv(config.ENV_LOG_IN_CONSOLE))
 	if err != nil {
-		displayInConsoleFromConfig = false
+		displayInConsoleFromConfig = config.DefaultLogInConsole
 	}
 	if b2 {
 		displayInConsoleFromConfig = true
@@ -69,7 +69,7 @@ func InitialConfig(logPath string) {
 
 	logLevelFromConfig = os.Getenv(config.ENV_LOG_LEVEL)
 	if logLevelFromConfig == "" {
-		logLevelFromConfig = "INFO"
+		logLevelFromConfig = config.DefaultLogLevel
 	}
 	config.SandBoxLogLevel = logLevelFromConfig
 }

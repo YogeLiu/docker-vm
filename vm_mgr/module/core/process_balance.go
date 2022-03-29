@@ -94,7 +94,7 @@ func getMaxPeer() int64 {
 	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
 	maxConcurrency, err := strconv.Atoi(mc)
 	if err != nil {
-		maxConcurrency = defaultMaxProcess
+		maxConcurrency = config.DefaultMaxConcurrency
 	}
 	return int64(maxConcurrency)
 }

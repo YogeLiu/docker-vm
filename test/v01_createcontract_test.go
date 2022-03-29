@@ -26,6 +26,7 @@ import (
 5 mock docker-go RuntimeInstace
 6 create a user contract
 7 deploy user contract
+8 stop the docker container
 */
 
 func setupTest(t *testing.T) {
@@ -45,7 +46,7 @@ func setupTest(t *testing.T) {
 	fmt.Printf("=== step 3 start Docker VM ===\n")
 	dockerContainErr := mockDockerManager.StartVM()
 	if dockerContainErr != nil {
-		log.Fatalf("start docmer manager instance failed %v\n", dockerContainErr)
+		log.Fatalf("start docker manager instance failed %v\n", dockerContainErr)
 	}
 
 	//step4: mock contractId, contractBin
@@ -76,12 +77,13 @@ func setupTest(t *testing.T) {
 	if result.Code == 0 {
 		fmt.Printf("deploy user contract successfully\n")
 	}
+
 }
 
 func tearDownTest() {
 	err := mockDockerManager.StopVM()
 	if err != nil {
-		log.Fatalf("stop docmer manager instance failed %v\n", err)
+		log.Fatalf("stop docker manager instance failed %v\n", err)
 	}
 }
 

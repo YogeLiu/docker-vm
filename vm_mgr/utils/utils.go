@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	DefaultMaxSendSize = 4
-	DefaultMaxRecvSize = 4
+	DefaultMaxSendSize = 20
+	DefaultMaxRecvSize = 20
 )
 
 // WriteToFile WriteFile write value to file
@@ -156,4 +156,31 @@ func GetMaxRecvMsgSizeFromEnv() int {
 		return DefaultMaxRecvSize
 	}
 	return maxRecvSize
+}
+
+func CreateDir(directory string) error {
+	exist, err := exists(directory)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		err = os.MkdirAll(directory, 0755)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

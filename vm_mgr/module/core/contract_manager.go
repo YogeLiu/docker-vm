@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
@@ -79,30 +80,51 @@ func (cm *ContractManager) GetContract(txId, contractName string) (string, error
 	return cPath.(string), nil
 }
 
+// todo modify method name
 func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (string, error) {
-	getByteCodeMsg := &protogo.CDMMessage{
-		TxId:    txId,
-		Type:    protogo.CDMType_CDM_TYPE_GET_BYTECODE,
-		Payload: []byte(contractName),
-	}
 
-	// send request to chain maker
-	responseChan := make(chan *protogo.CDMMessage)
-	cm.scheduler.RegisterResponseCh(txId, responseChan)
+	enableUnixDomainSocket, _ := strconv.ParseBool(os.Getenv(config.ENV_ENABLE_UDS))
 
-	cm.scheduler.GetByteCodeReqCh() <- getByteCodeMsg
-
-	returnMsg := <-responseChan
-
-	if returnMsg.Payload == nil {
-		return "", errors.New("fail to get bytecode")
-	}
-
-	// set contract mod
 	contractPath := filepath.Join(mountDir, contractName)
-	err := cm.setFileMod(contractPath)
+
+	_, err := os.Stat(contractPath)
 	if err != nil {
-		return "", err
+		// if run into other errors
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", errors.New("fail to get contract from path")
+		}
+		// file not exist then getByteCodeFromChain
+		getByteCodeMsg := &protogo.CDMMessage{
+			TxId:    txId,
+			Type:    protogo.CDMType_CDM_TYPE_GET_BYTECODE,
+			Payload: []byte(contractName),
+		}
+
+		// send request to chain maker
+		responseChan := make(chan *protogo.CDMMessage)
+		cm.scheduler.RegisterResponseCh(txId, responseChan)
+
+		cm.scheduler.GetByteCodeReqCh() <- getByteCodeMsg
+
+		returnMsg := <-responseChan
+
+		if returnMsg.Payload == nil {
+			return "", errors.New("fail to get bytecode")
+		}
+
+		if enableUnixDomainSocket {
+			err = cm.setFileMod(contractPath)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			content := returnMsg.Payload
+			err := ioutil.WriteFile(contractPath, content, 0755)
+			if err != nil {
+				return "", err
+			}
+		}
+
 	}
 
 	// save contract file path to map

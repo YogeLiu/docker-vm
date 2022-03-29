@@ -8,8 +8,7 @@ package rpc
 
 import (
 	"context"
-	"fmt"
-	"io"
+	"errors"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -39,12 +38,12 @@ type CDMClient struct {
 	stateResponseSendCh chan *protogo.CDMMessage // used to receive message from docker-go
 	lock                sync.RWMutex
 	// key: txId, value: chan, used to receive tx response from docker-go
-	recvChMap   map[string]chan *protogo.CDMMessage
-	stream      protogo.CDMRpc_CDMCommunicateClient
-	logger      *logger.CMLogger
-	stopSend    chan struct{}
-	stopReceive chan struct{}
-	config      *config.DockerVMConfig
+	recvChMap     map[string]chan *protogo.CDMMessage
+	stream        protogo.CDMRpc_CDMCommunicateClient
+	logger        *logger.CMLogger
+	config        *config.DockerVMConfig
+	ReconnectChan chan bool
+	ConnStatus    bool
 }
 
 func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
@@ -57,9 +56,9 @@ func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *CDMClient {
 		recvChMap:           make(map[string]chan *protogo.CDMMessage),
 		stream:              nil,
 		logger:              logger.GetLoggerByChain(logger.MODULE_VM, chainId),
-		stopSend:            make(chan struct{}),
-		stopReceive:         make(chan struct{}),
 		config:              vmConfig,
+		ReconnectChan:       make(chan bool),
+		ConnStatus:          false,
 	}
 }
 
@@ -76,6 +75,10 @@ func (c *CDMClient) GetCMConfig() *config.DockerVMConfig {
 }
 
 func (c *CDMClient) RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error {
+	if !c.ConnStatus {
+		c.logger.Errorf("cdm client stream not ready, waiting reconnect, txid: %s", txId)
+		return errors.New("cdm client not connected")
+	}
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.logger.Debugf("register receive chan for [%s]", txId)
@@ -132,9 +135,15 @@ func (c *CDMClient) StartClient() bool {
 		return false
 	}
 
+	go func() {
+		<-c.ReconnectChan
+		conn.Close()
+	}()
+
 	stream, err := GetCDMClientStream(conn)
 	if err != nil {
 		c.logger.Errorf("fail to get connection stream: %s", err)
+		conn.Close()
 		return false
 	}
 
@@ -145,6 +154,14 @@ func (c *CDMClient) StartClient() bool {
 	go c.receiveMsgRoutine()
 
 	return true
+}
+
+func (c *CDMClient) StopSendResv() {
+	err := c.stream.CloseSend()
+	if err != nil {
+		c.logger.Errorf("close stream failed: ", err)
+	}
+
 }
 
 //todo: test if server is killed, does sendMsg receive error or not
@@ -162,17 +179,19 @@ func (c *CDMClient) sendMsgRoutine() {
 		case stateMsg := <-c.stateResponseSendCh:
 			c.logger.Debugf("[%s] send syscall resp, chan len: [%d]", stateMsg.TxId, len(c.stateResponseSendCh))
 			err = c.sendCDMMsg(stateMsg)
-		case <-c.stopSend:
+		case <-c.ReconnectChan:
 			c.logger.Debugf("close cdm send goroutine")
 			return
 		}
 
 		if err != nil {
 			errStatus, _ := status.FromError(err)
-			c.logger.Errorf("fail to send msg: err: %s, err massage: %s, err code: %s", err,
+			c.logger.Errorf("fail to send msg: err: %s, err message: %s, err code: %s", err,
 				errStatus.Message(), errStatus.Code())
 			if errStatus.Code() != codes.ResourceExhausted {
-				close(c.stopReceive)
+				// run into error need reconnect
+				c.ConnStatus = false
+				close(c.ReconnectChan)
 				return
 			}
 		}
@@ -188,21 +207,17 @@ func (c *CDMClient) receiveMsgRoutine() {
 	for {
 
 		select {
-		case <-c.stopReceive:
+		case <-c.ReconnectChan:
 			c.logger.Debugf("close cdm client receive goroutine")
 			return
 		default:
 			receivedMsg, revErr := c.stream.Recv()
 
-			if revErr == io.EOF {
-				c.logger.Error("client receive eof and exit receive goroutine")
-				close(c.stopSend)
-				return
-			}
-
 			if revErr != nil {
+				// run into error need reconnect
 				c.logger.Errorf("client receive err and exit receive goroutine %s", revErr)
-				close(c.stopSend)
+				c.ConnStatus = false
+				close(c.ReconnectChan)
 				return
 			}
 
@@ -235,7 +250,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 }
 
 func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
-	c.logger.Debugf("send message: [%s]", msg)
+	c.logger.Debugf("send message: [%s], type: [%s]", msg.TxId, msg.Type)
 	return c.stream.Send(msg)
 }
 
@@ -250,23 +265,24 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 		),
 	}
 
-	// just for mac development and pprof testing
-	if !c.config.DockerVMUDSOpen {
-		ip := "0.0.0.0"
-		url := fmt.Sprintf("%s:%s", ip, config.TestPort)
-		return grpc.Dial(url, dialOpts...)
+	if c.config.DockerVMUDSOpen {
+		// connect unix domain socket
+		dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
+			unixAddress, _ := net.ResolveUnixAddr("unix", sock)
+			conn, err := net.DialUnix("unix", nil, unixAddress)
+			return conn, err
+		}))
+
+		sockAddress := filepath.Join(c.config.DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
+
+		c.logger.Infof("connect docker vm manager: %s", sockAddress)
+		return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
 	}
 
-	dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
-		unixAddress, _ := net.ResolveUnixAddr("unix", sock)
-		conn, err := net.DialUnix("unix", nil, unixAddress)
-		return conn, err
-	}))
-
-	sockAddress := filepath.Join(c.config.DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
-
-	return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
-
+	// connect vm from tcp
+	url := utils.GetURLFromConfig(c.config)
+	c.logger.Infof("connect docker vm manager: %s", url)
+	return grpc.Dial(url, dialOpts...)
 }
 
 // GetCDMClientStream get rpc stream
@@ -281,4 +297,8 @@ func (c *CDMClient) GetUniqueTxKey(txId string) string {
 	sb.WriteString("#")
 	sb.WriteString(strconv.FormatUint(nextCount, 10))
 	return sb.String()
+}
+
+func (c *CDMClient) NeedSendContractByteCode() bool {
+	return !c.config.DockerVMUDSOpen
 }

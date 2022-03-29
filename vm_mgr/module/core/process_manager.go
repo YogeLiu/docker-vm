@@ -20,10 +20,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	defaultMaxProcess = 10
-)
-
 type ProcessManager struct {
 	logger         *zap.SugaredLogger
 	balanceRWMutex sync.RWMutex
