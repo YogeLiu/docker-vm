@@ -157,7 +157,11 @@ func (c *CDMClient) StartClient() bool {
 }
 
 func (c *CDMClient) StopSendResv() {
-	c.stream.CloseSend()
+	err := c.stream.CloseSend()
+	if err != nil {
+		c.logger.Errorf("close stream failed: ", err)
+	}
+
 }
 
 //todo: test if server is killed, does sendMsg receive error or not
