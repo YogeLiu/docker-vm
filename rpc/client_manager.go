@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 
@@ -41,13 +42,15 @@ type ClientManager struct {
 	logger            *logger.CMLogger
 	count             *atomic.Uint64 // tx count
 	index             uint64         // client index
-	receiveChanLock   sync.RWMutex
 	config            *config.DockerVMConfig
+	receiveChanLock   sync.RWMutex
+	clientLock        sync.Mutex
 	aliveClientMap    map[uint64]*CDMClient               // used to restore alive client
 	txSendCh          chan *protogo.CDMMessage            // used to send tx to docker-go instance
 	sysCallRespSendCh chan *protogo.CDMMessage            // used to receive message from docker-go
 	receiveChMap      map[string]chan *protogo.CDMMessage // used to receive tx response from docker-go
 	eventCh           chan *Event                         // used to receive event
+	stop              bool
 }
 
 func NewClientManager(chainId string, vmConfig *config.DockerVMConfig) *ClientManager {
@@ -62,6 +65,7 @@ func NewClientManager(chainId string, vmConfig *config.DockerVMConfig) *ClientMa
 		sysCallRespSendCh: make(chan *protogo.CDMMessage, txSize*8),
 		receiveChMap:      make(map[string]chan *protogo.CDMMessage),
 		eventCh:           make(chan *Event, eventSize),
+		stop:              false,
 	}
 }
 
@@ -166,11 +170,8 @@ func (cm *ClientManager) listen() {
 		event := <-cm.eventCh
 		switch event.eventType {
 		case connectionStopped:
-			hasConnection := cm.dropConnection(event)
-			if !hasConnection {
-				cm.logger.Infof("exit client manager listen")
-				return
-			}
+			cm.dropConnection(event)
+			go cm.reconnect()
 		default:
 			cm.logger.Warnf("unknown event: %s", event)
 		}
@@ -178,6 +179,8 @@ func (cm *ClientManager) listen() {
 }
 
 func (cm *ClientManager) establishConnections() error {
+	cm.clientLock.Lock()
+	defer cm.clientLock.Unlock()
 	cm.logger.Debugf("establish new connections")
 	totalConnections := int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig()))
 	for i := 0; i < totalConnections; i++ {
@@ -191,17 +194,54 @@ func (cm *ClientManager) establishConnections() error {
 	return nil
 }
 
-func (cm *ClientManager) dropConnection(event *Event) bool {
+func (cm *ClientManager) dropConnection(event *Event) {
+	cm.clientLock.Lock()
+	defer cm.clientLock.Unlock()
 	cm.logger.Debugf("drop connection: %d", event.id)
 	_, ok := cm.aliveClientMap[event.id]
 	if ok {
 		delete(cm.aliveClientMap, event.id)
 	}
-	return len(cm.aliveClientMap) > 0
+}
+
+func (cm *ClientManager) CloseAllConnections() {
+	cm.stop = true
+	for _, client := range cm.aliveClientMap {
+		client.StopSendRecv()
+	}
+}
+
+func (cm *ClientManager) reconnect() {
+	newIndex := cm.getNextIndex()
+	newClient := NewCDMClient(newIndex, cm.chainId, cm.logger, cm)
+
+	for {
+		if cm.stop {
+			return
+		}
+		err := newClient.StartClient()
+		if err == nil {
+			break
+		}
+		cm.logger.Warnf("client[%d] connect fail, try reconnect...")
+		time.Sleep(2 * time.Second)
+	}
+
+	cm.clientLock.Lock()
+	cm.aliveClientMap[newIndex] = newClient
+	cm.clientLock.Unlock()
 }
 
 func (cm *ClientManager) getNextIndex() uint64 {
 	curIndex := cm.index
 	cm.index++
 	return curIndex
+}
+
+func (cm *ClientManager) NeedSendContractByteCode() bool {
+	return !cm.config.DockerVMUDSOpen
+}
+
+func (cm *ClientManager) HasActiveConnections() bool {
+	return len(cm.aliveClientMap) > 0
 }

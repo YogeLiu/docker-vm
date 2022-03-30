@@ -8,8 +8,6 @@ package rpc
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"net"
 	"path/filepath"
 
@@ -70,9 +68,20 @@ func (c *CDMClient) StartClient() error {
 		return err
 	}
 
+	// close connection if send goroutine or receive goroutine exit
+	go func() {
+		select {
+		case <-c.stopReceive:
+			_ = conn.Close()
+		case <-c.stopSend:
+			_ = conn.Close()
+		}
+	}()
+
 	stream, err := GetCDMClientStream(conn)
 	if err != nil {
 		c.logger.Errorf("client[%d] fail to get connection stream: %s", c.id, err)
+		_ = conn.Close()
 		return err
 	}
 
@@ -83,6 +92,13 @@ func (c *CDMClient) StartClient() error {
 	go c.receiveMsgRoutine()
 
 	return nil
+}
+
+func (c *CDMClient) StopSendRecv() {
+	err := c.stream.CloseSend()
+	if err != nil {
+		c.logger.Errorf("close stream failed: ", err)
+	}
 }
 
 func (c *CDMClient) sendMsgRoutine() {
@@ -140,12 +156,6 @@ func (c *CDMClient) receiveMsgRoutine() {
 		default:
 			receivedMsg, revErr := c.stream.Recv()
 
-			if revErr == io.EOF {
-				c.logger.Error("client[%d] receive eof and exit receive goroutine", c.id)
-				close(c.stopSend)
-				return
-			}
-
 			if revErr != nil {
 				c.logger.Errorf("client[%d] receive err and exit receive goroutine %s", c.id, revErr)
 				close(c.stopSend)
@@ -182,7 +192,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 }
 
 func (c *CDMClient) sendCDMMsg(msg *protogo.CDMMessage) error {
-	c.logger.Debugf("client[%d] send message: [%s]", c.id, msg)
+	c.logger.Debugf("client[%d] send message: [%s], type: [%s]", c.id, msg.TxId, msg.Type)
 	return c.stream.Send(msg)
 }
 
@@ -197,23 +207,24 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 		),
 	}
 
-	// just for mac development and pprof testing
-	if !c.clientMgr.GetVMConfig().DockerVMUDSOpen {
-		ip := "0.0.0.0"
-		url := fmt.Sprintf("%s:%s", ip, config.TestPort)
-		return grpc.Dial(url, dialOpts...)
+	if c.clientMgr.GetVMConfig().DockerVMUDSOpen {
+		// connect unix domain socket
+		dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
+			unixAddress, _ := net.ResolveUnixAddr("unix", sock)
+			conn, err := net.DialUnix("unix", nil, unixAddress)
+			return conn, err
+		}))
+
+		sockAddress := filepath.Join(c.clientMgr.GetVMConfig().DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
+
+		c.logger.Infof("connect docker vm manager: %s", sockAddress)
+		return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
 	}
 
-	dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
-		unixAddress, _ := net.ResolveUnixAddr("unix", sock)
-		conn, err := net.DialUnix("unix", nil, unixAddress)
-		return conn, err
-	}))
-
-	sockAddress := filepath.Join(c.clientMgr.GetVMConfig().DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
-
-	return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
-
+	// connect vm from tcp
+	url := utils.GetURLFromConfig(c.clientMgr.GetVMConfig())
+	c.logger.Infof("connect docker vm manager: %s", url)
+	return grpc.Dial(url, dialOpts...)
 }
 
 // GetCDMClientStream get rpc stream

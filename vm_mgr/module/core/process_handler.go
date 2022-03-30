@@ -88,7 +88,7 @@ func (h *ProcessHandler) SetStream(stream SDKProtogo.DMSRpc_DMSCommunicateServer
 }
 
 func (h *ProcessHandler) sendMessage(msg *SDKProtogo.DMSMessage) error {
-	h.logger.Debugf("send message [%s] process [%s]", msg, h.processName)
+	h.logger.Debugf("send message [%s], type: [%s], process [%s]", msg.TxId, msg.Type, h.processName)
 	return h.stream.Send(msg)
 }
 
@@ -233,7 +233,7 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 		Payload: key,
 	}
 	getStateResponseCh := make(chan *protogo.CDMMessage)
-	// Todo: may have duplicate txId
+
 	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, getStateResponseCh)
 
 	// wait to get state response

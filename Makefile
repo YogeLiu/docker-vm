@@ -34,11 +34,7 @@ clean:
 ci:
 	make build-test
 	golangci-lint run ./...
-	go test -v ./...
 	make clean
-
-ut:
-	go test -v ./...
 
 gomod:
 	go get chainmaker.org/chainmaker/common/v2@develop
@@ -49,7 +45,9 @@ gomod:
 	go get chainmaker.org/chainmaker/utils/v2@develop
 	go mod tidy
 
-
-
-
-
+ut:
+	./test/scripts/prepare.sh
+	make build-image
+	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+	./ut_cover.sh
+	docker stop chaimaker_vm_test

@@ -45,7 +45,7 @@ func setupTest(t *testing.T) {
 	fmt.Printf("=== step 3 start Docker VM ===\n")
 	dockerContainErr := mockDockerManager.StartVM()
 	if dockerContainErr != nil {
-		log.Fatalf("start docmer manager instance failed %v\n", dockerContainErr)
+		log.Fatalf("start docker manager instance failed %v\n", dockerContainErr)
 	}
 
 	//step4: mock contractId, contractBin
@@ -81,7 +81,7 @@ func setupTest(t *testing.T) {
 func tearDownTest() {
 	err := mockDockerManager.StopVM()
 	if err != nil {
-		log.Fatalf("stop docmer manager instance failed %v\n", err)
+		log.Fatalf("stop docker manager instance failed %v\n", err)
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,6 +65,10 @@ type ClientManager interface {
 	GetVMConfig() *config.DockerVMConfig
 
 	GetUniqueTxKey(txId string) string
+
+	NeedSendContractByteCode() bool
+
+	HasActiveConnections() bool
 }
 
 // RuntimeInstance docker-go runtime
@@ -79,7 +84,15 @@ type RuntimeInstance struct {
 func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
 	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
+
 	originalTxId := txSimContext.GetTx().Payload.TxId
+
+	if !r.ClientManager.HasActiveConnections() {
+		r.Log.Errorf("cdm client stream not ready, waiting reconnect, tx id: %s", originalTxId)
+		err := errors.New("cdm client not connected")
+		return r.errorResult(contractResult, err, err.Error())
+	}
+
 	uniqueTxKey := r.ClientManager.GetUniqueTxKey(originalTxId)
 
 	// contract response
@@ -162,7 +175,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.Log.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
 				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
 				r.ClientManager.PutSysCallResponse(getByteCodeResponse)
-				r.Log.Debugf("tx [%s] finish get bytecode [%v]", uniqueTxKey, getByteCodeResponse)
+				r.Log.Debugf("tx [%s] finish get bytecode", uniqueTxKey)
 
 			case protogo.CDMType_CDM_TYPE_GET_STATE:
 				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
@@ -1056,44 +1069,67 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
 	contractPathWithVersion := filepath.Join(contractDir, contractNameAndVersion)
 
-	// save bytecode to disk
-	err = r.saveBytesToDisk(byteCode, contractZipPath)
+	_, err = os.Stat(contractPathWithVersion)
 	if err != nil {
-		r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
-		response.Message = err.Error()
-		return response
+		if !errors.Is(err, os.ErrNotExist) {
+			// file may or may not exist, just run into another problem.
+			r.Log.Errorf("read file failed", err)
+			response.Message = err.Error()
+			return response
+		}
+
+		// save bytecode to disk
+		err = r.saveBytesToDisk(byteCode, contractZipPath)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
+			response.Message = err.Error()
+			return response
+		}
+
+		// extract 7z file
+		unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // e.g: contract1
+		err = r.runCmd(unzipCommand)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
+			response.Message = err.Error()
+			return response
+		}
+
+		// remove 7z file
+		err = os.Remove(contractZipPath)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
+				contractZipPath)
+			response.Message = err.Error()
+			return response
+		}
+
+		// replace contract name to contractName:version
+		err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to rename contract name: %s, "+
+				"please make sure contract name should be same as contract name (first input name) while compiling",
+				txId, err)
+			response.Message = err.Error()
+			return response
+		}
+
 	}
 
-	// extract 7z file
-	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // e.g: contract1
-	err = r.runCmd(unzipCommand)
-	if err != nil {
-		r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
-		response.Message = err.Error()
-		return response
-	}
+	if r.ClientManager.NeedSendContractByteCode() {
+		contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
+		if err != nil {
+			r.Log.Errorf("fail to load contract executable file: %s, ", err)
+			response.Message = err.Error()
+			return response
+		}
 
-	// remove 7z file
-	err = os.Remove(contractZipPath)
-	if err != nil {
-		r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
-			contractZipPath)
-		response.Message = err.Error()
-		return response
+		response.ResultCode = protocol.ContractSdkSignalResultSuccess
+		response.Payload = contractByteCode
+	} else {
+		response.ResultCode = protocol.ContractSdkSignalResultSuccess
+		response.Payload = []byte(contractNameAndVersion)
 	}
-
-	// replace contract name to contractName:version
-	err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
-	if err != nil {
-		r.Log.Errorf("[%s] fail to rename contract name: %s, "+
-			"please make sure contract name should be same as contract name (first input name) while compiling",
-			txId, err)
-		response.Message = err.Error()
-		return response
-	}
-
-	response.ResultCode = protocol.ContractSdkSignalResultSuccess
-	response.Payload = []byte(contractNameAndVersion)
 
 	return response
 }

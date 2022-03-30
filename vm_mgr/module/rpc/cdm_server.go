@@ -39,20 +39,7 @@ func NewCDMServer() (*CDMServer, error) {
 	var listener net.Listener
 	var err error
 
-	if !enableUnixDomainSocket {
-		port := os.Getenv("Port")
-
-		if port == "" {
-			return nil, errors.New("server listen port not provided")
-		}
-
-		endPoint := fmt.Sprintf(":%s", port)
-		listener, err = net.Listen("tcp", endPoint)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-
+	if enableUnixDomainSocket {
 		absCdmUDSPath := filepath.Join(config.SockBaseDir, config.SockName)
 
 		listenAddress, err := net.ResolveUnixAddr("unix", absCdmUDSPath)
@@ -61,6 +48,22 @@ func NewCDMServer() (*CDMServer, error) {
 		}
 
 		listener, err = CreateUnixListener(listenAddress, absCdmUDSPath)
+		if err != nil {
+			return nil, err
+		}
+
+	} else {
+		var endPoint string
+
+		port := os.Getenv(config.ENV_VM_SERVICE_PORT)
+
+		if port != "" {
+			endPoint = port
+		} else {
+			endPoint = fmt.Sprintf(":%d", config.DefaultListenPort)
+		}
+
+		listener, err = net.Listen("tcp", endPoint)
 		if err != nil {
 			return nil, err
 		}

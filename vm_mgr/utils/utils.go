@@ -21,12 +21,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	DefaultMaxSendSize = 4
-	DefaultMaxRecvSize = 4
-	DefaultMaxProcess  = 10
-)
-
 // WriteToFile WriteFile write value to file
 func WriteToFile(path string, value int) error {
 	if err := ioutil.WriteFile(path, []byte(fmt.Sprintf("%d", value)), 0755); err != nil {
@@ -145,7 +139,7 @@ func GetMaxSendMsgSizeFromEnv() int {
 	maxSendSizeFromEnv := os.Getenv(config.ENV_MAX_SEND_MSG_SIZE)
 	maxSendSize, err := strconv.Atoi(maxSendSizeFromEnv)
 	if err != nil {
-		return DefaultMaxSendSize
+		return config.DefaultMaxSendSize
 	}
 	return maxSendSize
 }
@@ -154,7 +148,7 @@ func GetMaxRecvMsgSizeFromEnv() int {
 	maxRecvSizeFromEnv := os.Getenv(config.ENV_MAX_RECV_MSG_SIZE)
 	maxRecvSize, err := strconv.Atoi(maxRecvSizeFromEnv)
 	if err != nil {
-		return DefaultMaxRecvSize
+		return config.DefaultMaxRecvSize
 	}
 	return maxRecvSize
 }
@@ -163,7 +157,34 @@ func GetMaxConcurrencyFromEnv() int64 {
 	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
 	maxConcurrency, err := strconv.Atoi(mc)
 	if err != nil {
-		maxConcurrency = DefaultMaxProcess
+		maxConcurrency = config.DefaultMaxProcess
 	}
 	return int64(maxConcurrency)
+}
+
+func CreateDir(directory string) error {
+	exist, err := exists(directory)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		err = os.MkdirAll(directory, 0755)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
