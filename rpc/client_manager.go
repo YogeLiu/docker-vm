@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -187,7 +188,7 @@ func (cm *ClientManager) establishConnections() error {
 		newIndex := cm.getNextIndex()
 		newClient := NewCDMClient(newIndex, cm.chainId, cm.logger, cm)
 		if err := newClient.StartClient(); err != nil {
-			return err
+			return errors.New("fail to connect docker vm, please start docker vm")
 		}
 		cm.aliveClientMap[newIndex] = newClient
 	}
