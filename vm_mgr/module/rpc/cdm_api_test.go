@@ -332,7 +332,8 @@ func TestCDMApi_recvMsgRoutine(t *testing.T) {
 		logger    *zap.SugaredLogger
 		scheduler protocol.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
-		stop      chan struct{}
+		stopSend  chan struct{}
+		stopRecv  chan struct{}
 		wg        *sync.WaitGroup
 	}
 	tests := []struct {
@@ -347,7 +348,7 @@ func TestCDMApi_recvMsgRoutine(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 			}
-			cdm.receiveMsgRoutine(tt.fields.stream, tt.fields.wg, tt.fields.stop)
+			cdm.receiveMsgRoutine(tt.fields.stream, tt.fields.wg, tt.fields.stopSend, tt.fields.stopRecv)
 		})
 	}
 }
@@ -403,7 +404,8 @@ func TestCDMApi_sendMsgRoutine(t *testing.T) {
 		logger    *zap.SugaredLogger
 		scheduler protocol.Scheduler
 		stream    protogo.CDMRpc_CDMCommunicateServer
-		stop      chan struct{}
+		stopSend  chan struct{}
+		stopRecv  chan struct{}
 		wg        *sync.WaitGroup
 	}
 	tests := []struct {
@@ -418,7 +420,7 @@ func TestCDMApi_sendMsgRoutine(t *testing.T) {
 				logger:    tt.fields.logger,
 				scheduler: tt.fields.scheduler,
 			}
-			cdm.sendMsgRoutine(tt.fields.stream, tt.fields.wg, tt.fields.stop)
+			cdm.sendMsgRoutine(tt.fields.stream, tt.fields.wg, tt.fields.stopSend, tt.fields.stopRecv)
 		})
 	}
 }

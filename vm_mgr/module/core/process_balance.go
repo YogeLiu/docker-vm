@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"fmt"
-	"os"
-	"strconv"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+)
+
+const (
+	processIncreaseDelta = 1
+	txQueueSize          = 100000
 )
 
 // ProcessBalance control load balance of process which related to same contract
@@ -22,14 +25,26 @@ type ProcessBalance struct {
 	// maxProcess for same contract
 	maxProcess int64
 	index      uint64
+
+	txQueue chan *protogo.TxRequest
 }
 
 func NewProcessBalance() *ProcessBalance {
 	return &ProcessBalance{
 		processes:  make(map[string]*Process),
 		index:      0,
-		maxProcess: getMaxPeer(),
+		maxProcess: utils.GetMaxConcurrencyFromEnv(),
+
+		txQueue: make(chan *protogo.TxRequest, txQueueSize),
 	}
+}
+
+func (pb *ProcessBalance) GetTxQueue() chan *protogo.TxRequest {
+	return pb.txQueue
+}
+
+func (pb *ProcessBalance) AddTx(txRequest *protogo.TxRequest) {
+	pb.txQueue <- txRequest
 }
 
 func (pb *ProcessBalance) AddProcess(process *Process, processName string) {
@@ -50,51 +65,16 @@ func (pb *ProcessBalance) GetNextProcessIndex() uint64 {
 	return val
 }
 
-func (pb *ProcessBalance) GetAvailableProcess() (*Process, error) {
-	var resultProcessName string
-	minSize := processWaitingQueueSize
-	for processName, process := range pb.processes {
-		processSize := process.Size()
-		if processSize < minSize {
-			minSize = processSize
-			resultProcessName = processName
-		}
-	}
-
-	// found
-	if len(resultProcessName) != 0 {
-		if pb.needCreateNewProccess(int64(minSize)) {
-			return nil, nil
-		}
-		return pb.GetProcess(resultProcessName), nil
-	}
-
-	// not found: all processes is full and pb is full or pb is empty
-	if pb.Size() < pb.maxProcess {
-		return nil, nil
-	}
-	return nil, fmt.Errorf("faild to get process, the balance is full")
-}
-
-func (pb *ProcessBalance) needCreateNewProccess(processSize int64) bool {
+func (pb *ProcessBalance) needCreateNewProcess() bool {
 	if pb.Size() >= pb.maxProcess {
 		return false
 	}
-	if processSize > triggerNewProcessSize {
-		return true
+	if len(pb.txQueue) < processIncreaseDelta {
+		return false
 	}
-	return false
+	return true
 }
 
 func (pb *ProcessBalance) Size() int64 {
 	return int64(len(pb.processes))
-}
-
-func getMaxPeer() int64 {
-	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
-	maxConcurrency, err := strconv.Atoi(mc)
-	if err != nil {
-		maxConcurrency = config.DefaultMaxConcurrency
-	}
-	return int64(maxConcurrency)
 }

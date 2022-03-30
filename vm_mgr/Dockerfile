@@ -22,8 +22,6 @@ RUN apt-get update && \
     ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && \
     dpkg-reconfigure tzdata -f noninteractive
 
-RUN mkdir -p /mount/contracts && mkdir -p /mount/sock
-
 COPY --from=build /bin/startvm /bin/startvm
 
 ENTRYPOINT ["/bin/startvm"]

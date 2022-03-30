@@ -6,7 +6,7 @@
 VERSION=v2.2.1
 TESTCONTAINERNAME=chaimaker_vm_test
 
-docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`)
+docker_image_name=`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`
 
 if [ "$(docker ps -q -f status=running -f name=${TESTCONTAINERNAME})" ]; then
   echo "stop container"
@@ -20,7 +20,7 @@ if [ "$(docker ps -aq -f status=exited -f name=${TESTCONTAINERNAME})" ]; then
   sleep 2
 fi
 
-if [ ${docker_image_name} ]; then
+if [ "${docker_image_name}" ]; then
   docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
   rm -fr ../testdata/org1
   rm -fr ../testdata/log

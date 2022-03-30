@@ -9,7 +9,6 @@ package core
 
 import (
 	"sync"
-	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
@@ -97,8 +96,7 @@ func (s *DockerScheduler) RegisterResponseCh(responseId string, responseCh chan 
 // GetResponseChByTxId get response chan by tx id
 func (s *DockerScheduler) GetResponseChByTxId(txId string) chan *protogo.CDMMessage {
 
-	responseCh, _ := s.responseChMap.Load(txId)
-	s.responseChMap.Delete(txId)
+	responseCh, _ := s.responseChMap.LoadAndDelete(txId)
 	return responseCh.(chan *protogo.CDMMessage)
 }
 
@@ -139,21 +137,18 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 }
 
 func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
-	for {
-		s.logger.Debugf("[%s] docker scheduler handle tx", txRequest.TxId)
-		err := s.processManager.AddTx(txRequest)
-		if err == utils.ContractFileError {
-			s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
-				err, txRequest.TxId)
-			s.ReturnErrorResponse(txRequest.TxId, err.Error())
-			return
-		}
-		if err == nil {
-			return
-		}
-		s.logger.Warnf("failed to add tx, err is :%s, txId: %s",
+	s.logger.Debugf("[%s] docker scheduler handle tx", txRequest.TxId)
+	err := s.processManager.AddTx(txRequest)
+	if err == utils.ContractFileError {
+		s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
 			err, txRequest.TxId)
-		time.Sleep(10 * time.Millisecond)
+		s.ReturnErrorResponse(txRequest.TxId, err.Error())
+		return
+	}
+	if err != nil {
+		s.logger.Warnf("add tx warning: err is :%s, txId: %s",
+			err, txRequest.TxId)
+		return
 	}
 }
 

@@ -539,7 +539,7 @@ package core
 //				processPoolInterface: tt.fields.processPoolInterface,
 //				logger:               tt.fields.logger,
 //			}
-//			p.StopProcess(tt.args.processTimeout)
+//			p.stopProcess(tt.args.processTimeout)
 //		})
 //	}
 //}

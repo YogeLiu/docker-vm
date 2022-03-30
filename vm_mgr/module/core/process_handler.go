@@ -233,7 +233,7 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 		Payload: key,
 	}
 	getStateResponseCh := make(chan *protogo.CDMMessage)
-	// Todo: may have duplicate txId
+
 	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, getStateResponseCh)
 
 	// wait to get state response

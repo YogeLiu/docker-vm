@@ -124,7 +124,6 @@ func (cm *ContractManager) lookupContractFromDB(txId, contractName string) (stri
 				return "", err
 			}
 		}
-
 	}
 
 	// save contract file path to map

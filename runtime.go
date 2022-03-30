@@ -53,28 +53,30 @@ var (
 	keyChainConfig          = chainConfigContractName
 )
 
-type CDMClient interface {
-	GetTxSendCh() chan *protogo.CDMMessage
+type ClientManager interface {
+	PutTxRequest(txRequest *protogo.CDMMessage)
 
-	GetStateResponseSendCh() chan *protogo.CDMMessage
+	PutSysCallResponse(sysCallResp *protogo.CDMMessage)
 
-	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error
+	RegisterReceiveChan(txId string, receiveCh chan *protogo.CDMMessage) error
 
-	DeleteRecvChan(txId string) bool
+	DeleteReceiveChan(txId string) bool
 
-	GetCMConfig() *config.DockerVMConfig
+	GetVMConfig() *config.DockerVMConfig
 
 	GetUniqueTxKey(txId string) string
 
 	NeedSendContractByteCode() bool
+
+	HasActiveConnections() bool
 }
 
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
-	rowIndex int32  // iterator index
-	ChainId  string // chain id
-	Client   CDMClient
-	Log      protocol.Logger
+	rowIndex      int32  // iterator index
+	ChainId       string // chain id
+	ClientManager ClientManager
+	Log           protocol.Logger
 }
 
 // Invoke process one tx in docker and return result
@@ -82,8 +84,16 @@ type RuntimeInstance struct {
 func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
 	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
+
 	originalTxId := txSimContext.GetTx().Payload.TxId
-	uniqueTxKey := r.Client.GetUniqueTxKey(originalTxId)
+
+	if !r.ClientManager.HasActiveConnections() {
+		r.Log.Errorf("cdm client stream not ready, waiting reconnect, tx id: %s", originalTxId)
+		err := errors.New("cdm client not connected")
+		return r.errorResult(contractResult, err, err.Error())
+	}
+
+	uniqueTxKey := r.ClientManager.GetUniqueTxKey(originalTxId)
 
 	// contract response
 	contractResult = &commonPb.ContractResult{
@@ -145,15 +155,13 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// register result chan
 	responseCh := make(chan *protogo.CDMMessage, 1)
-	err = r.Client.RegisterRecvChan(uniqueTxKey, responseCh)
+	err = r.ClientManager.RegisterReceiveChan(uniqueTxKey, responseCh)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
 
 	// send message to tx chan
-	sendCh := r.Client.GetTxSendCh()
-	r.Log.Debugf("[%s] put tx in send chan with length [%d]", txRequest.TxId, len(sendCh))
-	sendCh <- cdmMessage
+	r.ClientManager.PutTxRequest(cdmMessage)
 
 	timeoutC := time.After(timeout * time.Millisecond)
 
@@ -166,8 +174,8 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
 				r.Log.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
 				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
-				r.Client.GetStateResponseSendCh() <- getByteCodeResponse
-				r.Log.Debugf("tx [%s] finish get bytecode [%v]", uniqueTxKey, getByteCodeResponse.TxId)
+				r.ClientManager.PutSysCallResponse(getByteCodeResponse)
+				r.Log.Debugf("tx [%s] finish get bytecode", uniqueTxKey)
 
 			case protogo.CDMType_CDM_TYPE_GET_STATE:
 				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
@@ -181,8 +189,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 						getStateResponse.Message = err.Error()
 					}
 				}
-
-				r.Client.GetStateResponseSendCh() <- getStateResponse
+				r.ClientManager.PutSysCallResponse(getStateResponse)
 				r.Log.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
 
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
@@ -252,7 +259,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
-				r.Client.GetStateResponseSendCh() <- createKvIteratorResponse
+				r.ClientManager.PutSysCallResponse(createKvIteratorResponse)
 				r.Log.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxKey, createKvIteratorResponse)
 
 			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
@@ -260,7 +267,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				var consumeKvIteratorResponse *protogo.CDMMessage
 				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
-				r.Client.GetStateResponseSendCh() <- consumeKvIteratorResponse
+				r.ClientManager.PutSysCallResponse(consumeKvIteratorResponse)
 				r.Log.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxKey, consumeKvIteratorResponse)
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
@@ -268,21 +275,21 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				var createKeyHistoryIterResp *protogo.CDMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
-				r.Client.GetStateResponseSendCh() <- createKeyHistoryIterResp
+				r.ClientManager.PutSysCallResponse(createKeyHistoryIterResp)
 				r.Log.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxKey, createKeyHistoryIterResp)
 
 			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER:
 				r.Log.Debugf("tx [%s] start consume key history iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKeyHistoryResp *protogo.CDMMessage
 				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
-				r.Client.GetStateResponseSendCh() <- consumeKeyHistoryResp
+				r.ClientManager.PutSysCallResponse(consumeKeyHistoryResp)
 				r.Log.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxKey, consumeKeyHistoryResp)
 
 			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
 				r.Log.Debugf("tx [%s] start get sender address [%v]", uniqueTxKey, recvMsg)
 				var getSenderAddressResp *protogo.CDMMessage
 				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxKey, txSimContext, gasUsed)
-				r.Client.GetStateResponseSendCh() <- getSenderAddressResp
+				r.ClientManager.PutSysCallResponse(getSenderAddressResp)
 				r.Log.Debugf("tx [%s] finish get sender address [%v]", uniqueTxKey, getSenderAddressResp)
 
 			default:
@@ -294,7 +301,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				)
 			}
 		case <-timeoutC:
-			deleted := r.Client.DeleteRecvChan(uniqueTxKey)
+			deleted := r.ClientManager.DeleteReceiveChan(uniqueTxKey)
 			if deleted {
 				r.Log.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
 					uniqueTxKey)
@@ -1054,7 +1061,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		}
 	}
 
-	hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
+	hostMountPath := r.ClientManager.GetVMConfig().DockerVMMountPath
 	hostMountPath = filepath.Join(hostMountPath, r.ChainId)
 
 	contractDir := filepath.Join(hostMountPath, mountContractDir)
@@ -1109,7 +1116,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 
 	}
 
-	if r.Client.NeedSendContractByteCode() {
+	if r.ClientManager.NeedSendContractByteCode() {
 		contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
 		if err != nil {
 			r.Log.Errorf("fail to load contract executable file: %s, ", err)

@@ -38,20 +38,20 @@ const (
 	// SockName domain socket file name
 	SockName = "cdm.sock"
 
-	MaxSendSize = 20
-	MaxRecvSize = 20
-
 	// DefaultUserNum user num
 	DefaultUserNum = 100
 	// DefaultListenPort default listening port in container
-	DefaultListenPort     = 22359
-	DefaultTxTimeLimit    = 2
-	DefaultLogLevel       = "INFO"
-	DefaultLogInConsole   = false
-	DefaultMaxConcurrency = 50
+	DefaultListenPort   = 22359
+	DefaultTxTimeLimit  = 2
+	DefaultLogLevel     = "INFO"
+	DefaultLogInConsole = false
 
 	// TestPath docker log dir for test
 	TestPath = "/"
+
+	DefaultMaxSendSize = 20
+	DefaultMaxRecvSize = 20
+	DefaultMaxProcess  = 100
 )
 
 var (

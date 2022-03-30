@@ -21,11 +21,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	DefaultMaxSendSize = 20
-	DefaultMaxRecvSize = 20
-)
-
 // WriteToFile WriteFile write value to file
 func WriteToFile(path string, value int) error {
 	if err := ioutil.WriteFile(path, []byte(fmt.Sprintf("%d", value)), 0755); err != nil {
@@ -144,7 +139,7 @@ func GetMaxSendMsgSizeFromEnv() int {
 	maxSendSizeFromEnv := os.Getenv(config.ENV_MAX_SEND_MSG_SIZE)
 	maxSendSize, err := strconv.Atoi(maxSendSizeFromEnv)
 	if err != nil {
-		return DefaultMaxSendSize
+		return config.DefaultMaxSendSize
 	}
 	return maxSendSize
 }
@@ -153,9 +148,18 @@ func GetMaxRecvMsgSizeFromEnv() int {
 	maxRecvSizeFromEnv := os.Getenv(config.ENV_MAX_RECV_MSG_SIZE)
 	maxRecvSize, err := strconv.Atoi(maxRecvSizeFromEnv)
 	if err != nil {
-		return DefaultMaxRecvSize
+		return config.DefaultMaxRecvSize
 	}
 	return maxRecvSize
+}
+
+func GetMaxConcurrencyFromEnv() int64 {
+	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
+	maxConcurrency, err := strconv.Atoi(mc)
+	if err != nil {
+		maxConcurrency = config.DefaultMaxProcess
+	}
+	return int64(maxConcurrency)
 }
 
 func CreateDir(directory string) error {

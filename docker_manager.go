@@ -11,8 +11,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"sync"
-	"time"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -23,26 +21,15 @@ import (
 
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	//"github.com/docker/docker/client"
-)
-
-const (
-	dockerContainerDir = "../module/vm/docker-go/vm_mgr"
 )
 
 type DockerManager struct {
-	chainId   string
-	mgrLogger *logger.CMLogger
-	Stop      bool
-
-	ctx context.Context
-
-	cdmClient      *rpc.CDMClient // grpc client
-	clientInitOnce sync.Once
-
+	chainId               string
+	mgrLogger             *logger.CMLogger
+	ctx                   context.Context
+	clientManager         *rpc.ClientManager            // grpc client
 	dockerVMConfig        *config.DockerVMConfig        // original config from local config
 	dockerContainerConfig *config.DockerContainerConfig // container setting
-
 }
 
 // NewDockerManager return docker manager and running a default container
@@ -74,8 +61,7 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		chainId:               chainId,
 		mgrLogger:             dockerManagerLogger,
 		ctx:                   context.Background(),
-		cdmClient:             rpc.NewCDMClient(chainId, dockerVMConfig),
-		clientInitOnce:        sync.Once{},
+		clientManager:         rpc.NewClientManager(chainId, dockerVMConfig),
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
 	}
@@ -96,15 +82,9 @@ func (m *DockerManager) StartVM() error {
 		return nil
 	}
 	m.mgrLogger.Info("start docker vm...")
-
-	// add client state logic
-	if !m.getCDMState() {
-		m.startCDMClient()
-	}
-
 	// todo verify vm contract service info
 
-	return nil
+	return m.clientManager.Start()
 }
 
 // StopVM stop docker vm and remove container, image
@@ -112,11 +92,8 @@ func (m *DockerManager) StopVM() error {
 	if m == nil {
 		return nil
 	}
-
-	m.clientInitOnce = sync.Once{}
-	m.Stop = true
-	m.cdmClient.StopSendResv()
-
+	// close all clients
+	m.clientManager.CloseAllConnections()
 	return nil
 }
 
@@ -125,44 +102,10 @@ func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, c
 	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
 
 	return &RuntimeInstance{
-		ChainId: chainId,
-		Client:  m.cdmClient,
-		Log:     logger,
+		ChainId:       chainId,
+		ClientManager: m.clientManager,
+		Log:           logger,
 	}, nil
-}
-
-// StartCDMClient start CDM grpc rpc
-func (m *DockerManager) startCDMClient() {
-
-	for !m.getCDMState() {
-		m.mgrLogger.Debugf("cdm rpc state is: %v, try reconnecting...", m.getCDMState())
-		m.cdmClient.ConnStatus = m.cdmClient.StartClient()
-		time.Sleep(2 * time.Second)
-	}
-
-	// add reconnect when send or receive msg failed
-	go func() {
-		for {
-			<-m.cdmClient.ReconnectChan
-			m.cdmClient.ConnStatus = false
-
-			if m.Stop {
-				return
-			}
-			//	reconnect
-			m.cdmClient.ReconnectChan = make(chan bool)
-			for !m.getCDMState() {
-				m.mgrLogger.Debugf("cdm rpc state is: %v, try reconnecting...", m.getCDMState())
-				m.cdmClient.ConnStatus = m.cdmClient.StartClient()
-				time.Sleep(2 * time.Second)
-			}
-		}
-	}()
-
-}
-
-func (m *DockerManager) getCDMState() bool {
-	return m.cdmClient.ConnStatus
 }
 
 // InitMountDirectory init mount directory and subdirectories
@@ -193,6 +136,14 @@ func (m *DockerManager) initMountDirectory() error {
 		return err
 	}
 	m.mgrLogger.Debug("set sock dir: ", sockDir)
+
+	// create log directory
+	logDir := m.dockerContainerConfig.HostLogDir
+	err = m.createDir(logDir)
+	if err != nil {
+		return nil
+	}
+	m.mgrLogger.Debug("set log dir: ", logDir)
 
 	return nil
 
@@ -234,8 +185,13 @@ func validateVMSettings(config *config.DockerVMConfig,
 	dockerContainerConfig *config.DockerContainerConfig, chainId string) error {
 
 	var hostMountDir string
+	var hostLogDir string
 	if len(config.DockerVMMountPath) == 0 {
 		return errors.New("doesn't set host mount directory path correctly")
+	}
+
+	if len(config.DockerVMLogPath) == 0 {
+		return errors.New("doesn't set host log directory path correctly")
 	}
 
 	// set host mount directory path
@@ -246,7 +202,16 @@ func validateVMSettings(config *config.DockerVMConfig,
 		hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
 	}
 
+	// set host log directory
+	if !filepath.IsAbs(config.DockerVMLogPath) {
+		hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
+		hostLogDir = filepath.Join(hostLogDir, chainId)
+	} else {
+		hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
+	}
+
 	dockerContainerConfig.HostMountDir = hostMountDir
+	dockerContainerConfig.HostLogDir = hostLogDir
 
 	return nil
 }
@@ -254,14 +219,8 @@ func validateVMSettings(config *config.DockerVMConfig,
 func newDockerContainerConfig() *config.DockerContainerConfig {
 
 	containerConfig := &config.DockerContainerConfig{
-		AttachStdOut: true,
-		AttachStderr: true,
-		ShowStdout:   true,
-		ShowStderr:   true,
-
-		VMMgrDir: dockerContainerDir,
-
 		HostMountDir: "",
+		HostLogDir:   "",
 	}
 
 	return containerConfig

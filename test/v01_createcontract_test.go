@@ -26,7 +26,6 @@ import (
 5 mock docker-go RuntimeInstace
 6 create a user contract
 7 deploy user contract
-8 stop the docker container
 */
 
 func setupTest(t *testing.T) {
@@ -77,7 +76,6 @@ func setupTest(t *testing.T) {
 	if result.Code == 0 {
 		fmt.Printf("deploy user contract successfully\n")
 	}
-
 }
 
 func tearDownTest() {

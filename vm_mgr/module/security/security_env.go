@@ -56,7 +56,6 @@ func (s *SecurityEnv) InitSecurityEnv() error {
 	return nil
 }
 
-// 初始化mount log 路径等配置
 func (s *SecurityEnv) InitConfig() error {
 
 	var err error

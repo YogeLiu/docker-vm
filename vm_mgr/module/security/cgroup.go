@@ -19,7 +19,7 @@ type CGroup struct {
 
 func SetCGroup() error {
 	if _, err := os.Stat(config.CGroupRoot); os.IsNotExist(err) {
-		err = os.MkdirAll(config.CGroupRoot, 0755)
+		err = os.Mkdir(config.CGroupRoot, 0755)
 		if err != nil {
 			return err
 		}

@@ -10,7 +10,11 @@ type DockerVMConfig struct {
 	EnableDockerVM        bool   `mapstructure:"enable_dockervm"`
 	DockerVMContainerName string `mapstructure:"dockervm_container_name"`
 	DockerVMMountPath     string `mapstructure:"dockervm_mount_path"`
+	DockerVMLogPath       string `mapstructure:"dockervm_log_path"`
+	LogInConsole          bool   `mapstructure:"log_in_console"`
+	LogLevel              string `mapstructure:"log_level"`
 	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
+	MaxConnection         uint32 `mapstructure:"max_connection"`
 	DockerVMHost          string `mapstructure:"docker_vm_host"`
 	DockerVMPort          uint32 `mapstructure:"docker_vm_port"`
 	MaxSendMsgSize        uint32 `mapstructure:"max_send_msg_size"`
@@ -19,14 +23,8 @@ type DockerVMConfig struct {
 
 // DockerContainerConfig docker container settings
 type DockerContainerConfig struct {
-	AttachStdOut bool
-	AttachStderr bool
-	ShowStdout   bool
-	ShowStderr   bool
-
-	VMMgrDir string
-
 	HostMountDir string
+	HostLogDir   string
 }
 
 type Bool int32
