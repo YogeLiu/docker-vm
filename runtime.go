@@ -200,7 +200,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				contractResult.Result = txResponse.Result
 				contractResult.Message = txResponse.Message
 
-				// merge the sim context write map
+				// merge read map to sim context
+				r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap())
+
+				// merge write map to sim context
 				gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
@@ -871,6 +874,24 @@ func kvIteratorClose(kvIterator protocol.StateIterator, gasUsed uint64,
 	response.Payload = nil
 
 	return response, gasUsed
+}
+
+func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimContext,
+	readMap map[string][]byte) {
+
+	for key, value := range readMap {
+		var contractName string
+		var contractKey string
+		var contractField string
+		keyList := strings.Split(key, "#")
+		contractName = keyList[0]
+		contractKey = keyList[1]
+		if len(keyList) == 3 {
+			contractField = keyList[2]
+		}
+
+		txSimContext.PutIntoReadSet(contractName, protocol.GetKeyStr(contractKey, contractField), value)
+	}
 }
 
 func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimContext,
