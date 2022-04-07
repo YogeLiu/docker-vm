@@ -46,7 +46,6 @@ gomod:
 	go get chainmaker.org/chainmaker/utils/v2@$(VERSION)
 	go mod tidy
 
-
-
-
-
+ut:
+	cd test/scripts && ./prepare.sh
+	./ut_cover.sh
