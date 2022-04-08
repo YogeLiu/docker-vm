@@ -79,6 +79,8 @@ type Process struct {
 	processMgr      ProcessMgr
 	processBalancer ProcessBalancer
 	logger          *zap.SugaredLogger
+
+	ChainId string
 }
 
 // NewProcess new process, process working on main contract which is not called cross contract
@@ -108,6 +110,8 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 		processMgr:      processMgr,
 		processBalancer: processBalancer,
 		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+
+		ChainId: txRequest.ChainId,
 	}
 
 	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
@@ -142,6 +146,8 @@ func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, schedule
 		processMgr:      processMgr,
 		processBalancer: nil,
 		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+
+		ChainId: txRequest.ChainId,
 	}
 
 	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
@@ -267,7 +273,7 @@ func (p *Process) listenProcess() {
 			// 10. no tx in wait queue, util process expire
 			currentTxId, err := p.handleNewTx()
 			if err != nil {
-				p.Handler.scheduler.ReturnErrorResponse(currentTxId, err.Error())
+				p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
 			}
 		case txResponse := <-p.responseCh:
 			if txResponse.TxId != p.Handler.TxRequest.TxId {
@@ -283,7 +289,7 @@ func (p *Process) listenProcess() {
 			p.Handler.stopTimer()
 			p.resetProcessTimer()
 			// return txResponse
-			responseCh := p.Handler.scheduler.GetTxResponseCh()
+			responseCh := p.Handler.scheduler.GetTxResponseCh(p.Handler.TxRequest.ChainId)
 
 			p.logger.Debugf("[%s] put tx response in response chan for in process [%s] with chan length[%d]",
 				txResponse.TxId, p.processName, len(responseCh))
@@ -294,7 +300,7 @@ func (p *Process) listenProcess() {
 			// begin handle new tx
 			currentTxId, err := p.handleNewTx()
 			if err != nil {
-				p.Handler.scheduler.ReturnErrorResponse(currentTxId, err.Error())
+				p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
 			}
 		case <-p.Handler.txExpireTimer.C:
 			p.stopProcess(false)
@@ -316,7 +322,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
 		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
-		p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, existErr.err.Error())
+		p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, existErr.err.Error())
 
 		p.logger.Debugf("release process: [%s]", p.processName)
 		p.processMgr.ReleaseProcess(p.processName, p.user)
@@ -364,7 +370,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 			processDepth.GetConcatProcessName())
 		p.logger.Error(errMsg)
 	}
-	p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, errMsg)
+	p.Handler.scheduler.ReturnErrorResponse(currentTx.ChainId, currentTx.TxId, errMsg)
 
 	go p.startProcess()
 
@@ -381,7 +387,7 @@ func (p *Process) handleNewTx() (string, error) {
 			nextTx.TxId, len(p.processBalancer.GetTxQueue()))
 
 		p.txCount++
-		nextTx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, p.txCount)
+		nextTx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.ChainId, p.processName, p.txCount)
 		p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, nextTx.TxContext.OriginalProcessName)
 
 		p.Handler.TxRequest = nextTx
@@ -464,7 +470,7 @@ func (p *Process) killProcess(isTxTimeout bool) {
 
 	for depth, process := range processDepth.processes {
 		if process != nil {
-			p.logger.Debugf("[%s] kill cross process in depth [%d]", process.processName, depth)
+			p.logger.Debugf("[%s] kill cross process in depth [%s]", process.processName, depth)
 			if err = process.cmd.Process.Kill(); err != nil {
 				p.logger.Warnf("[%s] fail to kill corss process: %s", process.processName, err)
 			}

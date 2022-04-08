@@ -69,17 +69,15 @@ func GetLogHandler() *zap.SugaredLogger {
 }
 
 // ConstructContractKey contractName#contractVersion
-func ConstructContractKey(contractName, contractVersion string) string {
-	var sb strings.Builder
-	sb.WriteString(contractName)
-	sb.WriteString("#")
-	sb.WriteString(contractVersion)
-	return sb.String()
+func ConstructContractKey(names ...string) string {
+	return strings.Join(names, "#")
 }
 
 // ConstructProcessName contractName#contractVersion#timestamp:index
-func ConstructProcessName(contractName, contractVersion string, index uint64) string {
+func ConstructProcessName(chainId, contractName, contractVersion string, index uint64) string {
 	var sb strings.Builder
+	sb.WriteString(chainId)
+	sb.WriteString("#")
 	sb.WriteString(contractName)
 	sb.WriteString("#")
 	sb.WriteString(contractVersion)
@@ -91,8 +89,10 @@ func ConstructProcessName(contractName, contractVersion string, index uint64) st
 }
 
 // ConstructOriginalProcessName contractName#contractVersion#timestamp:index#txCount
-func ConstructOriginalProcessName(processName string, txCount uint64) string {
+func ConstructOriginalProcessName(chainId, processName string, txCount uint64) string {
 	var sb strings.Builder
+	sb.WriteString(chainId)
+	sb.WriteString("#")
 	sb.WriteString(processName)
 	sb.WriteString("#")
 	sb.WriteString(strconv.FormatUint(txCount, 10))
@@ -109,8 +109,10 @@ func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProces
 }
 
 // ConstructCrossContractProcessName txId:timestamp:depth
-func ConstructCrossContractProcessName(txId string, txDepth uint64) string {
+func ConstructCrossContractProcessName(chainId, txId string, txDepth uint64) string {
 	var sb strings.Builder
+	sb.WriteString(chainId)
+	sb.WriteString(":")
 	sb.WriteString(txId)
 	sb.WriteString(":")
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))

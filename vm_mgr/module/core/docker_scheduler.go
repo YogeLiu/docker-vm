@@ -11,11 +11,7 @@ import (
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
-
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
-
-	"golang.org/x/sync/singleflight"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
@@ -32,10 +28,7 @@ const (
 )
 
 type DockerScheduler struct {
-	lock           sync.Mutex
-	logger         *zap.SugaredLogger
-	singleFlight   singleflight.Group
-	processManager *ProcessManager
+	logger *zap.SugaredLogger
 
 	txReqCh          chan *protogo.TxRequest
 	txResponseCh     chan *protogo.TxResponse
@@ -47,10 +40,9 @@ type DockerScheduler struct {
 }
 
 // NewDockerScheduler new docker scheduler
-func NewDockerScheduler(processManager *ProcessManager) *DockerScheduler {
+func NewDockerScheduler() *DockerScheduler {
 	scheduler := &DockerScheduler{
-		logger:         logger.NewDockerLogger(logger.MODULE_SCHEDULER, config.DockerLogDir),
-		processManager: processManager,
+		logger: logger.NewDockerLogger(logger.MODULE_SCHEDULER, config.DockerLogDir),
 
 		txReqCh:          make(chan *protogo.TxRequest, ReqChanSize),
 		txResponseCh:     make(chan *protogo.TxResponse, ResponseChanSize),
@@ -112,44 +104,6 @@ func (s *DockerScheduler) GetCrossContractResponseCh(responseId string) chan *SD
 		return nil
 	}
 	return responseCh.(chan *SDKProtogo.DMSMessage)
-}
-
-// StartScheduler start docker scheduler
-func (s *DockerScheduler) StartScheduler() {
-
-	s.logger.Debugf("start docker scheduler")
-
-	go s.listenIncomingTxRequest()
-
-}
-
-func (s *DockerScheduler) listenIncomingTxRequest() {
-	s.logger.Debugf("start listen incoming tx request")
-
-	for {
-		select {
-		case txRequest := <-s.txReqCh:
-			go s.handleTx(txRequest)
-		case crossContractMsg := <-s.crossContractsCh:
-			go s.processManager.handleCallCrossContract(crossContractMsg)
-		}
-	}
-}
-
-func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
-	s.logger.Debugf("[%s] docker scheduler handle tx", txRequest.TxId)
-	err := s.processManager.AddTx(txRequest)
-	if err == utils.ContractFileError {
-		s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
-			err, txRequest.TxId)
-		s.ReturnErrorResponse(txRequest.TxId, err.Error())
-		return
-	}
-	if err != nil {
-		s.logger.Warnf("add tx warning: err is :%s, txId: %s",
-			err, txRequest.TxId)
-		return
-	}
 }
 
 func (s *DockerScheduler) ReturnErrorResponse(txId string, errMsg string) {

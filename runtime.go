@@ -135,6 +135,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// construct cdm message
 	txRequest := &protogo.TxRequest{
+		ChainId:         r.ChainId,
 		TxId:            uniqueTxKey,
 		ContractName:    contract.Name,
 		ContractVersion: contract.Version,
@@ -148,6 +149,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		},
 	}
 	cdmMessage := &protogo.CDMMessage{
+		ChainId:   r.ChainId,
 		TxId:      uniqueTxKey,
 		Type:      protogo.CDMType_CDM_TYPE_TX_REQUEST,
 		TxRequest: txRequest,

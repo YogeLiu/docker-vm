@@ -39,7 +39,6 @@ const (
 	invokeContract  = "invoke_contract"
 	upgradeContract = "upgrade"
 
-	txDuration    = 2
 	maxTxDuration = math.MaxInt32
 )
 
@@ -234,10 +233,10 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 	}
 	getStateResponseCh := make(chan *protogo.CDMMessage)
 
-	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, getStateResponseCh)
+	h.scheduler.RegisterResponseCh(h.TxRequest.ChainId, h.TxRequest.TxId, getStateResponseCh)
 
 	// wait to get state response
-	h.scheduler.GetGetStateReqCh() <- getStateReqMsg
+	h.scheduler.GetGetStateReqCh(h.TxRequest.ChainId) <- getStateReqMsg
 
 	getStateResponse := <-getStateResponseCh
 
@@ -316,6 +315,7 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 
 	// construct new tx
 	callContractTx := &protogo.TxRequest{
+		ChainId:         h.TxRequest.ChainId,
 		TxId:            callContractMsg.TxId,
 		ContractName:    contractName,
 		ContractVersion: contractVersion,
@@ -332,10 +332,10 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 	// register response chan, key = txID + contract height
 	responseChId := crossContractChKey(callContractTx.TxId, callContractTx.TxContext.CurrentHeight)
 	responseCh := make(chan *SDKProtogo.DMSMessage)
-	h.scheduler.RegisterCrossContractResponseCh(responseChId, responseCh)
+	h.scheduler.RegisterCrossContractResponseCh(callContractTx.ChainId, responseChId, responseCh)
 
 	// pass msg to docker manager
-	h.scheduler.GetCrossContractReqCh() <- callContractTx
+	h.scheduler.GetCrossContractReqCh(callContractTx.ChainId) <- callContractTx
 
 	// wait docker manager response
 	calledContractResponse := <-responseCh
@@ -375,7 +375,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 	if h.TxRequest.TxContext.CurrentHeight > 0 {
 		h.logger.Debugf("process [%s] handle cross contract completed message [%s]", h.processName, completedMsg.TxId)
 		responseChId := crossContractChKey(h.TxRequest.TxId, h.TxRequest.TxContext.CurrentHeight)
-		responseCh := h.scheduler.GetCrossContractResponseCh(responseChId)
+		responseCh := h.scheduler.GetCrossContractResponseCh(h.TxRequest.ChainId, responseChId)
 		if responseCh == nil {
 			h.logger.Warnf("process [%s] fail to get response chan and abandon cross response [%s]",
 				h.processName, h.TxRequest.TxId)
@@ -438,9 +438,9 @@ func (h *ProcessHandler) handleCreateKvIterator(createKvIteratorMsg *SDKProtogo.
 	}
 
 	createKvIteratorResponseCh := make(chan *protogo.CDMMessage)
-	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, createKvIteratorResponseCh)
+	h.scheduler.RegisterResponseCh(h.TxRequest.ChainId, h.TxRequest.TxId, createKvIteratorResponseCh)
 
-	h.scheduler.GetGetStateReqCh() <- createKvIteratorReqMsg
+	h.scheduler.GetGetStateReqCh(h.TxRequest.ChainId) <- createKvIteratorReqMsg
 
 	createKvIteratorResponse := <-createKvIteratorResponseCh
 
@@ -466,9 +466,9 @@ func (h *ProcessHandler) handleConsumeKvIterator(consumeKvIteratorMsg *SDKProtog
 	}
 
 	consumeKvIteratorResponseCh := make(chan *protogo.CDMMessage)
-	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, consumeKvIteratorResponseCh)
+	h.scheduler.RegisterResponseCh(h.TxRequest.ChainId, h.TxRequest.TxId, consumeKvIteratorResponseCh)
 
-	h.scheduler.GetGetStateReqCh() <- consumeKvIteratorReqMsg
+	h.scheduler.GetGetStateReqCh(h.TxRequest.ChainId) <- consumeKvIteratorReqMsg
 	consumeKvIteratorResponse := <-consumeKvIteratorResponseCh
 
 	responseMsg := &SDKProtogo.DMSMessage{
@@ -493,9 +493,9 @@ func (h *ProcessHandler) handleCreateKeyHistoryIter(createKeyHistoryIterMsg *SDK
 	}
 
 	respCh := make(chan *protogo.CDMMessage)
-	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, respCh)
+	h.scheduler.RegisterResponseCh(h.TxRequest.ChainId, h.TxRequest.TxId, respCh)
 
-	h.scheduler.GetGetStateReqCh() <- createKeyHistoryIterReqMsg
+	h.scheduler.GetGetStateReqCh(h.TxRequest.ChainId) <- createKeyHistoryIterReqMsg
 
 	resp := <-respCh
 
@@ -521,9 +521,9 @@ func (h *ProcessHandler) handleConsumeKeyHistoryIter(consumeKeyHistoryIterMsg *S
 	}
 
 	respCh := make(chan *protogo.CDMMessage)
-	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, respCh)
+	h.scheduler.RegisterResponseCh(h.TxRequest.ChainId, h.TxRequest.TxId, respCh)
 
-	h.scheduler.GetGetStateReqCh() <- consumeKeyHistoryIterReqMsg
+	h.scheduler.GetGetStateReqCh(h.TxRequest.ChainId) <- consumeKeyHistoryIterReqMsg
 
 	resp := <-respCh
 
@@ -547,8 +547,8 @@ func (h *ProcessHandler) handleGetSenderAddr(msg *SDKProtogo.DMSMessage) error {
 	}
 
 	respCh := make(chan *protogo.CDMMessage)
-	h.scheduler.RegisterResponseCh(h.TxRequest.TxId, respCh)
-	h.scheduler.GetGetStateReqCh() <- getSenderAddrReqMsg
+	h.scheduler.RegisterResponseCh(h.TxRequest.ChainId, h.TxRequest.TxId, respCh)
+	h.scheduler.GetGetStateReqCh(h.TxRequest.ChainId) <- getSenderAddrReqMsg
 
 	resp := <-respCh
 

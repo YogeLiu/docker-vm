@@ -87,6 +87,17 @@ func (c *CDMClient) StartClient() error {
 
 	c.stream = stream
 
+	setUpMsg := protogo.CDMMessage{
+		ChainId: c.chainId,
+		Type:    protogo.CDMType_CDM_TYPE_SET_UP_STREAM,
+	}
+	err = stream.Send(&setUpMsg)
+	if err != nil {
+		c.logger.Errorf("client[%d] fail to set up stream: %s", c.id, err)
+		_ = conn.Close()
+		return err
+	}
+
 	go c.sendMsgRoutine()
 
 	go c.receiveMsgRoutine()
