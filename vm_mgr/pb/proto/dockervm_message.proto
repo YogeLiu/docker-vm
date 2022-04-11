@@ -65,6 +65,8 @@ enum CrossType {
     DOCKER_GO  = 6;
 
     DOCKER_JAVA  = 7;
+
+    EXTERNAL = 8;
 }
 
 enum DockerVMType {
