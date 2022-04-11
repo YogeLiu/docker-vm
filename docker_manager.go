@@ -17,8 +17,6 @@ import (
 	"strconv"
 	"sync"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
-
 	"github.com/docker/go-connections/nat"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
@@ -284,12 +282,9 @@ func (m *DockerManager) imageExist() (bool, error) {
 // createContainer create container based on image
 func (m *DockerManager) createContainer() error {
 
-	envs := m.constructEnvs(true)
-
 	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
 		Cmd:          nil,
 		Image:        m.dockerContainerConfig.ImageName,
-		Env:          envs,
 		AttachStdout: m.dockerContainerConfig.AttachStdOut,
 		AttachStderr: m.dockerContainerConfig.AttachStderr,
 	}, &container.HostConfig{
@@ -404,42 +399,6 @@ func (m *DockerManager) initMountDirectory() error {
 
 }
 
-// ------------------ utility functions --------------
-
-func (m *DockerManager) constructEnvs(enableUDS bool) []string {
-
-	configsMap := make(map[string]string)
-
-	configsMap[""] = fmt.Sprintf("udsopen=%v", m.dockerVMConfig.DockerVMUDSOpen)
-
-	var containerConfig []string
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
-		config.ENV_ENABLE_UDS, m.dockerVMConfig.DockerVMUDSOpen))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_TX_TIME_LIMIT, m.dockerVMConfig.TxTimeLimit))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%s",
-		config.ENV_LOG_LEVEL, m.dockerVMConfig.LogLevel))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%v",
-		config.ENV_LOG_IN_CONSOLE, m.dockerVMConfig.LogInConsole))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_MAX_CONCURRENCY, m.dockerVMConfig.MaxConcurrency))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_MAX_SEND_MSG_SIZE, utils.GetMaxSendMsgSizeFromConfig(m.dockerVMConfig)))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_MAX_RECV_MSG_SIZE, utils.GetMaxRecvMsgSizeFromConfig(m.dockerVMConfig)))
-	containerConfig = append(containerConfig, fmt.Sprintf("%s=%d",
-		config.ENV_MAX_LOCAL_CONTRACT_NUM, utils.GetMaxLocalContractNumFromConfig(m.dockerVMConfig)))
-
-	// add test port just for mac development and pprof
-	// if using this feature, make sure close enable_uds in yml
-	if !enableUDS {
-		containerConfig = append(containerConfig, fmt.Sprintf("%s=%v", "Port", config.TestPort))
-	}
-
-	return containerConfig
-
-}
-
 // displayInConsole display container std out in host std out -- need finish loop accept
 func (m *DockerManager) displayInConsole(containerID string) error {
 	//display container std out
@@ -522,12 +481,9 @@ func (m *DockerManager) createTestContainer() error {
 	hostPort := config.TestPort
 	openPort := nat.Port(hostPort + "/tcp")
 
-	envs := m.constructEnvs(false)
-
 	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
 		Cmd:          nil,
 		Image:        m.dockerContainerConfig.ImageName,
-		Env:          envs,
 		AttachStdout: m.dockerContainerConfig.AttachStdOut,
 		AttachStderr: m.dockerContainerConfig.AttachStderr,
 		ExposedPorts: nat.PortSet{
@@ -591,14 +547,9 @@ func (m *DockerManager) createPProfContainer() error {
 	sdkHostPort := strconv.Itoa(int(m.dockerVMConfig.SandBoxPprofPort))
 	sdkOpenPort := nat.Port(sdkHostPort + "/tcp")
 
-	envs := m.constructEnvs(true)
-	envs = append(envs, fmt.Sprintf("%s=%v", config.ENV_PPROF_PORT, hostPort))
-	envs = append(envs, fmt.Sprintf("%s=%v", config.ENV_ENABLE_PPROF, true))
-
 	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
 		Cmd:          nil,
 		Image:        m.dockerContainerConfig.ImageName,
-		Env:          envs,
 		AttachStdout: m.dockerContainerConfig.AttachStdOut,
 		AttachStderr: m.dockerContainerConfig.AttachStderr,
 		ExposedPorts: nat.PortSet{

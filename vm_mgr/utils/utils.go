@@ -95,7 +95,7 @@ func ConstructContractKey(contractName, contractVersion string) string {
 }
 
 // ConstructProcessName contractName#contractVersion#timestamp:index
-func ConstructProcessName(contractName, contractVersion string, index uint64) string {
+func ConstructProcessName(contractName, contractVersion string, index int) string {
 	var sb strings.Builder
 	sb.WriteString(contractName)
 	sb.WriteString("#")
@@ -103,7 +103,16 @@ func ConstructProcessName(contractName, contractVersion string, index uint64) st
 	sb.WriteString("#")
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 	sb.WriteString(":")
-	sb.WriteString(strconv.FormatUint(index, 10))
+	sb.WriteString(strconv.Itoa(index))
+	return sb.String()
+}
+
+// ConstructRequestGroupKey contractName#contractVersion#timestamp:index
+func ConstructRequestGroupKey(contractName string, contractVersion string) string {
+	var sb strings.Builder
+	sb.WriteString(contractName)
+	sb.WriteString("#")
+	sb.WriteString(contractVersion)
 	return sb.String()
 }
 
@@ -145,9 +154,4 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 	}
 	nameList = strings.Split(processName, "#")
 	return false, ConstructContractKey(nameList[0], nameList[1]), processName
-}
-
-func GetContractKeyFromProcessName(processName string) string {
-	nameList := strings.Split(processName, "#")
-	return ConstructContractKey(nameList[0], nameList[1])
 }

@@ -9,6 +9,7 @@ package core
 
 import (
 	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
 	"fmt"
 	"path/filepath"
@@ -25,8 +26,8 @@ import (
 const baseUid = 10000                    // user id start from base uid
 const addUserFormat = "useradd -u %d %s" // add user cmd
 
-var batchCreateUsersThreadNum = utils.GetMaxConcurrencyFromEnv() // thread num for batch create users
-var createUserNumPerThread = protocol.CallContractDepth          // user num per thread
+var batchCreateUsersThreadNum = config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
+var createUserNumPerThread = protocol.CallContractDepth + 1                         // user num per thread
 
 // User is linux user
 type User struct {
@@ -49,29 +50,29 @@ func NewUser(id int) *User {
 	}
 }
 
-// UsersManager is linux user manager
-type UsersManager struct {
+// UserManager is linux user manager
+type UserManager struct {
 	userQueue *utils.FixedFIFO   // user queue, always pop oldest queue
 	logger    *zap.SugaredLogger // user manager logger
 	userNum   int                // total user num
 }
 
 // NewUsersManager returns user manager
-func NewUsersManager() *UsersManager {
+func NewUsersManager() *UserManager {
 
-	userQueue := utils.NewFixedFIFO(utils.GetMaxUserNumFromEnv())
+	userQueue := utils.NewFixedFIFO(config.DockerVMConfig.GetMaxUserNum())
 
-	usersManager := &UsersManager{
+	usersManager := &UserManager{
 		userQueue: userQueue,
 		logger:    logger.NewDockerLogger(logger.MODULE_USERCONTROLLER),
-		userNum:   utils.GetMaxUserNumFromEnv(),
+		userNum:   config.DockerVMConfig.GetMaxUserNum(),
 	}
 
 	return usersManager
 }
 
 // BatchCreateUsers create new users in docker from 10000 as uid
-func (u *UsersManager) BatchCreateUsers() error {
+func (u *UserManager) BatchCreateUsers() error {
 	var err error
 	startTime := time.Now()
 	var wg sync.WaitGroup
@@ -100,7 +101,7 @@ func (u *UsersManager) BatchCreateUsers() error {
 }
 
 //  generateNewUser generate a new user of process
-func (u *UsersManager) generateNewUser(uid int) error {
+func (u *UserManager) generateNewUser(uid int) error {
 
 	user := NewUser(uid)
 	addUserCommand := fmt.Sprintf(addUserFormat, uid, user.UserName)
@@ -129,7 +130,7 @@ func (u *UsersManager) generateNewUser(uid int) error {
 }
 
 // GetAvailableUser pop user from queue header
-func (u *UsersManager) GetAvailableUser() (*User, error) {
+func (u *UserManager) GetAvailableUser() (*User, error) {
 	user, err := u.userQueue.DequeueOrWaitForNextElement()
 	if err != nil {
 		return nil, fmt.Errorf("fail to call DequeueOrWaitForNextElement, %v", err)
@@ -140,7 +141,7 @@ func (u *UsersManager) GetAvailableUser() (*User, error) {
 }
 
 // AddAvailableUser add user to queue tail, user can be dequeue then
-func (u *UsersManager) AddAvailableUser(user *User) error {
+func (u *UserManager) AddAvailableUser(user *User) error {
 	err := u.userQueue.Enqueue(user)
 	if err != nil {
 		return fmt.Errorf("fail to enqueue user: %v", err)

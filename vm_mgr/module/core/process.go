@@ -10,9 +10,9 @@ package core
 import (
 	"bufio"
 	"bytes"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"fmt"
 	"io"
+	"math"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -21,147 +21,190 @@ import (
 	"syscall"
 	"time"
 
-	"go.uber.org/atomic"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"go.uber.org/zap"
 
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
 
 const (
-	processWaitingTime      = 60 * 10
-	processWaitingQueueSize = 1000
-	triggerNewProcessSize   = 1
+	initContract    = "init_contract"
+	invokeContract  = "invoke_contract"
+	upgradeContract = "upgrade"
 )
+
 
 type ExitErr struct {
 	err  error
 	desc string
 }
 
-type ProcessMgrInterface interface {
-	getProcessDepth(initialProcessName string) *ProcessDepth
-
-	ReleaseProcess(processName string, user *User) bool
-}
-
 // Process id of process is index of process in process list
 // processName: contractName:contractVersion:index
 // crossProcessName: txId:currentHeight
 type Process struct {
-	txCount        *atomic.Uint64
-	processName    string
-	isCrossProcess bool
+	processName string
 
 	contractName    string
 	contractVersion string
-	contractPath    string
 
 	cGroupPath string
 	user       *User
 	cmd        *exec.Cmd
 
 	ProcessState   protogo.ProcessState
-	TxWaitingQueue chan *protogo.TxRequest
-	responseCh     chan *protogo.TxResponse
-	exitCh         chan *ExitErr
-	newTxTrigger   chan bool
-	cmdReadyCh     chan bool
-	expireTimer    *time.Timer // process waiting time
-	Handler        *ProcessHandler
+	isCrossProcess bool
+
+	eventCh    chan interface{}
+	cmdReadyCh chan bool
+	exitCh     chan *ExitErr
+	txCh       chan *protogo.DockerVMMessage
+	respCh     chan *protogo.DockerVMMessage
+	timer      *time.Timer
+
+	Tx *protogo.DockerVMMessage
 
 	logger *zap.SugaredLogger
 
-	processMgr ProcessMgrInterface
-	done       uint32
-	mutex      sync.Mutex
+	stream protogo.DockerVMRpc_DockerVMCommunicateServer
+
+	processManager   interfaces.ProcessManager
+	requestGroup     interfaces.RequestGroup
+	requestScheduler interfaces.RequestScheduler
+
+	lock sync.RWMutex
 }
 
 // NewProcess new process, process working on main contract which is not called cross contract
-func NewProcess(user *User, txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
-	processName, contractPath string, processPool ProcessMgrInterface) *Process {
+func NewProcess(user *User, contractName, contractVersion, processName string, manager interfaces.ProcessManager,
+	scheduler interfaces.RequestScheduler, isCrossProcess bool) interfaces.Process {
 
 	process := &Process{
-		txCount:        atomic.NewUint64(0),
-		processName:    processName,
-		isCrossProcess: false,
+		processName: processName,
 
-		contractName:    txRequest.ContractName,
-		contractVersion: txRequest.ContractVersion,
-		contractPath:    contractPath,
+		contractName:    contractName,
+		contractVersion: contractVersion,
 
-		cGroupPath: filepath.Join(config.CGroupRoot, config.ProcsFile),
+		cGroupPath: filepath.Join(security.CGroupRoot, security.ProcsFile),
 		user:       user,
 
 		ProcessState:   protogo.ProcessState_PROCESS_STATE_CREATED,
-		TxWaitingQueue: make(chan *protogo.TxRequest, processWaitingQueueSize),
-		responseCh:     make(chan *protogo.TxResponse),
-		newTxTrigger:   make(chan bool),
-		exitCh:         make(chan *ExitErr),
-		expireTimer:    time.NewTimer(processWaitingTime * time.Second),
-		Handler:        nil,
-		cmdReadyCh:     make(chan bool, 1),
+		isCrossProcess: isCrossProcess,
+
+		eventCh:    make(chan interface{}, processManagerEventChSize),
+		cmdReadyCh: make(chan bool, 1),
+		exitCh:     make(chan *ExitErr),
+		respCh:     make(chan *protogo.DockerVMMessage, 1),
+		timer:      time.NewTimer(math.MaxInt32 * time.Second), //initial tx timer, never triggered
 
 		logger: logger.NewDockerLogger(logger.MODULE_PROCESS),
 
-		processMgr: processPool,
+		processManager:   manager,
+		requestScheduler: scheduler,
+
+		lock: sync.RWMutex{},
 	}
 
-	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
-	process.Handler = processHandler
+	process.requestGroup, _ = scheduler.GetRequestGroup(contractName, contractVersion)
+
+	process.txCh = process.requestGroup.GetTxCh(isCrossProcess)
+
 	return process
 }
 
-// NewCrossProcess new cross process, process working on called cross process
-func NewCrossProcess(user *User, txRequest *protogo.TxRequest, scheduler interfaces.Scheduler,
-	processName, contractPath string, processPool ProcessMgrInterface) *Process {
-
-	process := &Process{
-		txCount:         atomic.NewUint64(0),
-		isCrossProcess:  true,
-		processName:     processName,
-		contractName:    txRequest.ContractName,
-		contractVersion: txRequest.ContractVersion,
-		ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-		responseCh:      make(chan *protogo.TxResponse),
-		TxWaitingQueue:  nil,
-		newTxTrigger:    nil,
-		exitCh:          nil,
-		expireTimer:     time.NewTimer(processWaitingTime * time.Second),
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS),
-
-		Handler:      nil,
-		cmdReadyCh:   make(chan bool, 1),
-		user:         user,
-		contractPath: contractPath,
-		cGroupPath:   filepath.Join(config.CGroupRoot, config.ProcsFile),
-		processMgr:   processPool,
+func (p *Process) PutMsg(msg interface{}) error {
+	switch msg.(type) {
+	case *protogo.DockerVMMessage, *messages.ChangeSandboxReqMsg, *messages.CloseSandboxReqMsg:
+		p.eventCh <- msg
+	default:
+		p.logger.Errorf("unknown msg type")
 	}
-
-	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
-	process.Handler = processHandler
-	return process
+	return nil
 }
 
-func (p *Process) ProcessName() string {
-	return p.processName
-}
-
-func (p *Process) ExecProcess() {
-
+func (p *Process) Start() {
 	go p.listenProcess()
-
 	p.startProcess()
 }
 
+func (p *Process) listenProcess() {
+	for {
+		if p.ProcessState != protogo.ProcessState_PROCESS_STATE_CREATED {
+			select {
+			case msg := <-p.eventCh:
+				switch msg.(type) {
+
+				// only when [idle]
+				case *messages.ChangeSandboxReqMsg:
+					m, _ := msg.(*messages.ChangeSandboxReqMsg)
+					if err := p.handleChangeSandboxReq(m); err != nil {
+						p.logger.Errorf("failed to handle change sandbox request, %v", err)
+					}
+
+				// 10. release period expire
+				// only when [idle]
+				case *messages.CloseSandboxReqMsg:
+					if err := p.handleCloseSandboxReq(); err != nil {
+						p.logger.Errorf("failed to handle close sandbox request, %v", err)
+					}
+
+				// only when [busy]
+				case *protogo.DockerVMMessage:
+					m, _ := msg.(*protogo.DockerVMMessage)
+					if err := p.handleMsg(m); err != nil {
+						p.logger.Errorf("failed to handle message from sandbox, %v", err)
+					}
+				}
+
+			// when [ready, idle]
+			case tx := <-p.txCh:
+				// condition: during cmd.wait
+				// 7. created success, trigger new tx, previous state is created
+				// 8. running success, next tx fail, trigger new tx, previous state is running
+				// begin handle new tx
+				// 9. handle new tx success
+				if err := p.handleTxRequest(tx); err != nil {
+					p.ReturnErrorResponse(tx.TxId, err.Error())
+				}
+
+			// when [busy]
+			case resp := <-p.respCh:
+				if err := p.handleTxResp(resp); err != nil {
+					p.logger.Warnf("failed to handle tx response, %v", err)
+				}
+
+			// when [busy]
+			case <-p.timer.C:
+				if err := p.handleTimeout(); err != nil {
+					p.logger.Errorf("failed to handle timeout timer, %v", err)
+				}
+
+			default:
+				break
+			}
+		}
+
+		select {
+		// all
+		case err := <-p.exitCh:
+			processReleased := p.handleProcessExit(err)
+			if processReleased {
+				return
+			}
+		default:
+			break
+		}
+	}
+}
+
+// startProcess starts the process cmd
 func (p *Process) startProcess() {
 	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_CREATED)
-	p.Handler.resetState()
 	err := p.LaunchProcess()
 	p.exitCh <- err
 }
@@ -173,17 +216,10 @@ func (p *Process) LaunchProcess() *ExitErr {
 	var err error           // process global error
 	var stderr bytes.Buffer // used to capture the error message from contract
 
-	var pn string
-	if p.isCrossProcess {
-		pn = utils.ConstructConcatOriginalAndCrossProcessName(p.Handler.TxRequest.TxContext.OriginalProcessName,
-			p.processName)
-	} else {
-		pn = p.processName
-	}
-
 	cmd := exec.Cmd{
-		Path:   p.contractPath,
-		Args:   []string{p.user.SockPath, pn, p.contractName, p.contractVersion, config.SandBoxLogLevel},
+		Path: p.requestGroup.GetContractPath(),
+		Args: []string{p.user.SockPath, p.processName, p.contractName, p.contractVersion,
+			config.DockerVMConfig.Log.SandboxLog.Level},
 		Stderr: &stderr,
 	}
 
@@ -230,20 +266,13 @@ func (p *Process) LaunchProcess() *ExitErr {
 
 	if err = cmd.Wait(); err != nil {
 		p.logger.Warnf("[%s] process stopped for tx [%s], err is [%s], process state is [%s]",
-			p.processName, p.Handler.TxRequest.TxId, err, p.ProcessState)
-	}
-
-	if !p.isCrossProcess {
-		return &ExitErr{
-			err:  err,
-			desc: stderr.String(),
-		}
+			p.processName, p.Tx.TxId, err, p.ProcessState)
 	}
 
 	// cross process can only be killed: success finished or original process timeout
 	if p.ProcessState != protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED {
 		p.logger.Errorf("[%s] cross process fail: tx [%s], [%s], [%s]", p.processName,
-			p.Handler.TxRequest.TxId, stderr.String(), err)
+			p.Tx.TxId, stderr.String(), err)
 		return &ExitErr{
 			err:  err,
 			desc: "",
@@ -252,78 +281,30 @@ func (p *Process) LaunchProcess() *ExitErr {
 	return nil
 }
 
-func (p *Process) listenProcess() {
-	for {
-		select {
-		case <-p.newTxTrigger:
-			// condition: during cmd.wait
-			// 7. created success, trigger new tx, previous state is created
-			// 8. running success, next tx fail, trigger new tx, previous state is running
-			p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
-			p.resetProcessTimer()
-			// begin handle new tx
-			// 9. handle new tx success
-			// 10. no tx in wait queue, util process expire
-			currentTxId, err := p.handleNewTx()
-			if err != nil {
-				p.Handler.scheduler.ReturnErrorResponse(currentTxId, err.Error())
-			}
-		case txResponse := <-p.responseCh:
-			if txResponse.TxId != p.Handler.TxRequest.TxId {
-				p.logger.Warnf("[%s] abandon tx response due to different tx id, response tx id [%s], "+
-					"current tx id [%s]", p.processName, txResponse.TxId, p.Handler.TxRequest.TxId)
-				continue
-			}
-			// 11. after timeout, abandon tx response
-			if p.ProcessState != protogo.ProcessState_PROCESS_STATE_RUNNING {
-				continue
-			}
-			// 12. before timeout as success tx response, return response and trigger new tx
-			p.Handler.stopTimer()
-			p.resetProcessTimer()
-			// return txResponse
-			responseCh := p.Handler.scheduler.GetTxResponseCh()
-
-			p.logger.Debugf("[%s] put tx response in response chan for in process [%s] with chan length[%d]",
-				txResponse.TxId, p.processName, len(responseCh))
-
-			responseCh <- txResponse
-
-			p.logger.Debugf("[%s] end handle tx in process [%s]", txResponse.TxId, p.processName)
-			// begin handle new tx
-			currentTxId, err := p.handleNewTx()
-			if err != nil {
-				p.Handler.scheduler.ReturnErrorResponse(currentTxId, err.Error())
-			}
-		case <-p.Handler.txExpireTimer.C:
-			p.StopProcess(false)
-		case err := <-p.exitCh:
-			processReleased := p.handleProcessExit(err)
-			if processReleased {
-				return
-			}
-		}
-	}
-}
-
 // release process success: true
 // release process fail: false
 func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 
-	currentTx := p.Handler.TxRequest
+	tx := p.Tx
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
-		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
-		p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, existErr.err.Error())
 
+		// return error resp to chainmaker
+		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, tx.TxId)
+		p.ReturnErrorResponse(tx.TxId, existErr.err.Error())
+
+		// notify process manager to remove process cache
 		p.logger.Debugf("release process: [%s]", p.processName)
-		if !p.processMgr.ReleaseProcess(p.processName, p.user) {
-			go p.startProcess()
-			return false
-		}
+		p.processManager.PutMsg(&messages.SandboxExitRespMsg{
+			ContractName:    tx.Request.ContractName,
+			ContractVersion: tx.Request.ContractVersion,
+			ProcessName:     p.processName,
+			Err:             existErr.err,
+		})
 		return true
 	}
+
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
 	// 3. created fail, writeToFile fail -> relaunch
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_CREATED {
@@ -331,95 +312,232 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		go p.startProcess()
 		return false
 	}
+
 	//  ========= condition: after cmd.wait
-	// 4. process expire, try to exit
-	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_EXPIRE {
-		// when process timeout, release resources
+	// 4. process release
+	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_IDLE {
 		p.logger.Debugf("release process: [%s]", p.processName)
 
-		if !p.processMgr.ReleaseProcess(p.processName, p.user) {
-			go p.startProcess()
-			return false
-		}
 		return true
 	}
 
-	p.logger.Errorf("[%s] process fail: tx [%s], [%s], [%s]", p.processName,
-		p.Handler.TxRequest.TxId, existErr.desc, existErr.err)
+	//p.logger.Errorf("[%s] process fail: tx [%s], [%s], [%s]", p.processName,
+	//	p.Handler.TxRequest.TxId, existErr.desc, existErr.err)
 
 	var err error
 	// 5. process killed because of timeout, return error response and relaunch
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_TX_TIMEOUT {
 		err = utils.TxTimeoutPanicError
 	}
+
 	// 6. process panic, return error response and relaunch
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_RUNNING {
 		err = utils.RuntimePanicError
-		p.Handler.stopTimer()
+		p.stopTimer()
 		<-p.cmdReadyCh
 	}
 
 	var errMsg string
-	processDepth := p.processMgr.getProcessDepth(currentTx.TxContext.OriginalProcessName)
-	if processDepth == nil {
-		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
+	processDepth := p.Tx.ProcessInfo.CurrentDepth
+	if processDepth == 0 {
+		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, tx.TxId)
 		errMsg = err.Error()
 	} else {
 		errMsg = fmt.Sprintf("cross contract fail: err is:%s, cross processes: %s", err.Error(),
-			processDepth.GetConcatProcessName())
+			p.Tx.ProcessInfo.CurrentProcessName)
 		p.logger.Error(errMsg)
 	}
-	p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, errMsg)
+	p.ReturnErrorResponse(tx.TxId, errMsg)
 
 	go p.startProcess()
 
 	return false
 }
 
-// handleNewTx handle next tx or wait next available tx, process killed until expire time
+// handleTxRequest handle next tx or wait next available tx, process killed until expire time
 // return triggered next tx successfully or not
-func (p *Process) handleNewTx() (string, error) {
+func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 
-	select {
-	case nextTx := <-p.TxWaitingQueue:
-		p.logger.Debugf("[%s] process start handle tx [%s], waiting queue size [%d]", p.processName, nextTx.TxId, len(p.TxWaitingQueue))
+	p.logger.Debugf("[%s] process start handle tx [%s]", p.processName, tx.TxId)
+	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_RUNNING)
 
-		p.Handler.TxRequest = nextTx
-		p.Handler.startTimer()
-		p.disableProcessExpireTimer()
+	p.Tx = tx
+	p.startBusyTimer()
+	defer p.stopTimer()
 
-		err := p.Handler.HandleContract()
-
-		// send tx msg fail or invalid method
-		// valid method just have: initContract, invokeContract, upgradeContract
-		if err != nil {
-			p.logger.Errorf("[%s] process fail to invoke contract: %s", p.processName, err)
-			p.Handler.stopTimer()
-			p.resetProcessTimer()
-			go p.triggerNewTx()
-			return nextTx.TxId, err
-		}
-		return "", nil
-	case <-p.expireTimer.C:
-		p.StopProcess(true)
-		return "", nil
+	msg := &protogo.DockerVMMessage{
+		TxId:        p.Tx.TxId,
+		ProcessInfo: &protogo.ProcessInfo{CurrentDepth: p.Tx.ProcessInfo.CurrentDepth},
+		Request:     p.Tx.Request,
 	}
+
+	switch p.Tx.GetRequest().Method {
+	case initContract, upgradeContract:
+		msg.Type = protogo.DockerVMType_INIT
+	case invokeContract:
+		msg.Type = protogo.DockerVMType_INVOKE
+	default:
+		return fmt.Errorf("invalid method: %s", p.Tx.GetRequest().Method)
+	}
+
+	if err := p.sendMessage(msg); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// AddTxWaitingQueue add tx with same contract to process waiting queue
-func (p *Process) AddTxWaitingQueue(tx *protogo.TxRequest) {
+// handleChangeSandboxReq handle change sandbox request
+func (p *Process) handleChangeSandboxReq(msg *messages.ChangeSandboxReqMsg) error {
 
-	newCount := p.txCount.Add(1)
-	tx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, newCount)
-	p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, tx.TxContext.OriginalProcessName)
+	// if change sandbox failed, notify process manager to clean cache, then suicide
+	if err := p.changeSandbox(msg); err != nil {
+		p.processManager.PutMsg(&messages.SandboxExitRespMsg{
+			ContractName:    msg.ContractName,
+			ContractVersion: msg.ContractVersion,
+			ProcessName:     msg.ProcessName,
+			Err:             err,
+		})
+		if killErr := p.killProcess(); killErr != nil {
+			return fmt.Errorf("failed to change sandbox, %v, "+
+				"failed to kill process %s, %v", err, p.processName, killErr)
+		}
+		return fmt.Errorf("failed to change sandbox, %v, process has been killed", err)
+	}
 
-	p.TxWaitingQueue <- tx
-	p.logger.Debugf("[%s] add tx [%s] to waiting queue, new size [%d], "+
-		"process state is [%s]", p.processName, tx.TxId, len(p.TxWaitingQueue), p.ProcessState)
+	p.exitCh <- &ExitErr{
+		err:  nil,
+		desc: "change sandbox context",
+	}
+
+	// restart process
+	p.Start()
+
+	return nil
 }
 
-func (p *Process) Size() int {
-	return len(p.TxWaitingQueue)
+// handleCloseSandboxReq handle close sandbox request
+func (p *Process) handleCloseSandboxReq() error {
+
+	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_RUNNING {
+		return fmt.Errorf("can not change sandbox while process is running")
+	}
+
+	err := p.killProcess()
+	if err != nil {
+		return fmt.Errorf("failed to kill process %s, %v", p.processName, err)
+	}
+	return nil
+}
+
+// handleTimeout handle busy timeout (sandbox timeout) and ready timeout (tx chan empty)
+func (p *Process) handleTimeout() error {
+
+	switch p.ProcessState {
+	case protogo.ProcessState_PROCESS_STATE_RUNNING:
+		p.logger.Debugf("process [%s] busy timeout", p.processName)
+		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_TX_TIMEOUT)
+		if err := p.killProcess(); err != nil {
+			p.logger.Errorf("failed to kill process %s, %v", p.processName, err)
+		}
+
+	case protogo.ProcessState_PROCESS_STATE_READY:
+		p.logger.Debugf("process [%s] ready timeout, go to idle", p.processName)
+		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_IDLE)
+		err := p.processManager.ChangeProcessState(p.processName, false)
+		if err != nil {
+			return fmt.Errorf("change process state error, %v", err)
+		}
+
+	default:
+		return fmt.Errorf("process state should be running or ready")
+	}
+	return nil
+}
+
+// handleTxResp handle tx response
+func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
+	if msg.TxId != p.Tx.TxId {
+		return fmt.Errorf("[%s] abandon tx response due to different tx id, response tx id [%s], "+
+			"current tx id [%s]", p.processName, msg.TxId, p.Tx.TxId)
+	}
+	// 11. after timeout, abandon tx response
+	if p.ProcessState != protogo.ProcessState_PROCESS_STATE_RUNNING {
+		return fmt.Errorf("[%s] abandon tx response due to busy timeout, tx id [%s]", p.processName, msg.TxId)
+	}
+
+	// 12. before timeout as success tx response, return response and trigger new tx
+	p.stopTimer()
+	p.startReadyTimer()
+	p.updateProcessState(protogo.ProcessState_PROCESS_STATE_READY)
+
+	return nil
+}
+
+// handleBusyTimeout handle busy timeout timer
+func (p *Process) handleBusyTimeout() error {
+	// change process state to idle
+	err := p.processManager.ChangeProcessState(p.processName, false)
+	if err != nil {
+		return fmt.Errorf("change process state error, %v", err)
+	}
+	return nil
+}
+
+// handleMsg handle all messages come from sandbox
+func (p *Process) handleMsg(msg *protogo.DockerVMMessage) error {
+
+	p.logger.Debugf("process [%s] handle msg [%s]", p.processName, msg)
+
+	switch p.ProcessState {
+	case protogo.ProcessState_PROCESS_STATE_CREATED:
+		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_READY)
+
+	default:
+		switch msg.Type {
+		case protogo.DockerVMType_COMPLETED:
+			p.respCh <- &protogo.DockerVMMessage{TxId: msg.TxId}
+
+		default:
+			return fmt.Errorf("handler cannot handle ready message [%s]", msg.Type)
+		}
+	}
+	return nil
+}
+
+// changeSandbox change the sandbox context
+func (p *Process) changeSandbox(msg *messages.ChangeSandboxReqMsg) error {
+
+	if p.ProcessState != protogo.ProcessState_PROCESS_STATE_IDLE {
+		return fmt.Errorf("can not change sandbox while not idle")
+	}
+	if err := p.killProcess(); err != nil {
+		return fmt.Errorf("failed to kill process %s, %v", p.processName, err)
+	}
+	if err := p.resetContext(msg); err != nil {
+		return fmt.Errorf("failed to reset context, %v", err)
+	}
+	return nil
+}
+
+// resetContext reset sandbox context to new request group
+func (p *Process) resetContext(msg *messages.ChangeSandboxReqMsg) error {
+
+	// reset process info
+	p.processName = msg.ProcessName
+	p.contractName = msg.ContractName
+	p.contractVersion = msg.ContractVersion
+
+	// reset request group
+	var err error
+	p.requestGroup, err = p.requestScheduler.GetRequestGroup(msg.ContractName, msg.ContractVersion)
+	if err != nil {
+		return fmt.Errorf("failed to get requets group, %v", err)
+	}
+
+	// reset tx chan
+	p.txCh = p.requestGroup.GetTxCh(p.isCrossProcess)
+	return nil
 }
 
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
@@ -436,86 +554,86 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	}
 }
 
-// StopProcess stop process
-func (p *Process) StopProcess(processTimeout bool) {
-	p.logger.Debugf("[%s] stop process", p.processName)
-	if processTimeout {
-		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_EXPIRE)
-		p.killProcess(false)
-	} else {
-		p.updateProcessState(protogo.ProcessState_PROCESS_STATE_TX_TIMEOUT)
-		p.killProcess(true)
-	}
-}
-
-// kill cross process and free process in cross process table
-func (p *Process) killCrossProcess() {
-	<-p.cmdReadyCh
-	p.logger.Debugf("[%s] receive process notify and kill cross process", p.processName)
-	err := p.cmd.Process.Kill()
-	if err != nil {
-		p.logger.Warnf("[%s] fail to kill cross process: [%s]", p.processName, err)
-	}
-}
-
 // kill main process when process encounter error
-func (p *Process) killProcess(isTxTimeout bool) {
+func (p *Process) killProcess() error {
 	<-p.cmdReadyCh
-	p.logger.Debugf("[%s] kill original process", p.processName)
+	p.logger.Debugf("kill process [%s]", p.processName)
 	err := p.cmd.Process.Kill()
 	if err != nil {
-		p.logger.Warnf("[%s] fail to kill corss process: %s", p.processName, err)
+		return fmt.Errorf("fail to kill process [%s], %v", p.processName, err)
 	}
-
-	if !isTxTimeout {
-		return
-	}
-
-	originalProcessName := p.Handler.TxRequest.TxContext.OriginalProcessName
-	processDepth := p.processMgr.getProcessDepth(originalProcessName)
-
-	if processDepth == nil {
-		return
-	}
-
-	for depth, process := range processDepth.processes {
-		if process != nil {
-			p.logger.Debugf("[%s] kill cross process in depth [%d]", process.processName, depth)
-			if err = process.cmd.Process.Kill(); err != nil {
-				p.logger.Warnf("[%s] fail to kill corss process: %s", process.processName, err)
-			}
-		}
-	}
+	return nil
 }
 
-func (p *Process) triggerNewTx() {
-	p.logger.Debugf("[%s] trigger new tx for process", p.processName)
-	p.newTxTrigger <- true
-}
-
-func (p *Process) returnTxResponse(txResponse *protogo.TxResponse) {
-	p.logger.Debugf("[%s] return tx response to process [%s]", txResponse.TxId, p.processName)
-	p.responseCh <- txResponse
-}
-
+// updateProcessState updates process state
 func (p *Process) updateProcessState(state protogo.ProcessState) {
 	p.logger.Debugf("[%s] update process state: [%s]", p.processName, state)
 	p.ProcessState = state
 }
 
-// resetProcessTimer reset timer when tx finished
-func (p *Process) resetProcessTimer() {
-	p.logger.Debugf("[%s] reset process expire timer", p.processName)
-	if !p.expireTimer.Stop() && len(p.expireTimer.C) > 0 {
-		<-p.expireTimer.C
+// ReturnErrorResponse return error to request scheduler
+func (p *Process) ReturnErrorResponse(txId string, errMsg string) {
+	errResp := p.constructErrorResponse(txId, errMsg)
+	if err := p.requestScheduler.PutMsg(errResp); err != nil {
+		p.logger.Warnf("failed to return error response, %v", err)
 	}
-	p.expireTimer.Reset(processWaitingTime * time.Second)
 }
 
-func (p *Process) disableProcessExpireTimer() {
-	p.logger.Debugf("[%s] disable process expire timer", p.processName)
-	if !p.expireTimer.Stop() && len(p.expireTimer.C) > 0 {
-		<-p.expireTimer.C
+func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) {
+	p.stream = stream
+}
+
+func (p *Process) sendMessage(msg *protogo.DockerVMMessage) error {
+	p.logger.Debugf("send message [%s] process [%s]", msg, p.processName)
+	return p.stream.Send(msg)
+}
+
+func (p *Process) constructErrorResponse(txId string, errMsg string) *protogo.DockerVMMessage {
+	return &protogo.DockerVMMessage{
+		Response: &protogo.TxResponse{
+			TxId:    txId,
+			Code:    protogo.DockerVMCode_FAIL,
+			Result:  nil,
+			Message: errMsg,
+		},
 	}
-	p.expireTimer.Stop()
+}
+
+func (p *Process) GetProcessName() string {
+	return p.processName
+}
+
+func (p *Process) GetContractName() string {
+	return p.contractName
+}
+
+func (p *Process) GetContractVersion() string {
+	return p.contractVersion
+}
+
+func (p *Process) GetUser() *User {
+	return p.user
+}
+
+func (p *Process) startBusyTimer() {
+	p.logger.Debugf("start tx timer: process [%s], tx [%s]", p.processName, p.Tx.TxId)
+	if !p.timer.Stop() && len(p.timer.C) > 0 {
+		<-p.timer.C
+	}
+	p.timer.Reset(config.DockerVMConfig.GetBusyTimeout())
+}
+
+func (p *Process) startReadyTimer() {
+	p.logger.Debugf("start tx timer: process [%s], tx [%s]", p.processName, p.Tx.TxId)
+	if !p.timer.Stop() && len(p.timer.C) > 0 {
+		<-p.timer.C
+	}
+	p.timer.Reset(config.DockerVMConfig.GetReadyTimeout())
+}
+
+func (p *Process) stopTimer() {
+	p.logger.Debugf("stop tx timer: process [%s], tx [%s]", p.processName, p.Tx.TxId)
+	if !p.timer.Stop() && len(p.timer.C) > 0 {
+		<-p.timer.C
+	}
 }

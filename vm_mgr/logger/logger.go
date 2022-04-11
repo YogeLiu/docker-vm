@@ -9,7 +9,6 @@ package logger
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	rotatelogs "chainmaker.org/chainmaker/common/v2/log/file-rotatelogs"
@@ -26,14 +25,15 @@ const (
 )
 const (
 	// docker module for logging
-	MODULE_MANAGER             = "[Docker MANAGER]"
-	MODULE_CONFIG              = "[Docker CONFIG]"
-	MODULE_SCHEDULER           = "[Docker Scheduler]"
+	MODULE_MANAGER             = "[Docker Manager]"
+	MODULE_CONFIG              = "[Docker Config]"
+	MODULE_REQUEST_SCHEDULER   = "[Docker Request Scheduler]"
+	MODULE_REQUEST_GROUP       = "[Docker Request Group]"
 	MODULE_USERCONTROLLER      = "[Docker User Controller]"
 	MODULE_PROCESS_MANAGER     = "[Docker Process Manager]"
 	MODULE_PROCESS             = "[Docker Process]"
 	MODULE_SANDBOX_RPC_HANDLER = "[Docker Sandbox RPC Handler]"
-	MODULE_SANDBOX_RPC_SERVER  = "[Docker Sandbox Rpc Server]"
+	MODULE_SANDBOX_RPC_SERVER  = "[Docker Sandbox RPC Server]"
 	MODULE_CHAIN_RPC_SERVER    = "[Docker Chain RPC Server]"
 	MODULE_CHAIN_RPC_SERVICE   = "[Docker Chain RPC Service]"
 	MODULE_SECURITY_ENV        = "[Docker Security Env]"
@@ -59,24 +59,12 @@ func InitialConfig(logPath string) {
 	showLineFromConfig = true
 
 	// init display in console config
-	b2, err := strconv.ParseBool(os.Getenv(config.ENV_LOG_IN_CONSOLE))
-	if err != nil {
-		displayInConsoleFromConfig = false
-	}
-	if b2 {
-		displayInConsoleFromConfig = true
-	} else {
-		displayInConsoleFromConfig = false
-	}
+	displayInConsoleFromConfig = config.DockerVMConfig.Log.ContractEngineLog.Console
 
 	logName := LogFileName
 	logPathFromConfig = filepath.Join(logPath, logName)
 
-	logLevelFromConfig = os.Getenv(config.ENV_LOG_LEVEL)
-	if logLevelFromConfig == "" {
-		logLevelFromConfig = "INFO"
-	}
-	config.SandBoxLogLevel = logLevelFromConfig
+	logLevelFromConfig = config.DockerVMConfig.Log.ContractEngineLog.Level
 }
 
 func NewDockerLogger(name string) *zap.SugaredLogger {

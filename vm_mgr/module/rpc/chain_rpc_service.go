@@ -27,7 +27,6 @@ const rpcEventChSize = 10240
 type ChainRPCService struct {
 	logger     *zap.SugaredLogger                            // chain rpc service logger
 	scheduler  interfaces.RequestScheduler                   // tx request scheduler
-	processMgr interfaces.ProcessManager                     // process manager
 	eventCh    chan *protogo.DockerVMMessage                 // invoking handler
 	stopSendCh chan struct{}                                 // stop send message goroutine
 	stopRecvCh chan struct{}                                 // stop receive message goroutine
@@ -39,17 +38,20 @@ type ChainRPCService struct {
 //  @param scheduler is tx request scheduler
 //  @param manager is process manager
 //  @return *ChainRPCService
-func NewChainRPCService(scheduler interfaces.RequestScheduler, manager interfaces.ProcessManager) *ChainRPCService {
+func NewChainRPCService() *ChainRPCService {
 	return &ChainRPCService{
 		logger:     logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVICE),
-		scheduler:  scheduler,
-		processMgr: manager,
 		eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
 		stopSendCh: make(chan struct{}),
 		stopRecvCh: make(chan struct{}),
 		wg:         new(sync.WaitGroup),
 		stream:     nil,
 	}
+}
+
+// SetScheduler sets request scheduler
+func (s *ChainRPCService) SetScheduler(scheduler interfaces.RequestScheduler) {
+	s.scheduler = scheduler
 }
 
 // PutMsg put invoking requests into channel, waiting for chainRPCService to handle request

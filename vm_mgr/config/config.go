@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -58,6 +59,9 @@ type rpcConf struct {
 type processConf struct {
 	MaxOriginalProcessNum int `mapstructure:"max_original_process_num"`
 	BusyTimeout           int `mapstructure:"busy_timeout"`
+	ReadyTimeout          int `mapstructure:"ready_timeout"`
+	ReleaseRate           int `mapstructure:"release_rate"`
+	ReleasePeriod         int `mapstructure:"release_period"`
 }
 
 type logConf struct {
@@ -127,12 +131,15 @@ func (c *conf) setDefaultConfigs() {
 	// set process default configs
 	const processPrefix = "process"
 	viper.SetDefault(processPrefix+".max_original_process_num", 50)
-	viper.SetDefault(processPrefix+".busy_timeout", 2)
+	viper.SetDefault(processPrefix+".busy_timeout", 2000)
+	viper.SetDefault(processPrefix+".idle_timeout", 200)
+	viper.SetDefault(processPrefix+".release_rate", 30)
+	viper.SetDefault(processPrefix+".release_period", 10)
 
 	// set log default configs
 	const logPrefix = "log"
-	viper.SetDefault(logPrefix+".contract_engine.level", "error")
-	viper.SetDefault(logPrefix+".sandbox.level", "error")
+	viper.SetDefault(logPrefix+".contract_engine.level", "info")
+	viper.SetDefault(logPrefix+".sandbox.level", "info")
 
 	// set pprof default configs
 	const pprofPrefix = "pprof"
@@ -144,22 +151,46 @@ func (c *conf) setDefaultConfigs() {
 	viper.SetDefault(contractPrefix+".max_file_num", 1024)
 }
 
-func (c *conf) GetServerMinInterval() time.Duration{
+func (c *conf) restrainConfig() {
+	if c.Process.ReleaseRate < 0 {
+		c.Process.ReleaseRate = 0
+	} else if c.Process.ReleaseRate > 100 {
+		c.Process.ReleaseRate = 100
+	}
+}
+
+func (c *conf) GetServerMinInterval() time.Duration {
 	return time.Duration(c.RPC.ServerMinInterval) * time.Second
 }
 
-func (c *conf) GetConnectionTimeout() time.Duration{
+func (c *conf) GetConnectionTimeout() time.Duration {
 	return time.Duration(c.RPC.ConnectionTimeout) * time.Second
 }
 
-func (c *conf) GetServerKeepAliveTime() time.Duration{
+func (c *conf) GetServerKeepAliveTime() time.Duration {
 	return time.Duration(c.RPC.ServerKeepAliveTime) * time.Second
 }
 
-func (c *conf) GetServerKeepAliveTimeout() time.Duration{
+func (c *conf) GetServerKeepAliveTimeout() time.Duration {
 	return time.Duration(c.RPC.ServerKeepAliveTimeout) * time.Second
 }
 
-func (c *conf) GetBusyTimeout() time.Duration{
-	return time.Duration(c.Process.BusyTimeout) * time.Second
+func (c *conf) GetBusyTimeout() time.Duration {
+	return time.Duration(c.Process.BusyTimeout) * time.Millisecond
+}
+
+func (c *conf) GetReadyTimeout() time.Duration {
+	return time.Duration(c.Process.ReadyTimeout) * time.Millisecond
+}
+
+func (c *conf) GetReleasePeriod() time.Duration {
+	return time.Duration(c.Process.ReleasePeriod) * time.Second
+}
+
+func (c *conf) GetReleaseRate() float64 {
+	return float64(c.Process.ReleaseRate) / 100.0
+}
+
+func (c *conf) GetMaxUserNum() int {
+	return c.Process.MaxOriginalProcessNum * (protocol.CallContractDepth + 1)
 }

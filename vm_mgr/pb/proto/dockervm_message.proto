@@ -113,12 +113,14 @@ message TxRequest {
 
     string contract_name = 1;
 
-    string method = 2;
+    string contract_version = 2;
 
-    map<string, bytes> parameters = 3;
+    string method = 3;
+
+    map<string, bytes> parameters = 4;
 
     // cross contract in use
-    TxContext tx_context = 4;
+    TxContext tx_context = 5;
 }
 
 message TxContext {
@@ -169,7 +171,7 @@ enum ProcessState {
 
     PROCESS_STATE_READY = 2;
 
-    PROCESS_STATE_EXPIRE = 3;
+    PROCESS_STATE_IDLE = 3;
 
     PROCESS_STATE_TX_TIMEOUT = 4;
 

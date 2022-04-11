@@ -10,32 +10,38 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 )
 
-type Scheduler interface {
-	GetRequestGroup(contractName string) (RequestGroup, error)
-}
-
 type RequestGroup interface {
 	PutMsg(msg interface{}) error
+	GetContractPath() string
+	GetTxCh(isOrig bool) chan *protogo.DockerVMMessage
 }
 
 type RequestScheduler interface {
-	PutMsg(msg *protogo.DockerVMMessage) error
+	Start()
+	PutMsg(msg interface{}) error
+	GetRequestGroup(contractName, contractVersion string) (RequestGroup, error)
 }
 
 type ProcessManager interface {
-	PutMsg(msg *protogo.DockerVMMessage) error
-	GetProcessByName(name string) (Process, error)
+	PutMsg(msg interface{}) error
+	GetProcessByName(processName string) (Process, bool)
+	GetProcessNumByContractKey(contractName, contractVersion string) int
+	ChangeProcessState(processName string, toBusy bool) error
 }
 
 type Process interface {
-	PutMsg(msg *protogo.DockerVMMessage) error
+	PutMsg(msg interface{}) error
+	Start()
+	GetProcessName() string
+	GetContractName() string
+	GetContractVersion() string
+	GetUser() *core.User
 	SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer)
-	GetName() string
 }
 
-type UserController interface {
+type UserManager interface {
 	// GetAvailableUser get available user
 	GetAvailableUser() (*core.User, error)
-	// FreeUser free user
+	// AddAvailableUser add new user
 	AddAvailableUser(user *core.User) error
 }

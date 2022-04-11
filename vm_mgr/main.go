@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	_ "net/http/pprof"
@@ -28,7 +26,7 @@ func main() {
 	// new docker manager
 	manager, err := module.NewManager(managerLogger)
 	if err != nil {
-		managerLogger.Errorf("Err in creating docker manager: %s", err)
+		managerLogger.Errorf("failed to create docker manager: %s", err)
 		return
 	}
 
@@ -48,20 +46,17 @@ func main() {
 // start pprof when open enable pprof switch
 func startPProf(managerLogger *zap.SugaredLogger) {
 
-	envEnablePProf := os.Getenv(config.ENV_ENABLE_PPROF)
+	enablePProf := config.DockerVMConfig.Pprof.ContractEnginePprof.Enable
 
-	if len(envEnablePProf) != 0 {
-		enablePProf, _ := strconv.ParseBool(envEnablePProf)
-		if enablePProf {
-			managerLogger.Infof("start pprof")
-			go func() {
-				pprofPort, _ := strconv.Atoi(os.Getenv(config.ENV_PPROF_PORT))
-				addr := fmt.Sprintf(":%d", pprofPort)
-				err := http.ListenAndServe(addr, nil)
-				if err != nil {
-					fmt.Println(err)
-				}
-			}()
-		}
+	if enablePProf {
+		managerLogger.Infof("start pprof")
+		go func() {
+			pprofPort := config.DockerVMConfig.Pprof.ContractEnginePprof.Port
+			addr := fmt.Sprintf(":%d", pprofPort)
+			err := http.ListenAndServe(addr, nil)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}()
 	}
 }

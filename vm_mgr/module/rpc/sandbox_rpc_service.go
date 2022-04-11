@@ -18,17 +18,20 @@ import (
 // Received message will be put into process's event chan.
 // Messages will be sent by process itself.
 type SandboxRPCService struct {
-	logger     *zap.SugaredLogger        // sandbox rpc service logger
-	processMgr interfaces.ProcessManager // process manager
+	logger          *zap.SugaredLogger        // sandbox rpc service logger
+	origProcessMgr  interfaces.ProcessManager // process manager
+	crossProcessMgr interfaces.ProcessManager // process manager
+
 }
 
 // NewSandboxRPCService returns a sandbox rpc service
 //  @param manager is process manager
 //  @return *SandboxRPCService
-func NewSandboxRPCService(manager interfaces.ProcessManager) *SandboxRPCService {
+func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessManager) *SandboxRPCService {
 	return &SandboxRPCService{
-		logger:     logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER),
-		processMgr: manager,
+		logger:          logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER),
+		origProcessMgr:  origProcessMgr,
+		crossProcessMgr: crossProcessMgr,
 	}
 }
 
@@ -45,18 +48,24 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			s.logger.Errorf("fail to receive msg: %s", err)
 			return err
 		}
-		process, err := s.processMgr.GetProcessByName(msg.ProcessInfo.CurrentProcessName)
-		if err != nil {
+		var process interfaces.Process
+		var ok bool
+		if msg.ProcessInfo.CurrentDepth == 0 {
+			process, ok = s.origProcessMgr.GetProcessByName(msg.ProcessInfo.CurrentProcessName)
+		}
+		process, ok = s.crossProcessMgr.GetProcessByName(msg.ProcessInfo.CurrentProcessName)
+
+		if !ok {
 			s.logger.Errorf("fail to get process: [%v]", err)
 			return err
 		}
 		process.SetStream(stream)
 		switch msg {
 		case nil:
-			s.logger.Errorf("[%s] received nil message, ending contract stream", process.GetName())
+			s.logger.Errorf("[%s] received nil message, ending contract stream", process.GetProcessName())
 			return err
 		default:
-			s.logger.Debugf("[%s] handle msg [%v]", process.GetName(), msg)
+			s.logger.Debugf("[%s] handle msg [%v]", process.GetProcessName(), msg)
 			err = process.PutMsg(msg)
 			if err != nil {
 				s.logger.Errorf("fail to put msg into process chan: [%c]", err)
