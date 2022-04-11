@@ -323,6 +323,7 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType)
 		ResultCode: protocol.ContractSdkSignalResultFail,
 		Payload:    nil,
 		Message:    "",
+		ChainId:    r.ChainId,
 	}
 }
 
@@ -1049,7 +1050,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE)
 
-	contractNameAndVersion := string(recvMsg.Payload)               // e.g: contract1#1.0.0
+	contractNameAndVersion := string(recvMsg.Payload)               // e.g: chain1#contract1#1.0.0
 	contractName := utils.SplitContractName(contractNameAndVersion) // e.g: contract1
 
 	if len(byteCode) == 0 {

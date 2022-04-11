@@ -20,7 +20,7 @@ const (
 )
 
 func SplitContractName(contractNameAndVersion string) string {
-	contractName := strings.Split(contractNameAndVersion, "#")[0]
+	contractName := strings.Split(contractNameAndVersion, "#")[1]
 	return contractName
 }
 

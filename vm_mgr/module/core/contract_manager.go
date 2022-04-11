@@ -45,7 +45,7 @@ func NewContractManager() *ContractManager {
 		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, config.DockerLogDir),
 	}
 
-	mountDir = config.ContractBaseDir
+	mountDir = config.DockerMountDir
 
 	// todo 还需要 initial contract map 吗？？？
 	//_ = contractManager.initialContractMap()
@@ -64,23 +64,21 @@ func (cm *ContractManager) GetContract(chainId, txId, contractName string) (stri
 	cm.lock.RLock()
 	defer cm.lock.RUnlock()
 
-	contractKey := utils.ConstructContractKey(chainId, contractName)
-
 	// get contract path from map
-	contractPath, ok := cm.contractsMap[contractKey]
+	contractPath, ok := cm.contractsMap[contractName]
 	if ok {
-		cm.logger.Debugf("get contract from memory [%s], path is [%s]", contractKey, contractPath)
+		cm.logger.Debugf("get contract from memory [%s], path is [%s]", contractName, contractPath)
 		return contractPath, nil
 	}
 
 	// get contract path from chain maker
-	cPath, err, _ := cm.getContractLock.Do(contractKey, func() (interface{}, error) {
-		defer cm.getContractLock.Forget(contractKey)
+	cPath, err, _ := cm.getContractLock.Do(contractName, func() (interface{}, error) {
+		defer cm.getContractLock.Forget(contractName)
 
-		return cm.lookupContractFromDB(chainId, txId, contractKey)
+		return cm.lookupContractFromDB(chainId, txId, contractName)
 	})
 	if err != nil {
-		cm.logger.Errorf("fail to get contract path from chain maker, contract name : [%s] -- txId [%s] ", contractKey, txId)
+		cm.logger.Errorf("fail to get contract path from chain maker, contract name : [%s] -- txId [%s] ", contractName, txId)
 		return "", err
 	}
 
@@ -92,9 +90,13 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractName stri
 
 	enableUnixDomainSocket, _ := strconv.ParseBool(os.Getenv(config.ENV_ENABLE_UDS))
 
-	contractPath := filepath.Join(mountDir, chainId, contractName)
+	contractPath := filepath.Join(mountDir, chainId, config.ContractsDir, contractName)
+	err := utils.CreateDir(filepath.Join(mountDir, chainId, config.ContractsDir))
+	if err != nil {
+		return "", err
+	}
 
-	_, err := os.Stat(contractPath)
+	_, err = os.Stat(contractPath)
 	if err != nil {
 		// if run into other errors
 		if !errors.Is(err, os.ErrNotExist) {
