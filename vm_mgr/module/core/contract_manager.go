@@ -113,7 +113,7 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractName stri
 		responseChan := make(chan *protogo.CDMMessage)
 		cm.scheduler.RegisterResponseCh(chainId, txId, responseChan)
 
-		cm.scheduler.GetByteCodeReqCh(chainId) <- getByteCodeMsg
+		cm.scheduler.GetByteCodeReqCh() <- getByteCodeMsg
 
 		returnMsg := <-responseChan
 

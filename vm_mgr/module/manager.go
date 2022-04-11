@@ -17,7 +17,7 @@ import (
 type ManagerImpl struct {
 	cdmRpcServer   *rpc.CDMServer
 	dmsRpcServer   *rpc.DMSServer
-	scheduler      *core.SchedulerMap
+	scheduler      *core.DockerScheduler
 	userController *core.UsersManager
 	securityEnv    *security2.SecurityEnv
 	processManager *core.ProcessManager
@@ -42,7 +42,7 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	processManager := core.NewProcessManager(usersManager, contractManager)
 
 	// new scheduler
-	scheduler := core.NewSchedulerMap(processManager)
+	scheduler := core.NewDockerScheduler(processManager)
 	processManager.SetScheduler(scheduler)
 	contractManager.SetScheduler(scheduler)
 

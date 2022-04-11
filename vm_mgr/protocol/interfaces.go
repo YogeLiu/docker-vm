@@ -13,13 +13,13 @@ import (
 
 type Scheduler interface {
 	// GetTxReqCh get tx req chan
-	GetTxReqCh(string) chan *protogo.TxRequest
+	GetTxReqCh() chan *protogo.TxRequest
 
 	// GetTxResponseCh get tx response chan
-	GetTxResponseCh(string) chan *protogo.TxResponse
+	GetTxResponseCh() chan *protogo.TxResponse
 
 	// GetGetStateReqCh get get_state request chan
-	GetGetStateReqCh(string) chan *protogo.CDMMessage
+	GetGetStateReqCh() chan *protogo.CDMMessage
 
 	// RegisterResponseCh register response chan
 	RegisterResponseCh(chainId, txId string, responseCh chan *protogo.CDMMessage)
@@ -34,11 +34,11 @@ type Scheduler interface {
 	GetResponseChByTxId(chainId, txId string) chan *protogo.CDMMessage
 
 	// GetByteCodeReqCh get get_bytecode request chan
-	GetByteCodeReqCh(string) chan *protogo.CDMMessage
+	GetByteCodeReqCh() chan *protogo.CDMMessage
 
-	GetCrossContractReqCh(string) chan *protogo.TxRequest
+	GetCrossContractReqCh() chan *protogo.TxRequest
 
-	ReturnErrorResponse(string, string, string)
+	ReturnErrorResponse(string, string)
 
 	ReturnErrorCrossContractResponse(txRequest *protogo.TxRequest, resp *SDKProtogo.DMSMessage)
 }

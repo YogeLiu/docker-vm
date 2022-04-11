@@ -38,8 +38,12 @@ const (
 	eventSize = 100
 )
 
+var clientMgrOnce sync.Once
+var instance *ClientManager
+var startErr error
+
 type ClientManager struct {
-	chainId           string
+	startOnce         sync.Once
 	logger            *logger.CMLogger
 	count             *atomic.Uint64 // tx count
 	index             uint64         // client index
@@ -54,33 +58,41 @@ type ClientManager struct {
 	stop              bool
 }
 
-func NewClientManager(chainId string, vmConfig *config.DockerVMConfig) *ClientManager {
-	return &ClientManager{
-		chainId:           chainId,
-		logger:            logger.GetLoggerByChain(logger.MODULE_VM, chainId),
-		count:             atomic.NewUint64(0),
-		index:             1,
-		config:            vmConfig,
-		aliveClientMap:    make(map[uint64]*CDMClient),
-		txSendCh:          make(chan *protogo.CDMMessage, txSize),
-		sysCallRespSendCh: make(chan *protogo.CDMMessage, txSize*8),
-		receiveChMap:      make(map[string]chan *protogo.CDMMessage),
-		eventCh:           make(chan *Event, eventSize),
-		stop:              false,
-	}
+func NewClientManager(vmConfig *config.DockerVMConfig) *ClientManager {
+	clientMgrOnce.Do(func() {
+		instance = &ClientManager{
+			logger:            logger.GetLogger(logger.MODULE_VM),
+			count:             atomic.NewUint64(0),
+			index:             1,
+			config:            vmConfig,
+			aliveClientMap:    make(map[uint64]*CDMClient),
+			txSendCh:          make(chan *protogo.CDMMessage, txSize),
+			sysCallRespSendCh: make(chan *protogo.CDMMessage, txSize*8),
+			receiveChMap:      make(map[string]chan *protogo.CDMMessage),
+			eventCh:           make(chan *Event, eventSize),
+			stop:              false,
+		}
+	})
+
+	return instance
 }
 
 func (cm *ClientManager) Start() error {
 	cm.logger.Infof("start client manager")
-	// 1. start all clients
-	if err := cm.establishConnections(); err != nil {
-		cm.logger.Errorf("fail to create client: %s", err)
-		return err
-	}
-	// 2. start event listen
-	go cm.listen()
 
-	return nil
+	cm.startOnce.Do(func() {
+		// 1. start all clients
+		if err := cm.establishConnections(); err != nil {
+			cm.logger.Errorf("fail to create client: %s", err)
+			startErr = err
+			return
+		}
+
+		// 2. start event listen
+		go cm.listen()
+	})
+
+	return startErr
 }
 
 func (cm *ClientManager) GetUniqueTxKey(txId string) string {
@@ -117,51 +129,55 @@ func (cm *ClientManager) PutSysCallResponse(sysCallResp *protogo.CDMMessage) {
 	cm.sysCallRespSendCh <- sysCallResp
 }
 
-func (cm *ClientManager) RegisterReceiveChan(txId string, receiveCh chan *protogo.CDMMessage) error {
+func (cm *ClientManager) RegisterReceiveChan(chainId, txId string, receiveCh chan *protogo.CDMMessage) error {
 	cm.receiveChanLock.Lock()
 	defer cm.receiveChanLock.Unlock()
-	cm.logger.Debugf("register receive chan for [%s]", txId)
+	receiveChKey := utils.ConstructReceiveMapKey(chainId, txId)
+	cm.logger.Debugf("register receive chan for [%s]", receiveChKey)
 
-	_, ok := cm.receiveChMap[txId]
+	_, ok := cm.receiveChMap[receiveChKey]
 	if ok {
-		cm.logger.Errorf("[%s] fail to register receive chan cause chan already registered", txId)
+		cm.logger.Errorf("[%s] fail to register receive chan cause chan already registered", receiveChKey)
 		return utils.ErrDuplicateTxId
 	}
 
-	cm.receiveChMap[txId] = receiveCh
+	cm.receiveChMap[receiveChKey] = receiveCh
 	return nil
 }
 
-func (cm *ClientManager) GetReceiveChan(txId string) chan *protogo.CDMMessage {
+func (cm *ClientManager) GetReceiveChan(chainId, txId string) chan *protogo.CDMMessage {
 	cm.receiveChanLock.RLock()
 	defer cm.receiveChanLock.RUnlock()
-	cm.logger.Debugf("get receive chan for [%s]", txId)
-	return cm.receiveChMap[txId]
+	receiveChKey := utils.ConstructReceiveMapKey(chainId, txId)
+	cm.logger.Debugf("get receive chan for [%s]", receiveChKey)
+	return cm.receiveChMap[receiveChKey]
 }
 
-func (cm *ClientManager) GetAndDeleteReceiveChan(txId string) chan *protogo.CDMMessage {
+func (cm *ClientManager) GetAndDeleteReceiveChan(chainId, txId string) chan *protogo.CDMMessage {
 	cm.receiveChanLock.Lock()
 	defer cm.receiveChanLock.Unlock()
-	cm.logger.Debugf("get receive chan for [%s] and delete", txId)
-	receiveChan, ok := cm.receiveChMap[txId]
+	receiveChKey := utils.ConstructReceiveMapKey(chainId, txId)
+	cm.logger.Debugf("get receive chan for [%s] and delete", receiveChKey)
+	receiveChan, ok := cm.receiveChMap[receiveChKey]
 	if ok {
-		delete(cm.receiveChMap, txId)
+		delete(cm.receiveChMap, receiveChKey)
 		return receiveChan
 	}
-	cm.logger.Warnf("cannot find receive chan for [%s] and return nil", txId)
+	cm.logger.Warnf("cannot find receive chan for [%s] and return nil", receiveChKey)
 	return nil
 }
 
-func (cm *ClientManager) DeleteReceiveChan(txId string) bool {
+func (cm *ClientManager) DeleteReceiveChan(chainId, txId string) bool {
 	cm.receiveChanLock.Lock()
 	defer cm.receiveChanLock.Unlock()
-	cm.logger.Debugf("[%s] delete receive chan", txId)
-	_, ok := cm.receiveChMap[txId]
+	receiveChKey := utils.ConstructReceiveMapKey(chainId, txId)
+	cm.logger.Debugf("[%s] delete receive chan", receiveChKey)
+	_, ok := cm.receiveChMap[receiveChKey]
 	if ok {
-		delete(cm.receiveChMap, txId)
+		delete(cm.receiveChMap, receiveChKey)
 		return true
 	}
-	cm.logger.Debugf("[%s] delete receive chan fail, receive chan is already deleted", txId)
+	cm.logger.Debugf("[%s] delete receive chan fail, receive chan is already deleted", receiveChKey)
 	return false
 }
 
@@ -186,7 +202,7 @@ func (cm *ClientManager) establishConnections() error {
 	totalConnections := int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig()))
 	for i := 0; i < totalConnections; i++ {
 		newIndex := cm.getNextIndex()
-		newClient := NewCDMClient(newIndex, cm.chainId, cm.logger, cm)
+		newClient := NewCDMClient(newIndex, cm.logger, cm)
 		if err := newClient.StartClient(); err != nil {
 			return errors.New("fail to connect docker vm, please start docker vm")
 		}
@@ -214,7 +230,7 @@ func (cm *ClientManager) CloseAllConnections() {
 
 func (cm *ClientManager) reconnect() {
 	newIndex := cm.getNextIndex()
-	newClient := NewCDMClient(newIndex, cm.chainId, cm.logger, cm)
+	newClient := NewCDMClient(newIndex, cm.logger, cm)
 
 	for {
 		if cm.stop {

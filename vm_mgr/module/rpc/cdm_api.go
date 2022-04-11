@@ -31,7 +31,6 @@ type CDMApi struct {
 }
 
 type CommunicateConn struct {
-	ChainId         string
 	Stream          protogo.CDMRpc_CDMCommunicateServer
 	StopSendChan    chan struct{}
 	StopReceiveChan chan struct{}
@@ -48,19 +47,7 @@ func NewCDMApi(scheduler protocol.Scheduler) *CDMApi {
 // CDMCommunicate docker manager stream function
 func (cdm *CDMApi) CDMCommunicate(stream protogo.CDMRpc_CDMCommunicateServer) error {
 
-	setUpMsg, err := stream.Recv()
-	if err != nil {
-		// todo add log
-		return err
-	}
-
-	if setUpMsg.Type != protogo.CDMType_CDM_TYPE_SET_UP_STREAM {
-		return errors.New("need set up stream before send msgs")
-	}
-	chainId := setUpMsg.ChainId
-
 	communicateConn := &CommunicateConn{
-		ChainId:         chainId,
 		Stream:          stream,
 		StopSendChan:    make(chan struct{}),
 		StopReceiveChan: make(chan struct{}),
@@ -144,16 +131,16 @@ func (cdm *CDMApi) sendMsgRoutine(c *CommunicateConn) {
 
 	for {
 		select {
-		case txResponseMsg := <-cdm.scheduler.GetTxResponseCh(c.ChainId):
+		case txResponseMsg := <-cdm.scheduler.GetTxResponseCh():
 			cdm.logger.Debugf("[%s] send tx resp, chan len: [%d]", txResponseMsg.TxId,
-				len(cdm.scheduler.GetTxResponseCh(c.ChainId)))
+				len(cdm.scheduler.GetTxResponseCh()))
 			cdmMsg := cdm.constructCDMMessage(txResponseMsg)
 			err = c.Stream.Send(cdmMsg)
-		case getStateReqMsg := <-cdm.scheduler.GetGetStateReqCh(c.ChainId):
+		case getStateReqMsg := <-cdm.scheduler.GetGetStateReqCh():
 			cdm.logger.Debugf("[%s] send syscall req, chan len: [%d]", getStateReqMsg.TxId,
-				len(cdm.scheduler.GetGetStateReqCh(c.ChainId)))
+				len(cdm.scheduler.GetGetStateReqCh()))
 			err = c.Stream.Send(getStateReqMsg)
-		case getByteCodeReqMsg := <-cdm.scheduler.GetByteCodeReqCh(c.ChainId):
+		case getByteCodeReqMsg := <-cdm.scheduler.GetByteCodeReqCh():
 			err = c.Stream.Send(getByteCodeReqMsg)
 		case <-c.StopSendChan:
 			c.Wg.Done()
@@ -199,7 +186,7 @@ func (cdm *CDMApi) handleTxRequest(cdmMessage *protogo.CDMMessage) error {
 	txRequest := cdmMessage.TxRequest
 	cdm.logger.Debugf("[%s] cdm server receive tx from chain", txRequest.TxId)
 
-	cdm.scheduler.GetTxReqCh(cdmMessage.ChainId) <- txRequest
+	cdm.scheduler.GetTxReqCh() <- txRequest
 
 	return nil
 }

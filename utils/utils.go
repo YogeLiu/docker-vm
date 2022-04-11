@@ -57,3 +57,8 @@ func GetMaxConnectionFromConfig(config *config.DockerVMConfig) uint32 {
 	}
 	return config.MaxConnection
 }
+
+// ConstructReceiveChannelMapKey contractName#txId
+func ConstructReceiveMapKey(names ...string) string {
+	return strings.Join(names, "#")
+}
