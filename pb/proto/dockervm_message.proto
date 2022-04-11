@@ -15,7 +15,7 @@ message DockerVMMessage {
 
     DockerVMType type = 2;
 
-    ProcessInfo process_info = 3;
+    CrossContext process_info = 3;
 
     // if not used, set to nil
     SysCallMessage sys_call_message = 4;
@@ -37,15 +37,35 @@ message SysCallMessage {
     map<string, bytes> payload = 3;
 }
 
-message ProcessInfo {
+message CrossContext {
 
     uint32 current_depth = 1;
 
-    string current_process_name = 2;
+    CrossType cross_type = 2;
 
-    string parent_process_name = 3;
+    string current_process_name = 3;
+
+    string parent_process_name = 4;
 }
 
+enum CrossType {
+
+    INVALID = 0;
+
+    INTERNAL = 1;
+
+    WASMER  = 2;
+
+    WXVM  = 3;
+
+    GASM  = 4;
+
+    EVM  = 5;
+
+    DOCKER_GO  = 6;
+
+    DOCKER_JAVA  = 7;
+}
 
 enum DockerVMType {
 
