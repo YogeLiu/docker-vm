@@ -129,7 +129,7 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 		return true, nameList[0], nameList[1]
 	}
 	nameList = strings.Split(processName, "#")
-	return false, ConstructContractKey(nameList[0], nameList[1]), processName
+	return false, ConstructContractKey(nameList[0], nameList[1], nameList[2]), processName
 }
 
 func GetContractKeyFromProcessName(processName string) string {

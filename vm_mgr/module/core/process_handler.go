@@ -230,6 +230,7 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 		TxId:    getStateMsg.TxId,
 		Type:    protogo.CDMType_CDM_TYPE_GET_STATE,
 		Payload: key,
+		ChainId: h.TxRequest.ChainId,
 	}
 	getStateResponseCh := make(chan *protogo.CDMMessage)
 
@@ -394,7 +395,8 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 
 	//merge write map
 	txResponse := &protogo.TxResponse{
-		TxId: h.TxRequest.TxId,
+		TxId:    h.TxRequest.TxId,
+		ChainId: h.TxRequest.ChainId,
 	}
 
 	if contractResponse.Response.Status == 200 {
@@ -435,6 +437,7 @@ func (h *ProcessHandler) handleCreateKvIterator(createKvIteratorMsg *SDKProtogo.
 		TxId:    createKvIteratorMsg.TxId,
 		Type:    protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR,
 		Payload: keyList,
+		ChainId: h.TxRequest.ChainId,
 	}
 
 	createKvIteratorResponseCh := make(chan *protogo.CDMMessage)
@@ -463,6 +466,7 @@ func (h *ProcessHandler) handleConsumeKvIterator(consumeKvIteratorMsg *SDKProtog
 		TxId:    consumeKvIteratorMsg.TxId,
 		Type:    protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
 		Payload: KeyList,
+		ChainId: h.TxRequest.ChainId,
 	}
 
 	consumeKvIteratorResponseCh := make(chan *protogo.CDMMessage)
@@ -490,6 +494,7 @@ func (h *ProcessHandler) handleCreateKeyHistoryIter(createKeyHistoryIterMsg *SDK
 		TxId:    createKeyHistoryIterMsg.TxId,
 		Type:    protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER,
 		Payload: keyList,
+		ChainId: h.TxRequest.ChainId,
 	}
 
 	respCh := make(chan *protogo.CDMMessage)
@@ -518,6 +523,7 @@ func (h *ProcessHandler) handleConsumeKeyHistoryIter(consumeKeyHistoryIterMsg *S
 		TxId:    consumeKeyHistoryIterMsg.TxId,
 		Type:    protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
 		Payload: keyList,
+		ChainId: h.TxRequest.ChainId,
 	}
 
 	respCh := make(chan *protogo.CDMMessage)
@@ -544,6 +550,7 @@ func (h *ProcessHandler) handleGetSenderAddr(msg *SDKProtogo.DMSMessage) error {
 		TxId:    msg.TxId,
 		Type:    protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS,
 		Payload: nil,
+		ChainId: h.TxRequest.ChainId,
 	}
 
 	respCh := make(chan *protogo.CDMMessage)

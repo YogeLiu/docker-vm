@@ -108,6 +108,7 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractName stri
 			TxId:    txId,
 			Type:    protogo.CDMType_CDM_TYPE_GET_BYTECODE,
 			Payload: []byte(contractName),
+			ChainId: chainId,
 		}
 		// send request to chain maker
 		responseChan := make(chan *protogo.CDMMessage)

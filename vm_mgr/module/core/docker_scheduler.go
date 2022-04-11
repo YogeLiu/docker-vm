@@ -146,7 +146,7 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	if err == utils.ContractFileError {
 		s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
 			err, txRequest.TxId)
-		s.ReturnErrorResponse(txRequest.TxId, err.Error())
+		s.ReturnErrorResponse(txRequest.ChainId, txRequest.TxId, err.Error())
 		return
 	}
 	if err != nil {
@@ -156,17 +156,18 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	}
 }
 
-func (s *DockerScheduler) ReturnErrorResponse(txId string, errMsg string) {
-	errTxResponse := s.constructErrorResponse(txId, errMsg)
+func (s *DockerScheduler) ReturnErrorResponse(chainId, txId string, errMsg string) {
+	errTxResponse := s.constructErrorResponse(chainId, txId, errMsg)
 	s.txResponseCh <- errTxResponse
 }
 
-func (s *DockerScheduler) constructErrorResponse(txId string, errMsg string) *protogo.TxResponse {
+func (s *DockerScheduler) constructErrorResponse(chainId, txId string, errMsg string) *protogo.TxResponse {
 	return &protogo.TxResponse{
 		TxId:    txId,
 		Code:    protogo.ContractResultCode_FAIL,
 		Result:  nil,
 		Message: errMsg,
+		ChainId: chainId,
 	}
 }
 

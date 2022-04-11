@@ -38,7 +38,7 @@ type Scheduler interface {
 
 	GetCrossContractReqCh() chan *protogo.TxRequest
 
-	ReturnErrorResponse(string, string)
+	ReturnErrorResponse(string, string, string)
 
 	ReturnErrorCrossContractResponse(txRequest *protogo.TxRequest, resp *SDKProtogo.DMSMessage)
 }

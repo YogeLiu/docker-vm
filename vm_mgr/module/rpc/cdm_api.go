@@ -92,7 +92,7 @@ func (cdm *CDMApi) receiveMsgRoutine(c *CommunicateConn) {
 				return
 			}
 
-			cdm.logger.Debugf("cdm server recv msg [%s], type: [%s]", receivedMsg.TxId, receivedMsg.Type)
+			cdm.logger.Debugf("cdm server recv msg %s[%s] , type: [%s]", receivedMsg.ChainId, receivedMsg.TxId, receivedMsg.Type)
 
 			switch receivedMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_REQUEST:
@@ -166,6 +166,7 @@ func (cdm *CDMApi) constructCDMMessage(txResponseMsg *protogo.TxResponse) *proto
 		TxId:       txResponseMsg.TxId,
 		Type:       protogo.CDMType_CDM_TYPE_TX_RESPONSE,
 		TxResponse: txResponseMsg,
+		ChainId:    txResponseMsg.ChainId,
 	}
 	return cdmMsg
 }

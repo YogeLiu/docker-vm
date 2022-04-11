@@ -273,7 +273,7 @@ func (p *Process) listenProcess() {
 			// 10. no tx in wait queue, util process expire
 			currentTxId, err := p.handleNewTx()
 			if err != nil {
-				p.Handler.scheduler.ReturnErrorResponse(currentTxId, err.Error())
+				p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
 			}
 		case txResponse := <-p.responseCh:
 			if txResponse.TxId != p.Handler.TxRequest.TxId {
@@ -300,7 +300,7 @@ func (p *Process) listenProcess() {
 			// begin handle new tx
 			currentTxId, err := p.handleNewTx()
 			if err != nil {
-				p.Handler.scheduler.ReturnErrorResponse(currentTxId, err.Error())
+				p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
 			}
 		case <-p.Handler.txExpireTimer.C:
 			p.stopProcess(false)
@@ -322,7 +322,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
 		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
-		p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, existErr.err.Error())
+		p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, existErr.err.Error())
 
 		p.logger.Debugf("release process: [%s]", p.processName)
 		p.processMgr.ReleaseProcess(p.processName, p.user)
@@ -370,7 +370,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 			processDepth.GetConcatProcessName())
 		p.logger.Error(errMsg)
 	}
-	p.Handler.scheduler.ReturnErrorResponse(currentTx.TxId, errMsg)
+	p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, errMsg)
 
 	go p.startProcess()
 

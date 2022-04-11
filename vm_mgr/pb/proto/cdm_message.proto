@@ -120,6 +120,8 @@ message TxResponse {
 
     repeated DockerContractEvent events = 6;
 
+    string chain_id = 7;
+
 }
 
 message DockerContractEvent {
