@@ -117,9 +117,11 @@ message TxResponse {
 
     map<string, bytes> write_map = 5;
 
-    repeated DockerContractEvent events = 6;
+    map<string, bytes> read_map = 6;
 
-    string chain_id = 7;
+    repeated DockerContractEvent events = 7;
+
+    string chain_id = 8;
 
 }
 

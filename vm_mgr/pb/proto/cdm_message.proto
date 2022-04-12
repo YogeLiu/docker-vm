@@ -67,7 +67,6 @@ enum CDMType {
     CDM_TYPE_GET_SENDER_ADDRESS = 15;
 
     CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE = 16;
-
 }
 
 
@@ -117,10 +116,11 @@ message TxResponse {
 
     map<string, bytes> write_map = 5;
 
-    repeated DockerContractEvent events = 6;
+    map<string, bytes> read_map = 6;
 
-    string chain_id = 7;
+    repeated DockerContractEvent events = 7;
 
+    string chain_id = 8;
 }
 
 message DockerContractEvent {

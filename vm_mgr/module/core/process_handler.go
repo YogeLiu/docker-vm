@@ -405,6 +405,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		txResponse.Result = contractResponse.Response.Payload
 		txResponse.Message = "Success"
 		txResponse.WriteMap = contractResponse.WriteMap
+		txResponse.ReadMap = contractResponse.ReadMap
 
 		var events []*protogo.DockerContractEvent
 		for _, event := range contractResponse.Events {
@@ -423,6 +424,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		txResponse.Result = []byte(contractResponse.Response.Message)
 		txResponse.Message = "Fail"
 		txResponse.WriteMap = nil
+		txResponse.ReadMap = nil
 		txResponse.Events = nil
 	}
 
