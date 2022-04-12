@@ -13,14 +13,14 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 	mockTxGetChainConf(mockTxContext)
 	testData := []struct {
 		/*
-			| MemberType            | AddrType          |
-			| ---                   | ---               |
-			| MemberType_CERT       | AddrType_ZXL      |
-			| MemberType_CERT_HASH  | AddrType_ZXL      |
-			| MemberType_PUBLIC_KEY | AddrType_ZXL      |
-			| MemberType_CERT       | AddrType_ETHEREUM |
-			| MemberType_CERT_HASH  | AddrType_ETHEREUM |
-			| MemberType_PUBLIC_KEY | AddrType_ETHEREUM |
+			| MemberType            | AddrType            |
+			| ---                   | ---                 |
+			| MemberType_CERT       | AddrType_ZXL        |
+			| MemberType_CERT_HASH  | AddrType_ZXL        |
+			| MemberType_PUBLIC_KEY | AddrType_ZXL        |
+			| MemberType_CERT       | AddrType_CHAINMAKER |
+			| MemberType_CERT_HASH  | AddrType_CHAINMAKER |
+			| MemberType_PUBLIC_KEY | AddrType_CHAINMAKER |
 		*/
 		wantAddr string
 	}{
