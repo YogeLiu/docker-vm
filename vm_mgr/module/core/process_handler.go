@@ -318,7 +318,7 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 	callContractTx := &protogo.TxRequest{
 		ChainId:         h.TxRequest.ChainId,
 		TxId:            callContractMsg.TxId,
-		ContractName:    contractName,
+		ContractName:    utils.ConstructContractKey(h.TxRequest.ChainId, contractName),
 		ContractVersion: contractVersion,
 		Method:          invokeContract,
 		Parameters:      callContractRequest.Args,

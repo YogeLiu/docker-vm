@@ -68,7 +68,6 @@ enum CDMType {
 
     CDM_TYPE_GET_SENDER_ADDRESS_RESPONSE = 16;
 
-    CDM_TYPE_SET_UP_STREAM = 17;
 }
 
 
