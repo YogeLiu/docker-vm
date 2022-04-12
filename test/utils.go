@@ -640,7 +640,7 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	case 4, 5, 0:
 		ethConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
-				AddrType: configPb.AddrType_ETHEREUM,
+				AddrType: configPb.AddrType_CHAINMAKER,
 			},
 			Crypto: &configPb.CryptoConfig{
 				Hash: "SHA256",
