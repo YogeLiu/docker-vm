@@ -20,10 +20,12 @@ import (
 	bcx509 "chainmaker.org/chainmaker/common/v2/crypto/x509"
 	"chainmaker.org/chainmaker/common/v2/evmutils"
 	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
+	"chainmaker.org/chainmaker/pb-go/v2/common"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
+	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
@@ -92,13 +94,16 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 }
 
 func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protogo.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
+	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
 
 	// validate cross contract params
 	callContractPayload := recvMsg.SysCallMessage.Payload[config.KeyCallContractReq]
 	var callContractReq protogo.CallContractRequest
 	err := proto.Unmarshal(callContractPayload, &callContractReq)
+	if err != nil {
+		//TODO
+	}
 
 	contractName := callContractReq.ContractName
 	if len(contractName) == 0 {
@@ -109,7 +114,7 @@ func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.Dock
 		return response, gasUsed
 	}
 
-	if recvMsg.CrossContext.CurrentDepth >= chainProtocol.CallContractDepth {
+	if recvMsg.CrossContext.CurrentDepth >= protocol.CallContractDepth {
 		errMsg := "exceed max depth"
 		r.Logger.Error(errMsg)
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL

@@ -14,6 +14,7 @@ import (
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
+	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
@@ -116,7 +117,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		CrossType:    protogo.CrossType_INTERNAL,
 	}
 	if txSimContext.GetDepth() > 0 {
-		crossCtx.CurrentDepth = txSimContext.GetDepth()
+		crossCtx.CurrentDepth = uint32(txSimContext.GetDepth())
 		crossCtx.CrossType = protogo.CrossType_EXTERNAL
 	}
 
@@ -218,7 +219,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				callContractResponse, gasUsed = r.handlerCallContract(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 				r.sendResponse(callContractResponse)
 
-			case protogo.DockerVMType_CREATE_KV_ITERATOR:
+			case protogo.DockerVMType_CREATE_KV_ITERATOR_REQUEST:
 				r.Logger.Debugf("tx [%s] start create kv iterator [%v]", uniqueTxKey, recvMsg)
 				var createKvIteratorResponse *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
@@ -227,7 +228,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.sendResponse(createKvIteratorResponse)
 				r.Logger.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxKey, createKvIteratorResponse)
 
-			case protogo.DockerVMType_CONSUME_KV_ITERATOR:
+			case protogo.DockerVMType_CONSUME_KV_ITERATOR_REQUEST:
 				r.Logger.Debugf("tx [%s] start consume kv iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKvIteratorResponse *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
@@ -236,7 +237,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.sendResponse(consumeKvIteratorResponse)
 				r.Logger.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxKey, consumeKvIteratorResponse)
 
-			case protogo.DockerVMType_CREATE_KEY_HISTORY_ITER:
+			case protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST:
 				r.Logger.Debugf("tx [%s] start create key history iterator [%v]", uniqueTxKey, recvMsg)
 				var createKeyHistoryIterResp *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
@@ -244,7 +245,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.sendResponse(createKeyHistoryIterResp)
 				r.Logger.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxKey, createKeyHistoryIterResp)
 
-			case protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER:
+			case protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST:
 				r.Logger.Debugf("tx [%s] start consume key history iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKeyHistoryResp *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
@@ -252,7 +253,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.sendResponse(consumeKeyHistoryResp)
 				r.Logger.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxKey, consumeKeyHistoryResp)
 
-			case protogo.DockerVMType_GET_SENDER_ADDRESS:
+			case protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
 				r.Logger.Debugf("tx [%s] start get sender address [%v]", uniqueTxKey, recvMsg)
 				var getSenderAddressResp *protogo.DockerVMMessage
 				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxKey, txSimContext, gasUsed)
