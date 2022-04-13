@@ -9,8 +9,9 @@ chainmaker.org/chainmaker/logger/v2 v2.2.0/go.mod h1:fux32ogSRS2qKD9m52uE5jW3ngp
 chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20220125074156-6f9f1b52f915/go.mod h1:b5fg5e93xCjSHU1b5yk/mnslab+z7N08kMkNVDoSpcI=
 chainmaker.org/chainmaker/pb-go/v2 v2.2.0 h1:NRkWOyuHSD/67fKv1TXqHLw0lj2+jYLbLhtjkMh9jcc=
 chainmaker.org/chainmaker/pb-go/v2 v2.2.0/go.mod h1:b5fg5e93xCjSHU1b5yk/mnslab+z7N08kMkNVDoSpcI=
-chainmaker.org/chainmaker/protocol/v2 v2.1.2-0.20220128021940-8fd70a8c2c75 h1:rnsH5/SiNSwJCLF2sw6qOW/rrC73R0e/d0KaaX0F8Uc=
 chainmaker.org/chainmaker/protocol/v2 v2.1.2-0.20220128021940-8fd70a8c2c75/go.mod h1:oR5lqSI3ELuzdcYVHBeV9d6SN8FgfSa/VMRfBWFzK9g=
+chainmaker.org/chainmaker/protocol/v2 v2.2.0 h1:XmX56zEcnFFnK312dVSLnhSRAjjEKAT4DBr7Tehx+BE=
+chainmaker.org/chainmaker/protocol/v2 v2.2.0/go.mod h1:Oiy+CTqR3S+uy78t278vhLjZ0wh/58n0XzWDUoO0JzE=
 chainmaker.org/chainmaker/utils/v2 v2.0.0-20220128023017-5bf8279342f1 h1:GSr8/hSuIFRZDYHLSpcZzF6flxok03JFz6jL5JL/1Vk=
 chainmaker.org/chainmaker/utils/v2 v2.0.0-20220128023017-5bf8279342f1/go.mod h1:ki0dyNMHhwzWFI+mwrnJ22xCr94ASj6evV5CLlQdL90=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
