@@ -190,7 +190,7 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 
 	// see if we should get new processes, if so, try to get
 	case contractReady:
-		if req.ProcessInfo.CurrentDepth == 0 {
+		if req.CrossContext.CurrentDepth == 0 {
 			err = r.getProcesses(origTx)
 		} else {
 			err = r.getProcesses(crossTx)
@@ -207,7 +207,7 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
 	// call contract depth overflow
-	if req.ProcessInfo.CurrentDepth > protocol.CallContractDepth {
+	if req.CrossContext.CurrentDepth > protocol.CallContractDepth {
 
 		msg := "current depth exceed " + strconv.Itoa(protocol.CallContractDepth)
 
@@ -228,7 +228,7 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 	}
 
 	// original tx, send to original tx chan
-	if req.ProcessInfo.CurrentDepth == 0 {
+	if req.CrossContext.CurrentDepth == 0 {
 		r.logger.Debugf("put tx request [txId: %s] into orig chan", req.TxId)
 		r.origTxController.txCh <- req
 		return nil

@@ -51,10 +51,10 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 		var process interfaces.Process
 		var ok bool
-		if msg.ProcessInfo.CurrentDepth == 0 {
-			process, ok = s.origProcessMgr.GetProcessByName(msg.ProcessInfo.CurrentProcessName)
+		if msg.CrossContext.CurrentDepth == 0 {
+			process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
 		}
-		process, ok = s.crossProcessMgr.GetProcessByName(msg.ProcessInfo.CurrentProcessName)
+		process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
 
 		if !ok {
 			s.logger.Errorf("fail to get process: [%v]", err)

@@ -57,7 +57,6 @@ type exitErr struct {
 
 // Process manage the sandbox process life cycle
 type Process struct {
-
 	processName string
 
 	contractName    string
@@ -331,6 +330,9 @@ func (p *Process) handleChangeSandboxReq(msg *messages.ChangeSandboxReqMsg) erro
 
 	p.logger.Debugf("process [%s] is changing...", p.processName)
 
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	p.updateProcessState(changing)
 	if err := p.resetContext(msg); err != nil {
 		// if change sandbox failed, notify process manager to clean cache, then suicide
@@ -351,12 +353,18 @@ func (p *Process) handleCloseSandboxReq() error {
 
 	p.logger.Debugf("process [%s] is killing...", p.processName)
 
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	p.killProcess()
 	return nil
 }
 
 // handleTxRequest handle tx request from request group chan
 func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
+
+	p.lock.Lock()
+	defer p.lock.Unlock()
 
 	p.logger.Debugf("process [%s] start handle tx req [%s]", p.processName, tx.TxId)
 
@@ -372,9 +380,9 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 	p.startBusyTimer()
 
 	msg := &protogo.DockerVMMessage{
-		TxId:        p.Tx.TxId,
-		ProcessInfo: &protogo.ProcessInfo{CurrentDepth: p.Tx.ProcessInfo.CurrentDepth},
-		Request:     p.Tx.Request,
+		TxId:         p.Tx.TxId,
+		CrossContext: &protogo.CrossContext{CurrentDepth: p.Tx.CrossContext.CurrentDepth},
+		Request:      p.Tx.Request,
 	}
 
 	switch p.Tx.Request.Method {
@@ -398,6 +406,9 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 
 // handleTxResp handle tx response
 func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
+
+	p.lock.Lock()
+	defer p.lock.Unlock()
 
 	p.logger.Debugf("process [%s] start handle tx resp [%s]", p.processName, p.Tx.TxId)
 
@@ -423,6 +434,9 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
 // handleTimeout handle busy timeout (sandbox timeout) and ready timeout (tx chan empty)
 func (p *Process) handleTimeout() error {
+
+	p.lock.Lock()
+	defer p.lock.Unlock()
 
 	switch p.processState {
 
@@ -511,12 +525,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		<-p.cmdReadyCh
 	}
 
-	processDepth := p.Tx.ProcessInfo.CurrentDepth
-	if processDepth == 0 {
-		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, p.Tx.TxId)
-	} else {
-		p.logger.Errorf("cross contract fail, %v, cross processes: %s", err, p.Tx.ProcessInfo.CurrentProcessName)
-	}
+	p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, p.Tx.TxId)
 	p.returnErrorResponse(p.Tx.TxId, err.Error())
 
 	go p.startProcess()

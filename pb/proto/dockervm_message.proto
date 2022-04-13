@@ -41,7 +41,9 @@ message CrossContext {
 
     uint32 current_depth = 1;
 
-    CrossType cross_type = 2;
+    string process_name = 2;
+
+    CrossType cross_type = 3;
 }
 
 enum CrossType {
