@@ -10,6 +10,7 @@ package core
 import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
@@ -25,31 +26,38 @@ const (
 	closeChSize = 8
 )
 
+// RequestScheduler schedule all requests and responses between chain and contract engine, includes:
+// get bytecode request (contract engine -> chain)
+// get bytecode response (chain -> contract engine)
+// tx request (chain -> contract engine)
+// call contract request (chain -> contract engine)
+// tx error (contract engine -> chain)
 type RequestScheduler struct {
-	logger *zap.SugaredLogger
-	lock   sync.RWMutex
+	logger *zap.SugaredLogger	// request scheduler logger
+	lock   sync.RWMutex 		// request scheduler rw lock
 
-	eventCh             chan *protogo.DockerVMMessage
-	closeCh             chan string
+	eventCh             chan *protogo.DockerVMMessage      // request scheduler event handler chan
+	closeCh             chan *messages.RequestGroupKey     // close request group chan
 	requestGroups       map[string]interfaces.RequestGroup // contractName#contractVersion
-	chainRPCService     *rpc.ChainRPCService
-	contractManager     *ContractManager
-	origProcessManager  interfaces.ProcessManager
-	crossProcessManager interfaces.ProcessManager
+	chainRPCService     *rpc.ChainRPCService               // chain rpc service
+	contractManager     *ContractManager                   // contract manager
+	origProcessManager  interfaces.ProcessManager          // manager for original process
+	crossProcessManager interfaces.ProcessManager          // manager for cross process
 }
 
-// NewRequestScheduler new request scheduler
+// NewRequestScheduler new a request scheduler
 func NewRequestScheduler(
 	service *rpc.ChainRPCService,
 	oriPMgr interfaces.ProcessManager,
 	crossPMgr interfaces.ProcessManager,
 	cMgr *ContractManager) *RequestScheduler {
+
 	scheduler := &RequestScheduler{
 		logger: logger.NewDockerLogger(logger.MODULE_REQUEST_SCHEDULER),
 		lock:   sync.RWMutex{},
 
 		eventCh:             make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
-		closeCh:             make(chan string, closeChSize),
+		closeCh:             make(chan *messages.RequestGroupKey, closeChSize),
 		requestGroups:       make(map[string]interfaces.RequestGroup),
 		chainRPCService:     service,
 		origProcessManager:  oriPMgr,
@@ -59,7 +67,7 @@ func NewRequestScheduler(
 	return scheduler
 }
 
-// Start start docker scheduler
+// Start starts docker scheduler
 func (s *RequestScheduler) Start() {
 
 	s.logger.Debugf("start request scheduler")
@@ -99,13 +107,14 @@ func (s *RequestScheduler) Start() {
 	}()
 }
 
+// PutMsg puts invoking msgs to chain, waiting for request scheduler to handle request
 func (s *RequestScheduler) PutMsg(msg interface{}) error {
 	switch msg.(type) {
 	case *protogo.DockerVMMessage:
 		m, _ := msg.(*protogo.DockerVMMessage)
 		s.eventCh <- m
-	case string:
-		m, _ := msg.(string)
+	case *messages.RequestGroupKey:
+		m, _ := msg.(*messages.RequestGroupKey)
 		s.closeCh <- m
 	default:
 		s.logger.Errorf("unknown msg type")
@@ -113,10 +122,21 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 	return nil
 }
 
+// GetRequestGroup returns request group
+func (s *RequestScheduler) GetRequestGroup(contractName, contractVersion string) (interfaces.RequestGroup, bool) {
+
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	groupKey := utils.ConstructContractKey(contractName, contractVersion)
+	group, ok := s.requestGroups[groupKey]
+	return group, ok
+}
+
+// handleGetContractReq handles get contract bytecode request, transfer to chain rpc service
 func (s *RequestScheduler) handleGetContractReq(req *protogo.DockerVMMessage) error {
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.logger.Debugf("handle get contract request, txId: [%s]", req.TxId)
 
 	if err := s.chainRPCService.PutMsg(req); err != nil {
 		return err
@@ -124,10 +144,10 @@ func (s *RequestScheduler) handleGetContractReq(req *protogo.DockerVMMessage) er
 	return nil
 }
 
+// handleGetContractResp handles get contract bytecode response, transfer to contract manager
 func (s *RequestScheduler) handleGetContractResp(resp *protogo.DockerVMMessage) error {
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.logger.Debugf("handle get contract response, txId: [%s]", resp.TxId)
 
 	if err := s.contractManager.PutMsg(resp); err != nil {
 		return err
@@ -135,30 +155,39 @@ func (s *RequestScheduler) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	return nil
 }
 
+// handleTxReq handles tx request from chain, transfer to request group
 func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	s.logger.Debugf("handle tx request, txId: [%s]", req.TxId)
+
+	// construct request group key from request
 	contractName := req.GetRequest().GetContractName()
 	contractVersion := req.GetRequest().GetContractVersion()
 	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
+
+	// try to get request group, if not, add it
 	group, ok := s.requestGroups[groupKey]
 	if !ok {
-		s.logger.Debugf("create new request group %s", contractName)
-		group = NewRequestGroup(contractName, contractVersion, s.origProcessManager, s.crossProcessManager, s.contractManager, s)
+		s.logger.Debugf("create new request group %s", groupKey)
+		group = NewRequestGroup(contractName, contractVersion,
+			s.origProcessManager, s.crossProcessManager, s.contractManager, s)
 		s.requestGroups[contractName] = group
 	}
+
+	// put msg to such request group
 	if err := group.PutMsg(req); err != nil {
 		return err
 	}
 	return nil
 }
 
+// handleErrResp handles tx failed error
 func (s *RequestScheduler) handleErrResp(resp *protogo.DockerVMMessage) error {
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.logger.Debugf("handle err resp, txId: [%s]", resp.TxId)
 
 	if err := s.chainRPCService.PutMsg(resp); err != nil {
 		return err
@@ -166,25 +195,19 @@ func (s *RequestScheduler) handleErrResp(resp *protogo.DockerVMMessage) error {
 	return nil
 }
 
-func (s *RequestScheduler) handleCloseReq(groupKey string) error {
+// handleCloseReq handles close request group request
+func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	s.logger.Debugf("handle close request group reqest, contract name: [%s], contract version: [%s]",
+		msg.ContractName, msg.ContractVersion)
+
+	groupKey := utils.ConstructRequestGroupKey(msg.ContractName, msg.ContractVersion)
 	if _, ok := s.requestGroups[groupKey]; ok {
 		delete(s.requestGroups, groupKey)
 		return nil
 	}
 	return fmt.Errorf("request group %s not found", groupKey)
-}
-
-func (s *RequestScheduler) GetRequestGroup(contractName, contractVersion string) (interfaces.RequestGroup, error) {
-
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	groupKey := utils.ConstructContractKey(contractName, contractVersion)
-	if group, ok := s.requestGroups[groupKey]; ok {
-		return group, nil
-	}
-	return nil, fmt.Errorf("request group %s not found", groupKey)
 }

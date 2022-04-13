@@ -122,10 +122,6 @@ enum DockerVMType {
     GET_SENDER_ADDRESS_RESPONSE = 26;
 }
 
-
-
-
-
 // TX_REQUEST
 message TxRequest {
 
@@ -164,6 +160,7 @@ message TxResponse {
 
     string contract_name = 7;
 
+    string contract_version = 8;
 }
 
 message DockerContractEvent {
@@ -179,27 +176,6 @@ message DockerContractEvent {
 enum DockerVMCode {
     OK = 0;
     FAIL = 1;
-}
-
-enum ProcessState {
-
-    PROCESS_STATE_CREATED = 0;
-
-    PROCESS_STATE_RUNNING = 1;
-
-    PROCESS_STATE_READY = 2;
-
-    PROCESS_STATE_IDLE = 3;
-
-    PROCESS_STATE_TX_TIMEOUT = 4;
-
-    PROCESS_STATE_WAITING = 5;
-
-    PROCESS_STATE_CROSS_FINISHED = 6;
-
-    PROCESS_STATE_CROSS_FAIL = 7;
-
-    PROCESS_STATE_FAIL = 8;
 }
 
 // ============== DMS pb ==============

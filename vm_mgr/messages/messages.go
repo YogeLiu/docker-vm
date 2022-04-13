@@ -1,12 +1,15 @@
-package messages
+/*
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
-import "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package messages
 
 type GetProcessReqMsg struct {
 	ContractName    string
 	ContractVersion string
 	ProcessNum      int
-	RequestGroup    *interfaces.RequestGroup
 }
 
 type LaunchSandboxRespMsg struct {
@@ -57,4 +60,9 @@ type ChangeSandboxReqMsg struct {
 
 type TxCompleteMsg struct {
 	TxId string
+}
+
+type RequestGroupKey struct {
+	ContractName string
+	ContractVersion string
 }

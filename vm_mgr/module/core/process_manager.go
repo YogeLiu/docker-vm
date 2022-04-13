@@ -24,34 +24,34 @@ import (
 )
 
 const (
+	// processManagerEventChSize is process manager event chan size
 	processManagerEventChSize = 15000
 )
 
+// ProcessManager manager the life cycle of processes
+// there are 2 ProcessManager, one for original process, the other for cross process
 type ProcessManager struct {
-	logger *zap.SugaredLogger
-	lock   sync.RWMutex
 
-	maxProcessNum  int
-	releaseRate    float64
-	isCrossManager bool
+	logger *zap.SugaredLogger	// process scheduler logger
+	lock   sync.RWMutex			// process scheduler lock
 
-	idleProcesses        *linkedhashmap.Map            // process name -> idle Process
-	busyProcesses        map[string]interfaces.Process // process name -> busy Process
-	processGroups        map[string]map[string]bool    // group key -> Process name set
-	waitingRequestGroups *linkedhashmap.Map            // group key -> bool
+	maxProcessNum  int		// max process num
+	releaseRate    float64	// the minimum rate of available process
+	isCrossManager bool 	// cross process manager or original process manager
 
-	eventCh    chan interface{}
-	cleanTimer *time.Timer
+	idleProcesses        *linkedhashmap.Map            // idle processes linked hashmap (process name -> idle Process)
+	busyProcesses        map[string]interfaces.Process // busy process map (process name -> busy Process)
+	processGroups        map[string]map[string]bool    // process group by contract key (contract key -> Process name set)
+	waitingRequestGroups *linkedhashmap.Map            // waiting request groups linked hashmap (group key -> bool)
 
-	userManager interfaces.UserManager
-	requestScheduler interfaces.RequestScheduler
+	eventCh    chan interface{}	// process manager event channel
+	cleanTimer *time.Timer		// clean timer for release idle processes
+
+	userManager interfaces.UserManager				// user manager
+	requestScheduler interfaces.RequestScheduler	// request scheduler
 }
 
-type requestGroupKey struct {
-	contractName    string
-	contractVersion string
-}
-
+// NewProcessManager returns new process manager
 func NewProcessManager(maxProcessNum int, rate float64, isCrossManager bool, userManager interfaces.UserManager) *ProcessManager {
 	return &ProcessManager{
 		logger: logger.NewDockerLogger(logger.MODULE_PROCESS_MANAGER),
@@ -73,6 +73,8 @@ func NewProcessManager(maxProcessNum int, rate float64, isCrossManager bool, use
 	}
 }
 
+// Start process manager, listen event chan and clean timer,
+// types: messages.GetProcessReqMsg, messages.SandboxExitRespMsg and cleanIdleProcesses timer
 func (pm *ProcessManager) Start() {
 	go func() {
 		select {
@@ -81,27 +83,7 @@ func (pm *ProcessManager) Start() {
 
 			case *messages.GetProcessReqMsg:
 				m, _ := msg.(*messages.GetProcessReqMsg)
-				groupKey := utils.ConstructRequestGroupKey(m.ContractName, m.ContractVersion)
-				pm.logger.Debugf("%s requests to get %d process(es)", groupKey, m.ProcessNum)
 				pm.handleGetProcessReq(m)
-
-			//case *messages.LaunchSandboxRespMsg:
-			//	m, _ := msg.(*messages.LaunchSandboxRespMsg)
-			//	pm.logger.Debugf("recieved launch sandbox resp from %s", m.ProcessName)
-			//	if err := pm.handleLaunchSandboxResp(m); err != nil {
-			//		pm.logger.Errorf("failed to handle launch sandbox resp, %v", err)
-			//	}
-			//
-			//case *messages.ChangeSandboxRespMsg:
-			//	m, _ := msg.(*messages.ChangeSandboxRespMsg)
-			//	pm.logger.Debugf("recieved change sandbox resp from %s", m.ProcessName)
-			//	if err := pm.handleChangeSandboxResp(m); err != nil {
-			//		pm.logger.Errorf("failed to handle launch sandbox resp, %v", err)
-			//	}
-			//
-			//case *messages.CloseSandboxRespMsg:
-			//	m, _ := msg.(*messages.CloseSandboxRespMsg)
-			//	pm.handleCloseSandboxResp(m)
 
 			case *messages.SandboxExitRespMsg:
 				m, _ := msg.(*messages.SandboxExitRespMsg)
@@ -134,220 +116,6 @@ func (pm *ProcessManager) PutMsg(msg interface{}) error {
 	return nil
 }
 
-// handleGetProcessReq handle get process request from request group
-func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
-
-	pm.lock.Lock()
-	defer pm.lock.Unlock()
-
-	needProcessNum := msg.ProcessNum
-	availableProcessNum := pm.getAvailableProcessNum()
-
-	// firstly, allocate processes that can be launch
-	if availableProcessNum > 0 {
-		newProcessNum := needProcessNum
-		// available process num not enough
-		if availableProcessNum < needProcessNum {
-			newProcessNum = availableProcessNum
-		}
-		// create new process concurrently
-		var wg sync.WaitGroup
-		for i := 0; i < newProcessNum; i++ {
-			wg.Add(1)
-			i := i
-			go func() {
-				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, i)
-				process, err := pm.createNewProcess(msg.ContractName, msg.ContractVersion, processName)
-				if err != nil {
-					pm.logger.Errorf("failed to create new process, %v", err)
-					wg.Done()
-					return
-				}
-				// add process to busy list and total map
-				pm.addProcessToCache(msg.ContractName, msg.ContractVersion, processName, process, true)
-				wg.Done()
-			}()
-		}
-		wg.Wait()
-		// update the process num still need
-		needProcessNum -= newProcessNum
-	}
-
-	// secondly, allocate processes from idle processes
-	if needProcessNum > 0 {
-		newProcessNum := needProcessNum
-
-		// idle process num not enough
-		if pm.idleProcesses.Size() < needProcessNum {
-			newProcessNum = pm.idleProcesses.Size()
-		}
-
-		// idle processes to remove
-		removedIdleProcesses := pm.batchPopIdleProcesses(needProcessNum)
-
-		// change processes context concurrently
-		var wg sync.WaitGroup
-		for i := 0; i < newProcessNum; i++ {
-			wg.Add(1)
-			i := i
-			go func() {
-				// generate new process name
-				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, i)
-				err := removedIdleProcesses[i].PutMsg(&messages.ChangeSandboxReqMsg{
-					ContractName:    msg.ContractName,
-					ContractVersion: msg.ContractVersion,
-					ProcessName:     processName,
-				})
-				if err != nil {
-					pm.logger.Errorf("failed to change process context, %v", err)
-					wg.Done()
-					return
-				}
-				// add process to busy list and total map
-				pm.addProcessToCache(msg.ContractName, msg.ContractVersion, processName, removedIdleProcesses[i], true)
-				wg.Done()
-			}()
-		}
-		wg.Wait()
-		// update the process num still need
-		needProcessNum -= newProcessNum
-	}
-
-	// no available process, put to waiting request group
-	if needProcessNum > 0 {
-		groupKey := requestGroupKey{
-			contractName:    msg.ContractName,
-			contractVersion: msg.ContractVersion,
-		}
-		if _, ok := pm.waitingRequestGroups.Get(groupKey); !ok {
-			pm.waitingRequestGroups.Put(groupKey, true)
-			pm.logger.Debugf("put request group %s into waiting request group.",
-				utils.ConstructRequestGroupKey(msg.ContractName, msg.ContractVersion))
-			return
-		}
-		pm.logger.Debugf("request group %s existed",
-			utils.ConstructRequestGroupKey(msg.ContractName, msg.ContractVersion))
-	}
-}
-
-//// handleLaunchSandboxResp handle sandbox launch response
-//func (pm *ProcessManager) handleLaunchSandboxResp(msg *messages.LaunchSandboxRespMsg) error {
-//
-//	pm.lock.Lock()
-//	defer pm.lock.Unlock()
-//
-//	if msg.Err != nil {
-//		pm.closeSandbox(msg.ContractName, msg.ContractVersion, msg.ProcessName)
-//		return fmt.Errorf("failed to launch sandbox, %v", msg.Err)
-//	}
-//	return nil
-//}
-//
-//// handleChangeSandboxResp handle sandbox change response
-//func (pm *ProcessManager) handleChangeSandboxResp(msg *messages.ChangeSandboxRespMsg) error {
-//
-//	pm.lock.Lock()
-//	defer pm.lock.Unlock()
-//
-//	if msg.Err != nil {
-//		pm.closeSandbox(msg.ContractName, msg.ContractVersion, msg.ProcessName)
-//		return fmt.Errorf("failed to change sandbox, %v", msg.Err)
-//	}
-//	return nil
-//}
-//
-//// handleCloseSandboxResp handle close sandbox response
-//func (pm *ProcessManager) handleCloseSandboxResp(msg *messages.CloseSandboxRespMsg) {
-//
-//	pm.lock.Lock()
-//	defer pm.lock.Unlock()
-//
-//	pm.closeSandbox(msg.ContractName, msg.ContractVersion, msg.ProcessName)
-//}
-
-// handleCleanIdleProcesses handle sandbox exit response, release user and remove process from cache
-func (pm *ProcessManager) handleSandboxExitResp(msg *messages.SandboxExitRespMsg) {
-	pm.lock.Lock()
-	defer pm.lock.Unlock()
-
-	pm.closeSandbox(msg.ContractName, msg.ContractVersion, msg.ProcessName)
-	pm.logger.Errorf("sandbox exited, %v", msg.Err)
-}
-
-// handleCleanIdleProcesses handle clean idle processes
-func (pm *ProcessManager) handleCleanIdleProcesses() {
-
-	pm.lock.Lock()
-	defer pm.lock.Unlock()
-
-	// calculate the process num to release
-	availableProcessNum := pm.getAvailableProcessNum()
-	releaseNum := int(pm.releaseRate * float64(pm.maxProcessNum))
-	releaseNum = releaseNum - availableProcessNum
-	if releaseNum <= 0 {
-		return
-	}
-	if pm.idleProcesses.Size() < releaseNum {
-		releaseNum = pm.idleProcesses.Size()
-	}
-
-	// pop the idle processes to be released
-	removedIdleProcesses := pm.batchPopIdleProcesses(releaseNum)
-
-	// put close sandbox msg to process
-	var wg sync.WaitGroup
-	for i := 0; i < releaseNum; i++ {
-		wg.Add(1)
-		i := i
-		go func() {
-			// generate new process name
-			err := removedIdleProcesses[i].PutMsg(&messages.CloseSandboxReqMsg{})
-			if err != nil {
-				pm.logger.Errorf("failed to kill process, %v", err)
-				wg.Done()
-				return
-			}
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-
-	// start timer
-	pm.startTimer()
-
-	pm.logger.Debugf("removed %d idle processes", releaseNum)
-	return
-}
-
-// closeSandbox release user and process
-func (pm *ProcessManager) closeSandbox(contractName, contractVersion, processName string) {
-	pm.releaseUser(processName)
-	pm.removeProcessFromCache(contractName, contractVersion, processName)
-}
-
-// CreateNewProcess create a new process
-func (pm *ProcessManager) createNewProcess(contractName, contractVersion, processName string) (interfaces.Process, error) {
-	user, err := pm.userManager.GetAvailableUser()
-	if err != nil {
-		pm.logger.Errorf("fail to get available user, %v", err)
-		return nil, err
-	}
-	var process interfaces.Process
-	process = NewProcess(user, contractName, contractVersion, processName, pm, pm.requestScheduler, pm.isCrossManager)
-	process.Start()
-
-	return process, nil
-}
-
-// release linux user
-func (pm *ProcessManager) releaseUser(processName string) {
-
-	pm.logger.Debugf("release process %s", processName)
-
-	process, _ := pm.getProcessByName(processName)
-	_ = pm.userManager.AddAvailableUser(process.GetUser())
-}
-
 // GetProcessByName returns process by process name
 func (pm *ProcessManager) GetProcessByName(processName string) (interfaces.Process, bool) {
 
@@ -355,17 +123,6 @@ func (pm *ProcessManager) GetProcessByName(processName string) (interfaces.Proce
 	defer pm.lock.RUnlock()
 
 	return pm.getProcessByName(processName)
-}
-
-func (pm *ProcessManager) getProcessByName(processName string) (interfaces.Process, bool) {
-
-	if val, ok := pm.idleProcesses.Get(processName); ok {
-		return val.(interfaces.Process), true
-	}
-	if val, ok := pm.busyProcesses[processName]; ok {
-		return val, true
-	}
-	return nil, false
 }
 
 // GetProcessNumByContractKey returns process by contractName#contractVersion
@@ -394,7 +151,6 @@ func (pm *ProcessManager) ChangeProcessState(processName string, toBusy bool) er
 		}
 		pm.busyProcesses[processName] = process.(interfaces.Process)
 		pm.idleProcesses.Remove(processName)
-
 	} else {
 		process, ok := pm.busyProcesses[processName]
 		if !ok {
@@ -409,24 +165,251 @@ func (pm *ProcessManager) ChangeProcessState(processName string, toBusy bool) er
 	return nil
 }
 
+// handleGetProcessReq handle get process request from request group
+func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
+
+	pm.lock.Lock()
+	defer pm.lock.Unlock()
+
+	groupKey := utils.ConstructContractKey(msg.ContractName, msg.ContractVersion)
+	pm.logger.Debugf("request group %s request to get %d process(es)", groupKey, msg.ProcessNum)
+
+	// do not need any process
+	if msg.ProcessNum == 0 {
+		pm.waitingRequestGroups.Remove(groupKey)
+		pm.logger.Debugf("request group %s existed", groupKey)
+		return
+	}
+
+	needProcessNum := msg.ProcessNum
+	availableProcessNum := pm.getAvailableProcessNum()
+
+	// firstly, allocate processes that can be launch
+	if availableProcessNum > 0 {
+		newProcessNum := needProcessNum
+
+		// available process num not enough
+		if availableProcessNum < needProcessNum {
+			newProcessNum = availableProcessNum
+		}
+
+		// create new process concurrently
+		var wg sync.WaitGroup
+		for i := 0; i < newProcessNum; i++ {
+			wg.Add(1)
+			index := i
+			go func() {
+				// create new process
+				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, index)
+				process, err := pm.createNewProcess(msg.ContractName, msg.ContractVersion, processName)
+				if err != nil {
+					pm.logger.Errorf("failed to create new process, %v", err)
+					wg.Done()
+					return
+				}
+
+				// add process to cache
+				pm.addProcessToCache(msg.ContractName, msg.ContractVersion, processName, process, true)
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+		// update the process num still need
+		needProcessNum -= newProcessNum
+	}
+
+	// secondly, allocate processes from idle processes
+	if needProcessNum > 0 {
+		newProcessNum := needProcessNum
+
+		// idle process num not enough
+		if pm.idleProcesses.Size() < needProcessNum {
+			newProcessNum = pm.idleProcesses.Size()
+		}
+
+		// idle processes to remove
+		removedIdleProcesses := pm.batchPopIdleProcesses(needProcessNum)
+
+		// change processes context concurrently
+		var wg sync.WaitGroup
+		for i := 0; i < newProcessNum; i++ {
+			wg.Add(1)
+			index := i
+			go func() {
+				// generate new process name
+				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, index)
+
+				// notify process to change context
+				err := removedIdleProcesses[index].PutMsg(&messages.ChangeSandboxReqMsg{
+					ContractName:    msg.ContractName,
+					ContractVersion: msg.ContractVersion,
+					ProcessName:     processName,
+				})
+				if err != nil {
+					pm.logger.Errorf("failed to change process context, %v", err)
+					wg.Done()
+					return
+				}
+				// add process to busy list and total map
+				pm.addProcessToCache(msg.ContractName, msg.ContractVersion, processName, removedIdleProcesses[index], true)
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+		// update the process num still need
+		needProcessNum -= newProcessNum
+	}
+
+	// no available process, put to waiting request group
+	if needProcessNum > 0 {
+		group := &messages.RequestGroupKey{
+			ContractName:    msg.ContractName,
+			ContractVersion: msg.ContractVersion,
+		}
+		if _, ok := pm.waitingRequestGroups.Get(group); !ok {
+			pm.waitingRequestGroups.Put(group, true)
+			pm.logger.Debugf("put request group %s into waiting request group.", groupKey)
+			return
+		}
+	}
+}
+
+// handleSandboxExitResp handle sandbox exit response, release user and remove process from cache
+func (pm *ProcessManager) handleSandboxExitResp(msg *messages.SandboxExitRespMsg) {
+	pm.lock.Lock()
+	defer pm.lock.Unlock()
+
+	pm.closeSandbox(msg.ContractName, msg.ContractVersion, msg.ProcessName)
+	pm.logger.Errorf("sandbox exited, %v", msg.Err)
+}
+
+// handleCleanIdleProcesses handle clean idle processes
+func (pm *ProcessManager) handleCleanIdleProcesses() {
+
+	pm.lock.Lock()
+	defer pm.lock.Unlock()
+
+	// calculate the process num to release
+	availableProcessNum := pm.getAvailableProcessNum()
+	releaseNum := int(pm.releaseRate * float64(pm.maxProcessNum))
+	releaseNum = releaseNum - availableProcessNum
+
+	// available process num > release num, no need to release
+	if releaseNum <= 0 {
+		pm.logger.Debugf("")
+		return
+	}
+
+	// idle process num < release num, release all idle processes
+	if pm.idleProcesses.Size() < releaseNum {
+		releaseNum = pm.idleProcesses.Size()
+	}
+
+	// pop the idle processes
+	removedIdleProcesses := pm.batchPopIdleProcesses(releaseNum)
+
+	// put close sandbox msg to process
+	var wg sync.WaitGroup
+	for i := 0; i < releaseNum; i++ {
+		wg.Add(1)
+		index := i
+		go func() {
+			// send close sandbox request
+			err := removedIdleProcesses[index].PutMsg(&messages.CloseSandboxReqMsg{})
+			if err != nil {
+				pm.logger.Errorf("failed to kill process, %v", err)
+				wg.Done()
+				return
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	// start timer for next clean
+	pm.startTimer()
+
+	pm.logger.Debugf("removed %d idle processes", releaseNum)
+
+	return
+}
+
+// CreateNewProcess create a new process
+func (pm *ProcessManager) createNewProcess(contractName, contractVersion, processName string) (interfaces.Process, error) {
+
+	user, err := pm.userManager.GetAvailableUser()
+	if err != nil {
+		pm.logger.Errorf("fail to get available user, %v", err)
+		return nil, err
+	}
+
+	// check whether request scheduler was initialized
+	if pm.requestScheduler == nil {
+		return nil, fmt.Errorf("request scheduler has not been initialized")
+	}
+
+	// new process and start
+	var process interfaces.Process
+	process = NewProcess(user, contractName, contractVersion, processName, pm, pm.requestScheduler, pm.isCrossManager)
+	go process.Start()
+
+	return process, nil
+}
+
+// closeSandbox releases user and process
+func (pm *ProcessManager) closeSandbox(contractName, contractVersion, processName string) {
+
+	pm.releaseUser(processName)
+	pm.removeProcessFromCache(contractName, contractVersion, processName)
+}
+
+// releaseUser releases linux user
+func (pm *ProcessManager) releaseUser(processName string) {
+
+	pm.logger.Debugf("release process %s", processName)
+
+	process, _ := pm.getProcessByName(processName)
+	_ = pm.userManager.FreeUser(process.GetUser())
+}
+
+// getProcessByName returns process by name
+func (pm *ProcessManager) getProcessByName(processName string) (interfaces.Process, bool) {
+
+	if val, ok := pm.idleProcesses.Get(processName); ok {
+		return val.(interfaces.Process), true
+	}
+	if val, ok := pm.busyProcesses[processName]; ok {
+		return val, true
+	}
+	return nil, false
+}
+
 // batchPopIdleProcesses batch pop idle processes
 func (pm *ProcessManager) batchPopIdleProcesses(num int) []*Process {
+
 	// idle processes to remove
 	removedIdleProcesses := make([]*Process, num)
 	cnt := 0
+
+	// remove from process group by iterator
 	pm.idleProcesses.Each(func(key interface{}, value interface{}) {
 		if cnt >= num {
 			return
 		}
+		cnt++
+
 		process := value.(*Process)
+		// add to pop process list
 		removedIdleProcesses = append(removedIdleProcesses, process)
+
+		// remove from cache
 		pm.idleProcesses.Remove(process.GetProcessName())
 		pm.removeFromProcessGroup(process.GetContractName(), process.GetContractVersion(), process.GetProcessName())
-		cnt++
 	})
 	return removedIdleProcesses
 }
 
+// addProcessToCache add process to busy / idle process cache and process group
 func (pm *ProcessManager) addProcessToCache(contractName, contractVersion, processName string, process interfaces.Process, isBusy bool) {
 
 	if isBusy {
@@ -449,6 +432,8 @@ func (pm *ProcessManager) removeProcessFromCache(contractName, contractVersion, 
 	pm.removeFromProcessGroup(contractName, contractVersion, processName)
 }
 
+
+// getAvailableProcessNum returns available process num
 func (pm *ProcessManager) getAvailableProcessNum() int {
 
 	return pm.maxProcessNum - pm.idleProcesses.Size() - len(pm.busyProcesses)
@@ -472,28 +457,28 @@ func (pm *ProcessManager) allocateIdleProcess() error {
 		groupIt := pm.waitingRequestGroups.Iterator()
 		processIt := pm.idleProcesses.Iterator()
 
-		// get old process, contract name, contract version and process name
+		// get the oldest process, contract name, contract version and process name
 		process := processIt.Value().(interfaces.Process)
 		contractName := process.GetContractName()
 		contractVersion := process.GetContractVersion()
 		processName := process.GetProcessName()
 
 		// get new contract name and contract version
-		newGroupKey := groupIt.Key().(requestGroupKey)
+		newGroupKey := groupIt.Key().(*messages.RequestGroupKey)
 
 		// remove request group from queue
 		pm.waitingRequestGroups.Remove(newGroupKey)
+
 		// remove idle processes from queue
 		pm.idleProcesses.Remove(processName)
-
 		// remove old process from process group
 		pm.removeFromProcessGroup(contractName, contractVersion, processName)
 
 		// notify process change sandbox context
-		newProcessName := utils.ConstructProcessName(newGroupKey.contractName, newGroupKey.contractVersion, i)
+		newProcessName := utils.ConstructProcessName(newGroupKey.ContractName, newGroupKey.ContractVersion, i)
 		err := process.PutMsg(&messages.ChangeSandboxReqMsg{
-			ContractName:    newGroupKey.contractName,
-			ContractVersion: newGroupKey.contractVersion,
+			ContractName:    newGroupKey.ContractName,
+			ContractVersion: newGroupKey.ContractVersion,
 			ProcessName:     newProcessName,
 		})
 		if err != nil {
@@ -503,12 +488,14 @@ func (pm *ProcessManager) allocateIdleProcess() error {
 		// add process to busy process list
 		pm.busyProcesses[newProcessName] = process
 		// add process to process group
-		pm.addToProcessGroup(newGroupKey.contractName, newGroupKey.contractVersion, newProcessName)
+		pm.addToProcessGroup(newGroupKey.ContractName, newGroupKey.ContractVersion, newProcessName)
 	}
 	return nil
 }
 
+// addToProcessGroup add process to process map group by contract key
 func (pm *ProcessManager) addToProcessGroup(contractName, contractVersion, processName string) {
+
 	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
 
 	if _, ok := pm.processGroups[groupKey]; !ok {
@@ -517,15 +504,35 @@ func (pm *ProcessManager) addToProcessGroup(contractName, contractVersion, proce
 	pm.processGroups[groupKey][processName] = true
 }
 
+// removeFromProcessGroup remove process from process group
 func (pm *ProcessManager) removeFromProcessGroup(contractName, contractVersion, processName string) {
+
 	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
 
+	// remove process from process group
 	if _, ok := pm.processGroups[groupKey]; !ok {
 		return
 	}
 	delete(pm.processGroups[groupKey], processName)
+
+	// remove a group in process groups
+	if len(pm.processGroups[groupKey]) == 0 {
+		delete(pm.processGroups, groupKey)
+		if err := pm.closeRequestGroup(contractName, contractVersion); err != nil {
+			pm.logger.Warnf("failed to close request group, %v", err)
+		}
+	}
 }
 
+// closeRequestGroup closes a request group
+func (pm *ProcessManager) closeRequestGroup(contractName, contractVersion string) error {
+	return pm.requestScheduler.PutMsg(&messages.RequestGroupKey{
+		ContractName:    contractName,
+		ContractVersion: contractVersion,
+	})
+}
+
+// startTimer start request group clean timer
 func (pm *ProcessManager) startTimer() {
 	pm.logger.Debugf("start clean timer")
 	if !pm.cleanTimer.Stop() && len(pm.cleanTimer.C) > 0 {

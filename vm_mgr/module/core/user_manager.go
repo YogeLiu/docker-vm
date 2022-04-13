@@ -60,22 +60,20 @@ type UserManager struct {
 // NewUsersManager returns user manager
 func NewUsersManager() *UserManager {
 
-	userQueue := utils.NewFixedFIFO(config.DockerVMConfig.GetMaxUserNum())
-
-	usersManager := &UserManager{
-		userQueue: userQueue,
+	return &UserManager{
+		userQueue: utils.NewFixedFIFO(config.DockerVMConfig.GetMaxUserNum()),
 		logger:    logger.NewDockerLogger(logger.MODULE_USERCONTROLLER),
 		userNum:   config.DockerVMConfig.GetMaxUserNum(),
 	}
-
-	return usersManager
 }
 
 // BatchCreateUsers create new users in docker from 10000 as uid
 func (u *UserManager) BatchCreateUsers() error {
+
 	var err error
-	startTime := time.Now()
 	var wg sync.WaitGroup
+
+	startTime := time.Now()
 	createdUserNum := atomic.NewInt64(0)
 	for i := 0; i < batchCreateUsersThreadNum; i++ {
 		wg.Add(1)
@@ -131,6 +129,7 @@ func (u *UserManager) generateNewUser(uid int) error {
 
 // GetAvailableUser pop user from queue header
 func (u *UserManager) GetAvailableUser() (*User, error) {
+
 	user, err := u.userQueue.DequeueOrWaitForNextElement()
 	if err != nil {
 		return nil, fmt.Errorf("fail to call DequeueOrWaitForNextElement, %v", err)
@@ -140,8 +139,9 @@ func (u *UserManager) GetAvailableUser() (*User, error) {
 	return user.(*User), nil
 }
 
-// AddAvailableUser add user to queue tail, user can be dequeue then
-func (u *UserManager) AddAvailableUser(user *User) error {
+// FreeUser add user to queue tail, user can be dequeue then
+func (u *UserManager) FreeUser(user *User) error {
+
 	err := u.userQueue.Enqueue(user)
 	if err != nil {
 		return fmt.Errorf("fail to enqueue user: %v", err)

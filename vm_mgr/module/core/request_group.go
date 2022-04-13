@@ -1,3 +1,10 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package core
 
 import (
@@ -31,11 +38,11 @@ const (
 	reqNumPerCrossProcess = 2
 )
 
-// ContractState is the contract state of request group
-type ContractState int
+// contractState is the contract state of request group
+type contractState int
 
 const (
-	contractEmpty   ContractState = iota // contract is not ready
+	contractEmpty   contractState = iota // contract is not ready
 	contractWaiting                      // waiting for contract manager to load contract
 	contractReady                        // contract is ready
 )
@@ -48,7 +55,7 @@ const (
 	crossTx               // cross contract tx, send by sandbox, invoked by contract, depth > 0
 )
 
-// tx controller handle the tx request chan and process status
+// txController handle the tx request chan and process status
 type txController struct {
 	txCh           chan *protogo.DockerVMMessage
 	processWaiting bool
@@ -63,7 +70,7 @@ type RequestGroup struct {
 	contractVersion string // contract version
 
 	contractManager *ContractManager // contract manager, request contract / receive contract ready signal
-	contractState   ContractState    // handle tx with different contract state
+	contractState   contractState    // handle tx with different contract state
 
 	requestScheduler *RequestScheduler             // used for return err msg to chain
 	eventCh          chan *protogo.DockerVMMessage // request group invoking handler
@@ -83,8 +90,8 @@ func NewRequestGroup(
 	return &RequestGroup{
 		logger: logger.NewDockerLogger(logger.MODULE_REQUEST_GROUP),
 
-		contractName:     contractName,
-		contractVersion:  contractVersion,
+		contractName:    contractName,
+		contractVersion: contractVersion,
 
 		contractManager:  cMgr,
 		contractState:    contractEmpty,
@@ -136,20 +143,36 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 	return nil
 }
 
+// GetContractPath returns contract path
+func (r *RequestGroup) GetContractPath() string {
+
+	contractKey := utils.ConstructRequestGroupKey(r.contractName, r.contractVersion)
+	return filepath.Join(r.contractManager.GetContractMountDir(), contractKey)
+}
+
+// GetTxCh returns tx chan
+func (r *RequestGroup) GetTxCh(isCross bool) chan *protogo.DockerVMMessage {
+
+	if isCross {
+		return r.crossTxController.txCh
+	}
+	return r.origTxController.txCh
+}
+
 // handleTxReq handle all tx request
 func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
+
 	// put tx request into chan at first
-	err := r.putTxReqIntoCh(req)
+	err := r.putTxReqToCh(req)
 	if err != nil {
 		return fmt.Errorf("failed to handle tx req, %v", err)
 	}
 
 	switch r.contractState {
-
 	// try to get contract for first tx.
 	case contractEmpty:
 		err = r.contractManager.PutMsg(protogo.DockerVMMessage{
-			TxId: req.GetTxId(),
+			TxId: req.TxId,
 			Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
 			Request: &protogo.TxRequest{
 				ContractName: r.contractName,
@@ -163,7 +186,7 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 
 	// only enqueue
 	case contractWaiting:
-		r.logger.Debugf("tx %s enqueue, waiting for contract", req.GetTxId())
+		r.logger.Debugf("tx %s enqueue, waiting for contract", req.TxId)
 
 	// see if we should get new processes, if so, try to get
 	case contractReady:
@@ -180,22 +203,22 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 	return nil
 }
 
-// putTxReqIntoCh put tx request into chan
-func (r *RequestGroup) putTxReqIntoCh(req *protogo.DockerVMMessage) error {
+// putTxReqToCh put tx request into chan
+func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
 	// call contract depth overflow
 	if req.ProcessInfo.CurrentDepth > protocol.CallContractDepth {
 
 		msg := "current depth exceed " + strconv.Itoa(protocol.CallContractDepth)
 
-		// construct and send err msg to request scheduler
+		// send err msg to request scheduler
 		err := r.requestScheduler.PutMsg(&protogo.DockerVMMessage{
-			TxId: req.GetTxId(),
+			TxId: req.TxId,
 			Type: protogo.DockerVMType_ERROR,
 			Response: &protogo.TxResponse{
 				Code:         protogo.DockerVMCode_FAIL,
 				Message:      msg,
-				ContractName: req.GetRequest().GetContractName(),
+				ContractName: req.Request.ContractName,
 			},
 		})
 		if err != nil {
@@ -206,13 +229,13 @@ func (r *RequestGroup) putTxReqIntoCh(req *protogo.DockerVMMessage) error {
 
 	// original tx, send to original tx chan
 	if req.ProcessInfo.CurrentDepth == 0 {
-		r.logger.Debugf("put tx request [txId: %s] into orig chan", req.GetTxId())
+		r.logger.Debugf("put tx request [txId: %s] into orig chan", req.TxId)
 		r.origTxController.txCh <- req
 		return nil
 	}
 
 	// cross contract tx, send to cross contract tx chan
-	r.logger.Debugf("put tx request [txId: %s] into cross chan", req.GetTxId())
+	r.logger.Debugf("put tx request [txId: %s] into cross chan", req.TxId)
 	r.crossTxController.txCh <- req
 	return nil
 }
@@ -236,11 +259,11 @@ func (r *RequestGroup) getProcesses(txType TxType) error {
 		return fmt.Errorf("unknown tx type")
 	}
 
+	// calculate how many processes it needs:
+	// (currProcessNum + needProcessNum) * reqNumPerProcess = processingReqNum + inQueueReqNum
 	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
 	currChSize := len(controller.txCh)
 
-	// calculate how many processes it needs:
-	// (currProcessNum + needProcessNum) * reqNumPerProcess = processingReqNum + inQueueReqNum
 	needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
 
 	var err error
@@ -252,6 +275,7 @@ func (r *RequestGroup) getProcesses(txType TxType) error {
 		}
 		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
 			ContractName: r.contractName,
+			ContractVersion: r.contractVersion,
 			ProcessNum:   needProcessNum,
 		})
 		// avoid duplicate getting processes
@@ -266,6 +290,7 @@ func (r *RequestGroup) getProcesses(txType TxType) error {
 		}
 		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
 			ContractName: r.contractName,
+			ContractVersion: r.contractVersion,
 			ProcessNum:   0, // 0 for no need
 		})
 		// avoid duplicate stopping to get processes
@@ -279,11 +304,13 @@ func (r *RequestGroup) getProcesses(txType TxType) error {
 
 // handleContractReadyResp set the request group's contract state to contractReady
 func (r *RequestGroup) handleContractReadyResp() {
+
 	r.contractState = contractReady
 }
 
-// handleProcessReadyResp
+// handleProcessReadyResp handles process ready response
 func (r *RequestGroup) handleProcessReadyResp(txType TxType) error {
+
 	// restore the state of request group to idle
 	switch txType {
 	case origTx:
@@ -291,6 +318,7 @@ func (r *RequestGroup) handleProcessReadyResp(txType TxType) error {
 
 	case crossTx:
 		r.crossTxController.processWaiting = false
+
 	default:
 		return fmt.Errorf("unknown tx type")
 	}
@@ -300,16 +328,4 @@ func (r *RequestGroup) handleProcessReadyResp(txType TxType) error {
 		return fmt.Errorf("failed to handle contract ready resp, %v", err)
 	}
 	return nil
-}
-
-func (r *RequestGroup) GetContractPath() string {
-	contractKey := utils.ConstructRequestGroupKey(r.contractName, r.contractVersion)
-	return filepath.Join(r.contractManager.GetContractMountDir(), contractKey)
-}
-
-func (r *RequestGroup) GetTxCh(isCross bool) chan *protogo.DockerVMMessage {
-	if isCross {
-		return r.crossTxController.txCh
-	}
-	return r.origTxController.txCh
 }

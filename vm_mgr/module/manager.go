@@ -1,5 +1,6 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -37,7 +38,10 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	usersManager := core.NewUsersManager()
 
 	// new contract manager
-	contractManager := core.NewContractManager()
+	contractManager, err := core.NewContractManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to new contract manager, %v", err)
+	}
 
 	// new original process manager
 	maxOriginalProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum
