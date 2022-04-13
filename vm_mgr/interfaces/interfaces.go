@@ -18,12 +18,15 @@ type RequestScheduler interface {
 }
 
 type RequestGroup interface {
+	Start()
 	PutMsg(msg interface{}) error
 	GetContractPath() string
 	GetTxCh(isOrig bool) chan *protogo.DockerVMMessage
 }
 
 type ProcessManager interface {
+	Start()
+	SetScheduler(RequestScheduler)
 	PutMsg(msg interface{}) error
 	GetProcessByName(processName string) (Process, bool)
 	GetProcessNumByContractKey(contractName, contractVersion string) int
@@ -41,8 +44,7 @@ type Process interface {
 }
 
 type UserManager interface {
-	// GetAvailableUser get available user
 	GetAvailableUser() (*core.User, error)
-	// AddAvailableUser add new user
 	FreeUser(user *core.User) error
+	BatchCreateUsers() error
 }

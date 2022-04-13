@@ -100,6 +100,7 @@ func (pm *ProcessManager) Start() {
 	}()
 }
 
+// SetScheduler set request scheduler
 func (pm *ProcessManager) SetScheduler(scheduler interfaces.RequestScheduler) {
 	pm.requestScheduler = scheduler
 }
