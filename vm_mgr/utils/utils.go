@@ -68,8 +68,17 @@ func GetLogHandler() *zap.SugaredLogger {
 	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
 }
 
-// ConstructContractKey contractName#contractVersion
+// ConstructContractKey chainId#contractName#contractVersion
 func ConstructContractKey(names ...string) string {
+	return ConstructKey(names...)
+}
+
+// ConstructSchedulerKey chainId#txId/responseId
+func ConstructSchedulerKey(chainId, schedulerKey string) string {
+	return ConstructKey(chainId, schedulerKey)
+}
+
+func ConstructKey(names ...string) string {
 	return strings.Join(names, "#")
 }
 

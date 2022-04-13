@@ -90,26 +90,26 @@ func (s *DockerScheduler) GetByteCodeReqCh() chan *protogo.CDMMessage {
 
 // RegisterResponseCh register response chan
 func (s *DockerScheduler) RegisterResponseCh(chainId, responseId string, responseCh chan *protogo.CDMMessage) {
-	schedulerKey := utils.ConstructContractKey(chainId, responseId)
+	schedulerKey := utils.ConstructSchedulerKey(chainId, responseId)
 	s.responseChMap.Store(schedulerKey, responseCh)
 }
 
 // GetResponseChByTxId get response chan by tx id
 func (s *DockerScheduler) GetResponseChByTxId(chainId, txId string) chan *protogo.CDMMessage {
-	schedulerKey := utils.ConstructContractKey(chainId, txId)
+	schedulerKey := utils.ConstructSchedulerKey(chainId, txId)
 	responseCh, _ := s.responseChMap.LoadAndDelete(schedulerKey)
 	return responseCh.(chan *protogo.CDMMessage)
 }
 
 // RegisterCrossContractResponseCh register cross contract response chan
 func (s *DockerScheduler) RegisterCrossContractResponseCh(chainId, responseId string, responseCh chan *SDKProtogo.DMSMessage) {
-	schedulerKey := utils.ConstructContractKey(chainId, responseId)
+	schedulerKey := utils.ConstructSchedulerKey(chainId, responseId)
 	s.responseChMap.Store(schedulerKey, responseCh)
 }
 
 // GetCrossContractResponseCh get cross contract response chan
 func (s *DockerScheduler) GetCrossContractResponseCh(chainId, responseId string) chan *SDKProtogo.DMSMessage {
-	schedulerKey := utils.ConstructContractKey(chainId, responseId)
+	schedulerKey := utils.ConstructSchedulerKey(chainId, responseId)
 
 	responseCh, loaded := s.responseChMap.LoadAndDelete(schedulerKey)
 	if !loaded {
