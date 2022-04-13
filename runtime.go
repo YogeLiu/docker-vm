@@ -439,7 +439,7 @@ func getSenderAddressFromCert(certPem []byte, addressType configPb.AddrType) (st
 		}
 
 		return address, nil
-	} else if addressType == configPb.AddrType_ETHEREUM {
+	} else if addressType == configPb.AddrType_CHAINMAKER {
 		blockCrt, _ := pem.Decode(certPem)
 		crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
 		if err != nil {
@@ -466,7 +466,7 @@ func getSenderAddressFromPublicKeyPEM(publicKeyPem []byte, addressType configPb.
 			return "", fmt.Errorf("ZXAddressFromPublicKeyPEM, failed, %s", err.Error())
 		}
 		return address, nil
-	} else if addressType == configPb.AddrType_ETHEREUM {
+	} else if addressType == configPb.AddrType_CHAINMAKER {
 		publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
 		if err != nil {
 			return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
