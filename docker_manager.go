@@ -61,7 +61,7 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		chainId:               chainId,
 		mgrLogger:             dockerManagerLogger,
 		ctx:                   context.Background(),
-		clientManager:         rpc.NewClientManager(chainId, dockerVMConfig),
+		clientManager:         rpc.NewClientManager(dockerVMConfig),
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
 	}

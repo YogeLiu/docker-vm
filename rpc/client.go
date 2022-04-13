@@ -27,9 +27,9 @@ type ClientMgr interface {
 
 	GetSysCallRespSendCh() chan *protogo.CDMMessage
 
-	GetAndDeleteReceiveChan(txId string) chan *protogo.CDMMessage
+	GetAndDeleteReceiveChan(chainId, txId string) chan *protogo.CDMMessage
 
-	GetReceiveChan(txId string) chan *protogo.CDMMessage
+	GetReceiveChan(chainId, txId string) chan *protogo.CDMMessage
 
 	GetVMConfig() *config.DockerVMConfig
 
@@ -38,7 +38,6 @@ type ClientMgr interface {
 
 type CDMClient struct {
 	id          uint64
-	chainId     string
 	clientMgr   ClientMgr
 	stream      protogo.CDMRpc_CDMCommunicateClient
 	logger      *logger.CMLogger
@@ -46,11 +45,10 @@ type CDMClient struct {
 	stopReceive chan struct{}
 }
 
-func NewCDMClient(_id uint64, _chainId string, _logger *logger.CMLogger, _clientMgr ClientMgr) *CDMClient {
+func NewCDMClient(_id uint64, _logger *logger.CMLogger, _clientMgr ClientMgr) *CDMClient {
 
 	return &CDMClient{
 		id:          _id,
-		chainId:     _chainId,
 		clientMgr:   _clientMgr,
 		stream:      nil,
 		logger:      _logger,
@@ -166,7 +164,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 
 			switch receivedMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-				waitCh = c.clientMgr.GetAndDeleteReceiveChan(receivedMsg.TxId)
+				waitCh = c.clientMgr.GetAndDeleteReceiveChan(receivedMsg.ChainId, receivedMsg.TxId)
 				if waitCh == nil {
 					c.logger.Warnf("client[%d] [%s] fail to retrieve response chan, tx response chan is nil",
 						c.id, receivedMsg.TxId)
@@ -177,7 +175,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 				protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
 				protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
 				protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-				waitCh = c.clientMgr.GetReceiveChan(receivedMsg.TxId)
+				waitCh = c.clientMgr.GetReceiveChan(receivedMsg.ChainId, receivedMsg.TxId)
 				if waitCh == nil {
 					c.logger.Warnf("client[%d] [%s] fail to retrieve response chan, response chan is nil", c.id,
 						receivedMsg.TxId)
@@ -215,7 +213,7 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 			return conn, err
 		}))
 
-		sockAddress := filepath.Join(c.clientMgr.GetVMConfig().DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
+		sockAddress := filepath.Join(c.clientMgr.GetVMConfig().DockerVMMountPath, config.SockDir, config.SockName)
 
 		c.logger.Infof("connect docker vm manager: %s", sockAddress)
 		return grpc.DialContext(context.Background(), sockAddress, dialOpts...)

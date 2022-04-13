@@ -29,6 +29,8 @@ message CDMMessage {
     TxRequest txRequest = 6;
 
     TxResponse txResponse = 7;
+
+    string chain_id = 8;
 }
 
 enum CDMType {
@@ -86,6 +88,8 @@ message TxRequest {
 
     // cross contract in use
     TxContext tx_context = 6;
+
+    string chain_id = 7;
 }
 
 message TxContext {
@@ -115,6 +119,8 @@ message TxResponse {
     map<string, bytes> read_map = 6;
 
     repeated DockerContractEvent events = 7;
+
+    string chain_id = 8;
 }
 
 message DockerContractEvent {

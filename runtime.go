@@ -58,9 +58,9 @@ type ClientManager interface {
 
 	PutSysCallResponse(sysCallResp *protogo.CDMMessage)
 
-	RegisterReceiveChan(txId string, receiveCh chan *protogo.CDMMessage) error
+	RegisterReceiveChan(chainId, txId string, receiveCh chan *protogo.CDMMessage) error
 
-	DeleteReceiveChan(txId string) bool
+	DeleteReceiveChan(chainId, txId string) bool
 
 	GetVMConfig() *config.DockerVMConfig
 
@@ -135,6 +135,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// construct cdm message
 	txRequest := &protogo.TxRequest{
+		ChainId:         r.ChainId,
 		TxId:            uniqueTxKey,
 		ContractName:    contract.Name,
 		ContractVersion: contract.Version,
@@ -148,6 +149,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		},
 	}
 	cdmMessage := &protogo.CDMMessage{
+		ChainId:   r.ChainId,
 		TxId:      uniqueTxKey,
 		Type:      protogo.CDMType_CDM_TYPE_TX_REQUEST,
 		TxRequest: txRequest,
@@ -155,7 +157,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// register result chan
 	responseCh := make(chan *protogo.CDMMessage, 1)
-	err = r.ClientManager.RegisterReceiveChan(uniqueTxKey, responseCh)
+	err = r.ClientManager.RegisterReceiveChan(r.ChainId, uniqueTxKey, responseCh)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
@@ -304,7 +306,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				)
 			}
 		case <-timeoutC:
-			deleted := r.ClientManager.DeleteReceiveChan(uniqueTxKey)
+			deleted := r.ClientManager.DeleteReceiveChan(r.ChainId, uniqueTxKey)
 			if deleted {
 				r.Log.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
 					uniqueTxKey)
@@ -324,6 +326,7 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType)
 		ResultCode: protocol.ContractSdkSignalResultFail,
 		Payload:    nil,
 		Message:    "",
+		ChainId:    r.ChainId,
 	}
 }
 
@@ -1068,7 +1071,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE)
 
-	contractNameAndVersion := string(recvMsg.Payload)               // e.g: contract1#1.0.0
+	contractNameAndVersion := string(recvMsg.Payload)               // e.g: chain1#contract1#1.0.0
 	contractName := utils.SplitContractName(contractNameAndVersion) // e.g: contract1
 
 	if len(byteCode) == 0 {

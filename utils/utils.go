@@ -20,7 +20,7 @@ const (
 )
 
 func SplitContractName(contractNameAndVersion string) string {
-	contractName := strings.Split(contractNameAndVersion, "#")[0]
+	contractName := strings.Split(contractNameAndVersion, "#")[1]
 	return contractName
 }
 
@@ -56,4 +56,9 @@ func GetMaxConnectionFromConfig(config *config.DockerVMConfig) uint32 {
 		return DefaultMaxConnection
 	}
 	return config.MaxConnection
+}
+
+// ConstructReceiveChannelMapKey contractName#txId
+func ConstructReceiveMapKey(names ...string) string {
+	return strings.Join(names, "#")
 }

@@ -8,3 +8,5 @@ vm_mgr/vendor
 test/testdata/org1
 ut
 test/result
+
+.vscode

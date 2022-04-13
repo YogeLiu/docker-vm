@@ -89,25 +89,29 @@ func (s *DockerScheduler) GetByteCodeReqCh() chan *protogo.CDMMessage {
 }
 
 // RegisterResponseCh register response chan
-func (s *DockerScheduler) RegisterResponseCh(responseId string, responseCh chan *protogo.CDMMessage) {
-	s.responseChMap.Store(responseId, responseCh)
+func (s *DockerScheduler) RegisterResponseCh(chainId, responseId string, responseCh chan *protogo.CDMMessage) {
+	schedulerKey := utils.ConstructSchedulerKey(chainId, responseId)
+	s.responseChMap.Store(schedulerKey, responseCh)
 }
 
 // GetResponseChByTxId get response chan by tx id
-func (s *DockerScheduler) GetResponseChByTxId(txId string) chan *protogo.CDMMessage {
-
-	responseCh, _ := s.responseChMap.LoadAndDelete(txId)
+func (s *DockerScheduler) GetResponseChByTxId(chainId, txId string) chan *protogo.CDMMessage {
+	schedulerKey := utils.ConstructSchedulerKey(chainId, txId)
+	responseCh, _ := s.responseChMap.LoadAndDelete(schedulerKey)
 	return responseCh.(chan *protogo.CDMMessage)
 }
 
 // RegisterCrossContractResponseCh register cross contract response chan
-func (s *DockerScheduler) RegisterCrossContractResponseCh(responseId string, responseCh chan *SDKProtogo.DMSMessage) {
-	s.responseChMap.Store(responseId, responseCh)
+func (s *DockerScheduler) RegisterCrossContractResponseCh(chainId, responseId string, responseCh chan *SDKProtogo.DMSMessage) {
+	schedulerKey := utils.ConstructSchedulerKey(chainId, responseId)
+	s.responseChMap.Store(schedulerKey, responseCh)
 }
 
 // GetCrossContractResponseCh get cross contract response chan
-func (s *DockerScheduler) GetCrossContractResponseCh(responseId string) chan *SDKProtogo.DMSMessage {
-	responseCh, loaded := s.responseChMap.LoadAndDelete(responseId)
+func (s *DockerScheduler) GetCrossContractResponseCh(chainId, responseId string) chan *SDKProtogo.DMSMessage {
+	schedulerKey := utils.ConstructSchedulerKey(chainId, responseId)
+
+	responseCh, loaded := s.responseChMap.LoadAndDelete(schedulerKey)
 	if !loaded {
 		return nil
 	}
@@ -142,7 +146,7 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	if err == utils.ContractFileError {
 		s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
 			err, txRequest.TxId)
-		s.ReturnErrorResponse(txRequest.TxId, err.Error())
+		s.ReturnErrorResponse(txRequest.ChainId, txRequest.TxId, err.Error())
 		return
 	}
 	if err != nil {
@@ -152,17 +156,18 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	}
 }
 
-func (s *DockerScheduler) ReturnErrorResponse(txId string, errMsg string) {
-	errTxResponse := s.constructErrorResponse(txId, errMsg)
+func (s *DockerScheduler) ReturnErrorResponse(chainId, txId string, errMsg string) {
+	errTxResponse := s.constructErrorResponse(chainId, txId, errMsg)
 	s.txResponseCh <- errTxResponse
 }
 
-func (s *DockerScheduler) constructErrorResponse(txId string, errMsg string) *protogo.TxResponse {
+func (s *DockerScheduler) constructErrorResponse(chainId, txId string, errMsg string) *protogo.TxResponse {
 	return &protogo.TxResponse{
 		TxId:    txId,
 		Code:    protogo.ContractResultCode_FAIL,
 		Result:  nil,
 		Message: errMsg,
+		ChainId: chainId,
 	}
 }
 
@@ -170,7 +175,7 @@ func (s *DockerScheduler) ReturnErrorCrossContractResponse(crossContractTx *prot
 	errResponse *SDKProtogo.DMSMessage) {
 
 	responseChId := crossContractChKey(crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
-	responseCh := s.GetCrossContractResponseCh(responseChId)
+	responseCh := s.GetCrossContractResponseCh(crossContractTx.ChainId, responseChId)
 	if responseCh == nil {
 		s.logger.Warnf("scheduler fail to get response chan and abandon cross err response [%s]",
 			errResponse.TxId)

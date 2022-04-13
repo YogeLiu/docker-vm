@@ -62,7 +62,7 @@ func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
 	pm.balanceRWMutex.Lock()
 	defer pm.balanceRWMutex.Unlock()
 	// processNamePrefix: contractName#contractVersion
-	contractKey := utils.ConstructContractKey(txRequest.ContractName, txRequest.ContractVersion)
+	contractKey := utils.ConstructContractKey(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion)
 	// process exist, put current tx into process waiting queue and return
 	processBalance := pm.balanceTable[contractKey]
 	if processBalance == nil {
@@ -81,7 +81,7 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 	if !processBalance.needCreateNewProcess() {
 		return nil
 	}
-	processName := utils.ConstructProcessName(txRequest.ContractName, txRequest.ContractVersion,
+	processName := utils.ConstructProcessName(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion,
 		processBalance.GetNextProcessIndex())
 	process, err := pm.createNewProcess(processName, txRequest, processBalance)
 	if err == utils.ContractFileError {
@@ -118,8 +118,8 @@ func (pm *ProcessManager) createNewProcess(processName string, txRequest *protog
 	}
 
 	// get contract deploy path
-	contractKey := utils.ConstructContractKey(txRequest.ContractName, txRequest.ContractVersion)
-	contractPath, err = pm.contractManager.GetContract(txRequest.TxId, contractKey)
+	contractKey := utils.ConstructContractKey(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion)
+	contractPath, err = pm.contractManager.GetContract(txRequest.ChainId, txRequest.TxId, contractKey)
 	if err != nil || len(contractPath) == 0 {
 		pm.logger.Errorf("fail to get contract path, contractName is [%s], err is [%s]", contractKey, err)
 		return nil, utils.ContractFileError
@@ -176,7 +176,7 @@ func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, pr
 func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
 	// validate contract deployed or not
 	contractKey := utils.ConstructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
-	contractPath, err := pm.contractManager.GetContract(crossContractTx.TxId, contractKey)
+	contractPath, err := pm.contractManager.GetContract(crossContractTx.ChainId, crossContractTx.TxId, contractKey)
 	if err != nil {
 		pm.logger.Errorf(err.Error())
 		errResponse := constructCallContractErrorResponse(err.Error(), crossContractTx.TxId,
@@ -195,7 +195,7 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 		return
 	}
 
-	processName := utils.ConstructCrossContractProcessName(crossContractTx.TxId,
+	processName := utils.ConstructCrossContractProcessName(crossContractTx.ChainId, crossContractTx.TxId,
 		uint64(crossContractTx.TxContext.CurrentHeight))
 
 	newCrossProcess := NewCrossProcess(user, crossContractTx, pm.scheduler, processName, contractPath, pm)
