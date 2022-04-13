@@ -8,7 +8,7 @@ require (
 	chainmaker.org/chainmaker/logger/v2 v2.2.0
 	chainmaker.org/chainmaker/pb-go/v2 v2.2.0
 	chainmaker.org/chainmaker/protocol/v2 v2.2.0
-	chainmaker.org/chainmaker/utils/v2 v2.0.0-20220128023017-5bf8279342f1
+	chainmaker.org/chainmaker/utils/v2 v2.2.0
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/containerd/containerd v1.5.9 // indirect
 	github.com/docker/distribution v2.7.1+incompatible
