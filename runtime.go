@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -34,11 +35,11 @@ var (
 
 type CDMClient interface {
 	PutTxRequest(msg *protogo.DockerVMMessage)
+	PutTxRequestWithNotify(msg *protogo.DockerVMMessage, notify func(msg *protogo.DockerVMMessage)) error
 	GetTxSendChLen() int
 	PutResponse(msg *protogo.DockerVMMessage)
 	GetResponseSendChLen() int
-	RegisterCallback(txKey string, callback func(msg *protogo.DockerVMMessage)) error
-	DeleteCallback(txId string) bool
+	DeleteNotify(txId string) bool
 	GetCMConfig() *config.DockerVMConfig
 	GetUniqueTxKey(txId string) string
 }
@@ -118,7 +119,23 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	}
 	if txSimContext.GetDepth() > 0 {
 		crossCtx.CurrentDepth = uint32(txSimContext.GetDepth())
-		crossCtx.CrossType = protogo.CrossType_EXTERNAL
+		switch txSimContext.GetCallerRuntimeType() {
+		case commonPb.RuntimeType_DOCKER_GO:
+			crossCtx.CrossType = protogo.CrossType_INTERNAL
+		case commonPb.RuntimeType_INVALID,
+			commonPb.RuntimeType_NATIVE,
+			commonPb.RuntimeType_WASMER,
+			commonPb.RuntimeType_WXVM,
+			commonPb.RuntimeType_GASM,
+			commonPb.RuntimeType_EVM,
+			commonPb.RuntimeType_DOCKER_JAVA:
+			crossCtx.CrossType = protogo.CrossType_EXTERNAL
+		default:
+			contractResult.GasUsed = gasUsed
+			err := errors.New("invalid caller runtime type")
+			r.Logger.Debugf(err.Error())
+			return r.errorResult(contractResult, err, err.Error())
+		}
 	}
 
 	dockervmMsg := &protogo.DockerVMMessage{
@@ -131,26 +148,25 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// register result chan
 	contractEngineMsgCh := make(chan *protogo.DockerVMMessage, 1)
-	f := func(msg *protogo.DockerVMMessage) {
+	notify := func(msg *protogo.DockerVMMessage) {
 		contractEngineMsgCh <- msg
 	}
-	err = r.Client.RegisterCallback(uniqueTxKey, f)
+	err = r.Client.PutTxRequestWithNotify(dockervmMsg, notify)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
+	// send message to tx chan
+	r.Logger.Debugf("[%s] put tx in send chan with length [%d]", dockervmMsg.TxId, r.Client.GetTxSendChLen())
 
 	runtimeMsgCh := make(chan *protogo.DockerVMMessage, 1)
 	responseNotify := func(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
 		runtimeMsgCh <- msg
 		r.sendResponse = sendF
 	}
-	err = rpc.GetRuntimeServiceInstance().RegisterResponseNotifier(uniqueTxKey, responseNotify)
+	err = rpc.GetRuntimeServiceInstance().RegisterNotifyForSandbox(uniqueTxKey, responseNotify)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
-	// send message to tx chan
-	r.Client.PutTxRequest(dockervmMsg)
-	r.Logger.Debugf("[%s] put tx in send chan with length [%d]", dockervmMsg.TxId, r.Client.GetTxSendChLen())
 
 	timeoutC := time.After(timeout * time.Millisecond)
 
@@ -175,7 +191,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			}
 
 		case <-timeoutC:
-			deleted := r.Client.DeleteCallback(uniqueTxKey)
+			deleted := r.Client.DeleteNotify(uniqueTxKey)
 			if deleted {
 				r.Logger.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
 					uniqueTxKey)
@@ -212,7 +228,6 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.Logger.Debugf("[%s] finish handle response [%v]", uniqueTxKey, contractResult)
 				return r.handleTxResponse(recvMsg.TxId, recvMsg, txSimContext, gasUsed, specialTxType)
 
-			// 内部跨合约调用需要返回到指定的sandbox中
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
 				r.Logger.Debugf("tx [%s] start call contract [%v]", uniqueTxKey, recvMsg)
 				var callContractResponse *protogo.DockerVMMessage
