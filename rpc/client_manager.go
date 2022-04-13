@@ -240,7 +240,7 @@ func (cm *ClientManager) reconnect() {
 		if err == nil {
 			break
 		}
-		cm.logger.Warnf("client[%d] connect fail, try reconnect...")
+		cm.logger.Warnf("client connect fail, try reconnect...")
 		time.Sleep(2 * time.Second)
 	}
 
