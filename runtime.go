@@ -14,7 +14,6 @@ import (
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
-	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
@@ -109,6 +108,18 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		},
 	}
 
+	// ContractEngine 通过crossCtx判断是否是跨合约调用，以及跨合约调用的类型
+	// TODO: 返回值应当携带该信息，外部跨合约调用直接返回，内部跨合约调用应当返回到指定sandbox中
+	// 内部跨合约调用额外携带了 currentProcessName 和 parentProcessName
+	crossCtx := &protogo.CrossContext{
+		CurrentDepth: 0,
+		CrossType:    protogo.CrossType_INTERNAL,
+	}
+	if txSimContext.GetDepth() > 0 {
+		crossCtx.CurrentDepth = txSimContext.GetDepth()
+		crossCtx.CrossType = protogo.CrossType_EXTERNAL
+	}
+
 	dockervmMsg := &protogo.DockerVMMessage{
 		TxId:           uniqueTxKey,
 		Type:           protogo.DockerVMType_TX_REQUEST,
@@ -128,11 +139,11 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	}
 
 	runtimeMsgCh := make(chan *protogo.DockerVMMessage, 1)
-	callback := func(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
+	responseNotify := func(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
 		runtimeMsgCh <- msg
 		r.sendResponse = sendF
 	}
-	err = rpc.GetRuntimeServiceInstance().RegisterCallback(uniqueTxKey, callback)
+	err = rpc.GetRuntimeServiceInstance().RegisterResponseNotifier(uniqueTxKey, responseNotify)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
@@ -175,7 +186,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 		case recvMsg := <-runtimeMsgCh:
 			switch recvMsg.Type {
-			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
+			case protogo.DockerVMType_GET_STATE_REQUEST:
 				r.Logger.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
 				getStateResponse, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
 
@@ -199,6 +210,13 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			case protogo.DockerVMType_TX_RESPONSE:
 				r.Logger.Debugf("[%s] finish handle response [%v]", uniqueTxKey, contractResult)
 				return r.handleTxResponse(recvMsg.TxId, recvMsg, txSimContext, gasUsed, specialTxType)
+
+			// 内部跨合约调用需要返回到指定的sandbox中
+			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
+				r.Logger.Debugf("tx [%s] start call contract [%v]", uniqueTxKey, recvMsg)
+				var callContractResponse *protogo.DockerVMMessage
+				callContractResponse, gasUsed = r.handlerCallContract(uniqueTxKey, recvMsg, txSimContext, gasUsed)
+				r.sendResponse(callContractResponse)
 
 			case protogo.DockerVMType_CREATE_KV_ITERATOR:
 				r.Logger.Debugf("tx [%s] start create kv iterator [%v]", uniqueTxKey, recvMsg)

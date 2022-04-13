@@ -24,7 +24,6 @@ import (
 	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
-	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
@@ -34,7 +33,6 @@ import (
 func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerVMMessage,
 	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType) (
 	contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
-	r.Logger.Debugf("======== ChainMaker HandleTxResponse: TxId: %s", txId)
 
 	var err error
 	txResponse := recvMsg.Response
@@ -91,6 +89,38 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	contractResult.ContractEvent = contractEvents
 
 	return contractResult, txType
+}
+
+func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.DockerVMMessage,
+	txSimContext protogo.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
+	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
+
+	// validate cross contract params
+	callContractPayload := recvMsg.SysCallMessage.Payload[config.KeyCallContractReq]
+	var callContractReq protogo.CallContractRequest
+	err := proto.Unmarshal(callContractPayload, &callContractReq)
+
+	contractName := callContractReq.ContractName
+	if len(contractName) == 0 {
+		errMsg := "missing contract name"
+		r.Logger.Error(errMsg)
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = errMsg
+		return response, gasUsed
+	}
+
+	if recvMsg.CrossContext.CurrentDepth >= chainProtocol.CallContractDepth {
+		errMsg := "exceed max depth"
+		r.Logger.Error(errMsg)
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = errMsg
+		return response, gasUsed
+	}
+
+	// construct new tx
+	invokeContract := "invoke_contract"
+	result, specialTxType, code := txSimContext.CallContract(&common.Contract{Name: contractName}, invokeContract,
+		nil, callContractReq.Args, gasUsed, txSimContext.GetTx().Payload.TxType)
 }
 
 func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.DockerVMMessage,

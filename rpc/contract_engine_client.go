@@ -22,7 +22,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 	"go.uber.org/atomic"
 
-	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"google.golang.org/grpc"
@@ -116,13 +115,13 @@ func (c *ContractEngineClient) RegisterCallback(txKey string, callback func(msg 
 // 	defer c.lock.Unlock()
 // 	c.logger.Debugf("register receive chan for [%s]", txId)
 //
-// 	_, ok := c.callbacks[txId]
+// 	_, ok := c.requestNotifies[txId]
 // 	if ok {
 // 		c.logger.Errorf("[%s] fail to register receive chan cause chan already registered", txId)
 // 		return utils.ErrDuplicateTxId
 // 	}
 //
-// 	c.callbacks[txId] = recvCh
+// 	c.requestNotifies[txId] = recvCh
 // 	return nil
 // }
 //
@@ -130,16 +129,16 @@ func (c *ContractEngineClient) RegisterCallback(txKey string, callback func(msg 
 // 	c.lock.RLock()
 // 	defer c.lock.RUnlock()
 // 	c.logger.Debugf("get receive chan for [%s]", txId)
-// 	return c.callbacks[txId]
+// 	return c.requestNotifies[txId]
 // }
 //
 // func (c *ContractEngineClient) getAndDeleteRecvChan(txId string) chan *protogo.DockerVMMessage {
 // 	c.lock.Lock()
 // 	defer c.lock.Unlock()
 // 	c.logger.Debugf("get receive chan for [%s] and delete", txId)
-// 	receiveChan, ok := c.callbacks[txId]
+// 	receiveChan, ok := c.requestNotifies[txId]
 // 	if ok {
-// 		delete(c.callbacks, txId)
+// 		delete(c.requestNotifies, txId)
 // 		return receiveChan
 // 	}
 // 	c.logger.Warnf("cannot find receive chan for [%s] and return nil", txId)

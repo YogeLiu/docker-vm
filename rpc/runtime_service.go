@@ -4,12 +4,8 @@ import (
 	"io"
 	"sync"
 
-	"google.golang.org/grpc/codes"
-
-	"google.golang.org/grpc/status"
-
-	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"google.golang.org/grpc/codes"
 )
 
 var runtimeServiceInstance = NewRuntimeService()
@@ -19,22 +15,22 @@ func GetRuntimeServiceInstance() *RuntimeService {
 }
 
 type RuntimeService struct {
-	lock        sync.RWMutex
-	logger      *logger.CMLogger
-	stream      protogo.DockerVMRpc_DockerVMCommunicateServer
-	callbacks   map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage))
-	stopSend    chan struct{}
-	stopReceive chan struct{}
-	wg          *sync.WaitGroup
+	lock            sync.RWMutex
+	logger          *logger.CMLogger
+	stream          protogo.DockerVMRpc_DockerVMCommunicateServer
+	requestNotifies map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage))
+	stopSend        chan struct{}
+	stopReceive     chan struct{}
+	wg              *sync.WaitGroup
 }
 
 func NewRuntimeService() *RuntimeService {
 	return &RuntimeService{
-		lock:        sync.RWMutex{},
-		callbacks:   make(map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage)), 1000),
-		stopSend:    make(chan struct{}, 1),
-		stopReceive: make(chan struct{}, 1),
-		wg:          &sync.WaitGroup{},
+		lock:            sync.RWMutex{},
+		requestNotifies: make(map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage)), 1000),
+		stopSend:        make(chan struct{}, 1),
+		stopReceive:     make(chan struct{}, 1),
+		wg:              &sync.WaitGroup{},
 	}
 }
 
@@ -84,13 +80,15 @@ func (s *RuntimeService) recvRoutine(stream protogo.DockerVMRpc_DockerVMCommunic
 
 			switch receivedMsg.Type {
 			case protogo.DockerVMType_TX_RESPONSE,
+				protogo.DockerVMType_CALL_CONTRACT_RESPONSE,
+				protogo.DockerVMType_CALL_CONTRACT_REQUEST,
 				protogo.DockerVMType_GET_STATE_REQUEST,
-				protogo.DockerVMType_CREATE_KV_ITERATOR,
-				protogo.DockerVMType_CONSUME_KV_ITERATOR,
-				protogo.DockerVMType_CREATE_KEY_HISTORY_ITER,
-				protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER,
-				protogo.DockerVMType_GET_SENDER_ADDRESS:
-				s.getCallback(receivedMsg.TxId)(receivedMsg, sendF)
+				protogo.DockerVMType_CREATE_KV_ITERATOR_REQUEST,
+				protogo.DockerVMType_CONSUME_KV_ITERATOR_REQUEST,
+				protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST,
+				protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST,
+				protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
+				s.getNotifier(receivedMsg.TxId)(receivedMsg, sendF)
 			}
 		}
 	}
@@ -119,36 +117,36 @@ func (s *RuntimeService) sendRoutine(stream protogo.DockerVMRpc_DockerVMCommunic
 	}
 }
 
-func (s *RuntimeService) RegisterCallback(txKey string,
-	callback func(msg *protogo.DockerVMMessage, sendF func(*protogo.DockerVMMessage))) error {
+func (s *RuntimeService) RegisterResponseNotifier(txKey string,
+	respNotify func(msg *protogo.DockerVMMessage, sendF func(*protogo.DockerVMMessage))) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.logger.Debugf("register receive callback for [%s]", txKey)
-	_, ok := s.callbacks[txKey]
+	s.logger.Debugf("register receive respNotify for [%s]", txKey)
+	_, ok := s.requestNotifies[txKey]
 	if ok {
-		s.logger.Errorf("[%s] fail to register callback cause ")
+		s.logger.Errorf("[%s] fail to register respNotify cause ")
 	}
-	s.callbacks[txKey] = callback
+	s.requestNotifies[txKey] = respNotify
 	return nil
 }
 
-func (s *RuntimeService) getCallback(txKey string) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
+func (s *RuntimeService) getNotifier(txKey string) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	s.logger.Debugf("get callback for [%s]", txKey)
-	return s.callbacks[txKey]
+	return s.requestNotifies[txKey]
 }
 
-func (s *RuntimeService) getAndDeleteCallback(txKey string) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
+func (s *RuntimeService) getAndDeleteNotifier(txKey string) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.logger.Debugf("get callback for [%s] and delete", txKey)
-	callback, ok := s.callbacks[txKey]
+	s.logger.Debugf("get respNotify for [%s] and delete", txKey)
+	respNotify, ok := s.requestNotifies[txKey]
 	if !ok {
-		s.logger.Warnf("cannot find callback for [%s] and return nil", txKey)
+		s.logger.Warnf("cannot find respNotify for [%s] and return nil", txKey)
 		return nil
 	}
-	delete(s.callbacks, txKey)
-	return callback
+	delete(s.requestNotifies, txKey)
+	return respNotify
 }
