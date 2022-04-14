@@ -112,9 +112,9 @@ message TxResponse {
 
     map<string, bytes> write_map = 5;
 
-    map<string, bytes> read_map = 6;
+    repeated DockerContractEvent events = 6;
 
-    repeated DockerContractEvent events = 7;
+    map<string, bytes> read_map = 7;
 
 }
 
