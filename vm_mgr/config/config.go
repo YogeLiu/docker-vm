@@ -7,9 +7,8 @@ package config
 
 import (
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"fmt"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 	"sync"
 	"time"
 )
@@ -19,7 +18,7 @@ const (
 	DockerMountDir = "/mount"
 
 	// ConfigFileName is the docker vm config file path
-	ConfigFileName = "vm"
+	ConfigFileName = "config"
 
 	// ConfigFileType is the docker vm config file type
 	ConfigFileType = "yml"
@@ -29,7 +28,6 @@ var DockerVMConfig *conf
 var once sync.Once
 
 type conf struct {
-	logger   *zap.SugaredLogger
 	RPC      rpcConf      `mapstructure:"rpc"`
 	Process  processConf  `mapstructure:"process"`
 	Log      logConf      `mapstructure:"log"`
@@ -49,10 +47,10 @@ type rpcConf struct {
 	ChainRPCPort           int                  `mapstructure:"chain_rpc_port"`
 	MaxSendMsgSize         int                  `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize         int                  `mapstructure:"max_recv_msg_size"`
-	ServerMinInterval      int                  `mapstructure:"provider"`
-	ConnectionTimeout      int                  `mapstructure:"provider"`
-	ServerKeepAliveTime    int                  `mapstructure:"provider"`
-	ServerKeepAliveTimeout int                  `mapstructure:"provider"`
+	ServerMinInterval      int                  `mapstructure:"server_min_interval"`
+	ConnectionTimeout      int                  `mapstructure:"connection_timeout"`
+	ServerKeepAliveTime    int                  `mapstructure:"server_keep_alive_time"`
+	ServerKeepAliveTimeout int                  `mapstructure:"server_keep_alive_timeout"`
 }
 
 type processConf struct {
@@ -87,31 +85,24 @@ type contractConf struct {
 	MaxFileNum int `mapstructure:"max_file_num"`
 }
 
-func InitConfig() {
-	once.Do(func() {
-		// init viper
-		viper.SetConfigName(ConfigFileName)
-		viper.AddConfigPath(DockerMountDir)
-		viper.SetConfigType(ConfigFileType)
+func InitConfig(configFileName string) error {
+	// init viper
+	viper.SetConfigFile(configFileName)
 
-		// read config from file
-		DockerVMConfig = &conf{
-			logger: logger.NewDockerLogger(logger.MODULE_CONFIG),
-		}
-		if err := viper.ReadInConfig(); err != nil {
-			DockerVMConfig.logger.Fatalf("failed to read conf, %v", err)
-		}
+	// read config from file
+	if err := viper.ReadInConfig(); err != nil {
+		return fmt.Errorf("failed to read conf, %v", err)
+	}
 
-		DockerVMConfig.setDefaultConfigs()
+	DockerVMConfig.setDefaultConfigs()
 
-		// unmarshal config
-		err := viper.Unmarshal(&DockerVMConfig)
-		if err != nil {
-			DockerVMConfig.logger.Fatalf("failed to unmarshal conf file, %v", err)
-		}
+	// unmarshal config
+	err := viper.Unmarshal(&DockerVMConfig)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal conf file, %v", err)
+	}
 
-		DockerVMConfig.logger.Infof("vm conf loaded: %+v", DockerVMConfig)
-	})
+	return nil
 }
 
 func (c *conf) setDefaultConfigs() {
@@ -131,7 +122,7 @@ func (c *conf) setDefaultConfigs() {
 	const processPrefix = "process"
 	viper.SetDefault(processPrefix+".max_original_process_num", 50)
 	viper.SetDefault(processPrefix+".busy_timeout", 2000)
-	viper.SetDefault(processPrefix+".idle_timeout", 200)
+	viper.SetDefault(processPrefix+".ready_timeout", 200)
 	viper.SetDefault(processPrefix+".release_rate", 30)
 	viper.SetDefault(processPrefix+".release_period", 10)
 

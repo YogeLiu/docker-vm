@@ -17,21 +17,16 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/docker/go-connections/nat"
-
-	"chainmaker.org/chainmaker/pb-go/v2/common"
-	"chainmaker.org/chainmaker/protocol/v2"
-
-	"github.com/mitchellh/mapstructure"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
-
-	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
+	"github.com/mitchellh/mapstructure"
+
+	"chainmaker.org/chainmaker/logger/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
 )
 
 const (
@@ -226,36 +221,6 @@ func (m *DockerManager) StopVM() error {
 
 	m.mgrLogger.Info("stop and remove docker vm [%s]", m.dockerContainerConfig.ContainerName)
 	return nil
-}
-
-func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method,
-	codePath string, contract *common.Contract,
-	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
-
-	// add client state logic
-	if !m.getCDMState() {
-		m.startCDMClient()
-	}
-
-	return &RuntimeInstance{
-		ChainId: chainId,
-		Client:  m.cdmClient,
-		Logger:  logger,
-	}, nil
-}
-
-// StartCDMClient start CDM grpc rpc
-func (m *DockerManager) startCDMClient() {
-
-	m.clientInitOnce.Do(func() {
-		state := m.cdmClient.StartClient()
-		m.cdmState = state
-		m.mgrLogger.Debugf("cdm rpc state is: %v", state)
-	})
-}
-
-func (m *DockerManager) getCDMState() bool {
-	return m.cdmState
 }
 
 // ------------------ image functions --------------

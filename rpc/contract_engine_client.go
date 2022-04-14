@@ -16,15 +16,16 @@ import (
 	"strings"
 	"sync"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 	"go.uber.org/atomic"
 
+	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
-	"google.golang.org/grpc"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 )
 
 const (

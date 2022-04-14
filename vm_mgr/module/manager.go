@@ -15,6 +15,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"fmt"
 	"go.uber.org/zap"
+	"path/filepath"
 )
 
 type ManagerImpl struct {
@@ -30,7 +31,9 @@ type ManagerImpl struct {
 func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 
 	// set config
-	config.InitConfig()
+	if err := config.InitConfig(filepath.Join(config.DockerMountDir, config.ConfigFileName)); err != nil {
+		managerLogger.Fatalf("failed to init config, %v", err)
+	}
 
 	securityEnv := security.NewSecurityCenter()
 

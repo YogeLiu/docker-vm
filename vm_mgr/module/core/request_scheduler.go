@@ -33,11 +33,12 @@ const (
 // call contract request (chain -> contract engine)
 // tx error (contract engine -> chain)
 type RequestScheduler struct {
-	logger *zap.SugaredLogger	// request scheduler logger
-	lock   sync.RWMutex 		// request scheduler rw lock
+	logger *zap.SugaredLogger // request scheduler logger
+	lock   sync.RWMutex       // request scheduler rw lock
 
-	eventCh             chan *protogo.DockerVMMessage      // request scheduler event handler chan
-	closeCh             chan *messages.RequestGroupKey     // close request group chan
+	eventCh chan *protogo.DockerVMMessage  // request scheduler event handler chan
+	closeCh chan *messages.RequestGroupKey // close request group chan
+
 	requestGroups       map[string]interfaces.RequestGroup // contractName#contractVersion
 	chainRPCService     *rpc.ChainRPCService               // chain rpc service
 	contractManager     *ContractManager                   // contract manager
@@ -56,8 +57,9 @@ func NewRequestScheduler(
 		logger: logger.NewDockerLogger(logger.MODULE_REQUEST_SCHEDULER),
 		lock:   sync.RWMutex{},
 
-		eventCh:             make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
-		closeCh:             make(chan *messages.RequestGroupKey, closeChSize),
+		eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+
 		requestGroups:       make(map[string]interfaces.RequestGroup),
 		chainRPCService:     service,
 		origProcessManager:  oriPMgr,
