@@ -356,6 +356,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		| MemberType_CERT       | PEM        |
 		| MemberType_CERT_HASH  | HASH       |
 		| MemberType_PUBLIC_KEY | PEM        |
+		| MemberType_ALIAS      | ALIAS      |
 	*/
 
 	var address string
@@ -371,12 +372,13 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 			return getSenderAddressResponse, gasUsed
 		}
 
-	case accesscontrol.MemberType_CERT_HASH:
+	case accesscontrol.MemberType_CERT_HASH,
+		accesscontrol.MemberType_ALIAS:
 		certHashKey := hex.EncodeToString(sender.MemberInfo)
 		var certBytes []byte
 		certBytes, err = txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
 		if err != nil {
-			r.Log.Errorf("get cert from chain fialed, %s", err.Error())
+			r.Log.Errorf("get cert from chain failed, %s", err.Error())
 			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
 			getSenderAddressResponse.Message = err.Error()
 			getSenderAddressResponse.Payload = nil
