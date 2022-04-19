@@ -1,5 +1,20 @@
 VERSION=v2.2.2_qc
 
+
+DATETIME=$(shell date "+%Y%m%d%H%M%S")
+GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
+GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
+CURRENT_PATH = $(shell pwd)
+VERSION_HOME=${CURRENT_PATH}/vm_mgr/config
+
+GOLDFLAGS += -X "${VERSION_HOME}.CurrentVersion=${VERSION}"
+GOLDFLAGS += -X "${VERSION_HOME}.BuildDateTime=${DATETIME}"
+GOLDFLAGS += -X "${VERSION_HOME}.GitBranch=${GIT_BRANCH}"
+GOLDFLAGS += -X "${VERSION_HOME}.GitCommit=${GIT_COMMIT}"
+
+test1:
+	echo ${VERSION_HOME}
+
 build-test:
 	cd test/scripts && ./prepare.sh
 
@@ -49,6 +64,12 @@ gomod:
 ut:
 	./test/scripts/prepare.sh
 	make build-image
-	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 	./ut_cover.sh
 	docker stop chaimaker_vm_test
+
+solo:
+	./scripts/solo.sh
+
+solo-stop:
+	docker stop chainmaker_vm_solo
