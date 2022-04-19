@@ -1,26 +1,19 @@
 VERSION=v2.2.2_qc
 
-
-DATETIME=$(shell date "+%Y%m%d%H%M%S")
+BUILD_TIME = $(shell date "+%Y%m%d%H%M%S")
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
-CURRENT_PATH = $(shell pwd)
-VERSION_HOME=${CURRENT_PATH}/vm_mgr/config
-
-GOLDFLAGS += -X "${VERSION_HOME}.CurrentVersion=${VERSION}"
-GOLDFLAGS += -X "${VERSION_HOME}.BuildDateTime=${DATETIME}"
-GOLDFLAGS += -X "${VERSION_HOME}.GitBranch=${GIT_BRANCH}"
-GOLDFLAGS += -X "${VERSION_HOME}.GitCommit=${GIT_COMMIT}"
-
-test1:
-	echo ${VERSION_HOME}
 
 build-test:
 	cd test/scripts && ./prepare.sh
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} -f Dockerfile ./
+	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} \
+	--build-arg BUILD_TIME=${BUILD_TIME} \
+	--build-arg GIT_BRANCH=${GIT_BRANCH} \
+	--build-arg GIT_COMMIT=${GIT_COMMIT} \
+	-f Dockerfile ./
 	docker images | grep chainmaker-vm-docker-go
 	docker image prune -f
 

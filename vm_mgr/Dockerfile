@@ -12,6 +12,15 @@ RUN go build -mod=vendor -o /bin/startvm
 
 FROM ubuntu:20.04
 
+# label build time, git branch and git log
+ARG BUILD_TIME=unspecified
+ARG GIT_BRANCH=unspecified
+ARG GIT_COMMIT=unspecified
+
+LABEL build_time=$BUILD_TIME
+LABEL git_branch=$GIT_BRANCH
+LABEL git_commit=$GIT_COMMIT
+
 # using docker api to passing time to docker
 # enable below code when docker-vm enable macOS or windows
 ENV TZ "Asia/Shanghai"

@@ -23,9 +23,6 @@ func main() {
 	// init docker container logger
 	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER, config.DockerLogDir)
 
-	versionInfo := getVersion()
-	managerLogger.Infof(versionInfo)
-
 	// start pprof
 	startPProf(managerLogger)
 
@@ -54,23 +51,6 @@ func main() {
 	for i := 0; ; i++ {
 		time.Sleep(time.Hour)
 	}
-}
-
-func getVersion() string {
-	versionInfo := fmt.Sprintf("Vm-docker-go Version: %s\n", config.CurrentVersion)
-
-	if config.BuildDateTime != "" {
-		versionInfo += fmt.Sprintf("Build Time:%9s%s\n", " ", config.BuildDateTime)
-	}
-
-	if config.GitBranch != "" {
-		versionInfo += fmt.Sprintf("Git Commit:%9s%s", " ", config.GitBranch)
-		if config.GitCommit != "" {
-			versionInfo += fmt.Sprintf("(%s)", config.GitCommit)
-		}
-	}
-
-	return versionInfo
 }
 
 // start pprof when open enable pprof switch

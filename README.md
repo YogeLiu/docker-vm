@@ -28,7 +28,12 @@ vm:
 
 1. 打包合约服务的镜像
 ```shell
-make build-images 
+make build-image 
+```
+
+可以通过如下命令查看镜像的版本信息
+```shell
+docker inspect <image-name> | jq '.[].ContainerConfig.Labels'
 ```
 
 2. 参数说明：
