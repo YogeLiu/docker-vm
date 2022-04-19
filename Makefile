@@ -1,4 +1,4 @@
-VERSION=v2.2.1
+VERSION=v2.2.2_qc
 
 build-test:
 	cd test/scripts && ./prepare.sh
@@ -7,6 +7,7 @@ build-image:
 	cd vm_mgr && go mod vendor
 	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} -f Dockerfile ./
 	docker images | grep chainmaker-vm-docker-go
+	docker image prune -f
 
 image-push:
 	docker push chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
