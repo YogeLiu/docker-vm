@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,8 +33,9 @@ const (
 )
 
 const (
-	txSize    = 15000
-	eventSize = 100
+	txSize               = 15000
+	eventSize            = 100
+	retryConnectDuration = 2 * time.Second
 )
 
 var clientMgrOnce sync.Once
@@ -201,12 +201,27 @@ func (cm *ClientManager) establishConnections() error {
 	cm.logger.Debugf("establish new connections")
 	totalConnections := int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig()))
 	for i := 0; i < totalConnections; i++ {
-		newIndex := cm.getNextIndex()
-		newClient := NewCDMClient(newIndex, cm.logger, cm)
-		if err := newClient.StartClient(); err != nil {
-			return errors.New("fail to connect docker vm, please start docker vm")
-		}
-		cm.aliveClientMap[newIndex] = newClient
+
+		go func() {
+			newIndex := cm.getNextIndex()
+			newClient := NewCDMClient(newIndex, cm.logger, cm)
+
+			for {
+				if cm.stop {
+					return
+				}
+				err := newClient.StartClient()
+				if err == nil {
+					break
+				}
+				cm.logger.Warnf("client[%d] connect fail, try reconnect...", newIndex)
+				time.Sleep(retryConnectDuration)
+			}
+			cm.clientLock.Lock()
+			cm.aliveClientMap[newIndex] = newClient
+			cm.clientLock.Unlock()
+		}()
+
 	}
 	return nil
 }
@@ -240,8 +255,8 @@ func (cm *ClientManager) reconnect() {
 		if err == nil {
 			break
 		}
-		cm.logger.Warnf("client connect fail, try reconnect...")
-		time.Sleep(2 * time.Second)
+		cm.logger.Warnf("client[%d] connect fail, try reconnect...", newIndex)
+		time.Sleep(retryConnectDuration)
 	}
 
 	cm.clientLock.Lock()
