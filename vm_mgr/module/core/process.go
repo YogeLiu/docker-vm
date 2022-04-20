@@ -387,7 +387,7 @@ func (p *Process) handleNewTx() (string, error) {
 			nextTx.TxId, len(p.processBalancer.GetTxQueue()))
 
 		p.txCount++
-		nextTx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.ChainId, p.processName, p.txCount)
+		nextTx.TxContext.OriginalProcessName = utils.ConstructOriginalProcessName(p.processName, p.txCount)
 		p.logger.Debugf("[%s] update tx original name: [%s]", p.processName, nextTx.TxContext.OriginalProcessName)
 
 		p.Handler.TxRequest = nextTx

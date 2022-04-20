@@ -175,7 +175,7 @@ func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, pr
 
 func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
 	// validate contract deployed or not
-	contractKey := utils.ConstructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
+	contractKey := utils.ConstructContractKey(crossContractTx.ChainId, crossContractTx.ContractName, crossContractTx.ContractVersion)
 	contractPath, err := pm.contractManager.GetContract(crossContractTx.ChainId, crossContractTx.TxId, contractKey)
 	if err != nil {
 		pm.logger.Errorf(err.Error())
