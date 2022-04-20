@@ -106,7 +106,7 @@ func ConstructOriginalProcessName(processName string, txCount uint64) string {
 	return sb.String()
 }
 
-// ConstructConcatOriginalAndCrossProcessName chainId#ontractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
+// ConstructConcatOriginalAndCrossProcessName chainId#contractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
 func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProcessName string) string {
 	var sb strings.Builder
 	sb.WriteString(originalProcessName)
