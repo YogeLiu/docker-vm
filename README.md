@@ -71,13 +71,13 @@ docker run -it -p22359:22359 --privileged chainmakerofficial/chainmaker-vm-docke
 例如 启动四个容器的脚本，分别监听22351 - 22354，并打印容器输出到标准输出:
 
 ```shell
-docker run -d -e ENV_LOG_IN_CONSOLE=true -p22351:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run --rm -d -p22351:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
 
-docker run -d -e ENV_LOG_IN_CONSOLE=true -p22352:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run --rm -d -p22352:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
 
-docker run -d -e ENV_LOG_IN_CONSOLE=true -p22353:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run --rm -d -p22353:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
 
-docker run -d -e ENV_LOG_IN_CONSOLE=true -p22354:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run --rm -d -p22354:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
 
 ```
 3.1 以uds方式启动：
