@@ -564,6 +564,16 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 
 func (iter *mockHistoryKeyIterator) Release() {}
 
+func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetBlockVersion().DoAndReturn(
+		mockTxSimContextGetBlockVersion,
+	).AnyTimes()
+}
+
+func mockTxSimContextGetBlockVersion() uint32 {
+	return 2201
+}
+
 // 获取sender公钥
 func mockGetSender(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().GetSender().DoAndReturn(
