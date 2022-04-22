@@ -27,7 +27,8 @@ vm:
 ### 2.1. 启动合约服务容器
 
 1. 打包合约服务的镜像
-在`vm-docker-go`项目目录下执行打包镜像操作
+
+在`vm-docker-go`项目根目录下执行打包镜像操作
 ```shell
 make build-image
 ```
@@ -104,6 +105,8 @@ docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/buil
 ```
 
 ### 2.2. 配置启动 chainmaker
+
+需要修改`chainmaker`配置文件中`vm`配置中的相关配置
 
 #### 2.2.1 tcp方式
 保持 uds_open 为false，并配置docker_vm_host和docker_vm_port的值
