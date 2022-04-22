@@ -47,6 +47,8 @@ type ProcessInterface interface {
 
 	returnTxResponse(txResponse *protogo.TxResponse)
 
+	returnCrossResponse(crossResponse *SDKProtogo.DMSMessage)
+
 	updateProcessState(state protogo.ProcessState)
 
 	resetProcessTimer()
@@ -324,7 +326,7 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 		Parameters:      callContractRequest.Args,
 		TxContext: &protogo.TxContext{
 			CurrentHeight:       callContractMsg.CurrentHeight + 1,
-			OriginalProcessName: h.TxRequest.TxContext.OriginalProcessName,
+			OriginalProcessName: h.TxRequest.TxContext.OriginalProcessName, // todo: doesn't have original now
 			WriteMap:            nil,
 			ReadMap:             nil,
 		},
@@ -374,18 +376,20 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 	// check current height,
 	// if current height > 0, which is cross contract, just return result to previous contract
 	if h.TxRequest.TxContext.CurrentHeight > 0 {
-		h.logger.Debugf("process [%s] handle cross contract completed message [%s]", h.processName, completedMsg.TxId)
-		responseChId := crossContractChKey(h.TxRequest.TxId, h.TxRequest.TxContext.CurrentHeight)
-		responseCh := h.scheduler.GetCrossContractResponseCh(h.TxRequest.ChainId, responseChId)
-		if responseCh == nil {
-			h.logger.Warnf("process [%s] fail to get response chan and abandon cross response [%s]",
-				h.processName, h.TxRequest.TxId)
-			return nil
-		}
-		responseCh <- completedMsg
+		h.process.returnCrossResponse(completedMsg)
+		//h.logger.Debugf("process [%s] handle cross contract completed message [%s]", h.processName, completedMsg.TxId)
+		//
+		//responseChId := crossContractChKey(h.TxRequest.TxId, h.TxRequest.TxContext.CurrentHeight)
+		//responseCh := h.scheduler.GetCrossContractResponseCh(h.TxRequest.ChainId, responseChId)
+		//if responseCh == nil {
+		//	h.logger.Warnf("process [%s] fail to get response chan and abandon cross response [%s]",
+		//		h.processName, h.TxRequest.TxId)
+		//	return nil
+		//}
+		//responseCh <- completedMsg
 
-		h.process.updateProcessState(protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED)
-		h.process.killCrossProcess()
+		//h.process.updateProcessState(protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED)
+		//h.process.killCrossProcess()
 
 		return nil
 	}
