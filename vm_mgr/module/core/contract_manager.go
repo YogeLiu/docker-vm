@@ -59,26 +59,26 @@ func (cm *ContractManager) SetScheduler(scheduler protocol.Scheduler) {
 // GetContract get contract path in volume,
 // if it exists in volume, return path
 // if not exist in volume, request from chain maker state library
-// contractName include version, e.g., fact#v1.0.0
-func (cm *ContractManager) GetContract(chainId, txId, contractName string) (string, error) {
+// contractKey include version, e.g., chainId#fact#v1.0.0
+func (cm *ContractManager) GetContract(chainId, txId, contractKey string) (string, error) {
 	cm.lock.RLock()
 	defer cm.lock.RUnlock()
 
 	// get contract path from map
-	contractPath, ok := cm.contractsMap[contractName]
+	contractPath, ok := cm.contractsMap[contractKey]
 	if ok {
-		cm.logger.Debugf("get contract from memory [%s], path is [%s]", contractName, contractPath)
+		cm.logger.Debugf("get contract from memory [%s], path is [%s]", contractKey, contractPath)
 		return contractPath, nil
 	}
 
 	// get contract path from chain maker
-	cPath, err, _ := cm.getContractLock.Do(contractName, func() (interface{}, error) {
-		defer cm.getContractLock.Forget(contractName)
+	cPath, err, _ := cm.getContractLock.Do(contractKey, func() (interface{}, error) {
+		defer cm.getContractLock.Forget(contractKey)
 
-		return cm.lookupContractFromDB(chainId, txId, contractName)
+		return cm.lookupContractFromDB(chainId, txId, contractKey)
 	})
 	if err != nil {
-		cm.logger.Errorf("fail to get contract path from chain maker, contract name : [%s] -- txId [%s] ", contractName, txId)
+		cm.logger.Errorf("fail to get contract path from chain maker, contract name : [%s] -- txId [%s] ", contractKey, txId)
 		return "", err
 	}
 
@@ -86,11 +86,11 @@ func (cm *ContractManager) GetContract(chainId, txId, contractName string) (stri
 }
 
 // todo modify method name
-func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractName string) (string, error) {
+func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractKey string) (string, error) {
 
 	enableUnixDomainSocket, _ := strconv.ParseBool(os.Getenv(config.ENV_ENABLE_UDS))
 
-	contractPath := filepath.Join(mountDir, chainId, config.ContractsDir, contractName)
+	contractPath := filepath.Join(mountDir, chainId, config.ContractsDir, contractKey)
 	err := utils.CreateDir(filepath.Join(mountDir, chainId, config.ContractsDir))
 	if err != nil {
 		return "", err
@@ -107,7 +107,7 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractName stri
 		getByteCodeMsg := &protogo.CDMMessage{
 			TxId:    txId,
 			Type:    protogo.CDMType_CDM_TYPE_GET_BYTECODE,
-			Payload: []byte(contractName),
+			Payload: []byte(contractKey),
 			ChainId: chainId,
 		}
 		// send request to chain maker
@@ -137,7 +137,6 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractName stri
 	}
 
 	// save contract file path to map
-	contractKey := utils.ConstructContractKey(chainId, contractName)
 	cm.contractsMap[contractKey] = contractPath
 	//cm.logger.Debugf("get contract disk [%s], path is [%s]", contractName, contractPath)
 

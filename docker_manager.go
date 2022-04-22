@@ -121,15 +121,7 @@ func (m *DockerManager) initMountDirectory() error {
 	}
 	m.mgrLogger.Debug("set mount dir: ", mountDir)
 
-	// create sub directory: contracts, share, sock
-	contractDir := filepath.Join(mountDir, config.ContractsDir)
-	err = m.createDir(contractDir)
-	if err != nil {
-		m.mgrLogger.Errorf("fail to build image, err: [%s]", err)
-		return err
-	}
-	m.mgrLogger.Debug("set contract dir: ", contractDir)
-
+	// create dms sock directory
 	sockDir := filepath.Join(mountDir, config.SockDir)
 	err = m.createDir(sockDir)
 	if err != nil {
@@ -203,12 +195,7 @@ func validateVMSettings(config *config.DockerVMConfig,
 	}
 
 	// set host log directory
-	if !filepath.IsAbs(config.DockerVMLogPath) {
-		hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
-		hostLogDir = filepath.Join(hostLogDir, chainId)
-	} else {
-		hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
-	}
+	hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
 
 	dockerContainerConfig.HostMountDir = hostMountDir
 	dockerContainerConfig.HostLogDir = hostLogDir
