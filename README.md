@@ -27,8 +27,9 @@ vm:
 ### 2.1. 启动合约服务容器
 
 1. 打包合约服务的镜像
+在`vm-docker-go`项目目录下执行打包镜像操作
 ```shell
-make build-images 
+make build-image
 ```
 
 2. 参数说明：
