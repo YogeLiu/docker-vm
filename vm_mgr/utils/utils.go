@@ -141,7 +141,7 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 
 func GetContractKeyFromProcessName(processName string) string {
 	nameList := strings.Split(processName, "#")
-	return ConstructContractKey(nameList[0], nameList[1])
+	return ConstructContractKey(nameList[0], nameList[1], nameList[2])
 }
 
 func GetMaxSendMsgSizeFromEnv() int {
