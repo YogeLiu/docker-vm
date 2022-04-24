@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package interfaces
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 )
 
@@ -39,12 +38,26 @@ type Process interface {
 	GetProcessName() string
 	GetContractName() string
 	GetContractVersion() string
-	GetUser() *core.User
+	GetUser() User
 	SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer)
 }
 
 type UserManager interface {
-	GetAvailableUser() (*core.User, error)
-	FreeUser(user *core.User) error
+	GetAvailableUser() (User, error)
+	FreeUser(user User) error
 	BatchCreateUsers() error
 }
+
+type User interface {
+	GetUid() int
+	GetGid() int
+	GetSockPath() string
+	GetUserName() string
+}
+
+type ChainRPCService interface {
+	SetScheduler(scheduler RequestScheduler)
+	PutMsg(msg interface{}) error
+	DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error
+}
+

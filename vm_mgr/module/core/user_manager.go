@@ -8,17 +8,17 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
+
 	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
+	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
@@ -28,27 +28,6 @@ const addUserFormat = "useradd -u %d %s" // add user cmd
 
 var batchCreateUsersThreadNum = config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
 var createUserNumPerThread = protocol.CallContractDepth + 1                         // user num per thread
-
-// User is linux user
-type User struct {
-	Uid      int    // user id
-	Gid      int    // user group id
-	UserName string // username
-	SockPath string // sandbox rpc sock path
-}
-
-// NewUser returns new user
-func NewUser(id int) *User {
-	userName := fmt.Sprintf("u-%d", id)
-	sockPath := filepath.Join(rpc.SandboxRPCDir, rpc.SandboxRPCSockName)
-
-	return &User{
-		Uid:      id,
-		Gid:      id,
-		UserName: userName,
-		SockPath: sockPath,
-	}
-}
 
 // UserManager is linux user manager
 type UserManager struct {
@@ -128,7 +107,7 @@ func (u *UserManager) generateNewUser(uid int) error {
 }
 
 // GetAvailableUser pop user from queue header
-func (u *UserManager) GetAvailableUser() (*User, error) {
+func (u *UserManager) GetAvailableUser() (interfaces.User, error) {
 
 	user, err := u.userQueue.DequeueOrWaitForNextElement()
 	if err != nil {
@@ -136,11 +115,11 @@ func (u *UserManager) GetAvailableUser() (*User, error) {
 	}
 
 	u.logger.Debugf("get available user: [%v]", user)
-	return user.(*User), nil
+	return user.(interfaces.User), nil
 }
 
 // FreeUser add user to queue tail, user can be dequeue then
-func (u *UserManager) FreeUser(user *User) error {
+func (u *UserManager) FreeUser(user interfaces.User) error {
 
 	err := u.userQueue.Enqueue(user)
 	if err != nil {

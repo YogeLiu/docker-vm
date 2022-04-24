@@ -1,6 +1,6 @@
 /*
-Copyright (C) BABEC. All rights reserved.
 Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+Copyright (C) BABEC. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -47,13 +47,13 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 	if netProtocol == config.TCP {
 		port := config.DockerVMConfig.RPC.ChainRPCPort
 
-		endPoint := fmt.Sprintf(":%s", port)
+		endPoint := fmt.Sprintf(":%d", port)
 
 		if listener, err = net.Listen("tcp", endPoint); err != nil {
 			return nil, err
 		}
 	} else {
-		absChainRPCUDSPath := filepath.Join(ChainRPCDir, ChainRPCSockName)
+		absChainRPCUDSPath := filepath.Join(config.DockerMountDir, filepath.Join(ChainRPCDir, ChainRPCSockName))
 
 		listenAddress, err := net.ResolveUnixAddr("unix", absChainRPCUDSPath)
 		if err != nil {

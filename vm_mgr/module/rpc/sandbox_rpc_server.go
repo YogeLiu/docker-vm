@@ -23,11 +23,6 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
-const (
-	SandboxRPCDir      = "/sandbox"     // SandboxRPCDir docker manager sandbox dir
-	SandboxRPCSockName = "sandbox.sock" // SandboxRPCSockName docker manager sandbox domain socket path
-)
-
 // SandboxRPCServer is server of bidirectional streaming RPC (sandbox <=> contract engine)
 type SandboxRPCServer struct {
 	Listener net.Listener
@@ -38,12 +33,12 @@ type SandboxRPCServer struct {
 // NewSandboxRPCServer build new chain to sandbox rpc server.
 func NewSandboxRPCServer() (*SandboxRPCServer, error) {
 
-	err := utils.Mkdir(SandboxRPCDir)
+	err := utils.Mkdir(config.SandboxRPCDir)
 	if err != nil {
 		return nil, err
 	}
 
-	sandboxRPCSockPath := filepath.Join(SandboxRPCDir, SandboxRPCSockName)
+	sandboxRPCSockPath := filepath.Join(config.SandboxRPCDir, config.SandboxRPCSockName)
 
 	listenAddress, err := net.ResolveUnixAddr("unix", sandboxRPCSockPath)
 	if err != nil {

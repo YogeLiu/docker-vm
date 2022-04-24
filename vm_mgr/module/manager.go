@@ -22,10 +22,10 @@ type ManagerImpl struct {
 	chainRPCServer   *rpc.ChainRPCServer
 	sandboxRPCServer *rpc.SandboxRPCServer
 	scheduler        *core.RequestScheduler
-	userController *core.UserManager
-	securityEnv    *security.SecurityCenter
-	processManager *core.ProcessManager
-	logger         *zap.SugaredLogger
+	userController   *core.UserManager
+	securityEnv      *security.SecurityCenter
+	processManager   *core.ProcessManager
+	logger           *zap.SugaredLogger
 }
 
 func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
@@ -54,7 +54,6 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	origProcessManager := core.NewProcessManager(maxOriginalProcessNum, releaseRate, false, usersManager)
 	crossProcessManager := core.NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
-
 	managerLogger.Debugf("init grpc server, max send size [%dM], max recv size[%dM]",
 		config.DockerVMConfig.RPC.MaxSendMsgSize, config.DockerVMConfig.RPC.MaxRecvMsgSize)
 
@@ -70,13 +69,13 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 		return nil, fmt.Errorf("fail to init new SandboxRPCServer, %v", err)
 	}
 
-	// start cdm server
+	// start chain rpc server
 	chainRPCService := rpc.NewChainRPCService()
 	if err = chainRPCServer.StartChainRPCServer(chainRPCService); err != nil {
 		return nil, fmt.Errorf("failed to start ChainRPCService, %v", err)
 	}
 
-	// start dms server
+	// start sandbox rpc server
 	sandboxRPCService := rpc.NewSandboxRPCService(origProcessManager, crossProcessManager)
 	if err = sandboxRPCServer.StartSandboxRPCServer(sandboxRPCService); err != nil {
 		return nil, fmt.Errorf("failed to start SandboxRPCService, %v", err)
@@ -88,8 +87,6 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	crossProcessManager.SetScheduler(scheduler)
 	contractManager.SetScheduler(scheduler)
 	chainRPCService.SetScheduler(scheduler)
-
-
 
 	manager := &ManagerImpl{
 		chainRPCServer:   chainRPCServer,

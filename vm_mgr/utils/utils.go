@@ -81,8 +81,8 @@ func ProcessLoggerName(processName string) string {
 //	return basePath + config.TestPath
 //}
 
-//func GetLogHandler() *zap.SugaredLogger {
-//	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
+//func GetTestLogHandler() *zap.SugaredLogger {
+//	return logger.NewTestDockerLogger(logger.MODULE_PROCESS)
 //}
 
 // ConstructContractKey contractName#contractVersion

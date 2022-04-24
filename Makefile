@@ -15,7 +15,7 @@ update-gomod:
 	cd vm_mgr && rm -rf vendor
 	cd scripts && ./gomod_update.sh
 
-gen-dockervm:
+gen-dockervm-pb:
 	cd pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dockervm_message.proto
 	cd vm_mgr/pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dockervm_message.proto
 

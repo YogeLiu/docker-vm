@@ -63,7 +63,7 @@ type Process struct {
 	contractVersion string
 
 	cGroupPath string
-	user       *User
+	user       interfaces.User
 	cmd        *exec.Cmd
 
 	processState   processState
@@ -90,8 +90,8 @@ type Process struct {
 }
 
 // NewProcess new process, process working on main contract which is not called cross contract
-func NewProcess(user *User, contractName, contractVersion, processName string, manager interfaces.ProcessManager,
-	scheduler interfaces.RequestScheduler, isCrossProcess bool) interfaces.Process {
+func NewProcess(user interfaces.User, contractName, contractVersion, processName string,
+	manager interfaces.ProcessManager, scheduler interfaces.RequestScheduler, isCrossProcess bool) interfaces.Process {
 
 	process := &Process{
 		processName: processName,
@@ -176,7 +176,7 @@ func (p *Process) GetContractVersion() string {
 }
 
 // GetUser returns user
-func (p *Process) GetUser() *User {
+func (p *Process) GetUser() interfaces.User {
 	return p.user
 }
 
@@ -206,7 +206,7 @@ func (p *Process) launchProcess() *exitErr {
 
 	cmd := exec.Cmd{
 		Path: p.requestGroup.GetContractPath(),
-		Args: []string{p.user.SockPath, p.processName, p.contractName, p.contractVersion,
+		Args: []string{p.user.GetSockPath(), p.processName, p.contractName, p.contractVersion,
 			config.DockerVMConfig.Log.SandboxLog.Level},
 		Stderr: &stderr,
 	}
@@ -223,7 +223,7 @@ func (p *Process) launchProcess() *exitErr {
 	// setting pid namespace and allocate special uid for process
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Credential: &syscall.Credential{
-			Uid: uint32(p.user.Uid),
+			Uid: uint32(p.user.GetUid()),
 		},
 		Cloneflags: syscall.CLONE_NEWPID,
 	}

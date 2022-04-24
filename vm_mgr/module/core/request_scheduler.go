@@ -11,7 +11,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"fmt"
@@ -40,7 +39,7 @@ type RequestScheduler struct {
 	closeCh chan *messages.RequestGroupKey // close request group chan
 
 	requestGroups       map[string]interfaces.RequestGroup // contractName#contractVersion
-	chainRPCService     *rpc.ChainRPCService               // chain rpc service
+	chainRPCService     interfaces.ChainRPCService               // chain rpc service
 	contractManager     *ContractManager                   // contract manager
 	origProcessManager  interfaces.ProcessManager          // manager for original process
 	crossProcessManager interfaces.ProcessManager          // manager for cross process
@@ -48,7 +47,7 @@ type RequestScheduler struct {
 
 // NewRequestScheduler new a request scheduler
 func NewRequestScheduler(
-	service *rpc.ChainRPCService,
+	service interfaces.ChainRPCService,
 	oriPMgr interfaces.ProcessManager,
 	crossPMgr interfaces.ProcessManager,
 	cMgr *ContractManager) *RequestScheduler {

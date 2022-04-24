@@ -1,4 +1,5 @@
 /*
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 Copyright (C) BABEC. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
@@ -74,16 +75,16 @@ func (s *ChainRPCService) PutMsg(msg interface{}) error {
 func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	s.stream = stream
 	s.wg.Add(2)
-	go s.receiveMsgRoutine()
+	go s.recvMsgRoutine()
 	go s.sendMsgRoutine()
 	s.wg.Wait()
 	s.logger.Infof("s connection end")
 	return nil
 }
 
-// receiveMsgRoutine handles messages received from stream
+// recvMsgRoutine handles messages received from stream
 // message types include: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
-func (s *ChainRPCService) receiveMsgRoutine() {
+func (s *ChainRPCService) recvMsgRoutine() {
 	s.logger.Debugf("start receive_msg_routine...")
 	for {
 		select {
@@ -163,7 +164,7 @@ func (s *ChainRPCService) sendMsgRoutine() {
 	}
 }
 
-// recvMsg receives messages from chanimaker
+// recvMsg receives messages from chainmaker
 func (s *ChainRPCService) recvMsg() (*protogo.DockerVMMessage, error) {
 	msg, err := s.stream.Recv()
 	if err != nil {
@@ -174,7 +175,7 @@ func (s *ChainRPCService) recvMsg() (*protogo.DockerVMMessage, error) {
 	return msg, nil
 }
 
-// sendMsg sends messages to chanimaker
+// sendMsg sends messages to chainmaker
 func (s *ChainRPCService) sendMsg(msg *protogo.DockerVMMessage) error {
 	s.logger.Debugf("send message [%s]", msg)
 	return s.stream.Send(msg)

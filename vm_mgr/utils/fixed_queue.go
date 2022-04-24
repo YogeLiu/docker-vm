@@ -91,6 +91,5 @@ func (st *FixedFIFO) DequeueOrWaitForNextElementContext(ctx context.Context) (in
 			// too many watchers (waitForNextElementChanCapacity) enqueued waiting for next elements
 			return nil, errors.New("empty queue and can't wait for next element")
 		}
-
 	}
 }

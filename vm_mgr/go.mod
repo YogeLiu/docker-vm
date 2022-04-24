@@ -7,6 +7,7 @@ require (
 	chainmaker.org/chainmaker/protocol/v2 v2.1.2-0.20220128021940-8fd70a8c2c75
 	github.com/emirpasic/gods v1.12.0
 	github.com/gogo/protobuf v1.3.2
+	github.com/golang/mock v1.6.0
 	github.com/spf13/viper v1.9.0
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.19.1

@@ -20,8 +20,12 @@ const (
 	// ConfigFileName is the docker vm config file path
 	ConfigFileName = "config"
 
-	// ConfigFileType is the docker vm config file type
-	ConfigFileType = "yml"
+	// SandboxRPCDir docker manager sandbox dir
+	SandboxRPCDir      = "/sandbox"
+
+	// SandboxRPCSockName docker manager sandbox domain socket path
+	SandboxRPCSockName = "sandbox.sock"
+
 )
 
 var DockerVMConfig *conf

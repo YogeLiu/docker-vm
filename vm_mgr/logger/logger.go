@@ -22,8 +22,8 @@ import (
 const (
 	DockerLogDir = "/log"          // mount directory for log
 	LogFileName  = "docker-go.log" // log file name
-
 )
+
 const (
 	// docker module for logging
 	MODULE_MANAGER             = "[Docker Manager]"
@@ -40,6 +40,7 @@ const (
 	MODULE_SECURITY_ENV        = "[Docker Security Env]"
 	MODULE_CONTRACT_MANAGER    = "[Docker Contract Manager]"
 	MODULE_CONTRACT            = "[Docker Contract]"
+	MODULE_TEST                = "[Docker Test]"
 )
 
 const (
@@ -69,8 +70,17 @@ func InitialConfig(logPath string) {
 }
 
 func NewDockerLogger(name string) *zap.SugaredLogger {
+	return newDockerLogger(name, DockerLogDir)
+}
 
-	InitialConfig(DockerLogDir)
+func NewTestDockerLogger() *zap.SugaredLogger {
+	basePath, _ := os.Getwd()
+	return newDockerLogger(MODULE_TEST, basePath + "/")
+}
+
+func newDockerLogger(name, path string) *zap.SugaredLogger {
+
+	InitialConfig(path)
 
 	var encoder zapcore.Encoder
 	if name == MODULE_CONTRACT {
