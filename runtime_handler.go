@@ -94,15 +94,17 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 }
 
 func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
+	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
-
+	specialTxType := protocol.ExecOrderTxTypeNormal
 	// validate cross contract params
 	callContractPayload := recvMsg.SysCallMessage.Payload[config.KeyCallContractReq]
 	var callContractReq protogo.CallContractRequest
 	err := proto.Unmarshal(callContractPayload, &callContractReq)
 	if err != nil {
-		//TODO
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = err.Error()
+		return response, gasUsed, specialTxType
 	}
 
 	contractName := callContractReq.ContractName
@@ -111,7 +113,7 @@ func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.Dock
 		r.Logger.Error(errMsg)
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = errMsg
-		return response, gasUsed
+		return response, gasUsed, specialTxType
 	}
 
 	if recvMsg.CrossContext.CurrentDepth >= protocol.CallContractDepth {
@@ -119,13 +121,51 @@ func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.Dock
 		r.Logger.Error(errMsg)
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = errMsg
-		return response, gasUsed
+		return response, gasUsed, specialTxType
 	}
 
 	// construct new tx
 	invokeContract := "invoke_contract"
-	result, specialTxType, code := txSimContext.CallContract(&common.Contract{Name: contractName}, invokeContract,
+	txSimContext.SetCallerRuntimeType(common.RuntimeType_DOCKER_GO)
+	var result *common.ContractResult
+	var code common.TxStatusCode
+	result, specialTxType, code = txSimContext.CallContract(&common.Contract{Name: contractName}, invokeContract,
 		nil, callContractReq.Args, gasUsed, txSimContext.GetTx().Payload.TxType)
+
+	if code != common.TxStatusCode_SUCCESS {
+		errMsg := "[call contract] execute error code: %s, msg: %s"
+		r.Logger.Error(errMsg)
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = result.Message
+		return response, gasUsed, specialTxType
+	}
+
+	response.SysCallMessage.Code = protogo.DockerVMCode_OK
+
+	// get events
+	var dockerContractEvents []*protogo.DockerContractEvent
+	{
+		gasUsed = result.GasUsed
+
+		for _, event := range result.ContractEvent {
+			dockerContractEvent := &protogo.DockerContractEvent{
+				Topic:        event.Topic,
+				ContractName: event.ContractName,
+				Data:         event.EventData,
+			}
+
+			gasUsed, err = gas.EmitEventGasUsed(gasUsed, event)
+			if err != nil {
+				response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+				response.SysCallMessage.Message = err.Error()
+				return response, gasUsed, specialTxType
+			}
+
+			dockerContractEvents = append(dockerContractEvents, dockerContractEvent)
+		}
+	}
+	// TODO 读写集怎么处理
+
 }
 
 func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.DockerVMMessage,
