@@ -78,7 +78,9 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 
 	processBalance.AddTx(txRequest)
 
-	if !processBalance.needCreateNewProcess() {
+	needCreateNewProcess := processBalance.needCreateNewProcess()
+	pm.logger.Debugf("[%s] need create new process: %v", txRequest.TxId, needCreateNewProcess)
+	if !needCreateNewProcess {
 		return nil
 	}
 	processName := utils.ConstructProcessName(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion,
@@ -97,6 +99,7 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 		return fmt.Errorf("faild to create process, err is: %s, txId: %s", err, txRequest.TxId)
 	}
 	processBalance.AddProcess(process, processName)
+	pm.logger.Debugf("[%s] update process length: %d", txRequest.TxId, processBalance.Size())
 	go process.ExecProcess()
 
 	return nil
