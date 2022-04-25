@@ -77,6 +77,8 @@ type Process struct {
 	expireTimer    *time.Timer // process waiting time
 	Handler        *ProcessHandler
 
+	killOnce sync.Once
+
 	logger *zap.SugaredLogger
 
 	processMgr ProcessMgrInterface
@@ -452,12 +454,14 @@ func (p *Process) StopProcess(processTimeout bool) {
 
 // kill cross process and free process in cross process table
 func (p *Process) killCrossProcess() {
-	<-p.cmdReadyCh
-	p.logger.Debugf("[%s] receive process notify and kill cross process", p.processName)
-	err := p.cmd.Process.Kill()
-	if err != nil {
-		p.logger.Warnf("[%s] fail to kill cross process: [%s]", p.processName, err)
-	}
+	p.killOnce.Do(func() {
+		<-p.cmdReadyCh
+		p.logger.Debugf("[%s] receive process notify and kill cross process", p.processName)
+		err := p.cmd.Process.Kill()
+		if err != nil {
+			p.logger.Warnf("[%s] fail to kill cross process: [%s]", p.processName, err)
+		}
+	})
 }
 
 // kill main process when process encounter error
@@ -483,9 +487,7 @@ func (p *Process) killProcess(isTxTimeout bool) {
 	for depth, process := range processDepth.processes {
 		if process != nil {
 			p.logger.Debugf("[%s] kill cross process in depth [%d]", process.processName, depth)
-			if err = process.cmd.Process.Kill(); err != nil {
-				p.logger.Warnf("[%s] fail to kill corss process: %s", process.processName, err)
-			}
+			process.killCrossProcess()
 		}
 	}
 }
