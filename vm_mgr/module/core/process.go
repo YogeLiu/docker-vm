@@ -290,14 +290,31 @@ func (p *Process) listenProcess() {
 		case crossResponse := <-p.crossResponseCh:
 			p.logger.Debugf("process [%s] handle cross contract completed message [%s]", p.processName, crossResponse.TxId)
 
+			p.Handler.stopTimer()
+			p.resetProcessTimer()
+
 			responseChId := crossContractChKey(crossResponse.TxId, crossResponse.CurrentHeight)
 			responseCh := p.Handler.scheduler.GetCrossContractResponseCh(p.Handler.TxRequest.ChainId, responseChId)
 			if responseCh == nil {
 				p.logger.Warnf("process [%s] fail to get response chan and abandon cross response [%s]",
 					p.processName, p.Handler.TxRequest.TxId)
-				continue
+			} else {
+				responseCh <- crossResponse
 			}
-			responseCh <- crossResponse
+			p.logger.Debugf("[%s] end handle cross tx in process [%s]", crossResponse.TxId, p.processName)
+
+			// begin handle new tx
+			currentTxId, err := p.handleNewTx()
+			if err != nil {
+				if p.Handler.TxRequest.TxContext.CurrentHeight > 0 {
+					errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+						p.Handler.TxRequest.TxId, p.Handler.TxRequest.TxContext.CurrentHeight)
+					p.Handler.scheduler.ReturnErrorCrossContractResponse(p.Handler.TxRequest, errResponse)
+				} else {
+					p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
+				}
+			}
+
 		case txResponse := <-p.responseCh:
 			if txResponse.TxId != p.Handler.TxRequest.TxId {
 				p.logger.Warnf("[%s] abandon tx response due to different tx id, response tx id [%s], "+
@@ -512,7 +529,7 @@ func (p *Process) returnTxResponse(txResponse *protogo.TxResponse) {
 }
 
 func (p *Process) returnCrossResponse(crossResponse *SDKProtogo.DMSMessage) {
-	p.logger.Debugf("[%s] return tx response to process [%s]", crossResponse.TxId, p.processName)
+	p.logger.Debugf("[%s] return cross tx response to process [%s]", crossResponse.TxId, p.processName)
 	p.crossResponseCh <- crossResponse
 }
 
