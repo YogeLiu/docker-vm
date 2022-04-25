@@ -340,7 +340,13 @@ func (p *Process) listenProcess() {
 			// begin handle new tx
 			currentTxId, err := p.handleNewTx()
 			if err != nil {
-				p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
+				if p.Handler.TxRequest.TxContext.CurrentHeight > 0 {
+					errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+						p.Handler.TxRequest.TxId, p.Handler.TxRequest.TxContext.CurrentHeight)
+					p.Handler.scheduler.ReturnErrorCrossContractResponse(p.Handler.TxRequest, errResponse)
+				} else {
+					p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
+				}
 			}
 		case <-p.Handler.txExpireTimer.C:
 			p.stopProcess(false)
