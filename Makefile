@@ -66,3 +66,4 @@ solo:
 
 solo-stop:
 	docker stop chainmaker_vm_solo
+

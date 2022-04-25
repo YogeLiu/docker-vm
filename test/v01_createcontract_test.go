@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"log"
 	"testing"
-	"time"
 
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 	"github.com/stretchr/testify/assert"
@@ -80,11 +79,11 @@ func setupTest(t *testing.T) {
 }
 
 func tearDownTest() {
-	//err := mockDockerManager.StopVM()
-	//if err != nil {
-	//	log.Fatalf("stop docker manager instance failed %v\n", err)
-	//}
-	time.Sleep(1000 * time.Millisecond)
+	err := mockDockerManager.StopVM()
+	if err != nil {
+		log.Fatalf("stop docker manager instance failed %v\n", err)
+	}
+	//time.Sleep(1000 * time.Millisecond)
 }
 
 func TestDockerGoBasicInvoke(t *testing.T) {

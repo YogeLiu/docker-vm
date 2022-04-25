@@ -142,9 +142,9 @@ func (h *ProcessHandler) handlePrepare(readyMsg *SDKProtogo.DMSMessage) error {
 	h.state = ready
 
 	// cross contract call
-	if h.TxRequest.TxContext.CurrentHeight > 0 {
-		return h.HandleContract()
-	}
+	//if h.TxRequest.TxContext.CurrentHeight > 0 {
+	//	return h.HandleContract()
+	//}
 
 	h.process.triggerNewTx()
 	return nil
@@ -294,6 +294,14 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 
 	contractName := callContractRequest.ContractName
 	contractVersion := callContractRequest.ContractVersion
+
+	//if contractName == h.process.getContractName() && contractVersion == h.process.getContractVersion() &&
+	//	h.TxRequest.ChainId == h.process.getContractChainId() {
+	//	h.logger.Errorf(utils.CalledSameContractError.Error())
+	//	errorResponse := constructCallContractErrorResponse(utils.MissingContractNameError.Error(),
+	//		callContractMsg.TxId, callContractMsg.CurrentHeight)
+	//	return h.sendMessage(errorResponse)
+	//}
 
 	if len(contractName) == 0 {
 		h.logger.Errorf(utils.MissingContractNameError.Error())

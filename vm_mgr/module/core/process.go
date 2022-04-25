@@ -10,7 +10,6 @@ package core
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -342,6 +341,7 @@ func (p *Process) listenProcess() {
 func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 
 	currentTx := p.Handler.TxRequest
+	p.logger.Debugf("[%s] handle process exist, current tx is: [%v]", currentTx.TxId, currentTx)
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
@@ -384,20 +384,19 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		<-p.cmdReadyCh
 	}
 
-	var errMsg string
-	processDepth := p.processMgr.GetProcessDepth(currentTx.TxContext.OriginalProcessName)
-	if processDepth == nil {
-		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
-		errMsg = err.Error()
-	} else {
-		errMsg = fmt.Sprintf("cross contract fail: err is:%s, cross processes: %s", err.Error(),
-			processDepth.GetConcatProcessName())
-		p.logger.Error(errMsg)
+	if currentTx.TxContext.CurrentHeight > 0 {
+		p.logger.Warnf("process [%s] [%s] handle cross contract err message [%s]", p.processName,
+			currentTx.TxId, existErr.err.Error())
+
+		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+			currentTx.TxId, currentTx.TxContext.CurrentHeight)
+		p.Handler.scheduler.ReturnErrorCrossContractResponse(currentTx, errResponse)
+		go p.startProcess()
+		return false
 	}
-	p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, errMsg)
 
+	p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, err.Error())
 	go p.startProcess()
-
 	return false
 }
 
