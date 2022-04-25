@@ -26,9 +26,6 @@ import (
 const baseUid = 10000                    // user id start from base uid
 const addUserFormat = "useradd -u %d %s" // add user cmd
 
-var batchCreateUsersThreadNum = config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
-var createUserNumPerThread = protocol.CallContractDepth + 1                         // user num per thread
-
 // UserManager is linux user manager
 type UserManager struct {
 	userQueue *utils.FixedFIFO   // user queue, always pop oldest queue
@@ -51,6 +48,8 @@ func (u *UserManager) BatchCreateUsers() error {
 
 	var err error
 	var wg sync.WaitGroup
+	batchCreateUsersThreadNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
+	createUserNumPerThread := protocol.CallContractDepth + 1                         // user num per thread
 
 	startTime := time.Now()
 	createdUserNum := atomic.NewInt64(0)
@@ -88,7 +87,7 @@ func (u *UserManager) generateNewUser(uid int) error {
 	// it may fail to create user in centos, so add retry until it success
 	for !createSuccess {
 		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Warnf("attemped to create user fail: [%+v], err: [%s] and begin to retry", user, err)
+			u.logger.Warnf("failed to create user [%+v], err: [%s] and begin to retry", user, err)
 			continue
 		}
 
