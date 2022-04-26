@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"fmt"
 	"sync"
 
 	"google.golang.org/grpc/codes"
@@ -64,7 +65,7 @@ func (s *ChainRPCService) PutMsg(msg interface{}) error {
 		m, _ := msg.(*protogo.DockerVMMessage)
 		s.eventCh <- m
 	default:
-		s.logger.Errorf("unknown msg type")
+		return fmt.Errorf("unknown msg type")
 	}
 	return nil
 }

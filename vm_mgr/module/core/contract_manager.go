@@ -74,21 +74,21 @@ func (cm *ContractManager) Start() {
 				}
 
 			default:
-				cm.logger.Errorf("unknown msg type")
+				cm.logger.Errorf("unknown req type")
 			}
 		}
 	}()
 }
 
 // PutMsg put invoking requests to chan, waiting for contract manager to handle request
-//  @param msg types include DockerVMType_GET_BYTECODE_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
+//  @param req types include DockerVMType_GET_BYTECODE_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (cm *ContractManager) PutMsg(msg interface{}) error {
 	switch msg.(type) {
 	case *protogo.DockerVMMessage:
 		m, _ := msg.(*protogo.DockerVMMessage)
 		cm.eventCh <- m
 	default:
-		cm.logger.Errorf("unknown msg type")
+		return fmt.Errorf("unknown req type")
 	}
 	return nil
 }
@@ -156,7 +156,7 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 	return nil
 }
 
-// handleGetContractResp handle get contract msg, save in lru,
+// handleGetContractResp handle get contract req, save in lru,
 // if contract lru is full, pop oldest contracts from lru, delete from disk.
 func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) error {
 
@@ -224,7 +224,7 @@ func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion
 	}
 	err := requestGroup.PutMsg(groupKey)
 	if err != nil {
-		return fmt.Errorf("failed to put msg into request group's event chan")
+		return fmt.Errorf("failed to put req into request group's event chan")
 	}
 	return nil
 }

@@ -72,7 +72,7 @@ type RequestGroup struct {
 	contractManager *ContractManager // contract manager, request contract / receive contract ready signal
 	contractState   contractState    // handle tx with different contract state
 
-	requestScheduler *RequestScheduler             // used for return err msg to chain
+	requestScheduler *RequestScheduler             // used for return err req to chain
 	eventCh          chan *protogo.DockerVMMessage // request group invoking handler
 
 	origTxController  *txController // original tx controller
@@ -109,7 +109,7 @@ func NewRequestGroup(
 }
 
 // Start request manager, listen event chan,
-// event chan msg types: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
+// event chan req types: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (r *RequestGroup) Start() {
 	go func() {
 		select {
@@ -124,21 +124,21 @@ func (r *RequestGroup) Start() {
 				r.handleContractReadyResp()
 
 			default:
-				r.logger.Errorf("unknown msg type")
+				r.logger.Errorf("unknown req type")
 			}
 		}
 	}()
 }
 
 // PutMsg put invoking requests into chan, waiting for request group to handle request
-//  @param msg types include DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
+//  @param req types include DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (r *RequestGroup) PutMsg(msg interface{}) error {
 	switch msg.(type) {
 	case *protogo.DockerVMMessage:
 		m, _ := msg.(*protogo.DockerVMMessage)
 		r.eventCh <- m
 	default:
-		r.logger.Errorf("unknown msg type")
+		return fmt.Errorf("unknown req type")
 	}
 	return nil
 }
@@ -211,7 +211,7 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
 		msg := "current depth exceed " + strconv.Itoa(protocol.CallContractDepth)
 
-		// send err msg to request scheduler
+		// send err req to request scheduler
 		err := r.requestScheduler.PutMsg(&protogo.DockerVMMessage{
 			TxId: req.TxId,
 			Type: protogo.DockerVMType_ERROR,

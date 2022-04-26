@@ -98,7 +98,7 @@ func (s *RequestScheduler) Start() {
 					s.logger.Errorf("failed to handle error response, %v", err)
 				}
 			default:
-				s.logger.Errorf("unknown msg type")
+				s.logger.Errorf("unknown req type")
 			}
 		case msg := <-s.closeCh:
 			if err := s.handleCloseReq(msg); err != nil {
@@ -118,7 +118,7 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 		m, _ := msg.(*messages.RequestGroupKey)
 		s.closeCh <- m
 	default:
-		s.logger.Errorf("unknown msg type")
+		return fmt.Errorf("unknown req type")
 	}
 	return nil
 }
@@ -165,8 +165,8 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 	s.logger.Debugf("handle tx request, txId: [%s]", req.TxId)
 
 	// construct request group key from request
-	contractName := req.GetRequest().GetContractName()
-	contractVersion := req.GetRequest().GetContractVersion()
+	contractName := req.Request.ContractName
+	contractVersion := req.Request.ContractVersion
 	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
 
 	// try to get request group, if not, add it
@@ -178,7 +178,7 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 		s.requestGroups[contractName] = group
 	}
 
-	// put msg to such request group
+	// put req to such request group
 	if err := group.PutMsg(req); err != nil {
 		return err
 	}

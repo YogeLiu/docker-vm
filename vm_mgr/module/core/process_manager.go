@@ -90,7 +90,7 @@ func (pm *ProcessManager) Start() {
 				pm.handleSandboxExitResp(m)
 
 			default:
-				pm.logger.Errorf("unknown msg type")
+				pm.logger.Errorf("unknown req type")
 
 			}
 		case <-pm.cleanTimer.C:
@@ -106,13 +106,13 @@ func (pm *ProcessManager) SetScheduler(scheduler interfaces.RequestScheduler) {
 }
 
 // PutMsg put invoking requests into chan, waiting for process manager to handle request
-//  @param msg types include GetProcessReqMsg, LaunchSandboxRespMsg, ChangeSandboxRespMsg and CloseSandboxRespMsg
+//  @param req types include GetProcessReqMsg, LaunchSandboxRespMsg, ChangeSandboxRespMsg and CloseSandboxRespMsg
 func (pm *ProcessManager) PutMsg(msg interface{}) error {
 	switch msg.(type) {
 	case *protogo.DockerVMMessage, messages.GetProcessReqMsg, messages.LaunchSandboxRespMsg, messages.ChangeSandboxReqMsg, messages.CloseSandboxRespMsg:
 		pm.eventCh <- msg
 	default:
-		pm.logger.Errorf("unknown msg type")
+		return fmt.Errorf("unknown req type")
 	}
 	return nil
 }
@@ -309,7 +309,7 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 	// pop the idle processes
 	removedIdleProcesses := pm.batchPopIdleProcesses(releaseNum)
 
-	// put close sandbox msg to process
+	// put close sandbox req to process
 	var wg sync.WaitGroup
 	for i := 0; i < releaseNum; i++ {
 		wg.Add(1)

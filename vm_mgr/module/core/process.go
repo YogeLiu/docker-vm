@@ -127,7 +127,7 @@ func NewProcess(user interfaces.User, contractName, contractVersion, processName
 }
 
 // PutMsg put invoking requests to chan, waiting for process to handle request
-//  @param msg types include DockerVMType_TX_REQUEST, ChangeSandboxReqMsg and CloseSandboxReqMsg
+//  @param req types include DockerVMType_TX_REQUEST, ChangeSandboxReqMsg and CloseSandboxReqMsg
 func (p *Process) PutMsg(msg interface{}) error {
 	switch msg.(type) {
 	case *protogo.DockerVMMessage:
@@ -137,7 +137,7 @@ func (p *Process) PutMsg(msg interface{}) error {
 		p.eventCh <- msg
 
 	default:
-		p.logger.Errorf("unknown msg type")
+		return fmt.Errorf("unknown req type")
 	}
 	return nil
 }
