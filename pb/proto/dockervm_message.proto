@@ -43,28 +43,15 @@ message CrossContext {
 
     string process_name = 2;
 
-    CrossType cross_type = 3;
-}
-
-enum CrossType {
-
-    INVALID = 0;
-
-    INTERNAL = 1;
-
-    WASMER  = 2;
-
-    WXVM  = 3;
-
-    GASM  = 4;
-
-    EVM  = 5;
-
-    DOCKER_GO  = 6;
-
-    DOCKER_JAVA  = 7;
-
-    EXTERNAL = 8;
+    /*
+     63          59           43                   0
+      +----------+^-----------+-^---------+-^-------
+      |   4bits   |   16bits    |   .....   | 4bits|
+      +----------+^-----------+-^---------+-^-------
+     depth_count | history_flag | vec<runtime_type>
+     the length of vec is controlled by depth_count
+    */
+    uint64 cross_info = 3;
 }
 
 enum DockerVMType {
@@ -182,10 +169,6 @@ enum DockerVMCode {
 
 // ============== DMS pb ==============
 // --------------------  request message ---------------------
-message Input {
-    map<string, bytes> args = 1;
-}
-
 message CallContractRequest {
     string contract_name = 1;
     // args

@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -110,40 +109,19 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		},
 	}
 
-	// ContractEngine 通过crossCtx判断是否是跨合约调用，以及跨合约调用的类型
-	// TODO: 返回值应当携带该信息，外部跨合约调用直接返回，内部跨合约调用应当返回到指定sandbox中
-	// 内部跨合约调用额外携带了 currentProcessName 和 parentProcessName
 	crossCtx := &protogo.CrossContext{
-		CurrentDepth: 0,
-		CrossType:    protogo.CrossType_INTERNAL,
-	}
-	if txSimContext.GetDepth() > 0 {
-		crossCtx.CurrentDepth = uint32(txSimContext.GetDepth())
-		switch txSimContext.GetCallerRuntimeType() {
-		case commonPb.RuntimeType_DOCKER_GO:
-			crossCtx.CrossType = protogo.CrossType_INTERNAL
-		case commonPb.RuntimeType_INVALID,
-			commonPb.RuntimeType_NATIVE,
-			commonPb.RuntimeType_WASMER,
-			commonPb.RuntimeType_WXVM,
-			commonPb.RuntimeType_GASM,
-			commonPb.RuntimeType_EVM,
-			commonPb.RuntimeType_DOCKER_JAVA:
-			crossCtx.CrossType = protogo.CrossType_EXTERNAL
-		default:
-			contractResult.GasUsed = gasUsed
-			err := errors.New("invalid caller runtime type")
-			r.Logger.Debugf(err.Error())
-			return r.errorResult(contractResult, err, err.Error())
-		}
+		CurrentDepth: uint32(txSimContext.GetDepth()),
+		// TODO: txSimContext.GetCrossInfo
+		CrossInfo: 0,
 	}
 
-	dockervmMsg := &protogo.DockerVMMessage{
+	dockerVMMsg := &protogo.DockerVMMessage{
 		TxId:           uniqueTxKey,
 		Type:           protogo.DockerVMType_TX_REQUEST,
 		Request:        txRequest,
 		Response:       nil,
 		SysCallMessage: nil,
+		CrossContext:   crossCtx,
 	}
 
 	// register result chan
@@ -151,12 +129,12 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	notify := func(msg *protogo.DockerVMMessage) {
 		contractEngineMsgCh <- msg
 	}
-	err = r.Client.PutTxRequestWithNotify(dockervmMsg, notify)
+	err = r.Client.PutTxRequestWithNotify(dockerVMMsg, notify)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
 	// send message to tx chan
-	r.Logger.Debugf("[%s] put tx in send chan with length [%d]", dockervmMsg.TxId, r.Client.GetTxSendChLen())
+	r.Logger.Debugf("[%s] put tx in send chan with length [%d]", dockerVMMsg.TxId, r.Client.GetTxSendChLen())
 
 	runtimeMsgCh := make(chan *protogo.DockerVMMessage, 1)
 	responseNotify := func(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
@@ -170,7 +148,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	timeoutC := time.After(timeout * time.Millisecond)
 
-	r.Logger.Debugf("start tx [%s] in runtime", dockervmMsg.TxId)
+	r.Logger.Debugf("start tx [%s] in runtime", dockerVMMsg.TxId)
 	// wait this chan
 	for {
 		select {
@@ -231,7 +209,17 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
 				r.Logger.Debugf("tx [%s] start call contract [%v]", uniqueTxKey, recvMsg)
 				var callContractResponse *protogo.DockerVMMessage
-				callContractResponse, gasUsed = r.handlerCallContract(uniqueTxKey, recvMsg, txSimContext, gasUsed)
+				var crossTxType protocol.ExecOrderTxType
+				callContractResponse, gasUsed, crossTxType = r.handlerCallContract(
+					uniqueTxKey,
+					recvMsg,
+					txSimContext,
+					gasUsed,
+					contract.Name,
+				)
+				if crossTxType != protocol.ExecOrderTxTypeNormal {
+					specialTxType = crossTxType
+				}
 				r.sendResponse(callContractResponse)
 
 			case protogo.DockerVMType_CREATE_KV_ITERATOR_REQUEST:

@@ -93,8 +93,14 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	return contractResult, txType
 }
 
-func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
+func (r *RuntimeInstance) handlerCallContract(
+	txId string,
+	recvMsg *protogo.DockerVMMessage,
+	txSimContext protocol.TxSimContext,
+	gasUsed uint64,
+	currentContractName string,
+) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
+
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
 	specialTxType := protocol.ExecOrderTxTypeNormal
 	// validate cross contract params
@@ -126,9 +132,9 @@ func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.Dock
 
 	// construct new tx
 	invokeContract := "invoke_contract"
-	txSimContext.SetCallerRuntimeType(common.RuntimeType_DOCKER_GO)
 	var result *common.ContractResult
 	var code common.TxStatusCode
+	// 丢弃Event和回滚RWSet应当在txSimContext.CallContract内部统一操作
 	result, specialTxType, code = txSimContext.CallContract(&common.Contract{Name: contractName}, invokeContract,
 		nil, callContractReq.Args, gasUsed, txSimContext.GetTx().Payload.TxType)
 
@@ -164,8 +170,69 @@ func (r *RuntimeInstance) handlerCallContract(txId string, recvMsg *protogo.Dock
 			dockerContractEvents = append(dockerContractEvents, dockerContractEvent)
 		}
 	}
-	// TODO 读写集怎么处理
 
+	var callContractResponse *protogo.ContractResponse
+	callContractResponse, gasUsed, err = constructCallContractResponse(result, currentContractName, txSimContext)
+	if err != nil {
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = err.Error()
+		return response, gasUsed, specialTxType
+	}
+
+	var respBytes []byte
+	respBytes, err = callContractResponse.Marshal()
+	if err != nil {
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = err.Error()
+		return response, gasUsed, specialTxType
+	}
+
+	response.SysCallMessage.Payload[config.KeyCallContractResp] = respBytes
+
+	return response, gasUsed, specialTxType
+}
+
+func constructCallContractResponse(
+	result *common.ContractResult,
+	contractName string,
+	txSimContext protocol.TxSimContext,
+) (*protogo.ContractResponse, uint64, error) {
+
+	var err error
+
+	// get events
+	var dockerContractEvents []*protogo.Event
+	gasUsed := result.GasUsed
+
+	for _, event := range result.ContractEvent {
+		dockerContractEvent := &protogo.Event{
+			Topic:        event.Topic,
+			ContractName: event.ContractName,
+			Data:         event.EventData,
+		}
+
+		gasUsed, err = gas.EmitEventGasUsed(gasUsed, event)
+		if err != nil {
+			return nil, gasUsed, err
+		}
+		dockerContractEvents = append(dockerContractEvents, dockerContractEvent)
+	}
+
+	// get the latest status of the read / write set
+	txRWSet := txSimContext.GetTxRWSetByContractName(contractName)
+
+	contractResponse := &protogo.ContractResponse{
+		Events:   dockerContractEvents,
+		ReadMap:  txRWSet.TxReads,
+		WriteMap: txRWSet.TxWrites,
+		Response: &protogo.Response{
+			Status:  int32(result.Code),
+			Message: result.Message,
+			Payload: result.Result,
+		},
+	}
+
+	return contractResponse, gasUsed, nil
 }
 
 func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.DockerVMMessage,
@@ -303,7 +370,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	}
 
 	index := atomic.AddInt32(&r.rowIndex, 1)
-	txSimContext.SetIterHandle(index, iter)
+	txSimContext.SetIter(index, iter)
 
 	r.Logger.Debug("create kv iterator: ", index)
 	createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
@@ -337,7 +404,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 		return consumeKvIteratorResponse, gasUsed
 	}
 
-	iter, ok := txSimContext.GetIterHandle(kvIteratorIndex)
+	iter, ok := txSimContext.GetIter(kvIteratorIndex)
 	if !ok {
 		r.Logger.Errorf("[kv iterator consume] can not found iterator index [%d]", kvIteratorIndex)
 		consumeKvIteratorResponse.SysCallMessage.Message = fmt.Sprintf(
@@ -452,7 +519,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 	}
 
 	index := atomic.AddInt32(&r.rowIndex, 1)
-	txSimContext.SetIterHandle(index, iter)
+	txSimContext.SetIter(index, iter)
 
 	r.Logger.Debug("create key history iterator: ", index)
 
@@ -493,7 +560,7 @@ func (r *RuntimeInstance) handleConsumeKeyHistoryIterator(txId string, recvMsg *
 		return consumeKeyHistoryIterResponse, currentGasUsed
 	}
 
-	iter, ok := txSimContext.GetIterHandle(keyHistoryIterIndex)
+	iter, ok := txSimContext.GetIter(keyHistoryIterIndex)
 	if !ok {
 		errMsg := fmt.Sprintf("[key history iterator consume] can not found iterator index [%d]", keyHistoryIterIndex)
 		r.Logger.Error(errMsg)
