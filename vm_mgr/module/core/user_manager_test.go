@@ -20,7 +20,7 @@ func TestNewUsersManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NewUsersManager(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewUsersManager() = %v, want %v", got, tt.want)
+				t.Errorf("NewUsersManager() = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
@@ -98,7 +98,7 @@ func TestUserManager_FreeUser(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FreeUser() got = %v, want %v", got, tt.want)
+				t.Errorf("FreeUser() got = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
@@ -168,7 +168,7 @@ func TestUserManager_GetAvailableUser(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetAvailableUser() got = %v, want %v", got, tt.want)
+				t.Errorf("GetAvailableUser() got = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}

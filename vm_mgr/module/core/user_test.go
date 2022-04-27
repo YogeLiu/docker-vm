@@ -39,7 +39,7 @@ func TestNewUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewUser(tt.args.id)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewUser() = %v, want %v", got, tt.want)
+				t.Errorf("NewUser() = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
@@ -90,7 +90,7 @@ func TestUser_GetGid(t *testing.T) {
 				SockPath: tt.fields.SockPath,
 			}
 			if got := u.GetGid(); got != tt.want {
-				t.Errorf("GetGid() = %v, want %v", got, tt.want)
+				t.Errorf("GetGid() = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
@@ -141,7 +141,7 @@ func TestUser_GetSockPath(t *testing.T) {
 				SockPath: tt.fields.SockPath,
 			}
 			if got := u.GetSockPath(); got != tt.want {
-				t.Errorf("GetGid() = %v, want %v", got, tt.want)
+				t.Errorf("GetGid() = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
@@ -192,7 +192,7 @@ func TestUser_GetUid(t *testing.T) {
 				SockPath: tt.fields.SockPath,
 			}
 			if got := u.GetUid(); got != tt.want {
-				t.Errorf("GetUid() = %v, want %v", got, tt.want)
+				t.Errorf("GetUid() = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
@@ -243,7 +243,7 @@ func TestUser_GetUserName(t *testing.T) {
 				SockPath: tt.fields.SockPath,
 			}
 			if got := u.GetUserName(); got != tt.want {
-				t.Errorf("GetUserName() = %v, want %v", got, tt.want)
+				t.Errorf("GetUserName() = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}

@@ -191,9 +191,9 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 	// see if we should get new processes, if so, try to get
 	case contractReady:
 		if req.CrossContext.CurrentDepth == 0 {
-			err = r.getProcesses(origTx)
+			_, err = r.getProcesses(origTx)
 		} else {
-			err = r.getProcesses(crossTx)
+			_, err = r.getProcesses(crossTx)
 		}
 		if err != nil {
 			return fmt.Errorf("failed to get processes, %v", err)
@@ -222,7 +222,7 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 			},
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf(msg, err)
 		}
 		return fmt.Errorf(msg)
 	}
@@ -241,7 +241,7 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 }
 
 // getProcesses try to get processes from process manager
-func (r *RequestGroup) getProcesses(txType TxType) error {
+func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 
 	var controller *txController
 	var reqNumPerProcess int
@@ -256,7 +256,7 @@ func (r *RequestGroup) getProcesses(txType TxType) error {
 		controller = r.crossTxController
 		reqNumPerProcess = reqNumPerCrossProcess
 	default:
-		return fmt.Errorf("unknown tx type")
+		return 0, fmt.Errorf("unknown tx type")
 	}
 
 	// calculate how many processes it needs:
@@ -271,7 +271,7 @@ func (r *RequestGroup) getProcesses(txType TxType) error {
 	if needProcessNum > 0 {
 		// try to get processes only if it is not waiting
 		if controller.processWaiting {
-			return nil
+			return 0, nil
 		}
 		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
 			ContractName: r.contractName,
@@ -281,12 +281,12 @@ func (r *RequestGroup) getProcesses(txType TxType) error {
 		// avoid duplicate getting processes
 		controller.processWaiting = true
 		if err != nil {
-			return err
+			return 0, err
 		}
 	} else { // do not need any process
 		// stop to get processes only if it is waiting
 		if !controller.processWaiting {
-			return nil
+			return 0, nil
 		}
 		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
 			ContractName: r.contractName,
@@ -296,10 +296,10 @@ func (r *RequestGroup) getProcesses(txType TxType) error {
 		// avoid duplicate stopping to get processes
 		controller.processWaiting = false
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
-	return nil
+	return needProcessNum, nil
 }
 
 // handleContractReadyResp set the request group's contract state to contractReady
@@ -324,7 +324,7 @@ func (r *RequestGroup) handleProcessReadyResp(txType TxType) error {
 	}
 
 	// try to get processes from process manager
-	if err := r.getProcesses(txType); err != nil {
+	if _, err := r.getProcesses(txType); err != nil {
 		return fmt.Errorf("failed to handle contract ready resp, %v", err)
 	}
 	return nil

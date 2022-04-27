@@ -52,7 +52,7 @@ func TestNewRequestScheduler(t *testing.T) {
 			got.requestGroups = tt.want.requestGroups
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewRequestScheduler() = %v, want %v", got, tt.want)
+				t.Errorf("NewRequestScheduler() = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
@@ -112,10 +112,10 @@ func TestRequestScheduler_GetRequestGroup(t *testing.T) {
 			s := tt.fields.scheduler
 			got, got1 := s.GetRequestGroup(tt.args.contractName, tt.args.contractVersion)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetRequestGroup() got = %v, want %v", got, tt.want)
+				t.Errorf("GetRequestGroup() got = %v, wantNum %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("GetRequestGroup() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("GetRequestGroup() got1 = %v, wantNum %v", got1, tt.want1)
 			}
 		})
 	}
