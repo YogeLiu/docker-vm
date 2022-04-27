@@ -178,7 +178,7 @@ func ContractGasUsed(txSimContext protocol.TxSimContext, gasUsed uint64, method 
 
 	blockVersion := txSimContext.GetBlockVersion()
 	if method == upgradeContract {
-		if blockVersion <= 210 {
+		if blockVersion < 220 {
 			oldByteCode, err := txSimContext.Get(contractName, []byte(utils.PrefixContractByteCode))
 			if err != nil {
 				return 0, err
