@@ -1,4 +1,5 @@
 chainmaker.org/chainmaker/common/v2 v2.1.1-0.20211214041159-fe0b2240f08c/go.mod h1:mxLliE20J5mML421llb1T8vj9VtULEMGDA88TITgl68=
+chainmaker.org/chainmaker/common/v2 v2.2.1-0.20220325094239-eaf08fe8a1f8/go.mod h1:EPMFlYvElbrcKgZ0R6XrFexaACHUtnlmr+5VXfInlrw=
 chainmaker.org/chainmaker/common/v2 v2.2.1-0.20220408064030-5a787221fb78 h1:8wALYk/Wr3UPxdEfhO2OTAThf1Bi3BEzoNwpTdEgJdg=
 chainmaker.org/chainmaker/common/v2 v2.2.1-0.20220408064030-5a787221fb78/go.mod h1:F245gylaIBA8Y+lv0TjpTXo8nJum7bNp12RjvGkYrrA=
 chainmaker.org/chainmaker/localconf/v2 v2.1.1-0.20211216112331-2bee015483d0 h1:2RiDq8NNVYodCQy9PL6NwqYWqHJVSDV+090vBkHqZPE=
@@ -8,11 +9,11 @@ chainmaker.org/chainmaker/logger/v2 v2.1.1-0.20211214124250-621f11b35ab0/go.mod 
 chainmaker.org/chainmaker/pb-go/v2 v2.1.1-0.20211214073209-1288f39035e8/go.mod h1:gDZodc1Kp6snzGXugS/REqfCqNNizhniQmjeOKUVf64=
 chainmaker.org/chainmaker/pb-go/v2 v2.2.1-0.20220325091111-7b6ff1727aa8 h1:lwmBnTNuEA5OOsb0grXuJnfGlUANtPXdVJuO948g224=
 chainmaker.org/chainmaker/pb-go/v2 v2.2.1-0.20220325091111-7b6ff1727aa8/go.mod h1:b5fg5e93xCjSHU1b5yk/mnslab+z7N08kMkNVDoSpcI=
-chainmaker.org/chainmaker/protocol/v2 v2.1.1-0.20211214124103-9512460ad844/go.mod h1:D3B4Ss0Ii1ga1TWBteOuxtOeDZkh4ccExvzZsGK1Mj0=
+chainmaker.org/chainmaker/protocol/v2 v2.2.1-0.20220325095514-41f8f9426ddb/go.mod h1:z0t1gjo1ldzF1DwtI1q/TnL/aLMu36q3K37Gjgf9ua0=
 chainmaker.org/chainmaker/protocol/v2 v2.2.1-0.20220421030537-42aae0983633 h1:XnOv+amjJwj6Iovw8d6GDIAcDuZieMYsJxSdr+hI0U4=
 chainmaker.org/chainmaker/protocol/v2 v2.2.1-0.20220421030537-42aae0983633/go.mod h1:XAJR44bXFrdyUiDpzeKJyT3vfW9uDlFd9NIc1vsToYw=
-chainmaker.org/chainmaker/utils/v2 v2.1.1-0.20211214124429-d110e27a8fa2 h1:CCZAJuiCyNBYAUxP9aNcOX0Rk1xlT8HHC9FDqTcNJj8=
-chainmaker.org/chainmaker/utils/v2 v2.1.1-0.20211214124429-d110e27a8fa2/go.mod h1:9NY1ny1bnuad/txY/bPUKOtDQp0s4j+cMdJxR5K16X8=
+chainmaker.org/chainmaker/utils/v2 v2.2.1-0.20220424103131-1a84fbfe79a4 h1:yFDpH8zXyZG0V3875QiOv/eNX9AMqRupUrmKtv/mjX4=
+chainmaker.org/chainmaker/utils/v2 v2.2.1-0.20220424103131-1a84fbfe79a4/go.mod h1:2RIv3ZoCvqgrG11wr3hXLsUDGlVVJ3gG1iSe2kIu97c=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
@@ -66,6 +67,7 @@ github.com/Jeffail/gabs/v2 v2.5.1/go.mod h1:xCn81vdHKxFUuWWAaD5jCTQDNPBMh5pPs9IJ
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/KyleBanks/depth v1.2.1/go.mod h1:jzSb9d0L43HxTQfT+oSA1EEp2q+ne2uh6XgeJcm8brE=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
+github.com/OneOfOne/xxhash v1.2.8/go.mod h1:eZbhyaAYD41SGSSsnmcpxVoRiQ/MPUTjUdIIOT9Um7Q=
 github.com/PuerkitoBio/purell v1.1.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
