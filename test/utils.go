@@ -123,6 +123,8 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			}
 			return tx
 		}).AnyTimes()
+
+	simContext.EXPECT().GetBlockVersion().Return(uint32(2201)).AnyTimes()
 	return simContext
 
 }
