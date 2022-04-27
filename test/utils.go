@@ -123,6 +123,8 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			}
 			return tx
 		}).AnyTimes()
+
+	simContext.EXPECT().GetBlockVersion().Return(uint32(2201)).AnyTimes()
 	return simContext
 
 }
@@ -564,7 +566,7 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 
 func (iter *mockHistoryKeyIterator) Release() {}
 
-func mockGetBlockVersion(simContext mock.MockTxSimContext) {
+func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().GetBlockVersion().DoAndReturn(
 		mockTxSimContextGetBlockVersion,
 	).AnyTimes()

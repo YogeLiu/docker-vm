@@ -11,7 +11,7 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 	mockTxQueryCertFromChain(mockTxContext)
 	mockGetSender(mockTxContext)
 	mockTxGetChainConf(mockTxContext)
-	mockGetBlockVersion(*mockTxContext)
+	mockGetBlockVersion(mockTxContext)
 
 	testData := []struct {
 		/*
