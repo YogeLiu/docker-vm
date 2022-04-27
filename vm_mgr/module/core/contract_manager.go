@@ -57,24 +57,26 @@ func (cm *ContractManager) SetScheduler(scheduler interfaces.RequestScheduler) {
 // Start contract manager, listen event chan
 func (cm *ContractManager) Start() {
 	go func() {
-		select {
-		case msg := <-cm.eventCh:
-			switch msg.Type {
+		for {
+			select {
+			case msg := <-cm.eventCh:
+				switch msg.Type {
 
-			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
-				if err := cm.handleGetContractReq(msg); err != nil {
-					cm.logger.Errorf("failed to handle get bytecode request, %v", err)
+				case protogo.DockerVMType_GET_BYTECODE_REQUEST:
+					if err := cm.handleGetContractReq(msg); err != nil {
+						cm.logger.Errorf("failed to handle get bytecode request, %v", err)
+					}
+
+				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+					err := cm.handleGetContractResp(msg)
+					if err != nil {
+						cm.logger.Errorf("failed to handle get bytecode response, %v", err)
+						break
+					}
+
+				default:
+					cm.logger.Errorf("unknown req type")
 				}
-
-			case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-				err := cm.handleGetContractResp(msg)
-				if err != nil {
-					cm.logger.Errorf("failed to handle get bytecode response, %v", err)
-					break
-				}
-
-			default:
-				cm.logger.Errorf("unknown req type")
 			}
 		}
 	}()
@@ -150,7 +152,7 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 			contractKey, req.TxId)
 	}
 
-	cm.logger.Debugf("send get bytecode request to chain, contract name: [%s], " +
+	cm.logger.Debugf("send get bytecode request to chain, contract name: [%s], "+
 		"contract version: [%s], txId [%s] ", req.Request.ContractName, req.Request.ContractVersion, req.TxId)
 
 	return nil
@@ -192,8 +194,8 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	cm.logger.Infof("contract [%s] saved in lru and dir [%s]", groupKey, path)
 
 	// send contract ready signal to request group
-	if err := cm.sendContractReadySignal(resp.Request.ContractName,
-		resp.Request.ContractVersion); err != nil {
+	if err := cm.sendContractReadySignal(resp.Response.ContractName,
+		resp.Response.ContractVersion); err != nil {
 		cm.logger.Errorf("failed to send contract ready signal, %v", err)
 	}
 	return nil
@@ -217,12 +219,13 @@ func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion
 	}
 
 	// get request group
-	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
 	requestGroup, ok := cm.scheduler.GetRequestGroup(contractName, contractVersion)
 	if !ok {
 		return fmt.Errorf("failed to get request group")
 	}
-	err := requestGroup.PutMsg(groupKey)
+	err := requestGroup.PutMsg(&protogo.DockerVMMessage{
+		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to put req into request group's event chan")
 	}

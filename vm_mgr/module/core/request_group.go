@@ -112,19 +112,21 @@ func NewRequestGroup(
 // event chan req types: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (r *RequestGroup) Start() {
 	go func() {
-		select {
-		case msg := <-r.eventCh:
-			switch msg.Type {
-			case protogo.DockerVMType_TX_REQUEST:
-				if err := r.handleTxReq(msg); err != nil {
-					r.logger.Errorf("failed to handle tx request, %v", err)
+		for {
+			select {
+			case msg := <-r.eventCh:
+				switch msg.Type {
+				case protogo.DockerVMType_TX_REQUEST:
+					if err := r.handleTxReq(msg); err != nil {
+						r.logger.Errorf("failed to handle tx request, %v", err)
+					}
+
+				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+					r.handleContractReadyResp()
+
+				default:
+					r.logger.Errorf("unknown req type")
 				}
-
-			case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-				r.handleContractReadyResp()
-
-			default:
-				r.logger.Errorf("unknown req type")
 			}
 		}
 	}()

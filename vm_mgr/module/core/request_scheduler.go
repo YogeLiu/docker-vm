@@ -74,35 +74,37 @@ func (s *RequestScheduler) Start() {
 	s.logger.Debugf("start request scheduler")
 
 	go func() {
-		select {
-		case msg := <-s.eventCh:
-			switch msg.Type {
-			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
-				if err := s.handleGetContractReq(msg); err != nil {
-					s.logger.Errorf("failed to handle get bytecode request, %v", err)
+		for {
+			select {
+			case msg := <-s.eventCh:
+				switch msg.Type {
+				case protogo.DockerVMType_GET_BYTECODE_REQUEST:
+					if err := s.handleGetContractReq(msg); err != nil {
+						s.logger.Errorf("failed to handle get bytecode request, %v", err)
+					}
+				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+					if err := s.handleGetContractResp(msg); err != nil {
+						s.logger.Errorf("failed to handle get bytecode response, %v", err)
+					}
+				case protogo.DockerVMType_TX_REQUEST:
+					if err := s.handleTxReq(msg); err != nil {
+						s.logger.Errorf("failed to handle tx request, %v", err)
+					}
+				case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
+					if err := s.handleTxReq(msg); err != nil {
+						s.logger.Errorf("failed to handle call contract request, %v", err)
+					}
+				case protogo.DockerVMType_ERROR:
+					if err := s.handleErrResp(msg); err != nil {
+						s.logger.Errorf("failed to handle error response, %v", err)
+					}
+				default:
+					s.logger.Errorf("unknown req type")
 				}
-			case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-				if err := s.handleGetContractResp(msg); err != nil {
-					s.logger.Errorf("failed to handle get bytecode response, %v", err)
+			case msg := <-s.closeCh:
+				if err := s.handleCloseReq(msg); err != nil {
+					s.logger.Warnf("close request group %v", err)
 				}
-			case protogo.DockerVMType_TX_REQUEST:
-				if err := s.handleTxReq(msg); err != nil {
-					s.logger.Errorf("failed to handle tx request, %v", err)
-				}
-			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
-				if err := s.handleTxReq(msg); err != nil {
-					s.logger.Errorf("failed to handle call contract request, %v", err)
-				}
-			case protogo.DockerVMType_ERROR:
-				if err := s.handleErrResp(msg); err != nil {
-					s.logger.Errorf("failed to handle error response, %v", err)
-				}
-			default:
-				s.logger.Errorf("unknown req type")
-			}
-		case msg := <-s.closeCh:
-			if err := s.handleCloseReq(msg); err != nil {
-				s.logger.Warnf("close request group %v", err)
 			}
 		}
 	}()

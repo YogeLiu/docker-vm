@@ -77,25 +77,27 @@ func NewProcessManager(maxProcessNum int, rate float64, isCrossManager bool, use
 // types: messages.GetProcessReqMsg, messages.SandboxExitRespMsg and cleanIdleProcesses timer
 func (pm *ProcessManager) Start() {
 	go func() {
-		select {
-		case msg := <-pm.eventCh:
-			switch msg.(type) {
+		for {
+			select {
+			case msg := <-pm.eventCh:
+				switch msg.(type) {
 
-			case *messages.GetProcessReqMsg:
-				m, _ := msg.(*messages.GetProcessReqMsg)
-				pm.handleGetProcessReq(m)
+				case *messages.GetProcessReqMsg:
+					m, _ := msg.(*messages.GetProcessReqMsg)
+					pm.handleGetProcessReq(m)
 
-			case *messages.SandboxExitRespMsg:
-				m, _ := msg.(*messages.SandboxExitRespMsg)
-				pm.handleSandboxExitResp(m)
+				case *messages.SandboxExitRespMsg:
+					m, _ := msg.(*messages.SandboxExitRespMsg)
+					pm.handleSandboxExitResp(m)
 
-			default:
-				pm.logger.Errorf("unknown req type")
+				default:
+					pm.logger.Errorf("unknown req type")
+
+				}
+			case <-pm.cleanTimer.C:
+				pm.handleCleanIdleProcesses()
 
 			}
-		case <-pm.cleanTimer.C:
-			pm.handleCleanIdleProcesses()
-
 		}
 	}()
 }
