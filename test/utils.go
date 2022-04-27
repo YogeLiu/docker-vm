@@ -564,6 +564,16 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 
 func (iter *mockHistoryKeyIterator) Release() {}
 
+func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetBlockVersion().DoAndReturn(
+		mockTxSimContextGetBlockVersion,
+	).AnyTimes()
+}
+
+func mockTxSimContextGetBlockVersion() uint32 {
+	return 2201
+}
+
 // 获取sender公钥
 func mockGetSender(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().GetSender().DoAndReturn(
@@ -573,7 +583,7 @@ func mockGetSender(simContext *mock.MockTxSimContext) {
 
 func mockTxSimContextGetSender() *accesscontrol.Member {
 	atomic.AddInt32(&senderCounter, 1)
-	switch senderCounter % 3 {
+	switch senderCounter % 4 {
 	case 1:
 		return &accesscontrol.Member{
 			OrgId:      chainId,
@@ -586,13 +596,18 @@ func mockTxSimContextGetSender() *accesscontrol.Member {
 			MemberType: accesscontrol.MemberType_CERT_HASH,
 			MemberInfo: nil,
 		}
-	case 0:
+	case 3:
 		return &accesscontrol.Member{
 			OrgId:      chainId,
 			MemberType: accesscontrol.MemberType_PUBLIC_KEY,
 			MemberInfo: []byte(pkPEM),
 		}
-
+	case 0:
+		return &accesscontrol.Member{
+			OrgId:      chainId,
+			MemberType: accesscontrol.MemberType_ALIAS,
+			MemberInfo: nil,
+		}
 	default:
 		return nil
 	}
@@ -621,8 +636,8 @@ func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
 func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	atomic.AddInt32(&chainConfigCounter, 1)
 
-	switch chainConfigCounter % 6 {
-	case 1, 2, 3:
+	switch chainConfigCounter % 8 {
+	case 1, 2, 3, 4:
 		zxConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
 				AddrType: configPb.AddrType_ZXL,
@@ -637,7 +652,7 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 			return nil, err
 		}
 		return bytes, nil
-	case 4, 5, 0:
+	case 5, 6, 7, 0:
 		ethConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
 				AddrType: configPb.AddrType_CHAINMAKER,
