@@ -564,7 +564,7 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 
 func (iter *mockHistoryKeyIterator) Release() {}
 
-func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
+func mockGetBlockVersion(simContext mock.MockTxSimContext) {
 	simContext.EXPECT().GetBlockVersion().DoAndReturn(
 		mockTxSimContextGetBlockVersion,
 	).AnyTimes()
