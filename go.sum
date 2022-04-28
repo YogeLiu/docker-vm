@@ -7,10 +7,10 @@ chainmaker.org/chainmaker/logger/v2 v2.2.0 h1:kQ84sVSDAwJ1nFP8dexP21rhE0jqGyDIaL
 chainmaker.org/chainmaker/logger/v2 v2.2.0/go.mod h1:fux32ogSRS2qKD9m52uE5jW3ngpgyV02Yd4Zed8/n38=
 chainmaker.org/chainmaker/pb-go/v2 v2.2.0 h1:NRkWOyuHSD/67fKv1TXqHLw0lj2+jYLbLhtjkMh9jcc=
 chainmaker.org/chainmaker/pb-go/v2 v2.2.0/go.mod h1:b5fg5e93xCjSHU1b5yk/mnslab+z7N08kMkNVDoSpcI=
-chainmaker.org/chainmaker/protocol/v2 v2.2.0 h1:XmX56zEcnFFnK312dVSLnhSRAjjEKAT4DBr7Tehx+BE=
-chainmaker.org/chainmaker/protocol/v2 v2.2.0/go.mod h1:Oiy+CTqR3S+uy78t278vhLjZ0wh/58n0XzWDUoO0JzE=
-chainmaker.org/chainmaker/utils/v2 v2.2.0 h1:dVbrZOUKupCQuxbr64K08Kl4YjoBWV4sto4eVnPkiM4=
-chainmaker.org/chainmaker/utils/v2 v2.2.0/go.mod h1:33RLgBsOf0YSY4/AO/QlCqZbe+FvkDpQzARjPfyH7to=
+chainmaker.org/chainmaker/protocol/v2 v2.2.1 h1:XWrMecQLl1ZIBopVn3GsoDCqs+R2ugW825L2d7nocJc=
+chainmaker.org/chainmaker/protocol/v2 v2.2.1/go.mod h1:Oiy+CTqR3S+uy78t278vhLjZ0wh/58n0XzWDUoO0JzE=
+chainmaker.org/chainmaker/utils/v2 v2.2.1 h1:JyRg3i6FGxrwLY+Pswh0N1x5iJxO2irfa7UM6Dr5x88=
+chainmaker.org/chainmaker/utils/v2 v2.2.1/go.mod h1:z2HJlhw3ElEtqgCeZrVlC6ajlXb6L2xFPjI1EsFwdcc=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
