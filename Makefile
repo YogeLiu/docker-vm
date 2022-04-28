@@ -1,4 +1,4 @@
-VERSION=v2.2.0
+VERSION=v2.2.0.1
 
 build-test:
 	cd test/scripts && ./prepare.sh
