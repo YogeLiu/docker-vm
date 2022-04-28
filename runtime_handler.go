@@ -219,17 +219,25 @@ func constructCallContractResponse(
 	}
 
 	// get the latest status of the read / write set
-	txRWSet := txSimContext.GetTxRWSetByContractName(contractName)
+	txReadMap, txWriteMap := txSimContext.GetTxRWMapByContractName(contractName)
 
 	contractResponse := &protogo.ContractResponse{
 		Events:   dockerContractEvents,
-		ReadMap:  txRWSet.TxReads,
-		WriteMap: txRWSet.TxWrites,
+		ReadMap:  make(map[string][]byte, len(txReadMap)),
+		WriteMap: make(map[string][]byte, len(txWriteMap)),
 		Response: &protogo.Response{
 			Status:  int32(result.Code),
 			Message: result.Message,
 			Payload: result.Result,
 		},
+	}
+
+	for readKey, txRead := range txReadMap {
+		contractResponse.ReadMap[readKey] = txRead.Value
+	}
+
+	for writeKey, txWrite := range txWriteMap {
+		contractResponse.WriteMap[writeKey] = txWrite.Value
 	}
 
 	return contractResponse, gasUsed, nil

@@ -111,8 +111,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	crossCtx := &protogo.CrossContext{
 		CurrentDepth: uint32(txSimContext.GetDepth()),
-		// TODO: txSimContext.GetCrossInfo
-		CrossInfo: 0,
+		CrossInfo:    txSimContext.GetCrossInfo(),
 	}
 
 	dockerVMMsg := &protogo.DockerVMMessage{
