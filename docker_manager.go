@@ -41,7 +41,7 @@ const (
 	dockerLogDir         = "/log"
 	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
 	defaultContainerName = "chainmaker-vm-docker-go-container"
-	imageVersion         = "v2.2.0"
+	imageVersion         = "v2.2.0.1"
 )
 
 var (
