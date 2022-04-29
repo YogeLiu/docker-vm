@@ -50,6 +50,7 @@ type RuntimeInstance struct {
 	Client       CDMClient
 	Logger       protocol.Logger
 	sendResponse func(msg *protogo.DockerVMMessage)
+	event        []*commonPb.ContractEvent
 }
 
 // Invoke process one tx in docker and return result

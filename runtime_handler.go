@@ -62,8 +62,6 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	}
 
 	// merge events
-	var contractEvents []*commonPb.ContractEvent
-
 	if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
 		err = fmt.Errorf("too many event data")
 		return r.errorResult(contractResult, err, "fail to put event data")
@@ -84,11 +82,11 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 			return r.errorResult(contractResult, err, err.Error())
 		}
 
-		contractEvents = append(contractEvents, contractEvent)
+		r.event = append(r.event, contractEvent)
 	}
 
 	contractResult.GasUsed = gasUsed
-	contractResult.ContractEvent = contractEvents
+	contractResult.ContractEvent = r.event
 
 	return contractResult, txType
 }
@@ -134,7 +132,6 @@ func (r *RuntimeInstance) handlerCallContract(
 	invokeContract := "invoke_contract"
 	var result *common.ContractResult
 	var code common.TxStatusCode
-	// 丢弃Event和回滚RWSet应当在txSimContext.CallContract内部统一操作
 	result, specialTxType, code = txSimContext.CallContract(&common.Contract{Name: contractName}, invokeContract,
 		nil, callContractReq.Args, gasUsed, txSimContext.GetTx().Payload.TxType)
 
@@ -148,31 +145,22 @@ func (r *RuntimeInstance) handlerCallContract(
 
 	response.SysCallMessage.Code = protogo.DockerVMCode_OK
 
-	// get events
-	var dockerContractEvents []*protogo.DockerContractEvent
-	{
-		gasUsed = result.GasUsed
+	// merge event
+	gasUsed = result.GasUsed
+	for _, event := range result.ContractEvent {
 
-		for _, event := range result.ContractEvent {
-			dockerContractEvent := &protogo.DockerContractEvent{
-				Topic:        event.Topic,
-				ContractName: event.ContractName,
-				Data:         event.EventData,
-			}
-
-			gasUsed, err = gas.EmitEventGasUsed(gasUsed, event)
-			if err != nil {
-				response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
-				response.SysCallMessage.Message = err.Error()
-				return response, gasUsed, specialTxType
-			}
-
-			dockerContractEvents = append(dockerContractEvents, dockerContractEvent)
+		gasUsed, err = gas.EmitEventGasUsed(gasUsed, event)
+		if err != nil {
+			response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+			response.SysCallMessage.Message = err.Error()
+			return response, gasUsed, specialTxType
 		}
+
+		r.event = append(r.event, event)
 	}
 
 	var callContractResponse *protogo.ContractResponse
-	callContractResponse, gasUsed, err = constructCallContractResponse(result, currentContractName, txSimContext)
+	callContractResponse, err = constructCallContractResponse(result, currentContractName, txSimContext)
 	if err != nil {
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = err.Error()
@@ -196,33 +184,11 @@ func constructCallContractResponse(
 	result *common.ContractResult,
 	contractName string,
 	txSimContext protocol.TxSimContext,
-) (*protogo.ContractResponse, uint64, error) {
-
-	var err error
-
-	// get events
-	var dockerContractEvents []*protogo.Event
-	gasUsed := result.GasUsed
-
-	for _, event := range result.ContractEvent {
-		dockerContractEvent := &protogo.Event{
-			Topic:        event.Topic,
-			ContractName: event.ContractName,
-			Data:         event.EventData,
-		}
-
-		gasUsed, err = gas.EmitEventGasUsed(gasUsed, event)
-		if err != nil {
-			return nil, gasUsed, err
-		}
-		dockerContractEvents = append(dockerContractEvents, dockerContractEvent)
-	}
-
+) (*protogo.ContractResponse, error) {
 	// get the latest status of the read / write set
 	txReadMap, txWriteMap := txSimContext.GetTxRWMapByContractName(contractName)
 
 	contractResponse := &protogo.ContractResponse{
-		Events:   dockerContractEvents,
 		ReadMap:  make(map[string][]byte, len(txReadMap)),
 		WriteMap: make(map[string][]byte, len(txWriteMap)),
 		Response: &protogo.Response{
@@ -240,7 +206,7 @@ func constructCallContractResponse(
 		contractResponse.WriteMap[writeKey] = txWrite.Value
 	}
 
-	return contractResponse, gasUsed, nil
+	return contractResponse, nil
 }
 
 func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.DockerVMMessage,
