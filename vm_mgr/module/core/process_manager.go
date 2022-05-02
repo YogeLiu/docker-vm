@@ -31,24 +31,23 @@ const (
 // ProcessManager manager the life cycle of processes
 // there are 2 ProcessManager, one for original process, the other for cross process
 type ProcessManager struct {
+	logger *zap.SugaredLogger // process scheduler logger
+	lock   sync.RWMutex       // process scheduler lock
 
-	logger *zap.SugaredLogger	// process scheduler logger
-	lock   sync.RWMutex			// process scheduler lock
-
-	maxProcessNum  int		// max process num
-	releaseRate    float64	// the minimum rate of available process
-	isCrossManager bool 	// cross process manager or original process manager
+	maxProcessNum  int     // max process num
+	releaseRate    float64 // the minimum rate of available process
+	isCrossManager bool    // cross process manager or original process manager
 
 	idleProcesses        *linkedhashmap.Map            // idle processes linked hashmap (process name -> idle Process)
 	busyProcesses        map[string]interfaces.Process // busy process map (process name -> busy Process)
 	processGroups        map[string]map[string]bool    // process group by contract key (contract key -> Process name set)
 	waitingRequestGroups *linkedhashmap.Map            // waiting request groups linked hashmap (group key -> bool)
 
-	eventCh    chan interface{}	// process manager event channel
-	cleanTimer *time.Timer		// clean timer for release idle processes
+	eventCh    chan interface{} // process manager event channel
+	cleanTimer *time.Timer      // clean timer for release idle processes
 
-	userManager interfaces.UserManager				// user manager
-	requestScheduler interfaces.RequestScheduler	// request scheduler
+	userManager      interfaces.UserManager      // user manager
+	requestScheduler interfaces.RequestScheduler // request scheduler
 }
 
 // NewProcessManager returns new process manager
@@ -111,7 +110,11 @@ func (pm *ProcessManager) SetScheduler(scheduler interfaces.RequestScheduler) {
 //  @param req types include GetProcessReqMsg, LaunchSandboxRespMsg, ChangeSandboxRespMsg and CloseSandboxRespMsg
 func (pm *ProcessManager) PutMsg(msg interface{}) error {
 	switch msg.(type) {
-	case *protogo.DockerVMMessage, messages.GetProcessReqMsg, messages.LaunchSandboxRespMsg, messages.ChangeSandboxReqMsg, messages.CloseSandboxRespMsg:
+	case *protogo.DockerVMMessage,
+		*messages.GetProcessReqMsg,
+		*messages.LaunchSandboxRespMsg,
+		*messages.ChangeSandboxReqMsg,
+		*messages.CloseSandboxRespMsg:
 		pm.eventCh <- msg
 	default:
 		return fmt.Errorf("unknown req type")
@@ -231,10 +234,14 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 		}
 
 		// idle processes to remove
-		removedIdleProcesses := pm.batchPopIdleProcesses(needProcessNum)
+		removedIdleProcesses, err := pm.batchPopIdleProcesses(needProcessNum)
+		if err != nil {
+			pm.logger.Errorf("failed to batch pop idle processes, %v", err)
+		}
 
 		// change processes context concurrently
 		var wg sync.WaitGroup
+		lock := sync.Mutex{}
 		for i := 0; i < newProcessNum; i++ {
 			wg.Add(1)
 			index := i
@@ -243,7 +250,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, index)
 
 				// notify process to change context
-				err := removedIdleProcesses[index].PutMsg(&messages.ChangeSandboxReqMsg{
+				err = removedIdleProcesses[index].PutMsg(&messages.ChangeSandboxReqMsg{
 					ContractName:    msg.ContractName,
 					ContractVersion: msg.ContractVersion,
 					ProcessName:     processName,
@@ -254,7 +261,9 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 					return
 				}
 				// add process to busy list and total map
+				lock.Lock()
 				pm.addProcessToCache(msg.ContractName, msg.ContractVersion, processName, removedIdleProcesses[index], true)
+				lock.Unlock()
 				wg.Done()
 			}()
 		}
@@ -309,7 +318,10 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 	}
 
 	// pop the idle processes
-	removedIdleProcesses := pm.batchPopIdleProcesses(releaseNum)
+	removedIdleProcesses, err := pm.batchPopIdleProcesses(releaseNum)
+	if err != nil {
+		pm.logger.Errorf("failed to batch pop idle processes, %v", err)
+	}
 
 	// put close sandbox req to process
 	var wg sync.WaitGroup
@@ -318,7 +330,7 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 		index := i
 		go func() {
 			// send close sandbox request
-			err := removedIdleProcesses[index].PutMsg(&messages.CloseSandboxReqMsg{})
+			err = removedIdleProcesses[index].PutMsg(&messages.CloseSandboxReqMsg{})
 			if err != nil {
 				pm.logger.Errorf("failed to kill process, %v", err)
 				wg.Done()
@@ -388,28 +400,24 @@ func (pm *ProcessManager) getProcessByName(processName string) (interfaces.Proce
 }
 
 // batchPopIdleProcesses batch pop idle processes
-func (pm *ProcessManager) batchPopIdleProcesses(num int) []*Process {
+func (pm *ProcessManager) batchPopIdleProcesses(num int) ([]interfaces.Process, error) {
+
+	if num > pm.idleProcesses.Size() {
+		return nil, fmt.Errorf("num > current size")
+	}
 
 	// idle processes to remove
-	removedIdleProcesses := make([]*Process, num)
-	cnt := 0
+	var removedIdleProcesses []interfaces.Process
 
-	// remove from process group by iterator
-	pm.idleProcesses.Each(func(key interface{}, value interface{}) {
-		if cnt >= num {
-			return
-		}
-		cnt++
+	for i := 0; i < num; i++ {
+		processIt := pm.idleProcesses.Iterator()
+		processIt.Next()
 
-		process := value.(*Process)
-		// add to pop process list
+		process := processIt.Value().(interfaces.Process)
 		removedIdleProcesses = append(removedIdleProcesses, process)
-
-		// remove from cache
-		pm.idleProcesses.Remove(process.GetProcessName())
-		pm.removeFromProcessGroup(process.GetContractName(), process.GetContractVersion(), process.GetProcessName())
-	})
-	return removedIdleProcesses
+		pm.removeProcessFromCache(process.GetContractName(), process.GetContractVersion(), process.GetProcessName())
+	}
+	return removedIdleProcesses, nil
 }
 
 // addProcessToCache add process to busy / idle process cache and process group
@@ -435,7 +443,6 @@ func (pm *ProcessManager) removeProcessFromCache(contractName, contractVersion, 
 	pm.removeFromProcessGroup(contractName, contractVersion, processName)
 }
 
-
 // getAvailableProcessNum returns available process num
 func (pm *ProcessManager) getAvailableProcessNum() int {
 
@@ -460,11 +467,16 @@ func (pm *ProcessManager) allocateIdleProcess() error {
 		groupIt := pm.waitingRequestGroups.Iterator()
 		processIt := pm.idleProcesses.Iterator()
 
+		groupIt.Next()
+		processIt.Next()
+
 		// get the oldest process, contract name, contract version and process name
 		process := processIt.Value().(interfaces.Process)
 		contractName := process.GetContractName()
 		contractVersion := process.GetContractVersion()
 		processName := process.GetProcessName()
+
+		fmt.Println(processName)
 
 		// get new contract name and contract version
 		newGroupKey := groupIt.Key().(*messages.RequestGroupKey)
@@ -529,10 +541,12 @@ func (pm *ProcessManager) removeFromProcessGroup(contractName, contractVersion, 
 
 // closeRequestGroup closes a request group
 func (pm *ProcessManager) closeRequestGroup(contractName, contractVersion string) error {
-	return pm.requestScheduler.PutMsg(&messages.RequestGroupKey{
-		ContractName:    contractName,
-		ContractVersion: contractVersion,
-	})
+	return pm.requestScheduler.PutMsg(
+		&messages.RequestGroupKey{
+			ContractName:    contractName,
+			ContractVersion: contractVersion,
+		},
+	)
 }
 
 // startTimer start request group clean timer

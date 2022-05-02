@@ -49,6 +49,11 @@ const (
 	timeout
 )
 
+const (
+	// processEventChSize is process manager event chan size
+	processEventChSize = 8
+)
+
 // exitErr is the sandbox exit err
 type exitErr struct {
 	err  error
@@ -91,7 +96,7 @@ type Process struct {
 
 // NewProcess new process, process working on main contract which is not called cross contract
 func NewProcess(user interfaces.User, contractName, contractVersion, processName string,
-	manager interfaces.ProcessManager, scheduler interfaces.RequestScheduler, isCrossProcess bool) interfaces.Process {
+	manager interfaces.ProcessManager, scheduler interfaces.RequestScheduler, isCrossProcess bool) *Process {
 
 	process := &Process{
 		processName: processName,
@@ -105,7 +110,7 @@ func NewProcess(user interfaces.User, contractName, contractVersion, processName
 		processState:   created,
 		isCrossProcess: isCrossProcess,
 
-		eventCh:    make(chan interface{}, processManagerEventChSize),
+		eventCh:    make(chan interface{}, processEventChSize),
 		cmdReadyCh: make(chan bool, 1),
 		exitCh:     make(chan *exitErr),
 		respCh:     make(chan *protogo.DockerVMMessage, 1),

@@ -41,7 +41,7 @@ func TestContractManager_GetContractMountDir(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cm := tt.fields.cMgr
 			if got := cm.GetContractMountDir(); got != tt.want {
-				t.Errorf("GetContractMountDir() = %v, want %v", got, tt.want)
+				t.Errorf("GetContractMountDir() = %v, wantInCache %v", got, tt.want)
 			}
 		})
 	}
