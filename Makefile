@@ -1,4 +1,6 @@
 VERSION=v2.2.1
+VERSION220=v2.2.0
+VERSION221=v2.2.1
 
 BUILD_TIME = $(shell date "+%Y%m%d%H%M%S")
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
@@ -45,12 +47,12 @@ ci:
 	make clean
 
 gomod:
-	go get chainmaker.org/chainmaker/common/v2@develop
-	go get chainmaker.org/chainmaker/localconf/v2@$(VERSION)
-	go get chainmaker.org/chainmaker/logger/v2@develop
-	go get chainmaker.org/chainmaker/pb-go/v2@$(VERSION)
-	go get chainmaker.org/chainmaker/protocol/v2@develop
-	go get chainmaker.org/chainmaker/utils/v2@develop
+	go get chainmaker.org/chainmaker/common/v2@$(VERSION220)
+	go get chainmaker.org/chainmaker/localconf/v2@$(VERSION220)
+	go get chainmaker.org/chainmaker/logger/v2@$(VERSION220)
+	go get chainmaker.org/chainmaker/pb-go/v2@$(VERSION220)
+	go get chainmaker.org/chainmaker/protocol/v2@$(VERSION221)
+	go get chainmaker.org/chainmaker/utils/v2@$(VERSION221)
 	go mod tidy
 
 ut:
