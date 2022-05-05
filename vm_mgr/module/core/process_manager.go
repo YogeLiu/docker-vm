@@ -288,11 +288,16 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 
 // handleSandboxExitResp handle sandbox exit response, release user and remove process from cache
 func (pm *ProcessManager) handleSandboxExitResp(msg *messages.SandboxExitRespMsg) {
+	// TODO： allocate to waiting group
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
 	pm.closeSandbox(msg.ContractName, msg.ContractVersion, msg.ProcessName)
-	pm.logger.Errorf("sandbox exited, %v", msg.Err)
+	pm.logger.Debugf("sandbox exited, %v", msg.Err)
+
+	if err := pm.allocateNewProcess(); err != nil {
+		pm.logger.Errorf("failed to allocate new process, %v", err)
+	}
 }
 
 // handleCleanIdleProcesses handle clean idle processes
@@ -476,8 +481,6 @@ func (pm *ProcessManager) allocateIdleProcess() error {
 		contractVersion := process.GetContractVersion()
 		processName := process.GetProcessName()
 
-		fmt.Println(processName)
-
 		// get new contract name and contract version
 		newGroupKey := groupIt.Key().(*messages.RequestGroupKey)
 
@@ -504,6 +507,45 @@ func (pm *ProcessManager) allocateIdleProcess() error {
 		pm.busyProcesses[newProcessName] = process
 		// add process to process group
 		pm.addToProcessGroup(newGroupKey.ContractName, newGroupKey.ContractVersion, newProcessName)
+	}
+	return nil
+}
+
+// allocateNewProcess allocate new process to waiting request groups
+func (pm *ProcessManager) allocateNewProcess() error {
+
+	// calculate allocate num
+	allocateNum := pm.waitingRequestGroups.Size()
+	if allocateNum == 0 {
+		return nil
+	}
+
+	availableProcessNum := pm.getAvailableProcessNum()
+	if availableProcessNum < allocateNum {
+		allocateNum = availableProcessNum
+	}
+
+	for i := 0; i < allocateNum; i++ {
+		// match the process and request group
+		groupIt := pm.waitingRequestGroups.Iterator()
+
+		groupIt.Next()
+
+		// get new contract name and contract version
+		newGroupKey := groupIt.Key().(*messages.RequestGroupKey)
+
+		// remove request group from queue
+		pm.waitingRequestGroups.Remove(newGroupKey)
+
+		// create new process
+		processName := utils.ConstructProcessName(newGroupKey.ContractName, newGroupKey.ContractVersion, i)
+		process, err := pm.createNewProcess(newGroupKey.ContractName, newGroupKey.ContractVersion, processName)
+		if err != nil {
+			return fmt.Errorf("failed to create new process, %v", err)
+		}
+
+		// add process to cache
+		pm.addProcessToCache(newGroupKey.ContractName, newGroupKey.ContractVersion, processName, process, true)
 	}
 	return nil
 }

@@ -9,9 +9,11 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm/v2"
 	"go.uber.org/zap"
 )
 
@@ -51,7 +53,8 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 		var process interfaces.Process
 		var ok bool
-		if msg.CrossContext.CurrentDepth == 0 {
+		crossInfo := vm.NewCallContractContext(msg.CrossContext.CrossInfo)
+		if msg.CrossContext.CurrentDepth == 0 || !crossInfo.HasUsed(common.RuntimeType_DOCKER_GO) {
 			process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
 		}
 		process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)

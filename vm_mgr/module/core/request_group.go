@@ -8,12 +8,14 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm/v2"
 	"fmt"
 	"go.uber.org/zap"
 	"math"
@@ -32,10 +34,10 @@ const (
 	crossTxChSize = 10000
 
 	// reqNumPerOrigProcess is the request num for one process can handle
-	reqNumPerOrigProcess = 2
+	reqNumPerOrigProcess = 5
 
 	// reqNumPerCrossProcess is the request num for one process can handle
-	reqNumPerCrossProcess = 2
+	reqNumPerCrossProcess = 5
 )
 
 // contractState is the contract state of request group
@@ -192,7 +194,8 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 
 	// see if we should get new processes, if so, try to get
 	case contractReady:
-		if req.CrossContext.CurrentDepth == 0 {
+		crossInfo := vm.NewCallContractContext(req.CrossContext.CrossInfo)
+		if req.CrossContext.CurrentDepth == 0 || !crossInfo.HasUsed(common.RuntimeType_DOCKER_GO) {
 			_, err = r.getProcesses(origTx)
 		} else {
 			_, err = r.getProcesses(crossTx)
@@ -230,7 +233,8 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 	}
 
 	// original tx, send to original tx chan
-	if req.CrossContext.CurrentDepth == 0 {
+	crossInfo := vm.NewCallContractContext(req.CrossContext.CrossInfo)
+	if req.CrossContext.CurrentDepth == 0 || !crossInfo.HasUsed(common.RuntimeType_DOCKER_GO) {
 		r.logger.Debugf("put tx request [txId: %s] into orig chan", req.TxId)
 		r.origTxController.txCh <- req
 		return nil

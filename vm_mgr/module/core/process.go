@@ -386,7 +386,7 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 
 	msg := &protogo.DockerVMMessage{
 		TxId:         p.Tx.TxId,
-		CrossContext: &protogo.CrossContext{CurrentDepth: p.Tx.CrossContext.CurrentDepth},
+		CrossContext: p.Tx.CrossContext,
 		Request:      p.Tx.Request,
 	}
 
