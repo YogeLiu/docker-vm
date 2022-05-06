@@ -18,7 +18,7 @@ const (
 	DockerMountDir = "/mount"
 
 	// ConfigFileName is the docker vm config file path
-	ConfigFileName = "config"
+	ConfigFileName = "config/vm.yml"
 
 	// SandboxRPCDir docker manager sandbox dir
 	SandboxRPCDir      = "/sandbox"
