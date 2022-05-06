@@ -343,7 +343,7 @@ package test
 //}
 //
 //// generate e-chats html
-//func Draw(title, filename string, xAxis, yAxis interface{}) error {
+//func Draw(title, filename string, xAxis, yAxis interfaces{}) error {
 //	line := charts.NewLine()
 //	line.SetGlobalOptions(
 //		charts.InitOpts{

@@ -60,11 +60,11 @@ package test
 //	panic("implement me")
 //}
 //
-//func (s *TxContextMockTest) SetIterHandle(index int32, iter interface{}) {
+//func (s *TxContextMockTest) SetIterHandle(index int32, iter interfaces{}) {
 //	panic("implement me")
 //}
 //
-//func (s *TxContextMockTest) GetIterHandle(index int32) (interface{}, bool) {
+//func (s *TxContextMockTest) GetIterHandle(index int32) (interfaces{}, bool) {
 //	panic("implement me")
 //}
 //
@@ -190,7 +190,7 @@ package test
 //func (s *TxContextMockTest) GetTx() *commonPb.Transaction {
 //	tx := &commonPb.Transaction{
 //		Payload: &commonPb.Payload{
-//			ChainId:        chainId,
+//			chainId:        chainId,
 //			TxType:         txType,
 //			TxId:           uuid.Generate().String(),
 //			Timestamp:      0,
@@ -306,11 +306,11 @@ package test
 //	panic("implement me")
 //}
 //
-//func (m mockBlockchainStore) QuerySingle(contractName, sql string, values ...interface{}) (protocol.SqlRow, error) {
+//func (m mockBlockchainStore) QuerySingle(contractName, sql string, values ...interfaces{}) (protocol.SqlRow, error) {
 //	panic("implement me")
 //}
 //
-//func (m mockBlockchainStore) QueryMulti(contractName, sql string, values ...interface{}) (protocol.SqlRows, error) {
+//func (m mockBlockchainStore) QueryMulti(contractName, sql string, values ...interfaces{}) (protocol.SqlRows, error) {
 //	panic("implement me")
 //}
 //
@@ -398,7 +398,7 @@ package test
 //func (m mockBlockchainStore) GetLastBlock() (*commonPb.Block, error) {
 //	return &commonPb.Block{
 //		Header: &commonPb.BlockHeader{
-//			ChainId:        "",
+//			chainId:        "",
 //			BlockHeight:    0,
 //			PreBlockHash:   nil,
 //			BlockHash:      nil,

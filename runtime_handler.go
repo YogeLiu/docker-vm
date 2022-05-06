@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -114,7 +115,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	contractName := callContractReq.ContractName
 	if len(contractName) == 0 {
 		errMsg := "missing contract name"
-		r.Logger.Error(errMsg)
+		r.logger.Error(errMsg)
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = errMsg
 		return response, gasUsed, specialTxType
@@ -122,7 +123,7 @@ func (r *RuntimeInstance) handlerCallContract(
 
 	if recvMsg.CrossContext.CurrentDepth >= protocol.CallContractDepth {
 		errMsg := "exceed max depth"
-		r.Logger.Error(errMsg)
+		r.logger.Error(errMsg)
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = errMsg
 		return response, gasUsed, specialTxType
@@ -137,7 +138,7 @@ func (r *RuntimeInstance) handlerCallContract(
 
 	if code != common.TxStatusCode_SUCCESS {
 		errMsg := "[call contract] execute error code: %s, msg: %s"
-		r.Logger.Error(errMsg)
+		r.logger.Error(errMsg)
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = result.Message
 		return response, gasUsed, specialTxType
@@ -221,7 +222,7 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 	contractNameBytes, ok := recvMsg.SysCallMessage.Payload[config.KeyContractName]
 	if !ok {
 		err = errors.New("unknown contract name")
-		r.Logger.Errorf("%s", err)
+		r.logger.Errorf("%s", err)
 		response.SysCallMessage.Message = err.Error()
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		return response, false
@@ -233,14 +234,14 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 	value, err = txSimContext.Get(contractName, stateKey)
 
 	if err != nil {
-		r.Logger.Errorf("fail to get state from sim context: %s", err)
+		r.logger.Errorf("fail to get state from sim context: %s", err)
 		response.SysCallMessage.Message = err.Error()
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		return response, false
 	}
 
-	//r.Logger.Debug("get value: ", string(value))
-	r.Logger.Debugf("[%s] get value: %s", txId, string(value))
+	//r.logger.Debug("get value: ", string(value))
+	r.logger.Debugf("[%s] get value: %s", txId, string(value))
 	response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
 	response.SysCallMessage.Payload = map[string][]byte{
 		config.KeyStateValue: value,
@@ -273,7 +274,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	writeMap := make(map[string][]byte)
 	var err error
 	if err = json.Unmarshal(writeMapBytes, &writeMap); err != nil {
-		r.Logger.Errorf("get WriteMap failed, %s", err.Error())
+		r.logger.Errorf("get WriteMap failed, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
 		gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
 		if err != nil {
@@ -285,7 +286,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 
 	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed)
 	if err != nil {
-		r.Logger.Errorf("merge the sim context write map failed, %s", err.Error())
+		r.logger.Errorf("merge the sim context write map failed, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
 		gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
 		if err != nil {
@@ -296,7 +297,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	}
 
 	if err = protocol.CheckKeyFieldStr(string(startKey), string(startField)); err != nil {
-		r.Logger.Errorf("invalid key field str, %s", err.Error())
+		r.logger.Errorf("invalid key field str, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
 		gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
 		if err != nil {
@@ -315,7 +316,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 		limitField := string(recvMsg.SysCallMessage.Payload[config.KeyIterLimitField])
 		iter, gasUsed, err = kvIteratorCreate(txSimContext, string(calledContractName), key, limitKey, limitField, gasUsed)
 		if err != nil {
-			r.Logger.Errorf("failed to create kv iterator, %s", err.Error())
+			r.logger.Errorf("failed to create kv iterator, %s", err.Error())
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Message = err.Error()
 			createKvIteratorResponse.SysCallMessage.Payload = nil
@@ -335,7 +336,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 		limit := keyStr[:len(keyStr)-1] + string(limitLast)
 		iter, err = txSimContext.Select(string(calledContractName), key, []byte(limit))
 		if err != nil {
-			r.Logger.Errorf("failed to create kv pre iterator, %s", err.Error())
+			r.logger.Errorf("failed to create kv pre iterator, %s", err.Error())
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Message = err.Error()
 			createKvIteratorResponse.SysCallMessage.Payload = nil
@@ -346,7 +347,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	index := atomic.AddInt32(&r.rowIndex, 1)
 	txSimContext.SetIter(index, iter)
 
-	r.Logger.Debug("create kv iterator: ", index)
+	r.logger.Debug("create kv iterator: ", index)
 	createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
 	createKvIteratorResponse.SysCallMessage.Payload[config.KeyIterIndex] = bytehelper.IntToBytes(index)
 
@@ -367,7 +368,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 	consumeKvIteratorFunc := recvMsg.SysCallMessage.Payload[config.KeyIteratorFuncName]
 	kvIteratorIndex, err := bytehelper.BytesToInt(recvMsg.SysCallMessage.Payload[config.KeyIterIndex])
 	if err != nil {
-		r.Logger.Errorf("failed to get iterator index, %s", err.Error())
+		r.logger.Errorf("failed to get iterator index, %s", err.Error())
 		gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
 		if err != nil {
 			consumeKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
@@ -380,7 +381,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 
 	iter, ok := txSimContext.GetIter(kvIteratorIndex)
 	if !ok {
-		r.Logger.Errorf("[kv iterator consume] can not found iterator index [%d]", kvIteratorIndex)
+		r.logger.Errorf("[kv iterator consume] can not found iterator index [%d]", kvIteratorIndex)
 		consumeKvIteratorResponse.SysCallMessage.Message = fmt.Sprintf(
 			"[kv iterator consume] can not found iterator index [%d]", kvIteratorIndex,
 		)
@@ -396,7 +397,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 
 	kvIterator, ok := iter.(protocol.StateIterator)
 	if !ok {
-		r.Logger.Errorf("assertion failed")
+		r.logger.Errorf("assertion failed")
 		consumeKvIteratorResponse.SysCallMessage.Message = fmt.Sprintf(
 			"[kv iterator consume] failed, iterator %d assertion failed", kvIteratorIndex,
 		)
@@ -458,7 +459,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 	}
 
 	if err = json.Unmarshal(writeMapBytes, &writeMap); err != nil {
-		r.Logger.Errorf("get write map failed, %s", err.Error())
+		r.logger.Errorf("get write map failed, %s", err.Error())
 		createKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
 		createKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		createKeyHistoryIterResponse.SysCallMessage.Payload = nil
@@ -467,7 +468,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 
 	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed)
 	if err != nil {
-		r.Logger.Errorf("merge the sim context write map failed, %s", err.Error())
+		r.logger.Errorf("merge the sim context write map failed, %s", err.Error())
 		createKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
 		createKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		createKeyHistoryIterResponse.SysCallMessage.Payload = nil
@@ -475,7 +476,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 	}
 
 	if err = protocol.CheckKeyFieldStr(string(keyStr), string(field)); err != nil {
-		r.Logger.Errorf("invalid key field str, %s", err.Error())
+		r.logger.Errorf("invalid key field str, %s", err.Error())
 		createKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
 		createKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		createKeyHistoryIterResponse.SysCallMessage.Payload = nil
@@ -495,7 +496,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 	index := atomic.AddInt32(&r.rowIndex, 1)
 	txSimContext.SetIter(index, iter)
 
-	r.Logger.Debug("create key history iterator: ", index)
+	r.logger.Debug("create key history iterator: ", index)
 
 	createKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
 	createKeyHistoryIterResponse.SysCallMessage.Payload = map[string][]byte{
@@ -527,7 +528,7 @@ func (r *RuntimeInstance) handleConsumeKeyHistoryIterator(txId string, recvMsg *
 	consumeKeyHistoryIteratorFunc := recvMsg.SysCallMessage.Payload[config.KeyIteratorFuncName]
 	keyHistoryIterIndex, err := bytehelper.BytesToInt(recvMsg.SysCallMessage.Payload[config.KeyIterIndex])
 	if err != nil {
-		r.Logger.Errorf("failed to get iterator index, %s", err.Error())
+		r.logger.Errorf("failed to get iterator index, %s", err.Error())
 		consumeKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		consumeKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
 		consumeKeyHistoryIterResponse.SysCallMessage.Payload = nil
@@ -537,7 +538,7 @@ func (r *RuntimeInstance) handleConsumeKeyHistoryIterator(txId string, recvMsg *
 	iter, ok := txSimContext.GetIter(keyHistoryIterIndex)
 	if !ok {
 		errMsg := fmt.Sprintf("[key history iterator consume] can not found iterator index [%d]", keyHistoryIterIndex)
-		r.Logger.Error(errMsg)
+		r.logger.Error(errMsg)
 
 		consumeKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		consumeKeyHistoryIterResponse.SysCallMessage.Message = errMsg
@@ -548,7 +549,7 @@ func (r *RuntimeInstance) handleConsumeKeyHistoryIterator(txId string, recvMsg *
 	keyHistoryIterator, ok := iter.(protocol.KeyHistoryIterator)
 	if !ok {
 		errMsg := "assertion failed"
-		r.Logger.Error(errMsg)
+		r.logger.Error(errMsg)
 
 		consumeKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		consumeKeyHistoryIterResponse.SysCallMessage.Message = errMsg
@@ -589,7 +590,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 	var bytes []byte
 	bytes, err = txSimContext.Get(chainConfigContractName, []byte(keyChainConfig))
 	if err != nil {
-		r.Logger.Errorf("txSimContext get failed, name[%s] key[%s] err: %s",
+		r.logger.Errorf("txSimContext get failed, name[%s] key[%s] err: %s",
 			chainConfigContractName, keyChainConfig, err.Error())
 		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		getSenderAddressResponse.SysCallMessage.Message = err.Error()
@@ -599,7 +600,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 
 	var chainConfig configPb.ChainConfig
 	if err = proto.Unmarshal(bytes, &chainConfig); err != nil {
-		r.Logger.Errorf("unmarshal chainConfig failed, contractName %s err: %+v", chainConfigContractName, err)
+		r.logger.Errorf("unmarshal chainConfig failed, contractName %s err: %+v", chainConfigContractName, err)
 		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		getSenderAddressResponse.SysCallMessage.Message = err.Error()
 		getSenderAddressResponse.SysCallMessage.Payload = nil
@@ -620,7 +621,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 	case accesscontrol.MemberType_CERT:
 		address, err = getSenderAddressFromCert(sender.MemberInfo, chainConfig.GetVm().GetAddrType())
 		if err != nil {
-			r.Logger.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			r.logger.Errorf("getSenderAddressFromCert failed, %s", err.Error())
 			getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			getSenderAddressResponse.SysCallMessage.Message = err.Error()
 			getSenderAddressResponse.SysCallMessage.Payload = nil
@@ -632,7 +633,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		var certBytes []byte
 		certBytes, err = txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
 		if err != nil {
-			r.Logger.Errorf("get cert from chain fialed, %s", err.Error())
+			r.logger.Errorf("get cert from chain fialed, %s", err.Error())
 			getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			getSenderAddressResponse.SysCallMessage.Message = err.Error()
 			getSenderAddressResponse.SysCallMessage.Payload = nil
@@ -641,7 +642,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 
 		address, err = getSenderAddressFromCert(certBytes, chainConfig.GetVm().GetAddrType())
 		if err != nil {
-			r.Logger.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			r.logger.Errorf("getSenderAddressFromCert failed, %s", err.Error())
 			getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			getSenderAddressResponse.SysCallMessage.Message = err.Error()
 			getSenderAddressResponse.SysCallMessage.Payload = nil
@@ -652,7 +653,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		address, err = getSenderAddressFromPublicKeyPEM(sender.MemberInfo, chainConfig.GetVm().GetAddrType(),
 			crypto.HashAlgoMap[chainConfig.GetCrypto().Hash])
 		if err != nil {
-			r.Logger.Errorf("getSenderAddressFromPublicKeyPEM failed, %s", err.Error())
+			r.logger.Errorf("getSenderAddressFromPublicKeyPEM failed, %s", err.Error())
 			getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			getSenderAddressResponse.SysCallMessage.Message = err.Error()
 			getSenderAddressResponse.SysCallMessage.Payload = nil
@@ -660,14 +661,14 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		}
 
 	default:
-		r.Logger.Errorf("HandleGetSenderAddress failed, invalid member type")
+		r.logger.Errorf("HandleGetSenderAddress failed, invalid member type")
 		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		getSenderAddressResponse.SysCallMessage.Message = err.Error()
 		getSenderAddressResponse.SysCallMessage.Payload = nil
 		return getSenderAddressResponse, gasUsed
 	}
 
-	r.Logger.Debug("get sender address: ", address)
+	r.logger.Debug("get sender address: ", address)
 	getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
 	getSenderAddressResponse.SysCallMessage.Payload = map[string][]byte{
 		config.KeySenderAddr: []byte(address),
@@ -811,10 +812,6 @@ func kvIteratorNext(kvIterator protocol.StateIterator, gasUsed uint64,
 		config.KeyUserField:  []byte(field),
 		config.KeyStateValue: value,
 	}
-	//func() []byte {
-	//	str := key + "#" + field + "#" + string(value)
-	//	return []byte(str)
-	//}()
 
 	return response, gasUsed
 }
@@ -979,11 +976,11 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 
 	contractFullName := string(recvMsg.SysCallMessage.Payload[config.KeyContractFullName]) // contract1#1.0.0
 	contractName := strings.Split(contractFullName, "#")[0]                                // contract1
-	r.Logger.Debugf("name: %s", contractName)
-	r.Logger.Debugf("full name: %s", contractFullName)
+	r.logger.Debugf("name: %s", contractName)
+	r.logger.Debugf("full name: %s", contractFullName)
 
-	hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
-	hostMountPath = filepath.Join(hostMountPath, r.ChainId)
+	hostMountPath := r.clientMgr.GetVMConfig().DockerVMMountPath
+	hostMountPath = filepath.Join(hostMountPath, r.chainId)
 
 	contractDir := filepath.Join(hostMountPath, mountContractDir)
 	contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
@@ -993,7 +990,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	// save bytecode to disk
 	err := r.saveBytesToDisk(byteCode, contractZipPath)
 	if err != nil {
-		r.Logger.Errorf("fail to save bytecode to disk: %s", err)
+		r.logger.Errorf("fail to save bytecode to disk: %s", err)
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		response.SysCallMessage.Message = err.Error()
 		return response
@@ -1003,7 +1000,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
 	err = r.runCmd(unzipCommand)
 	if err != nil {
-		r.Logger.Errorf("fail to extract contract: %s", err)
+		r.logger.Errorf("fail to extract contract: %s", err)
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		response.SysCallMessage.Message = err.Error()
 		return response
@@ -1012,7 +1009,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	// remove 7z file
 	err = os.Remove(contractZipPath)
 	if err != nil {
-		r.Logger.Errorf("fail to remove zipped file: %s", err)
+		r.logger.Errorf("fail to remove zipped file: %s", err)
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		response.SysCallMessage.Message = err.Error()
 		return response
@@ -1021,7 +1018,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	// replace contract name to contractName:version
 	err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
 	if err != nil {
-		r.Logger.Errorf("fail to rename original file name: %s, "+
+		r.logger.Errorf("fail to rename original file name: %s, "+
 			"please make sure contract name should be same as zipped file", err)
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		response.SysCallMessage.Message = err.Error()
@@ -1031,6 +1028,21 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
 	response.SysCallMessage.Payload = map[string][]byte{
 		config.KeyContractFullName: []byte(contractFullName),
+	}
+
+	if r.clientMgr.NeedSendContractByteCode() {
+		contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
+		if err != nil {
+			r.logger.Errorf("fail to load contract executable file: %s, ", err)
+			response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+			response.SysCallMessage.Message = err.Error()
+			return response
+		}
+
+		response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
+		response.SysCallMessage.Payload = map[string][]byte{
+			config.KeyContractFullName: contractByteCode,
+		}
 	}
 
 	return response
@@ -1043,7 +1055,7 @@ func (r *RuntimeInstance) errorResult(contractResult *commonPb.ContractResult,
 		errMsg += ", " + err.Error()
 	}
 	contractResult.Message = errMsg
-	//r.Logger.Error(errMsg)
+	//r.logger.Error(errMsg)
 	return contractResult, protocol.ExecOrderTxTypeNormal
 }
 

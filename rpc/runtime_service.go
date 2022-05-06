@@ -1,58 +1,61 @@
 package rpc
 
 import (
-	"google.golang.org/grpc/status"
 	"io"
 	"sync"
 
-	"chainmaker.org/chainmaker/logger/v2"
+	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
-
+	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-var runtimeServiceInstance = NewRuntimeService()
-
-func GetRuntimeServiceInstance() *RuntimeService {
-	return runtimeServiceInstance
-}
+var runtimeServiceOnce sync.Once
 
 type RuntimeService struct {
-	lock               sync.RWMutex
-	logger             *logger.CMLogger
-	stream             protogo.DockerVMRpc_DockerVMCommunicateServer
-	sandboxMsgNotifies map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage))
-	stopSend           chan struct{}
-	stopReceive        chan struct{}
-	wg                 *sync.WaitGroup
+	chainId          string
+	lock             sync.RWMutex
+	logger           protocol.Logger
+	stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+	sandboxMsgNotify map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage))
+	stopSend         chan struct{}
+	stopReceive      chan struct{}
+	wg               *sync.WaitGroup
 }
 
-func NewRuntimeService() *RuntimeService {
-	return &RuntimeService{
-		lock:               sync.RWMutex{},
-		sandboxMsgNotifies: make(map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage)), 1000),
-		stopSend:           make(chan struct{}, 1),
-		stopReceive:        make(chan struct{}, 1),
-		wg:                 &sync.WaitGroup{},
-	}
+func NewRuntimeService(chainId string, logger protocol.Logger) *RuntimeService {
+	instanceCh := make(chan *RuntimeService, 1)
+	runtimeServiceOnce.Do(func() {
+		instanceCh <- &RuntimeService{
+			chainId:          chainId,
+			lock:             sync.RWMutex{},
+			logger:           logger,
+			sandboxMsgNotify: make(map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage)), 1000),
+			stopSend:         make(chan struct{}, 1),
+			stopReceive:      make(chan struct{}, 1),
+			wg:               &sync.WaitGroup{},
+		}
+	})
+	return <-instanceCh
 }
 
 func (s *RuntimeService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	sendResponseCh := make(chan *protogo.DockerVMMessage, 1)
-	sendMessage := func(msg *protogo.DockerVMMessage) {
+	putResp := func(msg *protogo.DockerVMMessage) {
 		sendResponseCh <- msg
 	}
 
 	s.wg.Add(2)
 
-	s.recvRoutine(stream, sendMessage)
+	s.recvRoutine(stream, putResp)
 	s.sendRoutine(stream, sendResponseCh)
 
 	s.wg.Wait()
 	return nil
 }
 
-func (s *RuntimeService) recvRoutine(stream protogo.DockerVMRpc_DockerVMCommunicateServer, sendF func(msg *protogo.DockerVMMessage)) {
+func (s *RuntimeService) recvRoutine(stream protogo.DockerVMRpc_DockerVMCommunicateServer, putResp func(msg *protogo.DockerVMMessage)) {
 	s.logger.Infof("start receiving sandbox message")
 
 	for {
@@ -91,7 +94,7 @@ func (s *RuntimeService) recvRoutine(stream protogo.DockerVMRpc_DockerVMCommunic
 				protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
-				s.getNotify(receivedMsg.TxId)(receivedMsg, sendF)
+				s.getNotify(s.chainId, receivedMsg.TxId)(receivedMsg, putResp)
 			}
 		}
 	}
@@ -120,36 +123,38 @@ func (s *RuntimeService) sendRoutine(stream protogo.DockerVMRpc_DockerVMCommunic
 	}
 }
 
-func (s *RuntimeService) RegisterNotifyForSandbox(txKey string,
+func (s *RuntimeService) RegisterSandboxMsgNotify(chainId, txKey string,
 	respNotify func(msg *protogo.DockerVMMessage, sendF func(*protogo.DockerVMMessage))) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
-	s.logger.Debugf("register receive respNotify for [%s]", txKey)
-	_, ok := s.sandboxMsgNotifies[txKey]
+	notifyKey := utils.ConstructNotifyMapKey(chainId, txKey)
+	s.logger.Debugf("register receive respNotify for [%s]", notifyKey)
+	_, ok := s.sandboxMsgNotify[notifyKey]
 	if ok {
 		s.logger.Errorf("[%s] fail to register respNotify cause ")
 	}
-	s.sandboxMsgNotifies[txKey] = respNotify
+	s.sandboxMsgNotify[notifyKey] = respNotify
 	return nil
 }
 
-func (s *RuntimeService) getNotify(txKey string) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
+func (s *RuntimeService) getNotify(chainId, txId string) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	s.logger.Debugf("get notify for [%s]", txKey)
-	return s.sandboxMsgNotifies[txKey]
+	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
+	s.logger.Debugf("get notify for [%s]", notifyKey)
+	return s.sandboxMsgNotify[notifyKey]
 }
 
-func (s *RuntimeService) getAndDeleteNotify(txKey string) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
+func (s *RuntimeService) DeleteSandboxMsgNotify(chainId, txId string) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.logger.Debugf("get respNotify for [%s] and delete", txKey)
-	respNotify, ok := s.sandboxMsgNotifies[txKey]
+	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
+	s.logger.Debugf("[%s] delete notify", txId)
+	_, ok := s.sandboxMsgNotify[notifyKey]
 	if !ok {
-		s.logger.Warnf("cannot find respNotify for [%s] and return nil", txKey)
-		return nil
+		s.logger.Debugf("[%s] delete notify fail, notify is already deleted", notifyKey)
+		return false
 	}
-	delete(s.sandboxMsgNotifies, txKey)
-	return respNotify
+	delete(s.sandboxMsgNotify, notifyKey)
+	return true
 }

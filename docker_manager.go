@@ -15,18 +15,20 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"sync"
 
+	"chainmaker.org/chainmaker/logger/v2"
+	"chainmaker.org/chainmaker/pb-go/v2/common"
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/mitchellh/mapstructure"
-
-	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
 )
 
 const (
@@ -42,18 +44,15 @@ var (
 )
 
 type DockerManager struct {
-	chainId   string
-	mgrLogger *logger.CMLogger
-
-	ctx             context.Context
-	dockerAPIClient *client.Client // docker client
-
-	cdmClient      *rpc.ContractEngineClient // grpc client
-	clientInitOnce sync.Once
-	cdmState       bool
-
-	dockerVMConfig        *config.DockerVMConfig        // original config from local config
-	dockerContainerConfig *config.DockerContainerConfig // container setting
+	chainId               string
+	mgrLogger             protocol.Logger
+	ctx                   context.Context
+	dockerAPIClient       *client.Client                     // docker client
+	clientMgr             interfaces.ContractEngineClientMgr // grpc client
+	runtimeService        *rpc.RuntimeService                //
+	runtimeServer         *rpc.RuntimeServer                 // grpc server
+	dockerVMConfig        *config.DockerVMConfig             // original config from local config
+	dockerContainerConfig *config.DockerContainerConfig      // container setting
 }
 
 // NewDockerManager return docker manager and running a default container
@@ -92,9 +91,7 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		mgrLogger:             dockerManagerLogger,
 		ctx:                   context.Background(),
 		dockerAPIClient:       dockerAPIClient,
-		cdmClient:             rpc.NewCDMClient(chainId, dockerVMConfig),
-		clientInitOnce:        sync.Once{},
-		cdmState:              false,
+		clientMgr:             rpc.NewClientManager(chainId, dockerVMConfig),
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
 	}
@@ -105,6 +102,15 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		dockerManagerLogger.Errorf("fail to init mount directory: %s", err)
 		return nil
 	}
+
+	// runtime server
+	server, err := rpc.NewRuntimeServer(chainId, dockerVMConfig)
+	if err != nil {
+		dockerManagerLogger.Errorf("fail to init docker manager, %s", err)
+		return nil
+	}
+	newDockerManager.runtimeServer = server
+	newDockerManager.runtimeService = rpc.NewRuntimeService(chainId, logger.GetLoggerByChain("[Runtime Server]", chainId))
 
 	return newDockerManager
 }
@@ -174,6 +180,11 @@ func (m *DockerManager) StartVM() error {
 		}
 	}
 
+	// start runtime server
+	if err = m.runtimeServer.StartRuntimeServer(m.runtimeService); err != nil {
+		return err
+	}
+
 	// running container
 	m.mgrLogger.Infof("start running container [%s]", m.dockerContainerConfig.ContainerName)
 	if err = m.dockerAPIClient.ContainerStart(m.ctx, m.dockerContainerConfig.ContainerName,
@@ -192,6 +203,19 @@ func (m *DockerManager) StartVM() error {
 		}
 	}()
 	return nil
+}
+
+func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method,
+	codePath string, contract *common.Contract,
+	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
+
+	return &RuntimeInstance{
+		chainId:        chainId,
+		clientMgr:      m.clientMgr,
+		runtimeService: m.runtimeService,
+		logger:         logger,
+		event:          make([]*commonPb.ContractEvent, 0),
+	}, nil
 }
 
 // StopVM stop docker vm and remove container, image
@@ -216,8 +240,7 @@ func (m *DockerManager) StopVM() error {
 	//	return err
 	//}
 
-	m.cdmState = false
-	m.clientInitOnce = sync.Once{}
+	m.runtimeServer.StopRuntimeServer()
 
 	m.mgrLogger.Info("stop and remove docker vm [%s]", m.dockerContainerConfig.ContainerName)
 	return nil

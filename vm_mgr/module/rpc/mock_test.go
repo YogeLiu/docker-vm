@@ -14,7 +14,7 @@ import (
 	metadata "google.golang.org/grpc/metadata"
 )
 
-// MockDockerVMRpcClient is a mock of DockerVMRpcClient interface.
+// MockDockerVMRpcClient is a mock of DockerVMRpcClient interfaces.
 type MockDockerVMRpcClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockDockerVMRpcClientMockRecorder
@@ -57,7 +57,7 @@ func (mr *MockDockerVMRpcClientMockRecorder) DockerVMCommunicate(ctx interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DockerVMCommunicate", reflect.TypeOf((*MockDockerVMRpcClient)(nil).DockerVMCommunicate), varargs...)
 }
 
-// MockDockerVMRpc_DockerVMCommunicateClient is a mock of DockerVMRpc_DockerVMCommunicateClient interface.
+// MockDockerVMRpc_DockerVMCommunicateClient is a mock of DockerVMRpc_DockerVMCommunicateClient interfaces.
 type MockDockerVMRpc_DockerVMCommunicateClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockDockerVMRpc_DockerVMCommunicateClientMockRecorder
@@ -194,7 +194,7 @@ func (mr *MockDockerVMRpc_DockerVMCommunicateClientMockRecorder) Trailer() *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Trailer", reflect.TypeOf((*MockDockerVMRpc_DockerVMCommunicateClient)(nil).Trailer))
 }
 
-// MockDockerVMRpcServer is a mock of DockerVMRpcServer interface.
+// MockDockerVMRpcServer is a mock of DockerVMRpcServer interfaces.
 type MockDockerVMRpcServer struct {
 	ctrl     *gomock.Controller
 	recorder *MockDockerVMRpcServerMockRecorder
@@ -231,7 +231,7 @@ func (mr *MockDockerVMRpcServerMockRecorder) DockerVMCommunicate(arg0 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DockerVMCommunicate", reflect.TypeOf((*MockDockerVMRpcServer)(nil).DockerVMCommunicate), arg0)
 }
 
-// MockDockerVMRpc_DockerVMCommunicateServer is a mock of DockerVMRpc_DockerVMCommunicateServer interface.
+// MockDockerVMRpc_DockerVMCommunicateServer is a mock of DockerVMRpc_DockerVMCommunicateServer interfaces.
 type MockDockerVMRpc_DockerVMCommunicateServer struct {
 	ctrl     *gomock.Controller
 	recorder *MockDockerVMRpc_DockerVMCommunicateServerMockRecorder
