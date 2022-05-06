@@ -21,11 +21,10 @@ const (
 	ConfigFileName = "config/vm.yml"
 
 	// SandboxRPCDir docker manager sandbox dir
-	SandboxRPCDir      = "/sandbox"
+	SandboxRPCDir = "/sandbox"
 
 	// SandboxRPCSockName docker manager sandbox domain socket path
 	SandboxRPCSockName = "sandbox.sock"
-
 )
 
 var DockerVMConfig *conf
@@ -49,6 +48,7 @@ const (
 type rpcConf struct {
 	ChainRPCProtocol       ChainRPCProtocolType `mapstructure:"chain_rpc_protocol"`
 	ChainRPCPort           int                  `mapstructure:"chain_rpc_port"`
+	SandboxRPCPort         int                  `mapstructure:"sandbox_rpc_port"`
 	MaxSendMsgSize         int                  `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize         int                  `mapstructure:"max_recv_msg_size"`
 	ServerMinInterval      int                  `mapstructure:"server_min_interval"`
@@ -115,6 +115,7 @@ func (c *conf) setDefaultConfigs() {
 	const rpcPrefix = "rpc"
 	viper.SetDefault(rpcPrefix+".chain_rpc_protocol", 1)
 	viper.SetDefault(rpcPrefix+".chain_rpc_port", 8015)
+	viper.SetDefault(rpcPrefix+".sandbox_rpc_port", 8016)
 	viper.SetDefault(rpcPrefix+".max_send_msg_size", 4)
 	viper.SetDefault(rpcPrefix+".max_recv_msg_size", 4)
 	viper.SetDefault(rpcPrefix+".server_min_interval", 60)

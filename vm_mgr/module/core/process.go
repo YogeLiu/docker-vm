@@ -209,10 +209,14 @@ func (p *Process) launchProcess() *exitErr {
 	var err error           // process global error
 	var stderr bytes.Buffer // used to capture the error message from contract
 
+	tcpPort := config.DockerVMConfig.RPC.SandboxRPCPort
+	if config.DockerVMConfig.RPC.ChainRPCProtocol == config.UDS {
+		tcpPort = 0
+	}
 	cmd := exec.Cmd{
 		Path: p.requestGroup.GetContractPath(),
 		Args: []string{p.user.GetSockPath(), p.processName, p.contractName, p.contractVersion,
-			config.DockerVMConfig.Log.SandboxLog.Level},
+			config.DockerVMConfig.Log.SandboxLog.Level, strconv.Itoa(tcpPort)},
 		Stderr: &stderr,
 	}
 
@@ -230,7 +234,7 @@ func (p *Process) launchProcess() *exitErr {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.GetUid()),
 		},
-		//Cloneflags: syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
 
