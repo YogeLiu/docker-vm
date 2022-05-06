@@ -82,7 +82,7 @@ func ConstructKey(names ...string) string {
 	return strings.Join(names, "#")
 }
 
-// ConstructProcessName contractName#contractVersion#timestamp:index
+// ConstructProcessName chainId#contractName#contractVersion#timestamp:index
 func ConstructProcessName(chainId, contractName, contractVersion string, index uint64) string {
 	var sb strings.Builder
 	sb.WriteString(chainId)
@@ -97,18 +97,16 @@ func ConstructProcessName(chainId, contractName, contractVersion string, index u
 	return sb.String()
 }
 
-// ConstructOriginalProcessName contractName#contractVersion#timestamp:index#txCount
-func ConstructOriginalProcessName(chainId, processName string, txCount uint64) string {
+// ConstructOriginalProcessName chainId#contractName#contractVersion#timestamp:index#txCount
+func ConstructOriginalProcessName(processName string, txCount uint64) string {
 	var sb strings.Builder
-	sb.WriteString(chainId)
-	sb.WriteString("#")
 	sb.WriteString(processName)
 	sb.WriteString("#")
 	sb.WriteString(strconv.FormatUint(txCount, 10))
 	return sb.String()
 }
 
-// ConstructConcatOriginalAndCrossProcessName contractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
+// ConstructConcatOriginalAndCrossProcessName chainId#contractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
 func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProcessName string) string {
 	var sb strings.Builder
 	sb.WriteString(originalProcessName)
@@ -117,7 +115,7 @@ func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProces
 	return sb.String()
 }
 
-// ConstructCrossContractProcessName txId:timestamp:depth
+// ConstructCrossContractProcessName chainId:txId:timestamp:depth
 func ConstructCrossContractProcessName(chainId, txId string, txDepth uint64) string {
 	var sb strings.Builder
 	sb.WriteString(chainId)
@@ -143,7 +141,7 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 
 func GetContractKeyFromProcessName(processName string) string {
 	nameList := strings.Split(processName, "#")
-	return ConstructContractKey(nameList[0], nameList[1])
+	return ConstructContractKey(nameList[0], nameList[1], nameList[2])
 }
 
 func GetMaxSendMsgSizeFromEnv() int {

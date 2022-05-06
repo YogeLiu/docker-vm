@@ -1,3 +1,9 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package test
 
 import (
@@ -11,6 +17,8 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 	mockTxQueryCertFromChain(mockTxContext)
 	mockGetSender(mockTxContext)
 	mockTxGetChainConf(mockTxContext)
+	mockGetBlockVersion(mockTxContext)
+
 	testData := []struct {
 		/*
 			| MemberType            | AddrType            |
@@ -18,18 +26,22 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 			| MemberType_CERT       | AddrType_ZXL        |
 			| MemberType_CERT_HASH  | AddrType_ZXL        |
 			| MemberType_PUBLIC_KEY | AddrType_ZXL        |
+			| MemberType_ALIAS 		| AddrType_ZXL        |
 			| MemberType_CERT       | AddrType_CHAINMAKER |
 			| MemberType_CERT_HASH  | AddrType_CHAINMAKER |
 			| MemberType_PUBLIC_KEY | AddrType_CHAINMAKER |
+			| MemberType_ALIAS 		| AddrType_CHAINMAKER |
 		*/
 		wantAddr string
 	}{
 		{zxlCertAddressFromCert},
 		{zxlCertAddressFromCert},
 		{zxlPKAddress},
+		{zxlCertAddressFromCert},
 		{cmCertAddressFromCert},
 		{cmCertAddressFromCert},
 		{cmPKAddress},
+		{cmCertAddressFromCert},
 	}
 
 	parameters := generateInitParams()

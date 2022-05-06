@@ -27,6 +27,8 @@ vm:
 ### 2.1. 启动合约服务容器
 
 1. 打包合约服务的镜像
+
+在`vm-docker-go`项目根目录下执行打包镜像操作
 ```shell
 make build-image 
 ```
@@ -70,19 +72,19 @@ ENV_MAX_RECV_MSG_SIZE=
 参数中需要再添加对外暴露的端口映射
 
 ```shell
-docker run -it -p22359:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run -it -p22359:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 ```
 
 例如 启动四个容器的脚本，分别监听22351 - 22354，并打印容器输出到标准输出:
 
 ```shell
-docker run -d -e ENV_LOG_IN_CONSOLE=true -p22351:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run --rm -d -p22351:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 
-docker run -d -e ENV_LOG_IN_CONSOLE=true -p22352:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run --rm -d -p22352:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 
-docker run -d -e ENV_LOG_IN_CONSOLE=true -p22353:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run --rm -d -p22353:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 
-docker run -d -e ENV_LOG_IN_CONSOLE=true -p22354:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run --rm -d -p22354:22359 --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 
 ```
 3.1 以uds方式启动：
@@ -91,23 +93,25 @@ docker run -d -e ENV_LOG_IN_CONSOLE=true -p22354:22359 --privileged chainmakerof
 2. 通过 -v 指定本地合约文件和socket文件的映射
 
 ```shell
-docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org.chainmaker.org/data/wx-org.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org.chainmaker.org/data/wx-org.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 ```
 
 
 例如 启动四个容器的脚本:
 ```shell
-docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org1.chainmaker.org/data/wx-org1.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org1.chainmaker.org/data/wx-org1.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 
-docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org2.chainmaker.org/data/wx-org2.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org2.chainmaker.org/data/wx-org2.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 
-docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org3.chainmaker.org/data/wx-org3.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org3.chainmaker.org/data/wx-org3.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 
-docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org4.chainmaker.org/data/wx-org4.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.1
+docker run -it -e ENV_ENABLE_UDS=true -v /root/chainmaker.org/chainmaker-go/build/release/chainmaker-v2.2.1-wx-org4.chainmaker.org/data/wx-org4.chainmaker.org/docker-go/chain1:/mount --privileged chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
 
 ```
 
 ### 2.2. 配置启动 chainmaker
+
+修改`chainmaker`配置文件中`vm`配置中的相关配置
 
 #### 2.2.1 tcp方式
 保持 uds_open 为false，并配置docker_vm_host和docker_vm_port的值
