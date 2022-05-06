@@ -36,7 +36,7 @@ const (
 	dockerLogDir         = "/log"
 	dockerContainerDir   = "../module/vm/docker-go/vm_mgr"
 	defaultContainerName = "chainmaker-vm-docker-go-container"
-	imageVersion         = "develop"
+	imageVersion         = "refactor"
 )
 
 var (
@@ -174,7 +174,7 @@ func (m *DockerManager) StartVM() error {
 			return err
 		}
 	} else {
-		err = m.createTestContainer()
+		err = m.createContainerWithTCP(m.dockerVMConfig.ContractEngine.Port)
 		if err != nil {
 			return err
 		}
@@ -464,10 +464,9 @@ func (m *DockerManager) exists(path string) (bool, error) {
 }
 
 // create container based on image, just for testing
-func (m *DockerManager) createTestContainer() error {
+func (m *DockerManager) createContainerWithTCP(port string) error {
 
-	hostPort := config.TestPort
-	openPort := nat.Port(hostPort + "/tcp")
+	openPort := nat.Port(port + "/tcp")
 
 	_, err := m.dockerAPIClient.ContainerCreate(m.ctx, &container.Config{
 		Cmd:          nil,
@@ -511,7 +510,7 @@ func (m *DockerManager) createTestContainer() error {
 			openPort: []nat.PortBinding{
 				{
 					HostIP:   "127.0.0.1",
-					HostPort: hostPort,
+					HostPort: port,
 				},
 			},
 		},

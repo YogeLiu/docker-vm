@@ -1,4 +1,4 @@
-VERSION=develop
+VERSION=refactor
 
 build-test:
 	cd test/scripts && ./prepare.sh
