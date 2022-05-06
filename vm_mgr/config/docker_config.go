@@ -39,7 +39,7 @@ const (
 	SockName = "cdm.sock"
 
 	// DefaultUserNum user num
-	DefaultUserNum = 100
+	DefaultUserNum = 1000
 	// DefaultListenPort default listening port in container
 	DefaultListenPort   = 22359
 	DefaultTxTimeLimit  = 2

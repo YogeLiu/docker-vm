@@ -205,6 +205,7 @@ func (c *CDMClient) NewClientConn() (*grpc.ClientConn, error) {
 		),
 	}
 
+	// connect vm from unix domain socket address
 	if c.clientMgr.GetVMConfig().DockerVMUDSOpen {
 		// connect unix domain socket
 		dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {

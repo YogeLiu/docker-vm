@@ -61,7 +61,7 @@ func (pm *ProcessManager) SetScheduler(scheduler protocol.Scheduler) {
 func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
 	pm.balanceRWMutex.Lock()
 	defer pm.balanceRWMutex.Unlock()
-	// processNamePrefix: contractName#contractVersion
+	// processNamePrefix: chainId#contractName#contractVersion
 	contractKey := utils.ConstructContractKey(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion)
 	// process exist, put current tx into process waiting queue and return
 	processBalance := pm.balanceTable[contractKey]
@@ -175,7 +175,7 @@ func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, pr
 
 func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
 	// validate contract deployed or not
-	contractKey := utils.ConstructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
+	contractKey := utils.ConstructContractKey(crossContractTx.ChainId, crossContractTx.ContractName, crossContractTx.ContractVersion)
 	contractPath, err := pm.contractManager.GetContract(crossContractTx.ChainId, crossContractTx.TxId, contractKey)
 	if err != nil {
 		pm.logger.Errorf(err.Error())

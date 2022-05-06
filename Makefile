@@ -1,4 +1,5 @@
 VERSION=v2.2.2_qc
+VERSION221=v2.2.1_qc
 
 BUILD_TIME = $(shell date "+%Y%m%d%H%M%S")
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
@@ -46,18 +47,18 @@ ci:
 	make clean
 
 gomod:
-	go get chainmaker.org/chainmaker/common/v2@develop
-	go get chainmaker.org/chainmaker/localconf/v2@$(VERSION)
-	go get chainmaker.org/chainmaker/logger/v2@develop
-	go get chainmaker.org/chainmaker/pb-go/v2@$(VERSION)
-	go get chainmaker.org/chainmaker/protocol/v2@develop
-	go get chainmaker.org/chainmaker/utils/v2@develop
+	go get chainmaker.org/chainmaker/common/v2@$(VERSION221)
+	go get chainmaker.org/chainmaker/localconf/v2@$(VERSION221)
+	go get chainmaker.org/chainmaker/logger/v2@$(VERSION221)
+	go get chainmaker.org/chainmaker/pb-go/v2@$(VERSION221)
+	go get chainmaker.org/chainmaker/protocol/v2@$(VERSION221)
+	go get chainmaker.org/chainmaker/utils/v2@$(VERSION221)
 	go mod tidy
 
 ut:
 	./test/scripts/prepare.sh
 	make build-image
-	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:v2.2.2_qc
+	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
 	./ut_cover.sh
 	docker stop chaimaker_vm_test
 

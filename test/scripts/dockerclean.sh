@@ -15,3 +15,4 @@ docker ps -a
 rm -fr ../testdata/org1
 rm -fr ../testdata/log
 rm -fr ../default.log*
+rm -rf ../testdata/tmp
