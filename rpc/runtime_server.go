@@ -6,7 +6,10 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
+
+	"chainmaker.org/chainmaker/protocol/v2"
 
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
@@ -15,56 +18,72 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+var runtimeServerOnce sync.Once
+
 type RuntimeServer struct {
-	Listener  net.Listener
+	listener  net.Listener
 	rpcServer *grpc.Server
 	config    *config.DockerVMConfig
-	log       *logger.CMLogger
+	logger    protocol.Logger
 }
 
 func NewRuntimeServer(chainId string, vmConfig *config.DockerVMConfig) (*RuntimeServer, error) {
-	if vmConfig == nil {
-		return nil, errors.New("invalid parameter, config is nil")
-	}
+	errCh := make(chan error, 1)
+	instanceCh := make(chan *RuntimeServer, 1)
 
-	listener, err := createListener(chainId, vmConfig)
-	if err != nil {
+	runtimeServerOnce.Do(func() {
+		if vmConfig == nil {
+			errCh <- errors.New("invalid parameter, config is nil")
+			return
+		}
+
+		listener, err := createListener(chainId, vmConfig)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		// set up server options for keepalive and TLS
+		var serverOpts []grpc.ServerOption
+
+		// add keepalive
+		serverKeepAliveParameters := keepalive.ServerParameters{
+			Time:    1 * time.Minute,
+			Timeout: 20 * time.Second,
+		}
+		serverOpts = append(serverOpts, grpc.KeepaliveParams(serverKeepAliveParameters))
+
+		// set enforcement policy
+		kep := keepalive.EnforcementPolicy{
+			MinTime: config.ServerMinInterval,
+			// allow keepalive w/o rpc
+			PermitWithoutStream: true,
+		}
+
+		serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
+
+		serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.ConnectionTimeout))
+
+		server := grpc.NewServer(serverOpts...)
+
+		instanceCh <- &RuntimeServer{
+			listener:  listener,
+			rpcServer: server,
+			logger:    logger.GetLoggerByChain("[Runtime Server]", chainId),
+			config:    vmConfig,
+		}
+	})
+
+	select {
+	case err := <-errCh:
 		return nil, err
+	case instance := <-instanceCh:
+		return instance, nil
 	}
-
-	// set up server options for keepalive and TLS
-	var serverOpts []grpc.ServerOption
-
-	// add keepalive
-	serverKeepAliveParameters := keepalive.ServerParameters{
-		Time:    1 * time.Minute,
-		Timeout: 20 * time.Second,
-	}
-	serverOpts = append(serverOpts, grpc.KeepaliveParams(serverKeepAliveParameters))
-
-	// set enforcement policy
-	kep := keepalive.EnforcementPolicy{
-		MinTime: config.ServerMinInterval,
-		// allow keepalive w/o rpc
-		PermitWithoutStream: true,
-	}
-
-	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
-
-	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.ConnectionTimeout))
-
-	server := grpc.NewServer(serverOpts...)
-
-	return &RuntimeServer{
-		Listener:  listener,
-		rpcServer: server,
-		log:       logger.GetLoggerByChain("[Runtime Server]", chainId),
-		config:    vmConfig,
-	}, nil
 }
 
 func (s *RuntimeServer) StartRuntimeServer(runtimeService *RuntimeService) error {
-	if s.Listener == nil {
+	if s.listener == nil {
 		return errors.New("nil listener")
 	}
 
@@ -74,11 +93,11 @@ func (s *RuntimeServer) StartRuntimeServer(runtimeService *RuntimeService) error
 
 	protogo.RegisterDockerVMRpcServer(s.rpcServer, runtimeService)
 
-	s.log.Debug("start runtime server")
+	s.logger.Debug("start runtime server")
 	go func() {
-		err := s.rpcServer.Serve(s.Listener)
+		err := s.rpcServer.Serve(s.listener)
 		if err != nil {
-			s.log.Errorf("runtime server fail to start: %s", err)
+			s.logger.Errorf("runtime server fail to start: %s", err)
 		}
 	}()
 
@@ -86,7 +105,7 @@ func (s *RuntimeServer) StartRuntimeServer(runtimeService *RuntimeService) error
 }
 
 func (s *RuntimeServer) StopRuntimeServer() {
-	s.log.Info("stop runtime server")
+	s.logger.Info("stop runtime server")
 
 	if s.rpcServer != nil {
 		s.rpcServer.Stop()

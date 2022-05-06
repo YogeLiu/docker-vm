@@ -12,155 +12,67 @@ import (
 	"io"
 	"net"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"sync"
 
+	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"go.uber.org/atomic"
-
-	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
-)
-
-const (
-	txSize = 15000
 )
 
 type ContractEngineClient struct {
-	// TxId anti duplication
-	count *atomic.Uint64
-	// Distinguish sock files of different chains
-	chainId string
-	// Not passed directly, through function call
-	txSendCh chan *protogo.DockerVMMessage // used to send tx to docker-go instance
-	// syscall response channel
-	respSendCh chan *protogo.DockerVMMessage // used to receive message from docker-go
-	lock       sync.RWMutex
-	// key: txId, value: chan, used to receive tx response from docker-go
-	notifies map[string]func(msg *protogo.DockerVMMessage)
-	stream   protogo.DockerVMRpc_DockerVMCommunicateClient
-
-	logger      *logger.CMLogger
+	id          uint64
+	clientMgr   interfaces.ContractEngineClientMgr
+	chainId     string // Distinguish sock files of different chains
+	lock        *sync.RWMutex
+	stream      protogo.DockerVMRpc_DockerVMCommunicateClient
+	logger      protocol.Logger
 	stopSend    chan struct{}
 	stopReceive chan struct{}
 	config      *config.DockerVMConfig
 }
 
-func NewCDMClient(chainId string, vmConfig *config.DockerVMConfig) *ContractEngineClient {
+func NewContractEngineClient(chainId string, id uint64, logger protocol.Logger, cm interfaces.ContractEngineClientMgr) *ContractEngineClient {
 
 	return &ContractEngineClient{
-		count:       atomic.NewUint64(0),
+		id:          id,
+		clientMgr:   cm,
 		chainId:     chainId,
-		txSendCh:    make(chan *protogo.DockerVMMessage, txSize), // tx request
-		notifies:    make(map[string]func(msg *protogo.DockerVMMessage)),
+		lock:        &sync.RWMutex{},
 		stream:      nil,
-		logger:      logger.GetLoggerByChain(logger.MODULE_VM, chainId),
+		logger:      logger,
 		stopSend:    make(chan struct{}),
 		stopReceive: make(chan struct{}),
-		config:      vmConfig,
+		config:      cm.GetVMConfig(),
 	}
 }
 
-func (c *ContractEngineClient) PutTxRequest(msg *protogo.DockerVMMessage) {
-	c.txSendCh <- msg
-}
+func (c *ContractEngineClient) StartClient() error {
 
-func (c *ContractEngineClient) GetTxSendChLen() int {
-	return len(c.txSendCh)
-}
-
-func (c *ContractEngineClient) PutResponse(msg *protogo.DockerVMMessage) {
-	c.respSendCh <- msg
-}
-
-func (c *ContractEngineClient) GetResponseSendChLen() int {
-	return len(c.respSendCh)
-}
-
-// func (c *ContractEngineClient) GetStateResponseSendCh() chan *protogo.DockerVMMessage {
-// 	return c.stateResponseSendCh
-// }
-
-func (c *ContractEngineClient) GetCMConfig() *config.DockerVMConfig {
-	return c.config
-}
-
-func (c *ContractEngineClient) PutTxRequestWithNotify(msg *protogo.DockerVMMessage, notify func(msg *protogo.DockerVMMessage)) error {
-	if err := c.registerNotify(msg.TxId, notify); err != nil {
+	c.logger.Infof("start contract engine client[%d]", c.id)
+	conn, err := c.NewClientConn()
+	if err != nil {
+		c.logger.Errorf("client[%d] fail to create connection: %s", c.id, err)
 		return err
 	}
 
-	c.PutTxRequest(msg)
-	return nil
-}
+	go func() {
+		select {
+		case <-c.stopReceive:
+			_ = conn.Close()
+		case <-c.stopSend:
+			_ = conn.Close()
+		}
+	}()
 
-func (c *ContractEngineClient) registerNotify(txKey string, notify func(msg *protogo.DockerVMMessage)) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.logger.Debugf("register receive notify for [%s]", txKey)
-
-	_, ok := c.notifies[txKey]
-	if ok {
-		c.logger.Errorf("[%s] fail to register receive notify cause notify already registered", txKey)
-	}
-
-	c.notifies[txKey] = notify
-
-	return nil
-}
-
-func (c *ContractEngineClient) getCallback(txKey string) func(msg *protogo.DockerVMMessage) {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	c.logger.Debugf("get callback for [%s]", txKey)
-	return c.notifies[txKey]
-}
-
-func (c *ContractEngineClient) getAndDeleteCallback(txKey string) func(msg *protogo.DockerVMMessage) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.logger.Debugf("get callback for [%s] and delete", txKey)
-	callback, ok := c.notifies[txKey]
-	if !ok {
-		c.logger.Warnf("cannot find callback for [%s] and return nil", txKey)
-		return nil
-	}
-	delete(c.notifies, txKey)
-	return callback
-}
-
-func (c *ContractEngineClient) DeleteNotify(txId string) bool {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.logger.Debugf("[%s] delete receive chan", txId)
-	_, ok := c.notifies[txId]
-	if ok {
-		delete(c.notifies, txId)
-		return true
-	}
-	c.logger.Debugf("[%s] delete receive chan fail, receive chan is already deleted", txId)
-	return false
-}
-
-func (c *ContractEngineClient) StartClient() bool {
-
-	c.logger.Debugf("start contract engine client rpc..")
-	conn, err := c.NewClientConn()
-	if err != nil {
-		c.logger.Errorf("fail to create connection: %s", err)
-		return false
-	}
-
-	stream, err := GetCDMClientStream(conn)
+	stream, err := GetClientStream(conn)
 	if err != nil {
 		c.logger.Errorf("fail to get connection stream: %s", err)
-		return false
+		return err
 	}
 
 	c.stream = stream
@@ -169,26 +81,25 @@ func (c *ContractEngineClient) StartClient() bool {
 
 	go c.receiveMsgRoutine()
 
-	return true
+	return nil
 }
 
-//todo: test if server is killed, does sendMsg receive error or not
 func (c *ContractEngineClient) sendMsgRoutine() {
 
-	c.logger.Infof("start sending cdm message ")
+	c.logger.Infof("start sending contract engine message ")
 
 	var err error
 
 	for {
 		select {
-		case txMsg := <-c.txSendCh:
-			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txMsg.TxId, len(c.txSendCh))
-			err = c.sendCDMMsg(txMsg)
-		case stateMsg := <-c.respSendCh:
-			c.logger.Debugf("[%s] send syscall resp, chan len: [%d]", stateMsg.TxId, len(c.respSendCh))
-			err = c.sendCDMMsg(stateMsg)
+		case txReq := <-c.clientMgr.GetTxSendCh():
+			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
+			err = c.sendMsg(txReq)
+		case getByteCodeResp := <-c.clientMgr.GetByteCodeRespSendCh():
+			c.logger.Debugf("[%s] send GetByteCode resp, chan len: [%d]", getByteCodeResp.TxId, c.clientMgr.GetByteCodeRespChLen())
+			err = c.sendMsg(getByteCodeResp)
 		case <-c.stopSend:
-			c.logger.Debugf("close cdm send goroutine")
+			c.logger.Debugf("close contract engine send goroutine")
 			return
 		}
 
@@ -206,13 +117,9 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 
 func (c *ContractEngineClient) receiveMsgRoutine() {
 
-	c.logger.Infof("start receiving cdm message ")
-
-	// var waitCh chan *protogo.DockerVMMessage
-	// var callback func(msg *protogo.DockerVMMessage)
+	c.logger.Infof("start receiving contract engine message ")
 
 	for {
-
 		select {
 		case <-c.stopReceive:
 			c.logger.Debugf("close contract engine client receive goroutine")
@@ -236,20 +143,21 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 
 			switch receivedMsg.Type {
 			case protogo.DockerVMType_TX_RESPONSE:
-				callback := c.getAndDeleteCallback(receivedMsg.TxId)
-				if callback == nil {
-					c.logger.Warnf("[%s] fail to retrieve callback, tx callback is nil",
+				notify := c.clientMgr.GetReceiveNotify(c.chainId, receivedMsg.TxId)
+				if notify == nil {
+					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil",
 						receivedMsg.TxId)
 					continue
 				}
-				callback(receivedMsg)
+				c.clientMgr.DeleteNotify(c.chainId, receivedMsg.TxId)
+				notify(receivedMsg)
 			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
-				callback := c.getCallback(receivedMsg.TxId)
-				if callback == nil {
-					c.logger.Warnf("[%s] fail to retrieve callback, tx callback is nil", receivedMsg.TxId)
+				notify := c.clientMgr.GetReceiveNotify(c.chainId, receivedMsg.TxId)
+				if notify == nil {
+					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil", receivedMsg.TxId)
 					continue
 				}
-				callback(receivedMsg)
+				notify(receivedMsg)
 			default:
 				c.logger.Errorf("unknown message type, received msg: [%v]", receivedMsg)
 			}
@@ -257,7 +165,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 	}
 }
 
-func (c *ContractEngineClient) sendCDMMsg(msg *protogo.DockerVMMessage) error {
+func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
 	c.logger.Debugf("send message: [%s]", msg)
 	return c.stream.Send(msg)
 }
@@ -292,16 +200,7 @@ func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 
 }
 
-// GetCDMClientStream get rpc stream
-func GetCDMClientStream(conn *grpc.ClientConn) (protogo.DockerVMRpc_DockerVMCommunicateClient, error) {
+// GetClientStream get rpc stream
+func GetClientStream(conn *grpc.ClientConn) (protogo.DockerVMRpc_DockerVMCommunicateClient, error) {
 	return protogo.NewDockerVMRpcClient(conn).DockerVMCommunicate(context.Background())
-}
-
-func (c *ContractEngineClient) GetUniqueTxKey(txId string) string {
-	var sb strings.Builder
-	nextCount := c.count.Add(1)
-	sb.WriteString(txId)
-	sb.WriteString("#")
-	sb.WriteString(strconv.FormatUint(nextCount, 10))
-	return sb.String()
 }
