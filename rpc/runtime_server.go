@@ -118,8 +118,8 @@ func createListener(chainId string, vmConfig *config.DockerVMConfig) (net.Listen
 		return createUnixListener(runtimeServerSockPath)
 	}
 
-	// TODO: TestPort 2 config
-	return createTCPListener(config.TestPort)
+	// TODO: TLS
+	return createTCPListener(vmConfig.RuntimeServer.Port)
 }
 
 func createUnixListener(sockPath string) (*net.UnixListener, error) {

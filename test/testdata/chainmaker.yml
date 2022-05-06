@@ -119,18 +119,36 @@ debug:
 
 vm:
   enable_dockervm: true
-  dockervm_container_name: chainmaker-vm-docker-go-container
-  dockervm_mount_path: ./testdata/org1/docker-go     # mount point in chainmaker
-  dockervm_log_path: ./testdata/org1/dockervm
-  log_in_console: true
+  dockervm_mount_path: ../data/org1/docker-go     # mount point in chain maker
+  dockervm_log_path: ../log/org1/dockervm
+  log_in_console: false
   log_level: INFO
-  uds_open: true                             # default is unix domain socket connection
-  user_num: 100
-  time_limit: 2
-  max_concurrency: 50
-  max_send_msg_size: 10
-  max_recv_msg_size: 10
-  enable_pprof: true
-  docker_vm_pprof_port: 23356
-  sandbox_pprof_port: 24356
-
+  uds_open: false                             # default is unix domain socket connection
+  runtime_server:
+    port: 22459
+    dial_timeout: 10
+    max_send_msg_size: 20
+    max_recv_msg_size: 20
+    tls:                          # tls相关配置
+      enabled: false              # 是否开启tls
+      priv_key_file: "../tls.key" # 用于tls的私钥文件路径
+      cert_file: "../tls.crt"     # tls证书文件路径
+      key: "-----...-----"        # tls 私钥内容
+      cert: "-----...-----"       # tls 证书内容
+      trust_root_paths: ""        # 信任根证书池
+      tls_host_name: ""
+  contract_engine:
+    host: 127.0.0.1
+    port: 22359
+    dial_timeout: 10
+    max_send_msg_size: 20
+    max_recv_msg_size: 20
+    max_connection: 1
+    tls:                          # tls相关配置
+      enabled: false              # 是否开启tls
+      priv_key_file: "../tls.key" # 用于tls的私钥文件路径
+      cert_file: "../tls.crt"     # tls证书文件路径
+      key: "-----...-----"        # tls 私钥内容
+      cert: "-----...-----"       # tls 证书内容
+      trust_root_paths: ""        # 信任根证书池
+      tls_host_name: ""

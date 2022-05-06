@@ -8,12 +8,15 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"path/filepath"
 	"sync"
 
+	"chainmaker.org/chainmaker/common/v2/ca"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
@@ -173,7 +176,69 @@ func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
 // NewClientConn create rpc connection
 func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 
-	dialOpts := []grpc.DialOption{
+	// just for mac development and pprof testing
+	if !c.config.DockerVMUDSOpen {
+		url := fmt.Sprintf("%s:%s", c.config.ContractEngine.Host, c.config.ContractEngine.Port)
+		dialOpts := []grpc.DialOption{
+			grpc.WithInsecure(),
+			grpc.WithDefaultCallOptions(
+				grpc.MaxCallRecvMsgSize(int(c.config.ContractEngine.MaxSendMsgSize)*1024*1024),
+				grpc.MaxCallSendMsgSize(int(c.config.ContractEngine.MaxSendMsgSize)*1024*1024),
+			),
+		}
+		if !c.config.ContractEngine.TLSConfig.Enabled {
+			return grpc.Dial(url, dialOpts...)
+		}
+
+		var caCert string
+		if c.config.ContractEngine.TLSConfig.Cert != "" {
+			caCert = c.config.ContractEngine.TLSConfig.Cert
+
+		} else if c.config.ContractEngine.TLSConfig.CertFile != "" {
+			certStr, err := ioutil.ReadFile(c.config.ContractEngine.TLSConfig.CertFile)
+			if err != nil {
+				return nil, err
+			}
+			caCert = string(certStr)
+
+		} else {
+			return nil, errors.New("new client connection failed, invalid tls config")
+		}
+
+		var key string
+		if c.config.ContractEngine.TLSConfig.Key != "" {
+			key = c.config.ContractEngine.TLSConfig.Key
+
+		} else if c.config.ContractEngine.TLSConfig.PrivKeyFile != "" {
+			keyStr, err := ioutil.ReadFile(c.config.ContractEngine.TLSConfig.PrivKeyFile)
+			if err != nil {
+				return nil, err
+			}
+			key = string(keyStr)
+
+		} else {
+			return nil, errors.New("new client connection failed, invalid tls config")
+		}
+
+		tlsRPCClient := ca.CAClient{
+			ServerName: c.config.ContractEngine.TLSConfig.TLSHostName,
+			CaPaths:    c.config.ContractEngine.TLSConfig.TrustRootPaths,
+			CertBytes:  []byte(caCert),
+			KeyBytes:   []byte(key),
+			Logger:     c.logger,
+		}
+
+		cred, err := tlsRPCClient.GetCredentialsByCA()
+		if err != nil {
+			c.logger.Errorf("new gRPC failed, GetTLSCredentialsByCA err: %v", err)
+			return nil, err
+		}
+
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(*cred))
+		return grpc.Dial(url, dialOpts...)
+	}
+
+	udsDialOpts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(int(utils.GetMaxRecvMsgSizeFromConfig(c.config)*1024*1024)),
@@ -181,14 +246,7 @@ func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 		),
 	}
 
-	// just for mac development and pprof testing
-	if !c.config.DockerVMUDSOpen {
-		ip := "0.0.0.0"
-		url := fmt.Sprintf("%s:%s", ip, config.TestPort)
-		return grpc.Dial(url, dialOpts...)
-	}
-
-	dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
+	udsDialOpts = append(udsDialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
 		unixAddress, _ := net.ResolveUnixAddr("unix", sock)
 		conn, err := net.DialUnix("unix", nil, unixAddress)
 		return conn, err
@@ -196,7 +254,7 @@ func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 
 	sockAddress := filepath.Join(c.config.DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
 
-	return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
+	return grpc.DialContext(context.Background(), sockAddress, udsDialOpts...)
 
 }
 

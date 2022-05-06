@@ -27,8 +27,37 @@ type DockerVMConfig struct {
 	SandBoxPprofPort    uint32 `mapstructure:"sandbox_pprof_port"`
 	MaxLocalContractNum uint32 `mapstructure:"max_local_contract_num"`
 	// uds_open false
-	DockerVMHost string `mapstructure:"docker_vm_host"`
-	DockerVMPort string `mapstructure:"docker_vm_port"`
+	RuntimeServer  RuntimeServerConfig  `mapstructure:"runtime_server"`
+	ContractEngine ContractEngineConfig `mapstructure:"contract_engine"`
+}
+
+type RuntimeServerConfig struct {
+	Host           string    `mapstructure:"host"`
+	Port           string    `mapstructure:"port"`
+	DialTimeout    uint32    `mapstructure:"dial_timeout"`
+	MaxSendMsgSize uint64    `mapstructure:"max_send_msg_size"`
+	MaxRecvMsgSize uint64    `mapstructure:"max_recv_msg_size"`
+	TLSConfig      TLSConfig `mapstructure:"tls_config"`
+}
+
+type ContractEngineConfig struct {
+	Host           string    `mapstructure:"host"`
+	Port           string    `mapstructure:"port"`
+	DialTimeout    uint32    `mapstructure:"dial_timeout"`
+	MaxSendMsgSize uint64    `mapstructure:"max_send_msg_size"`
+	MaxRecvMsgSize uint64    `mapstructure:"max_recv_msg_size"`
+	MaxConnection  uint64    `mapstructure:"max_connection"`
+	TLSConfig      TLSConfig `mapstructure:"tls_config"`
+}
+
+type TLSConfig struct {
+	Enabled        bool     `mapstructure:"enabled"`
+	PrivKeyFile    string   `mapstructure:"priv_key_file"`
+	CertFile       string   `mapstructure:"cert_file"`
+	Key            string   `mapstructure:"key"`
+	Cert           string   `mapstructure:"cert"`
+	TrustRootPaths []string `mapstructure:"trust_root_paths"`
+	TLSHostName    string   `mapstructure:"tls_host_name"`
 }
 
 // DockerContainerConfig docker container settings
