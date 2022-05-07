@@ -28,6 +28,7 @@ func TestDockerGoCrossCall(t *testing.T) {
 	assert.Equal(t, []byte("display successful"), result.Result)
 
 	// called contract out of range
+	fmt.Println("========== start testing call contract panic ============== ")
 	parameters1 := generateInitParams()
 	parameters1["method"] = []byte("cross_contract")
 	parameters1["contract_name"] = []byte(ContractNameTest)

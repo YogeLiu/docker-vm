@@ -62,8 +62,12 @@ ut:
 	./ut_cover.sh
 	docker stop chaimaker_vm_test
 
+version:
+	docker inspect chainmakerofficial/chainmaker-vm-docker-go:${VERSION} | jq '.[].ContainerConfig.Labels'
+
 solo:
 	./scripts/solo.sh
 
 solo-stop:
 	docker stop chainmaker_vm_solo
+
