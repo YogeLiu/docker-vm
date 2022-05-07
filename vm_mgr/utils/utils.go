@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package utils
 
 import (
+	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -154,4 +155,10 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 	}
 	nameList = strings.Split(processName, "#")
 	return false, ConstructContractKey(nameList[0], nameList[1]), processName
+}
+
+// HasUsed judge whether a vm has been used
+func HasUsed(ctxBitmap uint64) bool {
+	typeBit := uint64(1 << (59 - common.RuntimeType_DOCKER_GO))
+	return typeBit&ctxBitmap > 0
 }
