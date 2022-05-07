@@ -43,9 +43,10 @@ import (
 )
 
 const (
-	mountContractDir = "contracts"
-	msgIterIsNil     = "iterator is nil"
-	timeout          = 10000 // tx execution timeout(milliseconds)
+	mountContractDir                = "contracts"
+	msgIterIsNil                    = "iterator is nil"
+	timeout                         = 10000 // tx execution timeout(milliseconds)
+	versionCompatibilityFlag uint32 = 2201
 )
 
 var (
@@ -121,7 +122,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	}
 
 	//init contract gas used calc and check gas limit
-	gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode)
+	gasUsed, err = gas.ContractGasUsed(txSimContext, gasUsed, method, contract.Name, byteCode)
 	if err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
@@ -369,55 +370,13 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		| MemberType_CERT       | PEM        |
 		| MemberType_CERT_HASH  | HASH       |
 		| MemberType_PUBLIC_KEY | PEM        |
+		| MemberType_ALIAS      | ALIAS      |
 	*/
 
 	var address string
-	sender := txSimContext.GetSender()
-	switch sender.MemberType {
-	case accesscontrol.MemberType_CERT:
-		address, err = getSenderAddressFromCert(sender.MemberInfo, chainConfig.GetVm().GetAddrType())
-		if err != nil {
-			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
-			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			getSenderAddressResponse.Message = err.Error()
-			getSenderAddressResponse.Payload = nil
-			return getSenderAddressResponse, gasUsed
-		}
-
-	case accesscontrol.MemberType_CERT_HASH:
-		certHashKey := hex.EncodeToString(sender.MemberInfo)
-		var certBytes []byte
-		certBytes, err = txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
-		if err != nil {
-			r.Log.Errorf("get cert from chain fialed, %s", err.Error())
-			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			getSenderAddressResponse.Message = err.Error()
-			getSenderAddressResponse.Payload = nil
-			return getSenderAddressResponse, gasUsed
-		}
-
-		address, err = getSenderAddressFromCert(certBytes, chainConfig.GetVm().GetAddrType())
-		if err != nil {
-			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
-			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			getSenderAddressResponse.Message = err.Error()
-			getSenderAddressResponse.Payload = nil
-			return getSenderAddressResponse, gasUsed
-		}
-
-	case accesscontrol.MemberType_PUBLIC_KEY:
-		address, err = getSenderAddressFromPublicKeyPEM(sender.MemberInfo, chainConfig.GetVm().GetAddrType(),
-			crypto.HashAlgoMap[chainConfig.GetCrypto().Hash])
-		if err != nil {
-			r.Log.Errorf("getSenderAddressFromPublicKeyPEM failed, %s", err.Error())
-			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			getSenderAddressResponse.Message = err.Error()
-			getSenderAddressResponse.Payload = nil
-			return getSenderAddressResponse, gasUsed
-		}
-
-	default:
-		r.Log.Errorf("handleGetSenderAddress failed, invalid member type")
+	address, err = r.getSenderAddrWithBlockVersion(txSimContext.GetBlockVersion(), chainConfig, txSimContext)
+	if err != nil {
+		r.Log.Error(err.Error())
 		getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
 		getSenderAddressResponse.Message = err.Error()
 		getSenderAddressResponse.Payload = nil
@@ -431,7 +390,86 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 	return getSenderAddressResponse, gasUsed
 }
 
-func getSenderAddressFromCert(certPem []byte, addressType configPb.AddrType) (string, error) {
+func (r *RuntimeInstance) getSenderAddrWithBlockVersion(blockVersion uint32, chainConfig configPb.ChainConfig,
+	txSimContext protocol.TxSimContext) (string, error) {
+	var address string
+	var err error
+
+	sender := txSimContext.GetSender()
+
+	switch sender.MemberType {
+	case accesscontrol.MemberType_CERT:
+		address, err = r.getSenderAddressFromCert(blockVersion, sender.MemberInfo, chainConfig.Vm.AddrType)
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			return "", err
+		}
+	case accesscontrol.MemberType_CERT_HASH,
+		accesscontrol.MemberType_ALIAS:
+		if blockVersion < versionCompatibilityFlag && sender.MemberType == accesscontrol.MemberType_ALIAS {
+			r.Log.Error("handleGetSenderAddress failed, invalid member type")
+			return "", err
+		}
+
+		address, err = r.getSenderAddressFromCertHash(
+			blockVersion,
+			sender.MemberInfo,
+			chainConfig.Vm.AddrType,
+			txSimContext,
+		)
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			return "", err
+		}
+
+	case accesscontrol.MemberType_PUBLIC_KEY:
+		address, err = r.getSenderAddressFromPublicKeyPEM(blockVersion, sender.MemberInfo, chainConfig.Vm.AddrType,
+			crypto.HashAlgoMap[chainConfig.GetCrypto().Hash])
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromPublicKeyPEM failed, %s", err.Error())
+			return "", err
+		}
+
+	default:
+		r.Log.Errorf("getSenderAddrWithBlockVersion failed, invalid member type")
+		return "", err
+	}
+
+	return address, nil
+}
+
+func (r *RuntimeInstance) getSenderAddressFromCertHash(blockVersion uint32, memberInfo []byte,
+	addressType configPb.AddrType, txSimContext protocol.TxSimContext) (string, error) {
+	var certBytes []byte
+	var err error
+	certBytes, err = r.getCertFromChain(memberInfo, txSimContext)
+	if err != nil {
+		return "", err
+	}
+
+	var address string
+	address, err = r.getSenderAddressFromCert(blockVersion, certBytes, addressType)
+	if err != nil {
+		r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+		return "", err
+	}
+
+	return address, nil
+}
+
+func (r *RuntimeInstance) getCertFromChain(memberInfo []byte, txSimContext protocol.TxSimContext) ([]byte, error) {
+	certHashKey := hex.EncodeToString(memberInfo)
+	certBytes, err := txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
+	if err != nil {
+		r.Log.Errorf("get cert from chain failed, %s", err.Error())
+		return nil, err
+	}
+
+	return certBytes, nil
+}
+
+func (r *RuntimeInstance) getSenderAddressFromCert(blockVersion uint32, certPem []byte,
+	addressType configPb.AddrType) (string, error) {
 	if addressType == configPb.AddrType_ZXL {
 		address, err := evmutils.ZXAddressFromCertificatePEM(certPem)
 		if err != nil {
@@ -439,52 +477,72 @@ func getSenderAddressFromCert(certPem []byte, addressType configPb.AddrType) (st
 		}
 
 		return address, nil
-	} else if addressType == configPb.AddrType_CHAINMAKER {
-		blockCrt, _ := pem.Decode(certPem)
-		crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
-		if err != nil {
-			return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
-		}
-
-		ski := hex.EncodeToString(crt.SubjectKeyId)
-		addrInt, err := evmutils.MakeAddressFromHex(ski)
-		if err != nil {
-			return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
-		}
-
-		return addrInt.String(), nil
-	} else {
-		return "", errors.New("invalid address type")
 	}
+
+	if addressType == configPb.AddrType_ETHEREUM && blockVersion < versionCompatibilityFlag {
+		return r.calculateCertAddr(certPem)
+	}
+
+	if addressType == configPb.AddrType_CHAINMAKER && blockVersion >= versionCompatibilityFlag {
+		return r.calculateCertAddr(certPem)
+	}
+
+	return "", errors.New("invalid address type")
 }
 
-func getSenderAddressFromPublicKeyPEM(publicKeyPem []byte, addressType configPb.AddrType,
-	hashType crypto.HashType) (string, error) {
+func (r *RuntimeInstance) calculateCertAddr(certPem []byte) (string, error) {
+	blockCrt, _ := pem.Decode(certPem)
+	crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
+	}
+
+	ski := hex.EncodeToString(crt.SubjectKeyId)
+	addrInt, err := evmutils.MakeAddressFromHex(ski)
+	if err != nil {
+		return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
+	}
+
+	return addrInt.String(), nil
+}
+
+func (r *RuntimeInstance) getSenderAddressFromPublicKeyPEM(blockVersion uint32, publicKeyPem []byte,
+	addressType configPb.AddrType, hashType crypto.HashType) (string, error) {
 	if addressType == configPb.AddrType_ZXL {
 		address, err := evmutils.ZXAddressFromPublicKeyPEM(publicKeyPem)
 		if err != nil {
-			return "", fmt.Errorf("ZXAddressFromPublicKeyPEM, failed, %s", err.Error())
+			r.Log.Errorf("ZXAddressFromPublicKeyPEM, failed, %s", err.Error())
 		}
-		return address, nil
-	} else if addressType == configPb.AddrType_CHAINMAKER {
-		publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
-		if err != nil {
-			return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
-		}
-
-		ski, err := commonCrt.ComputeSKI(hashType, publicKey.ToStandardKey())
-		if err != nil {
-			return "", fmt.Errorf("computeSKI from public key failed, %s", err.Error())
-		}
-
-		addr, err := evmutils.MakeAddressFromHex(hex.EncodeToString(ski))
-		if err != nil {
-			return "", fmt.Errorf("make address from cert SKI failed, %s", err)
-		}
-		return addr.String(), nil
-	} else {
-		return "", errors.New("invalid address type")
+		return address, err
 	}
+
+	if addressType == configPb.AddrType_ETHEREUM && blockVersion < versionCompatibilityFlag {
+		return r.calculatePubKeyAddr(publicKeyPem, hashType)
+	}
+
+	if addressType == configPb.AddrType_CHAINMAKER && blockVersion >= versionCompatibilityFlag {
+		return r.calculatePubKeyAddr(publicKeyPem, hashType)
+	}
+
+	return "", errors.New("invalid address type")
+}
+
+func (r *RuntimeInstance) calculatePubKeyAddr(publicKeyPem []byte, hashType crypto.HashType) (string, error) {
+	publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
+	if err != nil {
+		return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
+	}
+
+	ski, err := commonCrt.ComputeSKI(hashType, publicKey.ToStandardKey())
+	if err != nil {
+		return "", fmt.Errorf("computeSKI from public key failed, %s", err.Error())
+	}
+
+	addr, err := evmutils.MakeAddressFromHex(hex.EncodeToString(ski))
+	if err != nil {
+		return "", fmt.Errorf("make address from cert SKI failed, %s", err)
+	}
+	return addr.String(), nil
 }
 
 func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *protogo.CDMMessage,

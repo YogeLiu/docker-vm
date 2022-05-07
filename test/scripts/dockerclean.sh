@@ -16,3 +16,4 @@ rm -fr ../testdata/org1
 rm -rf ../testdata/tmp
 rm -fr ../testdata/log
 rm -fr ../default.log*
+rm -rf ../testdata/tmp
