@@ -98,7 +98,7 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 // 1. register chain_rpc_service to server
 // 2. start a goroutine to serve
 func (s *ChainRPCServer) StartChainRPCServer(service *ChainRPCService) error {
-
+	s.logger.Infof("StartChainRPCServer start")
 	if s.Listener == nil {
 		return errors.New("nil listener")
 	}
@@ -109,9 +109,10 @@ func (s *ChainRPCServer) StartChainRPCServer(service *ChainRPCService) error {
 
 	protogo.RegisterDockerVMRpcServer(s.Server, service)
 
-	s.logger.Debugf("start chain_rpc_server...")
+	s.logger.Info("start chain_rpc_server...")
 
 	go func() {
+		s.logger.Infof("StartChainRPCServer end")
 		if err := s.Server.Serve(s.Listener); err != nil {
 			s.logger.Errorf("fail to start chain_rpc_server: %s", err)
 		}

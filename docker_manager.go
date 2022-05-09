@@ -7,15 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
-	"context"
-	"encoding/binary"
-	"errors"
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"strconv"
-
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
@@ -23,12 +14,21 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
+	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/fileutils"
 	"github.com/docker/go-connections/nat"
 	"github.com/mitchellh/mapstructure"
+	"io"
+	"os"
+	"path/filepath"
+	"strconv"
 )
 
 const (
@@ -174,7 +174,7 @@ func (m *DockerManager) StartVM() error {
 			return err
 		}
 	} else {
-		err = m.createContainerWithTCP(m.dockerVMConfig.ContractEngine.Port)
+		err = m.createContainerWithTCP(strconv.Itoa(m.dockerVMConfig.ContractEngine.Port))
 		if err != nil {
 			return err
 		}
@@ -202,6 +202,11 @@ func (m *DockerManager) StartVM() error {
 			return
 		}
 	}()
+
+	if err := m.clientMgr.Start(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -224,6 +229,11 @@ func (m *DockerManager) StopVM() error {
 		return nil
 	}
 	var err error
+
+	err = m.clientMgr.Stop()
+	if err != nil {
+		return err
+	}
 
 	err = m.stopContainer()
 	if err != nil {
@@ -374,6 +384,17 @@ func (m *DockerManager) initMountDirectory() error {
 		return err
 	}
 	m.mgrLogger.Debug("set sock dir: ", sockDir)
+
+	configDir := filepath.Join(mountDir, config.DockerConfigDir)
+	err = m.createDir(configDir)
+	if err != nil {
+		return err
+	}
+	m.mgrLogger.Debug("set config dir: ", configDir)
+	_, err = fileutils.CopyFile("../vm_mgr/config/vm.yml", filepath.Join(configDir, "vm.yml"))
+	if err != nil {
+		return err
+	}
 
 	// create log directory
 	logDir := m.dockerContainerConfig.HostLogDir

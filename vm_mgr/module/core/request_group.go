@@ -115,6 +115,7 @@ func (r *RequestGroup) Start() {
 		for {
 			select {
 			case msg := <-r.eventCh:
+				r.logger.Debugf("receive message from event channel, msg: [%+v]", msg)
 				switch msg.Type {
 				case protogo.DockerVMType_TX_REQUEST:
 					if err := r.handleTxReq(msg); err != nil {
@@ -276,9 +277,9 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 			return 0, nil
 		}
 		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
-			ContractName: r.contractName,
+			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
-			ProcessNum:   needProcessNum,
+			ProcessNum:      needProcessNum,
 		})
 		// avoid duplicate getting processes
 		controller.processWaiting = true
@@ -291,9 +292,9 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 			return 0, nil
 		}
 		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
-			ContractName: r.contractName,
+			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
-			ProcessNum:   0, // 0 for no need
+			ProcessNum:      0, // 0 for no need
 		})
 		// avoid duplicate stopping to get processes
 		controller.processWaiting = false

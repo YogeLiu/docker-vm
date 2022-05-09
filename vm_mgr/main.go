@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	_ "net/http/pprof"
@@ -16,6 +17,12 @@ import (
 var managerLogger *zap.SugaredLogger
 
 func main() {
+
+	// set config
+	if err := config.InitConfig(filepath.Join(config.DockerMountDir, config.ConfigFileName)); err != nil {
+		//managerLogger.Fatalf("failed to init config, %v", err)
+		panic("failed to init config," + err.Error())
+	}
 
 	// init docker container logger
 	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER)

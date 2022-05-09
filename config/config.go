@@ -33,21 +33,21 @@ type DockerVMConfig struct {
 
 type RuntimeServerConfig struct {
 	Host           string    `mapstructure:"host"`
-	Port           string    `mapstructure:"port"`
+	Port           int       `mapstructure:"port"`
 	DialTimeout    uint32    `mapstructure:"dial_timeout"`
 	MaxSendMsgSize uint64    `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize uint64    `mapstructure:"max_recv_msg_size"`
-	TLSConfig      TLSConfig `mapstructure:"tls_config"`
+	TLSConfig      TLSConfig `mapstructure:"tls"`
 }
 
 type ContractEngineConfig struct {
 	Host           string    `mapstructure:"host"`
-	Port           string    `mapstructure:"port"`
+	Port           int       `mapstructure:"port"`
 	DialTimeout    uint32    `mapstructure:"dial_timeout"`
 	MaxSendMsgSize uint64    `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize uint64    `mapstructure:"max_recv_msg_size"`
 	MaxConnection  uint64    `mapstructure:"max_connection"`
-	TLSConfig      TLSConfig `mapstructure:"tls_config"`
+	TLSConfig      TLSConfig `mapstructure:"tls"`
 }
 
 type TLSConfig struct {
@@ -104,7 +104,8 @@ const (
 	// SockDir dir save domain socket file
 	SockDir = "sock"
 	// SockName domain socket file name
-	SockName = "cdm.sock"
+	SockName        = "cdm.sock"
+	DockerConfigDir = "config"
 
 	TestPort = "22356"
 
