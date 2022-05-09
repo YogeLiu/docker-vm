@@ -66,3 +66,7 @@ type RequestGroupKey struct {
 	ContractName string
 	ContractVersion string
 }
+
+type CloseMsg struct {
+	Msg string
+}

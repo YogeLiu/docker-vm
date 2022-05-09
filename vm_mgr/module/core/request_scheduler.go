@@ -177,6 +177,7 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 		s.logger.Debugf("create new request group %s", groupKey)
 		group = NewRequestGroup(contractName, contractVersion,
 			s.origProcessManager, s.crossProcessManager, s.contractManager, s)
+		group.Start()
 		s.requestGroups[contractName] = group
 	}
 
@@ -209,6 +210,7 @@ func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 
 	groupKey := utils.ConstructRequestGroupKey(msg.ContractName, msg.ContractVersion)
 	if _, ok := s.requestGroups[groupKey]; ok {
+		_ = s.requestGroups[groupKey].PutMsg(&messages.CloseMsg{})
 		delete(s.requestGroups, groupKey)
 		return nil
 	}

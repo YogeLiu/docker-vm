@@ -74,6 +74,7 @@ type RequestGroup struct {
 
 	requestScheduler *RequestScheduler             // used for return err req to chain
 	eventCh          chan *protogo.DockerVMMessage // request group invoking handler
+	stopCh           chan struct{}                 // stop request group
 
 	origTxController  *txController // original tx controller
 	crossTxController *txController // cross contract tx controller
@@ -93,10 +94,13 @@ func NewRequestGroup(
 		contractName:    contractName,
 		contractVersion: contractVersion,
 
-		contractManager:  cMgr,
-		contractState:    contractEmpty,
+		contractManager: cMgr,
+		contractState:   contractEmpty,
+
 		requestScheduler: scheduler,
 		eventCh:          make(chan *protogo.DockerVMMessage, requestGroupEventChSize),
+		stopCh:           make(chan struct{}),
+
 		origTxController: &txController{
 			txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
 			processMgr: oriPMgr,
@@ -127,6 +131,8 @@ func (r *RequestGroup) Start() {
 				default:
 					r.logger.Errorf("unknown req type")
 				}
+			case <-r.stopCh:
+				return
 			}
 		}
 	}()
@@ -139,6 +145,8 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 	case *protogo.DockerVMMessage:
 		m, _ := msg.(*protogo.DockerVMMessage)
 		r.eventCh <- m
+	case *messages.CloseMsg:
+		r.stopCh <- struct{}{}
 	default:
 		return fmt.Errorf("unknown req type")
 	}
@@ -276,9 +284,9 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 			return 0, nil
 		}
 		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
-			ContractName: r.contractName,
+			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
-			ProcessNum:   needProcessNum,
+			ProcessNum:      needProcessNum,
 		})
 		// avoid duplicate getting processes
 		controller.processWaiting = true
@@ -291,9 +299,9 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 			return 0, nil
 		}
 		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
-			ContractName: r.contractName,
+			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
-			ProcessNum:   0, // 0 for no need
+			ProcessNum:      0, // 0 for no need
 		})
 		// avoid duplicate stopping to get processes
 		controller.processWaiting = false
