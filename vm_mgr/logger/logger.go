@@ -75,7 +75,7 @@ func NewDockerLogger(name string) *zap.SugaredLogger {
 
 func NewTestDockerLogger() *zap.SugaredLogger {
 	basePath, _ := os.Getwd()
-	return newDockerLogger(MODULE_TEST, basePath + "/")
+	return newDockerLogger(MODULE_TEST, basePath+"/")
 }
 
 func newDockerLogger(name, path string) *zap.SugaredLogger {
@@ -92,9 +92,9 @@ func newDockerLogger(name, path string) *zap.SugaredLogger {
 	writeSyncer := getLogWriter()
 
 	// default log level is info
-	logLevel := zapcore.InfoLevel
-	if logLevelFromConfig == "DEBUG" {
-		logLevel = zapcore.DebugLevel
+	logLevel := new(zapcore.Level)
+	if err := logLevel.UnmarshalText([]byte(logLevelFromConfig)); err != nil {
+		panic("unknown log level, logLevelFromConfig: " + logLevelFromConfig + "," + err.Error())
 	}
 
 	core := zapcore.NewCore(

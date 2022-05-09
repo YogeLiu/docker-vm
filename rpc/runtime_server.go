@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -119,7 +120,7 @@ func createListener(chainId string, vmConfig *config.DockerVMConfig) (net.Listen
 	}
 
 	// TODO: TLS
-	return createTCPListener(vmConfig.RuntimeServer.Port)
+	return createTCPListener(strconv.Itoa(vmConfig.RuntimeServer.Port))
 }
 
 func createUnixListener(sockPath string) (*net.UnixListener, error) {
@@ -146,7 +147,7 @@ start:
 }
 
 func createTCPListener(port string) (*net.TCPListener, error) {
-	listenAddress, err := net.ResolveTCPAddr("tcp", port)
+	listenAddress, err := net.ResolveTCPAddr("tcp", ":"+port)
 	if err != nil {
 		return nil, err
 	}

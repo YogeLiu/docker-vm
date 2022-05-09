@@ -119,6 +119,7 @@ func (r *RequestGroup) Start() {
 		for {
 			select {
 			case msg := <-r.eventCh:
+				r.logger.Debugf("receive message from event channel, msg: [%+v]", msg)
 				switch msg.Type {
 				case protogo.DockerVMType_TX_REQUEST:
 					if err := r.handleTxReq(msg); err != nil {

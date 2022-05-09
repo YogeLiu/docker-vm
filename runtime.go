@@ -57,18 +57,19 @@ func (r *RuntimeInstance) Invoke(
 	originalTxId := txSimContext.GetTx().Payload.TxId
 	uniqueTxKey := r.clientMgr.GetUniqueTxKey(originalTxId)
 
-	if !r.clientMgr.HasActiveConnections() {
-		r.logger.Errorf("contract engine client stream not ready, waiting reconnect, tx id: %s", originalTxId)
-		err := errors.New("contract engine client not connected")
-		return r.errorResult(contractResult, err, err.Error())
-	}
-
 	// contract response
 	contractResult = &commonPb.ContractResult{
 		Code:    uint32(1),
 		Result:  nil,
 		Message: "",
 	}
+
+	if !r.clientMgr.HasActiveConnections() {
+		r.logger.Errorf("contract engine client stream not ready, waiting reconnect, tx id: %s", originalTxId)
+		err := errors.New("contract engine client not connected")
+		return r.errorResult(contractResult, err, err.Error())
+	}
+
 	specialTxType := protocol.ExecOrderTxTypeNormal
 
 	var err error
@@ -113,8 +114,8 @@ func (r *RuntimeInstance) Invoke(
 	}
 
 	crossCtx := &protogo.CrossContext{
-		CurrentDepth: uint32(txSimContext.GetDepth()),
 		CrossInfo:    txSimContext.GetCrossInfo(),
+		CurrentDepth: uint32(txSimContext.GetDepth()),
 	}
 
 	dockerVMMsg := &protogo.DockerVMMessage{
@@ -178,15 +179,12 @@ func (r *RuntimeInstance) Invoke(
 			}
 
 		case <-timeoutC:
-			deleted := r.clientMgr.DeleteNotify(r.chainId, uniqueTxKey)
-			if deleted {
-				r.logger.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
-					uniqueTxKey)
-				contractResult.GasUsed = gasUsed
-				return r.errorResult(contractResult, fmt.Errorf("tx timeout"),
-					"fail to receive response",
-				)
-			}
+			r.logger.Errorf("[%s] fail to receive response in %d seconds and return timeout response",
+				uniqueTxKey, r.clientMgr.GetVMConfig().TxTimeLimit)
+			contractResult.GasUsed = gasUsed
+			return r.errorResult(contractResult, fmt.Errorf("tx timeout"),
+				"fail to receive response",
+			)
 
 		case recvMsg := <-sandboxMsgCh:
 			switch recvMsg.Type {

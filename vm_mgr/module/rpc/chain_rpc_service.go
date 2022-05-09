@@ -74,6 +74,7 @@ func (s *ChainRPCService) PutMsg(msg interface{}) error {
 //  @param stream is grpc stream
 //  @return error
 func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
+	s.logger.Infof("DockerVMCommunicate")
 	s.stream = stream
 	s.wg.Add(2)
 	go s.recvMsgRoutine()

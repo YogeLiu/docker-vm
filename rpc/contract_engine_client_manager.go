@@ -122,9 +122,9 @@ func (cm *ContractEngineClientManager) registerNotify(chainId, txId string, noti
 
 func (cm *ContractEngineClientManager) DeleteNotify(chainId, txId string) bool {
 	cm.notifyLock.Lock()
-	defer cm.clientLock.Unlock()
+	defer cm.notifyLock.Unlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
-	cm.logger.Debugf("[%s] delete notify", txId)
+	cm.logger.Debugf("[%s] delete notify", notifyKey)
 	_, ok := cm.notify[notifyKey]
 	if ok {
 		delete(cm.notify, notifyKey)
@@ -201,12 +201,11 @@ func (cm *ContractEngineClientManager) listen() {
 }
 
 func (cm *ContractEngineClientManager) establishConnections() error {
-	cm.clientLock.Lock()
-	defer cm.clientLock.Unlock()
 	cm.logger.Debugf("establish new connections")
 	totalConnections := int(utils.GetMaxConnectionFromConfig(cm.GetVMConfig()))
+	var wg sync.WaitGroup
 	for i := 0; i < totalConnections; i++ {
-
+		wg.Add(1)
 		go func() {
 			newIndex := cm.getNextIndex()
 			newClient := NewContractEngineClient(cm.chainId, newIndex, cm.logger, cm)
@@ -225,9 +224,11 @@ func (cm *ContractEngineClientManager) establishConnections() error {
 			cm.clientLock.Lock()
 			cm.aliveClientMap[newIndex] = newClient
 			cm.clientLock.Unlock()
+			wg.Done()
 		}()
-
 	}
+
+	wg.Wait()
 	return nil
 }
 

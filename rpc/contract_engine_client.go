@@ -152,7 +152,6 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 						receivedMsg.TxId)
 					continue
 				}
-				c.clientMgr.DeleteNotify(c.chainId, receivedMsg.TxId)
 				notify(receivedMsg)
 			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
 				notify := c.clientMgr.GetReceiveNotify(c.chainId, receivedMsg.TxId)
@@ -178,11 +177,11 @@ func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 
 	// just for mac development and pprof testing
 	if !c.config.DockerVMUDSOpen {
-		url := fmt.Sprintf("%s:%s", c.config.ContractEngine.Host, c.config.ContractEngine.Port)
+		url := fmt.Sprintf("%s:%d", c.config.ContractEngine.Host, c.config.ContractEngine.Port)
 		dialOpts := []grpc.DialOption{
 			grpc.WithInsecure(),
 			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(int(c.config.ContractEngine.MaxSendMsgSize)*1024*1024),
+				grpc.MaxCallRecvMsgSize(int(c.config.ContractEngine.MaxRecvMsgSize)*1024*1024),
 				grpc.MaxCallSendMsgSize(int(c.config.ContractEngine.MaxSendMsgSize)*1024*1024),
 			),
 		}

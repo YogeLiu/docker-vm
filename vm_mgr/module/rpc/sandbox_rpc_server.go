@@ -110,7 +110,7 @@ func (s *SandboxRPCServer) StartSandboxRPCServer(service *SandboxRPCService) err
 
 	protogo.RegisterDockerVMRpcServer(s.Server, service)
 
-	s.logger.Debugf("start sandbox_rpc_server...")
+	s.logger.Info("start sandbox_rpc_server...")
 
 	go func() {
 		if err := s.Server.Serve(s.Listener); err != nil {

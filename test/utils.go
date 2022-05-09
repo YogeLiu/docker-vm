@@ -123,6 +123,9 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			}
 			return tx
 		}).AnyTimes()
+
+	simContext.EXPECT().GetCrossInfo().Return(uint64(0)).AnyTimes()
+	simContext.EXPECT().GetDepth().Return(0).AnyTimes()
 	return simContext
 
 }
@@ -411,7 +414,7 @@ func constructKey(contractName string, key []byte) string {
 }
 
 func mockGetStateKvHandle(simContext *mock.MockTxSimContext, iteratorIndex int32) {
-	simContext.EXPECT().GetIterHandle(gomock.Eq(iteratorIndex)).DoAndReturn(
+	simContext.EXPECT().GetIter(gomock.Eq(iteratorIndex)).DoAndReturn(
 		func(iteratorIndex int32) (protocol.StateIterator, bool) {
 			iterator, ok := kvRowCache[iteratorIndex]
 			if !ok {
@@ -428,7 +431,7 @@ func mockGetStateKvHandle(simContext *mock.MockTxSimContext, iteratorIndex int32
 }
 
 func mockGetKeyHistoryKVHandle(simContext *mock.MockTxSimContext, iteratorIndex int32) {
-	simContext.EXPECT().GetIterHandle(gomock.Eq(iteratorIndex)).DoAndReturn(
+	simContext.EXPECT().GetIter(gomock.Eq(iteratorIndex)).DoAndReturn(
 		func(iteratorIndex int32) (protocol.KeyHistoryIterator, bool) {
 			iterator, ok := kvRowCache[iteratorIndex]
 			if !ok {
@@ -607,6 +610,16 @@ func mockTxQueryCertFromChain(simContext *mock.MockTxSimContext) {
 func mockQueryCert(name string, nothing interface{}) ([]byte, error) {
 	return []byte(certPEM), nil
 }
+
+//func mockGetDepth(simContext *mock.MockTxSimContext) {
+//	simContext.EXPECT().GetDepth().DoAndReturn(
+//		getDepth,
+//	).AnyTimes()
+//}
+//
+//func getDepth() int {
+//	return 0
+//}
 
 // 获取链配置，读取地址格式
 func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
