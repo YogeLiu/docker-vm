@@ -233,9 +233,9 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 			},
 		})
 		if err != nil {
-			return fmt.Errorf(msg, err)
+			return fmt.Errorf("failed to put msg into request scheduler, %s, %s", msg, err.Error())
 		}
-		return fmt.Errorf(msg)
+		return fmt.Errorf("failed to put msg into request scheduler, %s", msg)
 	}
 
 	// original tx, send to original tx chan
