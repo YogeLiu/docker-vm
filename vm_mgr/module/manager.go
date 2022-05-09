@@ -45,6 +45,9 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 		return nil, fmt.Errorf("failed to new contract manager, %v", err)
 	}
 
+	// start contract manager
+	contractManager.Start()
+
 	// new original process manager
 	maxOriginalProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum
 	maxCrossProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum * protocol.CallContractDepth
@@ -52,6 +55,10 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 
 	origProcessManager := core.NewProcessManager(maxOriginalProcessNum, releaseRate, false, usersManager)
 	crossProcessManager := core.NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
+
+	// start original process manager
+	origProcessManager.Start()
+	crossProcessManager.Start()
 
 	managerLogger.Debugf("init grpc server, max send size [%dM], max recv size[%dM]",
 		config.DockerVMConfig.RPC.MaxSendMsgSize, config.DockerVMConfig.RPC.MaxRecvMsgSize)
@@ -88,6 +95,9 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	contractManager.SetScheduler(scheduler)
 	chainRPCService.SetScheduler(scheduler)
 
+	// start scheduler
+	scheduler.Start()
+
 	manager := &ManagerImpl{
 		chainRPCServer:   chainRPCServer,
 		sandboxRPCServer: sandboxRPCServer,
@@ -120,9 +130,6 @@ func (m *ManagerImpl) InitContainer() {
 			errorC <- err
 		}
 	}()
-
-	// start scheduler
-	m.scheduler.Start()
 
 	m.logger.Infof("docker vm start successfully")
 
