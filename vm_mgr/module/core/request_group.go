@@ -182,11 +182,12 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 	switch r.contractState {
 	// try to get contract for first tx.
 	case contractEmpty:
-		err = r.contractManager.PutMsg(protogo.DockerVMMessage{
+		err = r.contractManager.PutMsg(&protogo.DockerVMMessage{
 			TxId: req.TxId,
 			Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
 			Request: &protogo.TxRequest{
-				ContractName: r.contractName,
+				ContractName:    r.contractName,
+				ContractVersion: r.contractVersion,
 			},
 		})
 		if err != nil {

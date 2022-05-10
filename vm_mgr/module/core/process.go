@@ -215,8 +215,14 @@ func (p *Process) launchProcess() *exitErr {
 	}
 	cmd := exec.Cmd{
 		Path: p.requestGroup.GetContractPath(),
-		Args: []string{p.user.GetSockPath(), p.processName, p.contractName, p.contractVersion,
-			config.DockerVMConfig.Log.SandboxLog.Level, strconv.Itoa(tcpPort)},
+		Args: []string{
+			p.user.GetSockPath(),
+			p.processName,
+			p.contractName,
+			p.contractVersion,
+			config.DockerVMConfig.Log.SandboxLog.Level,
+			strconv.Itoa(tcpPort),
+		},
 		Stderr: &stderr,
 	}
 

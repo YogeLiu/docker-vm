@@ -111,12 +111,12 @@ func (cm *ContractEngineClientManager) registerNotify(chainId, txId string, noti
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
 	cm.logger.Debugf("register notify for [%s]", notifyKey)
 
-	_, ok := cm.notify[txId]
+	_, ok := cm.notify[notifyKey]
 	if ok {
 		cm.logger.Errorf("[%s] fail to register notify, cause notify already registered", txId)
 	}
 
-	cm.notify[txId] = notify
+	cm.notify[notifyKey] = notify
 	return nil
 }
 
@@ -145,7 +145,9 @@ func (cm *ContractEngineClientManager) GetUniqueTxKey(txId string) string {
 }
 
 func (cm *ContractEngineClientManager) NeedSendContractByteCode() bool {
-	return !cm.config.DockerVMUDSOpen
+	// TODO:
+	//return !cm.config.DockerVMUDSOpen
+	return false
 }
 
 func (cm *ContractEngineClientManager) HasActiveConnections() bool {
@@ -183,7 +185,13 @@ func (cm *ContractEngineClientManager) GetReceiveNotify(chainId, txId string) fu
 	defer cm.notifyLock.RUnlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
 	cm.logger.Debugf("get notify for [%s]", notifyKey)
-	return nil
+	notify, ok := cm.notify[notifyKey]
+	if !ok {
+		cm.logger.Debugf("get receive notify[%s] failed, please check your key", notifyKey)
+		return nil
+	}
+
+	return notify
 }
 
 func (cm *ContractEngineClientManager) listen() {
