@@ -1079,6 +1079,11 @@ func TestProcessManager_handleSandboxExitResp(t *testing.T) {
 		false,
 	)
 
+	//processManager.waitingRequestGroups.Put(&messages.RequestGroupKey{
+	//	ContractName:    testContractName1,
+	//	ContractVersion: testContractVersion,
+	//}, true)
+
 	type fields struct {
 		processManager *ProcessManager
 	}

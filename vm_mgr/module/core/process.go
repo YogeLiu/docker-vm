@@ -242,7 +242,7 @@ func (p *Process) launchProcess() *exitErr {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.GetUid()),
 		},
-		Cloneflags: syscall.CLONE_NEWPID,
+		//Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
 
