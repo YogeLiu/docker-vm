@@ -178,7 +178,7 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 		group = NewRequestGroup(contractName, contractVersion,
 			s.origProcessManager, s.crossProcessManager, s.contractManager, s)
 		group.Start()
-		s.requestGroups[contractName] = group
+		s.requestGroups[groupKey] = group
 	}
 
 	// put req to such request group
