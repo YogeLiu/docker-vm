@@ -90,7 +90,7 @@ func (pm *ProcessManager) Start() {
 					pm.handleSandboxExitResp(m)
 
 				default:
-					pm.logger.Errorf("unknown req type")
+					pm.logger.Errorf("unknown msg type, msg: %+v", msg)
 
 				}
 			case <-pm.cleanTimer.C:
@@ -117,7 +117,7 @@ func (pm *ProcessManager) PutMsg(msg interface{}) error {
 		*messages.CloseSandboxRespMsg:
 		pm.eventCh <- msg
 	default:
-		return fmt.Errorf("unknown req type")
+		return fmt.Errorf("unknown msg type, msg: %+v", msg)
 	}
 	return nil
 }

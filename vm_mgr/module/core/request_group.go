@@ -130,7 +130,7 @@ func (r *RequestGroup) Start() {
 					r.handleContractReadyResp()
 
 				default:
-					r.logger.Errorf("unknown req type")
+					r.logger.Errorf("unknown msg type, msg: %+v", msg)
 				}
 			case <-r.stopCh:
 				return
@@ -149,7 +149,7 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
 	default:
-		return fmt.Errorf("unknown req type")
+		return fmt.Errorf("unknown msg type, msg: %+v", msg)
 	}
 	return nil
 }
@@ -268,7 +268,7 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 		controller = r.crossTxController
 		reqNumPerProcess = reqNumPerCrossProcess
 	default:
-		return 0, fmt.Errorf("unknown tx type")
+		return 0, fmt.Errorf("unknown tx type, txType: %+v", txType)
 	}
 
 	// calculate how many processes it needs:
@@ -277,6 +277,9 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 	currChSize := len(controller.txCh)
 
 	needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
+
+	r.logger.Debugf("request group %s try to get %d processes",
+		utils.ConstructContractKey(r.contractName, r.contractVersion), needProcessNum)
 
 	var err error
 	// need more processes
@@ -340,7 +343,7 @@ func (r *RequestGroup) handleProcessReadyResp(txType TxType) error {
 		r.crossTxController.processWaiting = false
 
 	default:
-		return fmt.Errorf("unknown tx type")
+		return fmt.Errorf("unknown tx type, txType: %+v", txType)
 	}
 
 	// try to get processes from process manager

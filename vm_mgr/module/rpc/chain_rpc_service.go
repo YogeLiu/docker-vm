@@ -65,7 +65,7 @@ func (s *ChainRPCService) PutMsg(msg interface{}) error {
 		m, _ := msg.(*protogo.DockerVMMessage)
 		s.eventCh <- m
 	default:
-		return fmt.Errorf("unknown msg type")
+		return fmt.Errorf("unknown msg type, msg: %+v", msg)
 	}
 	return nil
 }
@@ -108,7 +108,7 @@ func (s *ChainRPCService) recvMsgRoutine() {
 					s.logger.Errorf("fail to put msg into request scheduler chan: [%s]", err)
 				}
 			default:
-				s.logger.Errorf("unknown message type")
+				s.logger.Errorf("unknown msg type, msg: %+v", msg)
 			}
 		}
 	}
@@ -149,7 +149,7 @@ func (s *ChainRPCService) sendMsgRoutine() {
 			//	err = s.sendMsg(msg)
 
 			default:
-				s.logger.Errorf("unknown message type")
+				s.logger.Errorf("unknown msg type, msg: %+v", msg)
 			}
 		}
 

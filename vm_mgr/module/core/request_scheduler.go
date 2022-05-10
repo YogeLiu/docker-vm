@@ -99,7 +99,7 @@ func (s *RequestScheduler) Start() {
 						s.logger.Errorf("failed to handle error response, %v", err)
 					}
 				default:
-					s.logger.Errorf("unknown req type")
+					s.logger.Errorf("unknown msg type, %+v", msg)
 				}
 			case msg := <-s.closeCh:
 				if err := s.handleCloseReq(msg); err != nil {
@@ -120,7 +120,7 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 		m, _ := msg.(*messages.RequestGroupKey)
 		s.closeCh <- m
 	default:
-		return fmt.Errorf("unknown req type")
+		return fmt.Errorf("unknown msg type, msg: %+v", msg)
 	}
 	return nil
 }

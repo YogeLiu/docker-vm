@@ -142,7 +142,7 @@ func (p *Process) PutMsg(msg interface{}) error {
 		p.eventCh <- msg
 
 	default:
-		return fmt.Errorf("unknown req type")
+		return fmt.Errorf("unknown msg type, msg: %+v", msg)
 	}
 	return nil
 }
@@ -240,7 +240,7 @@ func (p *Process) launchProcess() *exitErr {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.GetUid()),
 		},
-		//Cloneflags: syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
 
@@ -595,7 +595,7 @@ func (p *Process) killProcess() {
 
 // updateProcessState updates process state
 func (p *Process) updateProcessState(state processState) {
-	p.logger.Debugf("[%s] update process state: [%s]", p.processName, state)
+	p.logger.Debugf("[%s] update process state: [%+v]", p.processName, state)
 	p.processState = state
 }
 

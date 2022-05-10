@@ -75,7 +75,7 @@ func (cm *ContractManager) Start() {
 					}
 
 				default:
-					cm.logger.Errorf("unknown req type")
+					cm.logger.Errorf("unknown msg type, msg: %+v", msg)
 				}
 			}
 		}
@@ -90,7 +90,7 @@ func (cm *ContractManager) PutMsg(msg interface{}) error {
 		m, _ := msg.(*protogo.DockerVMMessage)
 		cm.eventCh <- m
 	default:
-		return fmt.Errorf("unknown req type")
+		return fmt.Errorf("unknown msg type, msg: %+v", msg)
 	}
 	return nil
 }
