@@ -318,6 +318,14 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 func (r *RequestGroup) handleContractReadyResp() {
 
 	r.contractState = contractReady
+	_, err := r.getProcesses(origTx)
+	if err != nil {
+		r.logger.Errorf("failed to get orig processes, %v", err)
+	}
+	_, err = r.getProcesses(crossTx)
+	if err != nil {
+		r.logger.Errorf("failed to get cross processes, %v", err)
+	}
 }
 
 // handleProcessReadyResp handles process ready response
