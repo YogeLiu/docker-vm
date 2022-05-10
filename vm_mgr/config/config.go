@@ -47,6 +47,7 @@ const (
 
 type rpcConf struct {
 	ChainRPCProtocol       ChainRPCProtocolType `mapstructure:"chain_rpc_protocol"`
+	ChainHost              string               `mapstructure:"chain_host"`
 	ChainRPCPort           int                  `mapstructure:"chain_rpc_port"`
 	SandboxRPCPort         int                  `mapstructure:"sandbox_rpc_port"`
 	MaxSendMsgSize         int                  `mapstructure:"max_send_msg_size"`
@@ -114,10 +115,11 @@ func (c *conf) setDefaultConfigs() {
 	// set rpc default configs
 	const rpcPrefix = "rpc"
 	viper.SetDefault(rpcPrefix+".chain_rpc_protocol", 1)
-	viper.SetDefault(rpcPrefix+".chain_rpc_port", 8015)
-	viper.SetDefault(rpcPrefix+".sandbox_rpc_port", 8016)
-	viper.SetDefault(rpcPrefix+".max_send_msg_size", 4)
-	viper.SetDefault(rpcPrefix+".max_recv_msg_size", 4)
+	viper.SetDefault(rpcPrefix+".chain_host", "127.0.0.1")
+	viper.SetDefault(rpcPrefix+".chain_rpc_port", 22359)
+	viper.SetDefault(rpcPrefix+".sandbox_rpc_port", 22459)
+	viper.SetDefault(rpcPrefix+".max_send_msg_size", 20)
+	viper.SetDefault(rpcPrefix+".max_recv_msg_size", 20)
 	viper.SetDefault(rpcPrefix+".server_min_interval", 60)
 	viper.SetDefault(rpcPrefix+".connection_timeout", 5)
 	viper.SetDefault(rpcPrefix+".server_keep_alive_time", 60)

@@ -192,6 +192,7 @@ func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer
 	defer p.lock.Unlock()
 
 	p.stream = stream
+	p.updateProcessState(ready)
 }
 
 // startProcess starts the process cmd
@@ -222,6 +223,7 @@ func (p *Process) launchProcess() *exitErr {
 			p.contractVersion,
 			config.DockerVMConfig.Log.SandboxLog.Level,
 			strconv.Itoa(tcpPort),
+			config.DockerVMConfig.RPC.ChainHost,
 		},
 		Stderr: &stderr,
 	}
@@ -268,7 +270,6 @@ func (p *Process) launchProcess() *exitErr {
 	p.logger.Debugf("notify process [%s] started", p.processName)
 
 	p.startReadyTimer()
-	p.updateProcessState(ready)
 
 	if err = cmd.Wait(); err != nil {
 		p.logger.Warnf("process [%s] stopped for tx [%s], err is %v", p.processName, p.Tx.TxId, err)
