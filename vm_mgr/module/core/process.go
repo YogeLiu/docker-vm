@@ -272,7 +272,11 @@ func (p *Process) launchProcess() *exitErr {
 	p.startReadyTimer()
 
 	if err = cmd.Wait(); err != nil {
-		p.logger.Warnf("process [%s] stopped for tx [%s], err is %v", p.processName, p.Tx.TxId, err)
+		var txId string
+		if p.Tx != nil {
+			txId = p.Tx.TxId
+		}
+		p.logger.Warnf("process [%s] stopped for tx [%s], err is %v", p.processName, txId, err)
 		return &exitErr{
 			err:  err,
 			desc: stderr.String(),

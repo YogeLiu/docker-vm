@@ -16,7 +16,7 @@ process:
   # max original process num,
   # max_call_contract_process_num = max_original_process_num * max_contract_depth (defined in protocol)
   # max_total_process_num = max_call_contract_process_num + max_original_process_num
-  max_original_process_num: 50
+  max_original_process_num: 5
   busy_timeout: 2000 # process timeout while busy (ms)
   ready_timeout: 200 # process timeout while tx completed (busy -> idle) (ms)
   release_rate: 30 # percentage of idle processes released periodically in total processes (0-100)
