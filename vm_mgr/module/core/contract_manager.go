@@ -133,6 +133,10 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 
 	cm.logger.Debugf("handle get contract request, txId: [%s]", req.TxId)
 
+	if req.Request == nil {
+		return fmt.Errorf("empty request payload")
+	}
+
 	contractKey := utils.ConstructContractKey(req.Request.ContractName, req.Request.ContractVersion)
 
 	// contract path found in lru
@@ -163,6 +167,10 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) error {
 
 	cm.logger.Debugf("handle get contract response, txId: [%s]", resp.TxId)
+
+	if resp.Response == nil {
+		return fmt.Errorf("empty response payload")
+	}
 
 	// check the response from chain
 	if resp.Response.Code == protogo.DockerVMCode_FAIL {

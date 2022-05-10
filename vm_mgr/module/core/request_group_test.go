@@ -357,6 +357,24 @@ func TestRequestGroup_handleContractReadyResp(t *testing.T) {
 	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, nil, nil)
 	requestGroup.logger = log
 
+	// new original process manager
+	maxOriginalProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum
+	maxCrossProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum * protocol.CallContractDepth
+	releaseRate := config.DockerVMConfig.GetReleaseRate()
+
+	usersManager := NewUsersManager()
+	origProcessManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, usersManager)
+	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
+
+	requestGroup.origTxController = &txController{
+		txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+		processMgr: origProcessManager,
+	}
+	requestGroup.crossTxController = &txController{
+		txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+		processMgr: crossProcessManager,
+	}
+
 	type fields struct {
 		group *RequestGroup
 	}

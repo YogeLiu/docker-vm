@@ -374,7 +374,7 @@ func TestRequestScheduler_handleTxReq(t *testing.T) {
 	scheduler := newTestRequestScheduler(t)
 	log := logger.NewTestDockerLogger()
 	scheduler.logger = log
-
+	scheduler.contractManager = &ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)}
 	type fields struct {
 		scheduler *RequestScheduler
 	}

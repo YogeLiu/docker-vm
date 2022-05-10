@@ -161,23 +161,47 @@ func TestContractManager_Start(t *testing.T) {
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 	}
+	cMgr.Start()
 
 	type fields struct {
 		cMgr *ContractManager
 	}
+
+	type args struct {
+		req *protogo.DockerVMMessage
+	}
+
 	tests := []struct {
-		name   string
-		fields fields
+		name    string
+		fields  fields
+		args    args
 	}{
 		{
 			name:   "TestContractManager_Start",
 			fields: fields{cMgr: cMgr},
+			args: args{req: &protogo.DockerVMMessage{
+				Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
+			}},
+		},
+		{
+			name:   "TestContractManager_Start",
+			fields: fields{cMgr: cMgr},
+			args: args{req: &protogo.DockerVMMessage{
+				Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
+			}},
+		},
+		{
+			name:   "TestContractManager_Start",
+			fields: fields{cMgr: cMgr},
+			args: args{req: &protogo.DockerVMMessage{
+				Type: protogo.DockerVMType_ERROR,
+			}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cm := tt.fields.cMgr
-			cm.Start()
+			cm.PutMsg(tt.args.req)
 		})
 	}
 }
@@ -273,11 +297,11 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 		resp *protogo.DockerVMMessage
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
+		name      string
+		fields    fields
+		args      args
 		wantExist bool
-		wantErr bool
+		wantErr   bool
 	}{
 		{
 			name:   "TestContractManager_handleGetContractResp",
@@ -288,11 +312,11 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 				Response: &protogo.TxResponse{
 					ContractName:    "testContractName",
 					ContractVersion: "1.0.0",
-					Code: protogo.DockerVMCode_FAIL,
+					Code:            protogo.DockerVMCode_FAIL,
 				},
 			}},
 			wantExist: false,
-			wantErr: true,
+			wantErr:   true,
 		},
 		{
 			name:   "TestContractManager_handleGetContractResp",
@@ -306,7 +330,7 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 				},
 			}},
 			wantExist: true,
-			wantErr: false,
+			wantErr:   false,
 		},
 	}
 	for _, tt := range tests {
@@ -357,7 +381,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "TestContractManager_sendContractReadySignal",
+			name:   "TestContractManager_sendContractReadySignal",
 			fields: fields{cMgr: cMgr},
 			args: args{
 				contractName:    "testContractName",
