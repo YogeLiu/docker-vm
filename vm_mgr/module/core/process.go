@@ -383,9 +383,11 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 
 	p.logger.Debugf("process [%s] start handle tx req [%s]", p.processName, tx.TxId)
 
-	// change state from ready to busy
-	if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
-		return fmt.Errorf("failed to change process [%s] state of tx [%s]", p.processName, tx.TxId)
+	if p.processState == idle {
+		// change state from ready to busy
+		if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
+			return fmt.Errorf("failed to change process [%s] state of tx [%s], %v", p.processName, tx.TxId, err)
+		}
 	}
 	p.updateProcessState(busy)
 
@@ -595,7 +597,7 @@ func (p *Process) killProcess() {
 
 // updateProcessState updates process state
 func (p *Process) updateProcessState(state processState) {
-	p.logger.Debugf("[%s] update process state: [%+v]", p.processName, state)
+	p.logger.Debugf("[%s] update process state from [%+v] to [%+v]", p.processName, p.processState, state)
 	p.processState = state
 }
 
