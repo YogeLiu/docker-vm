@@ -1,3 +1,10 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package core
 
 import (
@@ -21,11 +28,13 @@ func TestNewRequestGroup(t *testing.T) {
 	testContractName := "testContractName"
 	testContractVersion := "1.0.0"
 	eventCh := make(chan *protogo.DockerVMMessage, requestGroupEventChSize)
+	stopCh := make(chan struct{})
 	origTxCh := make(chan *protogo.DockerVMMessage, origTxChSize)
 	crossTxCh := make(chan *protogo.DockerVMMessage, crossTxChSize)
 
 	requestGroup := NewRequestGroup(testContractName, testContractVersion, nil, nil, nil, nil)
 	requestGroup.eventCh = eventCh
+	requestGroup.stopCh = stopCh
 	requestGroup.origTxController.txCh = origTxCh
 	requestGroup.crossTxController.txCh = crossTxCh
 	requestGroup.logger = log
@@ -63,6 +72,7 @@ func TestNewRequestGroup(t *testing.T) {
 				tt.args.scheduler,
 			)
 			got.eventCh = eventCh
+			got.stopCh = stopCh
 			got.origTxController.txCh = origTxCh
 			got.crossTxController.txCh = crossTxCh
 			got.logger = log

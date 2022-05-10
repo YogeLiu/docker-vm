@@ -20,6 +20,8 @@ const (
 	configFileName = "../../../test/testdata/vm.yml"
 )
 
+var port = 20001
+
 func TestChainRPCServer_StartChainRPCServer(t *testing.T) {
 
 	SetConfig()
@@ -156,5 +158,6 @@ func SetConfig() {
 	config.DockerVMConfig.RPC.ConnectionTimeout = 5
 	config.DockerVMConfig.RPC.MaxSendMsgSize = 4
 	config.DockerVMConfig.RPC.MaxRecvMsgSize = 4
-	config.DockerVMConfig.RPC.ChainRPCPort = 8015
+	config.DockerVMConfig.RPC.ChainRPCPort = port
+	port++
 }

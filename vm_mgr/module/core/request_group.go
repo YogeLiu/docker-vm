@@ -284,7 +284,7 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 		if controller.processWaiting {
 			return 0, nil
 		}
-		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
+		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
 			ProcessNum:      needProcessNum,
@@ -299,7 +299,7 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 		if !controller.processWaiting {
 			return 0, nil
 		}
-		err = controller.processMgr.PutMsg(messages.GetProcessReqMsg{
+		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
 			ProcessNum:      0, // 0 for no need

@@ -1,3 +1,10 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package core
 
 import (
@@ -213,7 +220,7 @@ func TestRequestScheduler_handleCloseReq(t *testing.T) {
 	log := logger.NewTestDockerLogger()
 	scheduler.logger = log
 
-	requestGroup := &RequestGroup{}
+	requestGroup := &RequestGroup{stopCh: make(chan struct{}, 1)}
 	groupKey := utils.ConstructContractKey("testContractName1", "1.0.0")
 	scheduler.requestGroups[groupKey] = requestGroup
 
@@ -390,6 +397,9 @@ func TestRequestScheduler_handleTxReq(t *testing.T) {
 					Request: &protogo.TxRequest{
 						ContractName:    "testContractName1",
 						ContractVersion: "1.0.0",
+					},
+					CrossContext: &protogo.CrossContext{
+						CurrentDepth: 0,
 					},
 				},
 			},
