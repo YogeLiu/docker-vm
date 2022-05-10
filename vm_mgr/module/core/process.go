@@ -240,7 +240,7 @@ func (p *Process) launchProcess() *exitErr {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.GetUid()),
 		},
-		Cloneflags: syscall.CLONE_NEWPID,
+		//Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
 
@@ -267,8 +267,8 @@ func (p *Process) launchProcess() *exitErr {
 
 	p.logger.Debugf("notify process [%s] started", p.processName)
 
-	p.updateProcessState(ready)
 	p.startReadyTimer()
+	p.updateProcessState(ready)
 
 	if err = cmd.Wait(); err != nil {
 		p.logger.Warnf("process [%s] stopped for tx [%s], err is %v", p.processName, p.Tx.TxId, err)
@@ -639,7 +639,11 @@ func (p *Process) startBusyTimer() {
 // start when process ready, resp come
 // stop when new tx come
 func (p *Process) startReadyTimer() {
-	p.logger.Debugf("start tx timer: process [%s], tx [%s]", p.processName, p.Tx.TxId)
+	var txId string
+	if p.Tx != nil {
+		txId = p.Tx.TxId
+	}
+	p.logger.Debugf("start tx timer: process [%s], tx [%s]", p.processName, txId)
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
