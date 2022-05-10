@@ -12,7 +12,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
 
@@ -52,10 +51,10 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 		var process interfaces.Process
 		var ok bool
-		if msg.CrossContext.CurrentDepth == 0 || !utils.HasUsed(msg.CrossContext.CrossInfo) {
-			process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
+		process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
+		if !ok {
+			process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
 		}
-		process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
 
 		if !ok {
 			s.logger.Errorf("fail to get process: [%v]", err)
