@@ -92,7 +92,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	var err error
 	// init func gas used calc and check gas limit
-	if txSimContext.GetBlockVersion() >= 230 {
+	if txSimContext.GetBlockVersion() >= 2300 {
 		gasUsed, err = gas.InitFuncGasUsed(gasUsed, r.getChainConfigDefaultGas(txSimContext))
 		if err != nil {
 			contractResult.GasUsed = gasUsed
