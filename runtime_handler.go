@@ -972,10 +972,17 @@ func getSenderAddressFromPublicKeyPEM(publicKeyPem []byte, addressType configPb.
 func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo.DockerVMMessage,
 	byteCode []byte) *protogo.DockerVMMessage {
 
-	response := r.newEmptyResponse(txId, protogo.DockerVMType_GET_BYTECODE_RESPONSE)
+	response := &protogo.DockerVMMessage{
+		TxId: txId,
+		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
+		Response: &protogo.TxResponse{
+			Result: make([]byte, 1),
+		},
+	}
+	//response := r.newEmptyResponse(txId, protogo.DockerVMType_GET_BYTECODE_RESPONSE)
 
-	contractFullName := string(recvMsg.SysCallMessage.Payload[config.KeyContractFullName]) // contract1#1.0.0
-	contractName := strings.Split(contractFullName, "#")[0]                                // contract1
+	contractFullName := recvMsg.Request.ContractName + "#" + recvMsg.Request.ContractVersion // contract1#1.0.0
+	contractName := strings.Split(contractFullName, "#")[0]                                  // contract1
 	r.logger.Debugf("name: %s", contractName)
 	r.logger.Debugf("full name: %s", contractFullName)
 
@@ -991,8 +998,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	err := r.saveBytesToDisk(byteCode, contractZipPath)
 	if err != nil {
 		r.logger.Errorf("fail to save bytecode to disk: %s", err)
-		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		response.SysCallMessage.Message = err.Error()
+		response.Response.Code = protocol.ContractSdkSignalResultFail
+		response.Response.Message = err.Error()
 		return response
 	}
 
@@ -1001,8 +1008,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	err = r.runCmd(unzipCommand)
 	if err != nil {
 		r.logger.Errorf("fail to extract contract: %s", err)
-		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		response.SysCallMessage.Message = err.Error()
+		response.Response.Code = protocol.ContractSdkSignalResultFail
+		response.Response.Message = err.Error()
 		return response
 	}
 
@@ -1010,8 +1017,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	err = os.Remove(contractZipPath)
 	if err != nil {
 		r.logger.Errorf("fail to remove zipped file: %s", err)
-		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		response.SysCallMessage.Message = err.Error()
+		response.Response.Code = protocol.ContractSdkSignalResultFail
+		response.Response.Message = err.Error()
 		return response
 	}
 
@@ -1020,29 +1027,31 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	if err != nil {
 		r.logger.Errorf("fail to rename original file name: %s, "+
 			"please make sure contract name should be same as zipped file", err)
-		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		response.SysCallMessage.Message = err.Error()
+		response.Response.Code = protocol.ContractSdkSignalResultFail
+		response.Response.Message = err.Error()
 		return response
 	}
 
-	response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
-	response.SysCallMessage.Payload = map[string][]byte{
-		config.KeyContractFullName: []byte(contractFullName),
-	}
+	response.Response.Code = protocol.ContractSdkSignalResultSuccess
+	//response.Response.Payload = map[string][]byte{
+	//	config.KeyContractFullName: []byte(contractFullName),
+	//}
+	response.Response.Result = []byte(contractFullName)
 
 	if r.clientMgr.NeedSendContractByteCode() {
 		contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
 		if err != nil {
 			r.logger.Errorf("fail to load contract executable file: %s, ", err)
-			response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-			response.SysCallMessage.Message = err.Error()
+			response.Response.Code = protocol.ContractSdkSignalResultFail
+			response.Response.Message = err.Error()
 			return response
 		}
 
-		response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
-		response.SysCallMessage.Payload = map[string][]byte{
-			config.KeyContractFullName: contractByteCode,
-		}
+		response.Response.Code = protocol.ContractSdkSignalResultSuccess
+		//response.SysCallMessage.Payload = map[string][]byte{
+		//	config.KeyContractFullName: contractByteCode,
+		//}
+		response.Response.Result = contractByteCode
 	}
 
 	return response

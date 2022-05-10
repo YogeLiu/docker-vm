@@ -186,7 +186,8 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 			TxId: req.TxId,
 			Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
 			Request: &protogo.TxRequest{
-				ContractName: r.contractName,
+				ContractName:    r.contractName,
+				ContractVersion: r.contractVersion,
 			},
 		})
 		if err != nil {

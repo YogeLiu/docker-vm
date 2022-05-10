@@ -142,7 +142,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 				return
 			}
 
-			c.logger.Debugf("[%s] receive msg from docker manager", receivedMsg.TxId)
+			c.logger.Debugf("[%s] receive msg from docker manager, msg type [%s]", receivedMsg.TxId, receivedMsg.Type)
 
 			switch receivedMsg.Type {
 			case protogo.DockerVMType_TX_RESPONSE:
@@ -168,7 +168,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 }
 
 func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
-	c.logger.Debugf("send message: [%s]", msg)
+	c.logger.Debugf("send message[%s], type: [%s]", msg.TxId, msg.Type)
 	return c.stream.Send(msg)
 }
 
