@@ -172,9 +172,9 @@ func TestContractManager_Start(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
+		name   string
+		fields fields
+		args   args
 	}{
 		{
 			name:   "TestContractManager_Start",

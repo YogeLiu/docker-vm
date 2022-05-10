@@ -1014,12 +1014,12 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 			args: args{msg: &messages.GetProcessReqMsg{
 				ContractName:    testContractName2,
 				ContractVersion: testContractVersion,
-				ProcessNum:      10,
+				ProcessNum:      4,
 			}},
-			wantBusyProcessNum:      10,
-			wantIdleProcessNum:      maxOriginalProcessNum - 10,
-			wantContract1ProcessNum: maxOriginalProcessNum - 10,
-			wantContract2ProcessNum: 10,
+			wantBusyProcessNum:      4,
+			wantIdleProcessNum:      maxOriginalProcessNum - 4,
+			wantContract1ProcessNum: maxOriginalProcessNum - 4,
+			wantContract2ProcessNum: 4,
 		},
 	}
 	contractKey1 := utils.ConstructContractKey(testContractName1, testContractVersion)

@@ -11,6 +11,7 @@ package rpc
 import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -31,23 +32,20 @@ type SandboxRPCServer struct {
 }
 
 // NewSandboxRPCServer build new chain to sandbox rpc server.
-func NewSandboxRPCServer() (*SandboxRPCServer, error) {
+func NewSandboxRPCServer(sockDir string) (*SandboxRPCServer, error) {
 
-	err := utils.Mkdir(config.SandboxRPCDir)
-	if err != nil {
-		return nil, err
-	}
+	_ = utils.Mkdir(sockDir)
 
-	sandboxRPCSockPath := filepath.Join(config.SandboxRPCDir, config.SandboxRPCSockName)
+	sandboxRPCSockPath := filepath.Join(sockDir, config.SandboxRPCSockName)
 
 	listenAddress, err := net.ResolveUnixAddr("unix", sandboxRPCSockPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to resolve unix addr, %v", err)
 	}
 
 	listener, err := CreateUnixListener(listenAddress, sandboxRPCSockPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create unix listener, %v", err)
 	}
 
 	//set up server options for keepalive and TLS

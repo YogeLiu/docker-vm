@@ -191,23 +191,67 @@ func TestRequestScheduler_Start(t *testing.T) {
 	scheduler := newTestRequestScheduler(t)
 	log := logger.NewTestDockerLogger()
 	scheduler.logger = log
+	scheduler.Start()
 
 	type fields struct {
 		scheduler *RequestScheduler
 	}
+	type args struct {
+		msg interface{}
+	}
 	tests := []struct {
 		name   string
 		fields fields
+		args   args
 	}{
 		{
 			name:   "TestRequestScheduler_Start",
 			fields: fields{scheduler: scheduler},
+			args: args{msg: &protogo.DockerVMMessage{
+				Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
+			}},
+		},
+		{
+			name:   "TestRequestScheduler_Start",
+			fields: fields{scheduler: scheduler},
+			args: args{msg: &protogo.DockerVMMessage{
+				Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
+			}},
+		},
+		{
+			name:   "TestRequestScheduler_Start",
+			fields: fields{scheduler: scheduler},
+			args: args{msg: &protogo.DockerVMMessage{
+				Type: protogo.DockerVMType_TX_REQUEST,
+			}},
+		},
+		{
+			name:   "TestRequestScheduler_Start",
+			fields: fields{scheduler: scheduler},
+			args: args{msg: &protogo.DockerVMMessage{
+				Type: protogo.DockerVMType_CALL_CONTRACT_REQUEST,
+			}},
+		},
+		{
+			name:   "TestRequestScheduler_Start",
+			fields: fields{scheduler: scheduler},
+			args: args{msg: &protogo.DockerVMMessage{
+				Type: protogo.DockerVMType_ERROR,
+			}},
+		},
+		{
+			name:   "TestRequestScheduler_Start",
+			fields: fields{scheduler: scheduler},
+			args: args{msg: &messages.RequestGroupKey{
+				ContractName:    "testContractName",
+				ContractVersion: "v1.0.0",
+			}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := tt.fields.scheduler
-			s.Start()
+			s.PutMsg(tt.args.msg)
 		})
 	}
 }
@@ -433,7 +477,8 @@ func newTestRequestScheduler(t *testing.T) *RequestScheduler {
 	chainRPCService := rpc.NewChainRPCService()
 
 	// new scheduler
-	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager, nil)
+	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager,
+		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)})
 	origProcessManager.SetScheduler(scheduler)
 	crossProcessManager.SetScheduler(scheduler)
 	chainRPCService.SetScheduler(scheduler)

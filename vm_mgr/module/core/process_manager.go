@@ -313,7 +313,7 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 
 	// available process num > release num, no need to release
 	if releaseNum <= 0 {
-		pm.logger.Debugf("")
+		pm.logger.Debugf("there are enough idle processes")
 		return
 	}
 

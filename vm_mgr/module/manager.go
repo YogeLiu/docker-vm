@@ -70,7 +70,7 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	}
 
 	// new docker manager to sandbox server
-	sandboxRPCServer, err := rpc.NewSandboxRPCServer()
+	sandboxRPCServer, err := rpc.NewSandboxRPCServer(config.SandboxRPCDir)
 	if err != nil {
 		return nil, fmt.Errorf("fail to init new SandboxRPCServer, %v", err)
 	}

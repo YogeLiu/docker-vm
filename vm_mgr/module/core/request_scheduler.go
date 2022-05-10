@@ -39,7 +39,7 @@ type RequestScheduler struct {
 	closeCh chan *messages.RequestGroupKey // close request group chan
 
 	requestGroups       map[string]interfaces.RequestGroup // contractName#contractVersion
-	chainRPCService     interfaces.ChainRPCService               // chain rpc service
+	chainRPCService     interfaces.ChainRPCService         // chain rpc service
 	contractManager     *ContractManager                   // contract manager
 	origProcessManager  interfaces.ProcessManager          // manager for original process
 	crossProcessManager interfaces.ProcessManager          // manager for cross process
@@ -165,6 +165,10 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 	defer s.lock.Unlock()
 
 	s.logger.Debugf("handle tx request, txId: [%s]", req.TxId)
+
+	if req.Request == nil {
+		return fmt.Errorf("empty request payload")
+	}
 
 	// construct request group key from request
 	contractName := req.Request.ContractName
