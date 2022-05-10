@@ -34,25 +34,26 @@ func TestNewUsersManager(t *testing.T) {
 }
 
 func TestUserManager_BatchCreateUsers(t *testing.T) {
+
+	mgr := NewUsersManager()
+
 	type fields struct {
-		userQueue *utils.FixedFIFO
-		logger    *zap.SugaredLogger
-		userNum   int
+		userManger *UserManager
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "TestUserManager_BatchCreateUsers",
+			fields:  fields{userManger: mgr},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &UserManager{
-				userQueue: tt.fields.userQueue,
-				logger:    tt.fields.logger,
-				userNum:   tt.fields.userNum,
-			}
+			u := mgr
 			if err := u.BatchCreateUsers(); (err != nil) != tt.wantErr {
 				t.Errorf("BatchCreateUsers() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -61,6 +62,7 @@ func TestUserManager_BatchCreateUsers(t *testing.T) {
 }
 
 func TestUserManager_FreeUser(t *testing.T) {
+
 	SetConfig()
 
 	user := NewUser(10000)
@@ -182,11 +184,13 @@ func TestUserManager_GetAvailableUser(t *testing.T) {
 }
 
 func TestUserManager_generateNewUser(t *testing.T) {
+
+	mgr := NewUsersManager()
+
 	type fields struct {
-		userQueue *utils.FixedFIFO
-		logger    *zap.SugaredLogger
-		userNum   int
+		userManger *UserManager
 	}
+
 	type args struct {
 		uid int
 	}
@@ -196,15 +200,16 @@ func TestUserManager_generateNewUser(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "TestUserManager_generateNewUser",
+			fields: fields{userManger: mgr},
+			args: args{uid: 10001},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &UserManager{
-				userQueue: tt.fields.userQueue,
-				logger:    tt.fields.logger,
-				userNum:   tt.fields.userNum,
-			}
+			u := tt.fields.userManger
 			if err := u.generateNewUser(tt.args.uid); (err != nil) != tt.wantErr {
 				t.Errorf("generateNewUser() error = %v, wantErr %v", err, tt.wantErr)
 			}
