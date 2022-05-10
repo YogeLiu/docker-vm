@@ -60,7 +60,12 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			s.logger.Errorf("fail to get process: [%v]", err)
 			return err
 		}
-		process.SetStream(stream)
+
+		if msg.Type == protogo.DockerVMType_REGISTER {
+			process.SetStream(stream)
+			continue
+		}
+
 		switch msg {
 		case nil:
 			s.logger.Errorf("[%s] received nil message, ending contract stream", process.GetProcessName())
