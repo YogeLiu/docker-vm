@@ -33,33 +33,35 @@ func TestNewUsersManager(t *testing.T) {
 	}
 }
 
-//func TestUserManager_BatchCreateUsers(t *testing.T) {
-//
-//	mgr := NewUsersManager()
-//
-//	type fields struct {
-//		userManger *UserManager
-//	}
-//	tests := []struct {
-//		name    string
-//		fields  fields
-//		wantErr bool
-//	}{
-//		{
-//			name:    "TestUserManager_BatchCreateUsers",
-//			fields:  fields{userManger: mgr},
-//			wantErr: false,
-//		},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			u := mgr
-//			if err := u.BatchCreateUsers(); (err != nil) != tt.wantErr {
-//				t.Errorf("BatchCreateUsers() error = %v, wantErr %v", err, tt.wantErr)
-//			}
-//		})
-//	}
-//}
+func TestUserManager_BatchCreateUsers(t *testing.T) {
+
+	SetConfig()
+
+	mgr := NewUsersManager()
+
+	type fields struct {
+		userManger *UserManager
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name:    "TestUserManager_BatchCreateUsers",
+			fields:  fields{userManger: mgr},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := mgr
+			if err := u.BatchCreateUsers(); (err != nil) != tt.wantErr {
+				t.Errorf("BatchCreateUsers() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
 
 func TestUserManager_FreeUser(t *testing.T) {
 
@@ -79,11 +81,11 @@ func TestUserManager_FreeUser(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "TestUserManager_FreeUser",
-			fields:  fields{
+			name: "TestUserManager_FreeUser",
+			fields: fields{
 				userQueue: utils.NewFixedFIFO(config.DockerVMConfig.GetMaxUserNum()),
-				logger: logger.NewTestDockerLogger(),
-				userNum: config.DockerVMConfig.GetMaxUserNum(),
+				logger:    logger.NewTestDockerLogger(),
+				userNum:   config.DockerVMConfig.GetMaxUserNum(),
 			},
 			want:    user,
 			wantErr: false,
@@ -144,21 +146,21 @@ func TestUserManager_GetAvailableUser(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "TestUserManager_GetAvailableUser1",
-			fields:  fields{
+			name: "TestUserManager_GetAvailableUser1",
+			fields: fields{
 				userQueue: userQueue,
-				logger: logger.NewTestDockerLogger(),
-				userNum: config.DockerVMConfig.GetMaxUserNum(),
+				logger:    logger.NewTestDockerLogger(),
+				userNum:   config.DockerVMConfig.GetMaxUserNum(),
 			},
 			want:    user1,
 			wantErr: false,
 		},
 		{
-			name:    "TestUserManager_GetAvailableUser2",
-			fields:  fields{
+			name: "TestUserManager_GetAvailableUser2",
+			fields: fields{
 				userQueue: userQueue,
-				logger: logger.NewTestDockerLogger(),
-				userNum: config.DockerVMConfig.GetMaxUserNum(),
+				logger:    logger.NewTestDockerLogger(),
+				userNum:   config.DockerVMConfig.GetMaxUserNum(),
 			},
 			want:    user2,
 			wantErr: false,
@@ -185,6 +187,8 @@ func TestUserManager_GetAvailableUser(t *testing.T) {
 
 //func TestUserManager_generateNewUser(t *testing.T) {
 //
+//	SetConfig()
+//
 //	mgr := NewUsersManager()
 //
 //	type fields struct {
@@ -201,9 +205,9 @@ func TestUserManager_GetAvailableUser(t *testing.T) {
 //		wantErr bool
 //	}{
 //		{
-//			name: "TestUserManager_generateNewUser",
-//			fields: fields{userManger: mgr},
-//			args: args{uid: 10001},
+//			name:    "TestUserManager_generateNewUser",
+//			fields:  fields{userManger: mgr},
+//			args:    args{uid: 11001},
 //			wantErr: false,
 //		},
 //	}
@@ -216,3 +220,33 @@ func TestUserManager_GetAvailableUser(t *testing.T) {
 //		})
 //	}
 //}
+
+func TestUserManager_ReleaseUsers(t *testing.T) {
+
+	SetConfig()
+
+	mgr := NewUsersManager()
+
+	type fields struct {
+		userManger *UserManager
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name:    "TestUserManager_ReleaseUsers",
+			fields:  fields{userManger: mgr},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := tt.fields.userManger
+			if err := u.ReleaseUsers(); (err != nil) != tt.wantErr {
+				t.Errorf("ReleaseUsers() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

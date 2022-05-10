@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-
 	"fmt"
 	"sync"
 	"time"
@@ -25,6 +24,7 @@ import (
 
 const baseUid = 10000                    // user id start from base uid
 const addUserFormat = "useradd -u %d %s" // add user cmd
+const deleteUserFormat = "userdel -r %s" // add user cmd
 
 // UserManager is linux user manager
 type UserManager struct {
@@ -50,20 +50,18 @@ func (u *UserManager) BatchCreateUsers() error {
 	var wg sync.WaitGroup
 	batchCreateUsersThreadNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
 	createUserNumPerThread := protocol.CallContractDepth + 1                         // user num per thread
-
+	totalNum := batchCreateUsersThreadNum * createUserNumPerThread
 	startTime := time.Now()
 	createdUserNum := atomic.NewInt64(0)
-	for i := 0; i < batchCreateUsersThreadNum; i++ {
+	for i := 0; i < totalNum; i++ {
 		wg.Add(1)
 		go func(i int) {
-			for j := 0; j < createUserNumPerThread; j++ {
-				id := baseUid + i*batchCreateUsersThreadNum + j
-				err = u.generateNewUser(id)
-				if err != nil {
-					u.logger.Errorf("fail to create user [%d]", id)
-				} else {
-					createdUserNum.Add(1)
-				}
+			id := baseUid + i
+			err = u.generateNewUser(id)
+			if err != nil {
+				u.logger.Errorf("fail to create user [%d]", id)
+			} else {
+				createdUserNum.Add(1)
 			}
 			wg.Done()
 		}(i)
@@ -125,5 +123,32 @@ func (u *UserManager) FreeUser(user interfaces.User) error {
 		return fmt.Errorf("fail to enqueue user: %v", err)
 	}
 	u.logger.Debugf("free user: %v", user)
+	return nil
+}
+
+// ReleaseUsers release all users
+func (u *UserManager) ReleaseUsers() error {
+
+	var err error
+	var wg sync.WaitGroup
+	batchCreateUsersThreadNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
+	createUserNumPerThread := protocol.CallContractDepth + 1                         // user num per thread
+	totalNum := batchCreateUsersThreadNum * createUserNumPerThread
+
+	for i := 0; i < totalNum; i++ {
+		wg.Add(1)
+		go func(i int) {
+			id := baseUid + i
+
+			user := NewUser(id)
+			delUserCommand := fmt.Sprintf(deleteUserFormat, user.UserName)
+			if err = utils.RunCmd(delUserCommand); err != nil {
+				u.logger.Warnf("failed to delete user [%+v], err: [%s] and begin to retry", user, err)
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+
 	return nil
 }

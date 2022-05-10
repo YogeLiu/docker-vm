@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	configFileName = "../../../test/testdata/vm.yml"
+	configFileName = "../config/vm.yml"
 )
 
 var port = 20001
