@@ -62,7 +62,7 @@ func startPProf(managerLogger *zap.SugaredLogger) {
 			addr := fmt.Sprintf(":%d", pprofPort)
 			err := http.ListenAndServe(addr, nil)
 			if err != nil {
-				fmt.Println(err)
+				managerLogger.Errorf("failed to start pprof, %v", err)
 			}
 		}()
 	}
