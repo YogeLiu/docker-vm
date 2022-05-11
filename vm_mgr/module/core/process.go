@@ -444,9 +444,6 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 	}
 
 	// change state from busy to ready
-	if err := p.processManager.ChangeProcessState(p.processName, false); err != nil {
-		return fmt.Errorf("failed to change process [%s] state of tx [%s]", p.processName, p.Tx.TxId)
-	}
 	p.stopTimer()
 	p.startReadyTimer()
 	p.updateProcessState(ready)
