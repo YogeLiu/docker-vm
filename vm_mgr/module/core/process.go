@@ -289,7 +289,7 @@ func (p *Process) launchProcess() *exitErr {
 // listenProcess listen to eventCh, txCh, respCh and timer
 func (p *Process) listenProcess() {
 	for {
-		if p.processState != created {
+		if p.processState == idle {
 			select {
 			case msg := <-p.eventCh:
 				switch msg.(type) {
@@ -308,23 +308,42 @@ func (p *Process) listenProcess() {
 					}
 				}
 
-			// when [ready, idle]
-			case tx := <-p.txCh:
-				// condition: during cmd.wait
-				if err := p.handleTxRequest(tx); err != nil {
-					p.returnErrorResponse(tx.TxId, err.Error())
-				}
-
+			default:
+				break
+			}
+		} else if p.processState == busy {
+			select {
 			// when [busy]
 			case resp := <-p.respCh:
 				if err := p.handleTxResp(resp); err != nil {
 					p.logger.Warnf("failed to handle tx response, %v", err)
 				}
 
-			// when [busy]
+			default:
+				break
+			}
+		}
+
+		if p.processState == ready || p.processState == busy {
+			select {
+			// when [ready, busy]
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
 					p.logger.Errorf("failed to handle timeout timer, %v", err)
+				}
+
+			default:
+				break
+			}
+		}
+
+		if p.processState == ready || p.processState == idle {
+			select {
+			// when [ready, idle]
+			case tx := <-p.txCh:
+				// condition: during cmd.wait
+				if err := p.handleTxRequest(tx); err != nil {
+					p.returnErrorResponse(tx.TxId, err.Error())
 				}
 
 			default:
