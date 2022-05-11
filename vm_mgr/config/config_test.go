@@ -90,7 +90,7 @@ func Test_conf_GetMaxUserNum(t *testing.T) {
 		fields *conf
 		want   int
 	}{
-		{"good case", DockerVMConfig, 300},
+		{"good case", DockerVMConfig, 30},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

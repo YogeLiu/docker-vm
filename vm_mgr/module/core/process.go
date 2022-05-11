@@ -42,11 +42,11 @@ type processState int
 
 const (
 	created processState = iota
-	busy
 	ready
-	changing
+	busy
 	idle
 	timeout
+	changing
 )
 
 const (
@@ -652,7 +652,7 @@ func (p *Process) constructErrorResponse(txId string, errMsg string) *protogo.Do
 // start when new tx come
 // stop when resp come
 func (p *Process) startBusyTimer() {
-	p.logger.Debugf("start tx timer: process [%s], tx [%s]", p.processName, p.Tx.TxId)
+	p.logger.Debugf("start busy tx timer: process [%s], tx [%s]", p.processName, p.Tx.TxId)
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
@@ -667,7 +667,7 @@ func (p *Process) startReadyTimer() {
 	if p.Tx != nil {
 		txId = p.Tx.TxId
 	}
-	p.logger.Debugf("start tx timer: process [%s], tx [%s]", p.processName, txId)
+	p.logger.Debugf("start ready tx timer: process [%s], tx [%s]", p.processName, txId)
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
