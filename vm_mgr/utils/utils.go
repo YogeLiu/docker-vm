@@ -117,46 +117,6 @@ func ConstructRequestGroupKey(contractName string, contractVersion string) strin
 	return sb.String()
 }
 
-// ConstructOriginalProcessName contractName#contractVersion#timestamp:index#txCount
-func ConstructOriginalProcessName(processName string, txCount uint64) string {
-	var sb strings.Builder
-	sb.WriteString(processName)
-	sb.WriteString("#")
-	sb.WriteString(strconv.FormatUint(txCount, 10))
-	return sb.String()
-}
-
-// ConstructConcatOriginalAndCrossProcessName contractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
-func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProcessName string) string {
-	var sb strings.Builder
-	sb.WriteString(originalProcessName)
-	sb.WriteString("&")
-	sb.WriteString(crossProcessName)
-	return sb.String()
-}
-
-// ConstructCrossContractProcessName txId:timestamp:depth
-func ConstructCrossContractProcessName(txId string, txDepth uint64) string {
-	var sb strings.Builder
-	sb.WriteString(txId)
-	sb.WriteString(":")
-	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
-	sb.WriteString(":")
-	sb.WriteString(strconv.FormatUint(txDepth, 10))
-	return sb.String()
-}
-
-// TrySplitCrossProcessNames if processName is a crossProcessName, return original process name and cross process name.
-// if processName is a balance process name, return contract key and processName itself.
-func TrySplitCrossProcessNames(processName string) (bool, string, string) {
-	nameList := strings.Split(processName, "&")
-	if len(nameList) == 2 {
-		return true, nameList[0], nameList[1]
-	}
-	nameList = strings.Split(processName, "#")
-	return false, ConstructContractKey(nameList[0], nameList[1]), processName
-}
-
 // HasUsed judge whether a vm has been used
 func HasUsed(ctxBitmap uint64) bool {
 	typeBit := uint64(1 << (59 - common.RuntimeType_DOCKER_GO))

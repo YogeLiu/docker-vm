@@ -639,8 +639,8 @@ func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
 func (p *Process) constructErrorResponse(txId string, errMsg string) *protogo.DockerVMMessage {
 	return &protogo.DockerVMMessage{
 		Type: protogo.DockerVMType_ERROR,
+		TxId: txId,
 		Response: &protogo.TxResponse{
-			TxId:    txId,
 			Code:    protogo.DockerVMCode_FAIL,
 			Result:  nil,
 			Message: errMsg,

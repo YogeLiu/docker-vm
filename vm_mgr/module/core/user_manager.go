@@ -139,16 +139,24 @@ func (u *UserManager) ReleaseUsers() error {
 		wg.Add(1)
 		go func(i int) {
 			id := baseUid + i
-
-			user := NewUser(id)
-			delUserCommand := fmt.Sprintf(deleteUserFormat, user.UserName)
-			if err = utils.RunCmd(delUserCommand); err != nil {
-				u.logger.Warnf("failed to delete user [%+v], err: [%s] and begin to retry", user, err)
+			err = u.releaseUser(id)
+			if err != nil {
+				u.logger.Warnf("failed to delete user %v", err)
 			}
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
 
+	return nil
+}
+
+// releaseUser release user
+func (u *UserManager) releaseUser(id int) error {
+	user := NewUser(id)
+	delUserCommand := fmt.Sprintf(deleteUserFormat, user.UserName)
+	if err := utils.RunCmd(delUserCommand); err != nil {
+		return fmt.Errorf("failed to exec [%s], [%+v], %v", delUserCommand, user, err)
+	}
 	return nil
 }
