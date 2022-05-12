@@ -9,7 +9,6 @@ import (
 	"chainmaker.org/chainmaker/protocol/v2"
 	"fmt"
 	"github.com/spf13/viper"
-	"sync"
 	"time"
 )
 
@@ -28,7 +27,6 @@ const (
 )
 
 var DockerVMConfig *conf
-var once sync.Once
 
 type conf struct {
 	RPC      rpcConf      `mapstructure:"rpc"`
@@ -156,38 +154,47 @@ func (c *conf) restrainConfig() {
 	}
 }
 
+// GetServerMinInterval returns server min interval
 func (c *conf) GetServerMinInterval() time.Duration {
 	return time.Duration(c.RPC.ServerMinInterval) * time.Second
 }
 
+// GetConnectionTimeout get connection timeout
 func (c *conf) GetConnectionTimeout() time.Duration {
 	return time.Duration(c.RPC.ConnectionTimeout) * time.Second
 }
 
+// GetServerKeepAliveTime returns get server keep alive time
 func (c *conf) GetServerKeepAliveTime() time.Duration {
 	return time.Duration(c.RPC.ServerKeepAliveTime) * time.Second
 }
 
+// GetServerKeepAliveTimeout returns get server keep alive timeout
 func (c *conf) GetServerKeepAliveTimeout() time.Duration {
 	return time.Duration(c.RPC.ServerKeepAliveTimeout) * time.Second
 }
 
+// GetBusyTimeout returns busy timeout
 func (c *conf) GetBusyTimeout() time.Duration {
 	return time.Duration(c.Process.BusyTimeout) * time.Millisecond
 }
 
+// GetReadyTimeout returns ready timeout
 func (c *conf) GetReadyTimeout() time.Duration {
 	return time.Duration(c.Process.ReadyTimeout) * time.Millisecond
 }
 
+// GetReleasePeriod returns release period
 func (c *conf) GetReleasePeriod() time.Duration {
 	return time.Duration(c.Process.ReleasePeriod) * time.Second
 }
 
+// GetReleaseRate returns release rate
 func (c *conf) GetReleaseRate() float64 {
 	return float64(c.Process.ReleaseRate) / 100.0
 }
 
+// GetMaxUserNum returns max user num
 func (c *conf) GetMaxUserNum() int {
 	return c.Process.MaxOriginalProcessNum * (protocol.CallContractDepth + 1)
 }
