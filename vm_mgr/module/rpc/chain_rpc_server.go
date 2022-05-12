@@ -38,30 +38,39 @@ type ChainRPCServer struct {
 // 2. set max_send_msg_size, max_recv_msg_size, etc.
 func NewChainRPCServer() (*ChainRPCServer, error) {
 
-	// choose unix domin socket or tcp
+	log := logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVER)
+
+	// choose unix domain socket or tcp
 	netProtocol := config.DockerVMConfig.RPC.ChainRPCProtocol
 
 	var listener net.Listener
 	var err error
 
 	if netProtocol == config.TCP {
+
 		port := config.DockerVMConfig.RPC.ChainRPCPort
 
 		endPoint := fmt.Sprintf(":%d", port)
 
+		log.Infof("new chain rpc server(TCP) %s", endPoint)
+
 		if listener, err = net.Listen("tcp", endPoint); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to listen tcp, %v", err)
 		}
+
 	} else {
+
 		absChainRPCUDSPath := filepath.Join(config.DockerMountDir, filepath.Join(ChainRPCDir, ChainRPCSockName))
+
+		log.Infof("new chain rpc server(UDS) %s", absChainRPCUDSPath)
 
 		listenAddress, err := net.ResolveUnixAddr("unix", absChainRPCUDSPath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to resolve unix addr, %v", err)
 		}
 
 		if listener, err = CreateUnixListener(listenAddress, absChainRPCUDSPath); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create unix listener, %v", err)
 		}
 	}
 
@@ -90,7 +99,7 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 	return &ChainRPCServer{
 		Listener: listener,
 		Server:   server,
-		logger:   logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVER),
+		logger:   log,
 	}, nil
 }
 
@@ -98,7 +107,9 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 // 1. register chain_rpc_service to server
 // 2. start a goroutine to serve
 func (s *ChainRPCServer) StartChainRPCServer(service *ChainRPCService) error {
-	s.logger.Infof("StartChainRPCServer start")
+
+	s.logger.Infof("start chain rpc server")
+
 	if s.Listener == nil {
 		return errors.New("nil listener")
 	}
@@ -109,12 +120,9 @@ func (s *ChainRPCServer) StartChainRPCServer(service *ChainRPCService) error {
 
 	protogo.RegisterDockerVMRpcServer(s.Server, service)
 
-	s.logger.Info("start chain_rpc_server...")
-
 	go func() {
-		s.logger.Infof("StartChainRPCServer end")
 		if err := s.Server.Serve(s.Listener); err != nil {
-			s.logger.Errorf("fail to start chain_rpc_server: %s", err)
+			s.logger.Errorf("chain rpc server exited: %s", err)
 		}
 	}()
 
@@ -123,7 +131,7 @@ func (s *ChainRPCServer) StartChainRPCServer(service *ChainRPCService) error {
 
 // StopChainRPCServer stops the server
 func (s *ChainRPCServer) StopChainRPCServer() {
-	s.logger.Debugf("stop chain_rpc_server...")
+	s.logger.Debugf("stop chain rpc server")
 	if s.Server != nil {
 		s.Server.Stop()
 	}

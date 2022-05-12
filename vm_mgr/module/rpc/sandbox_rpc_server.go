@@ -34,9 +34,13 @@ type SandboxRPCServer struct {
 // NewSandboxRPCServer build new chain to sandbox rpc server.
 func NewSandboxRPCServer(sockDir string) (*SandboxRPCServer, error) {
 
+	log := logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER)
+
 	_ = utils.Mkdir(sockDir)
 
 	sandboxRPCSockPath := filepath.Join(sockDir, config.SandboxRPCSockName)
+
+	log.Infof("new sandbox rpc server(UDS) %s", sandboxRPCSockPath)
 
 	listenAddress, err := net.ResolveUnixAddr("unix", sandboxRPCSockPath)
 	if err != nil {
@@ -73,7 +77,7 @@ func NewSandboxRPCServer(sockDir string) (*SandboxRPCServer, error) {
 	return &SandboxRPCServer{
 		Listener: listener,
 		Server:   server,
-		logger:   logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER),
+		logger:   log,
 	}, nil
 }
 
@@ -83,12 +87,12 @@ start:
 	listener, err := net.ListenUnix("unix", listenAddress)
 	if err != nil {
 		if err = os.Remove(sockPath); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to remove %s", sockPath)
 		}
 		goto start
 	}
 	if err = os.Chmod(sockPath, 0777); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to chmod %s", sockPath)
 	}
 	return listener, nil
 }
@@ -97,6 +101,8 @@ start:
 // 1. register sandbox_rpc_service to server
 // 2. start a goroutine to serve
 func (s *SandboxRPCServer) StartSandboxRPCServer(service *SandboxRPCService) error {
+
+	s.logger.Info("start sandbox rpc server")
 
 	if s.Listener == nil {
 		return errors.New("nil listener")
@@ -108,11 +114,9 @@ func (s *SandboxRPCServer) StartSandboxRPCServer(service *SandboxRPCService) err
 
 	protogo.RegisterDockerVMRpcServer(s.Server, service)
 
-	s.logger.Info("start sandbox_rpc_server...")
-
 	go func() {
 		if err := s.Server.Serve(s.Listener); err != nil {
-			s.logger.Errorf("fail to start sandbox_rpc_server: %s", err)
+			s.logger.Errorf("sandbox rpc server exited, %v", err)
 		}
 	}()
 
@@ -121,7 +125,7 @@ func (s *SandboxRPCServer) StartSandboxRPCServer(service *SandboxRPCService) err
 
 // StopSandboxRPCServer stops the server
 func (s *SandboxRPCServer) StopSandboxRPCServer() {
-	s.logger.Debugf("stop sandbox_rpc_server...")
+	s.logger.Debugf("stop sandbox rpc server")
 	if s.Server != nil {
 		s.Server.Stop()
 	}
