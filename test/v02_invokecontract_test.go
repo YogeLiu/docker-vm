@@ -98,7 +98,7 @@ func TestDockerGoPutState(t *testing.T) {
 		}
 		return sb.String()
 	}
-	fiveMData := generateValue(5000000)
+	fiveMData := generateValue(4000000)
 	parameters5["value"] = []byte(fiveMData)
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1")), []byte(fiveMData))
@@ -179,7 +179,8 @@ func TestDockerGoTimeout(t *testing.T) {
 		parameters0, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Nil(t, result.Result)
-	assert.Equal(t, "tx time out", result.Message)
+	fmt.Printf("%+v", result)
+	assert.Equal(t, "tx timeout", result.Message)
 	assert.Nil(t, result.ContractEvent)
 	tearDownTest()
 }

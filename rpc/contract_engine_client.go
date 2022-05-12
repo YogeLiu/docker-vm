@@ -160,6 +160,15 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 					continue
 				}
 				notify(receivedMsg)
+
+			case protogo.DockerVMType_ERROR:
+				notify := c.clientMgr.GetReceiveNotify(c.chainId, receivedMsg.TxId)
+				if notify == nil {
+					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil", receivedMsg.TxId)
+					continue
+				}
+				notify(receivedMsg)
+
 			default:
 				c.logger.Errorf("unknown message type, received msg: [%v]", receivedMsg)
 			}
@@ -169,6 +178,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 
 func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
 	c.logger.Debugf("send message[%s], type: [%s]", msg.TxId, msg.Type)
+	c.logger.Debugf("msg [%+v]", msg)
 	return c.stream.Send(msg)
 }
 

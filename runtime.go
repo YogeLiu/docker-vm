@@ -34,13 +34,13 @@ var (
 
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
-	rowIndex       int32                              // iterator index
-	chainId        string                             // chain id
-	logger         protocol.Logger                    //
-	sendResponse   func(msg *protogo.DockerVMMessage) //
-	event          []*commonPb.ContractEvent          // tx event cache
-	clientMgr      interfaces.ContractEngineClientMgr //
-	runtimeService interfaces.RuntimeService          //
+	rowIndex        int32                              // iterator index
+	chainId         string                             // chain id
+	logger          protocol.Logger                    //
+	sendSysResponse func(msg *protogo.DockerVMMessage) //
+	event           []*commonPb.ContractEvent          // tx event cache
+	clientMgr       interfaces.ContractEngineClientMgr //
+	runtimeService  interfaces.RuntimeService          //
 }
 
 // Invoke process one tx in docker and return result
@@ -56,6 +56,7 @@ func (r *RuntimeInstance) Invoke(
 
 	originalTxId := txSimContext.GetTx().Payload.TxId
 	uniqueTxKey := r.clientMgr.GetUniqueTxKey(originalTxId)
+	r.logger.Debugf("start handling tx [%s]", originalTxId)
 
 	// contract response
 	contractResult = &commonPb.ContractResult{
@@ -131,7 +132,7 @@ func (r *RuntimeInstance) Invoke(
 	sandboxMsgCh := make(chan *protogo.DockerVMMessage, 1)
 	sandboxMsgNotify := func(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
 		sandboxMsgCh <- msg
-		r.sendResponse = sendF
+		r.sendSysResponse = sendF
 	}
 	err = r.runtimeService.RegisterSandboxMsgNotify(r.chainId, uniqueTxKey, sandboxMsgNotify)
 	if err != nil {
@@ -158,7 +159,6 @@ func (r *RuntimeInstance) Invoke(
 
 	timeoutC := time.After(timeout * time.Millisecond)
 
-	r.logger.Debugf("start tx [%s] in runtime", dockerVMMsg.TxId)
 	// wait this chan
 	for {
 		select {
@@ -169,21 +169,33 @@ func (r *RuntimeInstance) Invoke(
 				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode)
 				r.clientMgr.PutByteCodeResp(getByteCodeResponse)
 				r.logger.Debugf("tx [%s] finish get bytecode [%v]", uniqueTxKey, getByteCodeResponse)
+			case protogo.DockerVMType_ERROR:
+				r.logger.Debugf("handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
+				return r.errorResult(
+					contractResult,
+					fmt.Errorf("tx timeout"),
+					recvMsg.Response.Message,
+				)
 			default:
 				contractResult.GasUsed = gasUsed
 				return r.errorResult(
 					contractResult,
-					fmt.Errorf("unknow type"),
-					"fail to receive request",
+					fmt.Errorf("unknown msg type"),
+					"unknown msg type",
 				)
 			}
 
 		case <-timeoutC:
-			r.logger.Errorf("[%s] fail to receive response in %d seconds and return timeout response",
-				uniqueTxKey, r.clientMgr.GetVMConfig().TxTimeLimit)
+			r.logger.Debugf(
+				"handle tx [%s] failed, fail to receive response in %d seconds and return timeout response",
+				originalTxId,
+				r.clientMgr.GetVMConfig().TxTimeLimit,
+			)
 			contractResult.GasUsed = gasUsed
-			return r.errorResult(contractResult, fmt.Errorf("tx timeout"),
-				"fail to receive response",
+			return r.errorResult(
+				contractResult,
+				fmt.Errorf("tx timeout"),
+				"tx timeout",
 			)
 
 		case recvMsg := <-sandboxMsgCh:
@@ -207,10 +219,10 @@ func (r *RuntimeInstance) Invoke(
 					}
 				}
 
-				r.sendResponse(getStateResponse)
+				r.sendSysResponse(getStateResponse)
 				r.logger.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
 			case protogo.DockerVMType_TX_RESPONSE:
-				r.logger.Debugf("[%s] finish handle response [%v]", uniqueTxKey, contractResult)
+				r.logger.Debugf(" finish handle tx [%s]", originalTxId)
 				return r.handleTxResponse(recvMsg.TxId, recvMsg, txSimContext, gasUsed, specialTxType)
 
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
@@ -227,7 +239,7 @@ func (r *RuntimeInstance) Invoke(
 				if crossTxType != protocol.ExecOrderTxTypeNormal {
 					specialTxType = crossTxType
 				}
-				r.sendResponse(callContractResponse)
+				r.sendSysResponse(callContractResponse)
 
 			case protogo.DockerVMType_CREATE_KV_ITERATOR_REQUEST:
 				r.logger.Debugf("tx [%s] start create kv iterator [%v]", uniqueTxKey, recvMsg)
@@ -235,7 +247,7 @@ func (r *RuntimeInstance) Invoke(
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
-				r.sendResponse(createKvIteratorResponse)
+				r.sendSysResponse(createKvIteratorResponse)
 				r.logger.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxKey, createKvIteratorResponse)
 
 			case protogo.DockerVMType_CONSUME_KV_ITERATOR_REQUEST:
@@ -244,7 +256,7 @@ func (r *RuntimeInstance) Invoke(
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
-				r.sendResponse(consumeKvIteratorResponse)
+				r.sendSysResponse(consumeKvIteratorResponse)
 				r.logger.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxKey, consumeKvIteratorResponse)
 
 			case protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST:
@@ -252,7 +264,7 @@ func (r *RuntimeInstance) Invoke(
 				var createKeyHistoryIterResp *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
-				r.sendResponse(createKeyHistoryIterResp)
+				r.sendSysResponse(createKeyHistoryIterResp)
 				r.logger.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxKey, createKeyHistoryIterResp)
 
 			case protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST:
@@ -260,22 +272,22 @@ func (r *RuntimeInstance) Invoke(
 				var consumeKeyHistoryResp *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
-				r.sendResponse(consumeKeyHistoryResp)
+				r.sendSysResponse(consumeKeyHistoryResp)
 				r.logger.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxKey, consumeKeyHistoryResp)
 
 			case protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
 				r.logger.Debugf("tx [%s] start get sender address [%v]", uniqueTxKey, recvMsg)
 				var getSenderAddressResp *protogo.DockerVMMessage
 				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxKey, txSimContext, gasUsed)
-				r.sendResponse(getSenderAddressResp)
+				r.sendSysResponse(getSenderAddressResp)
 				r.logger.Debugf("tx [%s] finish get sender address [%v]", uniqueTxKey, getSenderAddressResp)
 
 			default:
 				contractResult.GasUsed = gasUsed
 				return r.errorResult(
 					contractResult,
-					fmt.Errorf("unknow type"),
-					"fail to receive request",
+					fmt.Errorf("unknow msg type"),
+					"unknown msg type",
 				)
 			}
 		}

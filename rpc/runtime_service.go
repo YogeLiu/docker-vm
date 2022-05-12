@@ -19,9 +19,6 @@ type RuntimeService struct {
 	logger           protocol.Logger
 	stream           protogo.DockerVMRpc_DockerVMCommunicateServer
 	sandboxMsgNotify map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage))
-	stopSend         chan struct{}
-	stopReceive      chan struct{}
-	wg               *sync.WaitGroup
 }
 
 func NewRuntimeService(chainId string, logger protocol.Logger) *RuntimeService {
@@ -32,53 +29,63 @@ func NewRuntimeService(chainId string, logger protocol.Logger) *RuntimeService {
 			lock:             sync.RWMutex{},
 			logger:           logger,
 			sandboxMsgNotify: make(map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage)), 1000),
-			stopSend:         make(chan struct{}, 1),
-			stopReceive:      make(chan struct{}, 1),
-			wg:               &sync.WaitGroup{},
 		}
 	})
 	return <-instanceCh
 }
 
+type serviceStream struct {
+	stream      protogo.DockerVMRpc_DockerVMCommunicateServer
+	stopSend    chan struct{}
+	stopReceive chan struct{}
+	wg          *sync.WaitGroup
+}
+
 func (s *RuntimeService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	sendResponseCh := make(chan *protogo.DockerVMMessage, 1)
 	putResp := func(msg *protogo.DockerVMMessage) {
+		s.logger.Debugf("put sys_call response to send chan, txId [%s], type [%s]", msg.TxId, msg.Type)
 		sendResponseCh <- msg
 	}
+	st := &serviceStream{
+		stream:      stream,
+		stopSend:    make(chan struct{}, 1),
+		stopReceive: make(chan struct{}, 1),
+		wg:          &sync.WaitGroup{},
+	}
+	st.wg.Add(2)
 
-	s.wg.Add(2)
+	go s.recvRoutine(st, putResp)
+	go s.sendRoutine(st, sendResponseCh)
 
-	s.recvRoutine(stream, putResp)
-	s.sendRoutine(stream, sendResponseCh)
-
-	s.wg.Wait()
+	st.wg.Wait()
 	return nil
 }
 
-func (s *RuntimeService) recvRoutine(stream protogo.DockerVMRpc_DockerVMCommunicateServer, putResp func(msg *protogo.DockerVMMessage)) {
+func (s *RuntimeService) recvRoutine(st *serviceStream, putResp func(msg *protogo.DockerVMMessage)) {
 	s.logger.Infof("start receiving sandbox message")
 
 	for {
 		select {
-		case <-s.stopReceive:
+		case <-st.stopReceive:
 			s.logger.Debugf("stop runtime server receive goroutine")
-			s.wg.Done()
+			st.wg.Done()
 			return
 		default:
-			receivedMsg, recvErr := stream.Recv()
+			receivedMsg, recvErr := st.stream.Recv()
 
 			// 客户端断开连接时会接收到该错误
 			if recvErr == io.EOF {
 				s.logger.Error("runtime service eof and exit receive goroutine")
-				close(s.stopSend)
-				s.wg.Done()
+				close(st.stopSend)
+				st.wg.Done()
 				return
 			}
 
 			if recvErr != nil {
 				s.logger.Errorf("runtime service err and exit receive goroutine %s", recvErr)
-				close(s.stopSend)
-				s.wg.Done()
+				close(st.stopSend)
+				st.wg.Done()
 				return
 			}
 
@@ -86,7 +93,6 @@ func (s *RuntimeService) recvRoutine(stream protogo.DockerVMRpc_DockerVMCommunic
 
 			switch receivedMsg.Type {
 			case protogo.DockerVMType_TX_RESPONSE,
-				protogo.DockerVMType_CALL_CONTRACT_RESPONSE,
 				protogo.DockerVMType_CALL_CONTRACT_REQUEST,
 				protogo.DockerVMType_GET_STATE_REQUEST,
 				protogo.DockerVMType_CREATE_KV_ITERATOR_REQUEST,
@@ -101,22 +107,24 @@ func (s *RuntimeService) recvRoutine(stream protogo.DockerVMRpc_DockerVMCommunic
 
 }
 
-func (s *RuntimeService) sendRoutine(stream protogo.DockerVMRpc_DockerVMCommunicateServer, sendCh chan *protogo.DockerVMMessage) {
+func (s *RuntimeService) sendRoutine(st *serviceStream, sendCh chan *protogo.DockerVMMessage) {
+	s.logger.Debugf("start sending sys_call response")
 	for {
 		select {
 		case msg := <-sendCh:
-			if err := stream.Send(msg); err != nil {
+			s.logger.Debugf("get sys_call response from send chan, send to sandbox, txId [%s], type [%s]", msg.TxId, msg.Type)
+			if err := st.stream.Send(msg); err != nil {
 				errStatus, _ := status.FromError(err)
 				s.logger.Errorf("fail to send msg: err: %s, err message: %s, err code: %s",
 					err, errStatus.Message(), errStatus.Code())
 				if errStatus.Code() != codes.ResourceExhausted {
-					close(s.stopReceive)
-					s.wg.Done()
+					close(st.stopReceive)
+					st.wg.Done()
 					return
 				}
 			}
-		case <-s.stopSend:
-			s.wg.Done()
+		case <-st.stopSend:
+			st.wg.Done()
 			s.logger.Debugf("stop runtime server send goroutine")
 			return
 		}

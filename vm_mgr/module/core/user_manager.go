@@ -91,14 +91,14 @@ func (u *UserManager) generateNewUser(uid int) error {
 
 		createSuccess = true
 	}
-	u.logger.Debugf("create user succeed: %+v", user)
+	//u.logger.Debugf("create user succeed: %+v", user)
 
 	// add created user to queue
 	err := u.userQueue.Enqueue(user)
 	if err != nil {
 		return fmt.Errorf("fail to add created user %+v to queue, %v", user, err)
 	}
-	u.logger.Debugf("success add user to user queue: %+v", user)
+	//u.logger.Debugf("success add user to user queue: %+v", user)
 
 	return nil
 }

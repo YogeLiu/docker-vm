@@ -14,18 +14,19 @@ import (
 	"testing"
 	"time"
 
-	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
-
-	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
-	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
-
 	"chainmaker.org/chainmaker/common/v2/sortedmap"
 	"chainmaker.org/chainmaker/localconf/v2"
+	"chainmaker.org/chainmaker/logger/v2"
+	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
+	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/protocol/v2/mock"
+	dockergo "chainmaker.org/chainmaker/vm-docker-go/v2"
+	"chainmaker.org/chainmaker/vm/v2"
 	"github.com/docker/distribution/uuid"
 	"github.com/golang/mock/gomock"
 	"github.com/spf13/cobra"
@@ -36,7 +37,7 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_test04"
+	ContractNameTest    = "contract_test05"
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"
@@ -78,9 +79,10 @@ CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
 )
 
 var (
-	iteratorWSets  map[string]*common.TxWrite
-	keyHistoryData map[string]*store.KeyModification
-	kvSetIndex     int32
+	mockDockerManager *dockergo.DockerManager
+	iteratorWSets     map[string]*common.TxWrite
+	keyHistoryData    map[string]*store.KeyModification
+	kvSetIndex        int32
 	//kvGetIndex    int32
 	kvRowCache = make(map[int32]interface{})
 
@@ -108,6 +110,7 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	simContext := mock.NewMockTxSimContext(ctrl)
 
 	tmpSimContextMap = make(map[string][]byte)
+	txId := uuid.Generate().String()
 
 	simContext.EXPECT().GetTx().DoAndReturn(
 		func() *commonPb.Transaction {
@@ -115,7 +118,7 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 				Payload: &commonPb.Payload{
 					ChainId:        chainId,
 					TxType:         txType,
-					TxId:           uuid.Generate().String(),
+					TxId:           txId,
 					Timestamp:      0,
 					ExpirationTime: 0,
 				},
@@ -124,8 +127,23 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return tx
 		}).AnyTimes()
 
-	simContext.EXPECT().GetCrossInfo().Return(uint64(0)).AnyTimes()
-	simContext.EXPECT().GetDepth().Return(0).AnyTimes()
+	//var crossInfo int
+	crossInfo := vm.NewCallContractContext(0)
+	//simContext.EXPECT().GetCrossInfo().Return(uint64(1 << 60)).AnyTimes()
+	simContext.EXPECT().GetCrossInfo().DoAndReturn(
+		func() uint64 {
+			crossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
+			return crossInfo.GetCtxBitmap()
+		},
+	).AnyTimes()
+
+	var depth int
+	simContext.EXPECT().GetDepth().DoAndReturn(
+		func() int {
+			defer func() { depth++ }()
+			return depth
+		},
+	).AnyTimes()
 	return simContext
 
 }
@@ -667,4 +685,74 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	default:
 		return nil, nil
 	}
+}
+
+//func (mr *MockTxSimContextMockRecorder) CallContract(contract, method, byteCode, parameter, gasUsed, refTxType interface{}) *gomock.Call {
+//func (mr *MockTxSimContextMockRecorder) CallContract(contract, method, byteCode, parameter, gasUsed, refTxType interface{}) *gomock.Call {
+
+func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte) {
+	simContext.EXPECT().CallContract(
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+	).DoAndReturn(
+		func(contract *common.Contract,
+			method string, byteCode []byte,
+			parameter map[string][]byte,
+			gasUsed uint64,
+			refTxType common.TxType) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
+
+			mockLogger := logger.GetLogger(logger.MODULE_VM)
+			callContractRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
+				"", nil, nil, mockLogger)
+
+			param["method"] = param["contract_method"]
+			runtimeContractResult, specialTxType := callContractRuntimeInstance.Invoke(
+				&commonPb.Contract{
+					Name:        ContractNameTest,
+					Version:     ContractVersionTest,
+					RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+				},
+				invokeMethod,
+				nil,
+				param,
+				simContext,
+				uint64(123),
+			)
+			code := commonPb.TxStatusCode_CONTRACT_FAIL
+			if runtimeContractResult.Code == 0 {
+				code = commonPb.TxStatusCode_SUCCESS
+			}
+
+			return runtimeContractResult, specialTxType, code
+		},
+	).AnyTimes()
+}
+
+func callContract(simContext *mock.MockTxSimContext, param map[string][]byte) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
+	mockLogger := logger.GetLogger(logger.MODULE_VM)
+	callContractRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
+		"", nil, nil, mockLogger)
+
+	runtimeContractResult, specialTxType := callContractRuntimeInstance.Invoke(
+		&commonPb.Contract{
+			Name:        ContractNameTest,
+			Version:     ContractVersionTest,
+			RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		},
+		invokeMethod,
+		nil,
+		param,
+		simContext,
+		uint64(123),
+	)
+	code := commonPb.TxStatusCode_CONTRACT_FAIL
+	if runtimeContractResult.Code == 0 {
+		code = commonPb.TxStatusCode_SUCCESS
+	}
+
+	return runtimeContractResult, specialTxType, code
 }

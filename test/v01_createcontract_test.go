@@ -7,7 +7,6 @@ package test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"chainmaker.org/chainmaker/logger/v2"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 /*
@@ -93,12 +93,12 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 
-	//parameters["method"] = []byte("not existed method")
-	//result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil, parameters,
-	//	mockTxContext, uint64(123))
-	//assert.Equal(t, uint32(1), result.Code)
-	//assert.Equal(t, []byte("unknown method"), result.Result)
-	//fmt.Println(result)
+	parameters["method"] = []byte("not existed method")
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil, parameters,
+		mockTxContext, uint64(123))
+	assert.Equal(t, uint32(1), result.Code)
+	assert.Equal(t, []byte("unknown method"), result.Result)
+	fmt.Println(result)
 
 	tearDownTest()
 }

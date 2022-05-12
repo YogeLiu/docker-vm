@@ -135,9 +135,11 @@ func (r *RuntimeInstance) handlerCallContract(
 	var code common.TxStatusCode
 	result, specialTxType, code = txSimContext.CallContract(&common.Contract{Name: contractName}, invokeContract,
 		nil, callContractReq.Args, gasUsed, txSimContext.GetTx().Payload.TxType)
+	r.logger.Debugf("call contract result [%+v]", result)
 
 	if code != common.TxStatusCode_SUCCESS {
-		errMsg := "[call contract] execute error code: %s, msg: %s"
+		errMsg := fmt.Sprintf("[call contract] execute error code: %s, msg: %s", code, result.Message)
+		r.logger.Debugf("handle cross contract request failed, err: %s", errMsg)
 		r.logger.Error(errMsg)
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = result.Message
@@ -152,6 +154,7 @@ func (r *RuntimeInstance) handlerCallContract(
 
 		gasUsed, err = gas.EmitEventGasUsed(gasUsed, event)
 		if err != nil {
+			r.logger.Debugf("handle cross contract request failed, err: %s", err.Error())
 			response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 			response.SysCallMessage.Message = err.Error()
 			return response, gasUsed, specialTxType
@@ -163,6 +166,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	var callContractResponse *protogo.ContractResponse
 	callContractResponse, err = constructCallContractResponse(result, currentContractName, txSimContext)
 	if err != nil {
+		r.logger.Debugf("handle cross contract request failed, err: %s", err.Error())
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = err.Error()
 		return response, gasUsed, specialTxType
@@ -171,12 +175,15 @@ func (r *RuntimeInstance) handlerCallContract(
 	var respBytes []byte
 	respBytes, err = callContractResponse.Marshal()
 	if err != nil {
+		r.logger.Debugf("handle cross contract request failed, err: %s", err.Error())
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = err.Error()
 		return response, gasUsed, specialTxType
 	}
 
 	response.SysCallMessage.Payload[config.KeyCallContractResp] = respBytes
+	response.SysCallMessage.Code = protogo.DockerVMCode_OK
+	//response.SysCallMessage.Message = "success"
 
 	return response, gasUsed, specialTxType
 }
@@ -998,7 +1005,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	err := r.saveBytesToDisk(byteCode, contractZipPath)
 	if err != nil {
 		r.logger.Errorf("fail to save bytecode to disk: %s", err)
-		response.Response.Code = protocol.ContractSdkSignalResultFail
+		response.Response.Code = protogo.DockerVMCode_FAIL
 		response.Response.Message = err.Error()
 		return response
 	}
@@ -1008,7 +1015,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	err = r.runCmd(unzipCommand)
 	if err != nil {
 		r.logger.Errorf("fail to extract contract: %s", err)
-		response.Response.Code = protocol.ContractSdkSignalResultFail
+		response.Response.Code = protogo.DockerVMCode_FAIL
 		response.Response.Message = err.Error()
 		return response
 	}
@@ -1017,7 +1024,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	err = os.Remove(contractZipPath)
 	if err != nil {
 		r.logger.Errorf("fail to remove zipped file: %s", err)
-		response.Response.Code = protocol.ContractSdkSignalResultFail
+		response.Response.Code = protogo.DockerVMCode_FAIL
 		response.Response.Message = err.Error()
 		return response
 	}
@@ -1027,27 +1034,29 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	if err != nil {
 		r.logger.Errorf("fail to rename original file name: %s, "+
 			"please make sure contract name should be same as zipped file", err)
-		response.Response.Code = protocol.ContractSdkSignalResultFail
+		response.Response.Code = protogo.DockerVMCode_FAIL
 		response.Response.Message = err.Error()
 		return response
 	}
 
-	response.Response.Code = protocol.ContractSdkSignalResultSuccess
+	response.Response.Code = protogo.DockerVMCode_OK
 	//response.Response.Payload = map[string][]byte{
 	//	config.KeyContractFullName: []byte(contractFullName),
 	//}
-	response.Response.Result = []byte(contractFullName)
+	//response.Response.Result = []byte(contractFullName)
+	response.Response.ContractName = contractName
+	response.Response.ContractVersion = ""
 
 	if r.clientMgr.NeedSendContractByteCode() {
 		contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
 		if err != nil {
 			r.logger.Errorf("fail to load contract executable file: %s, ", err)
-			response.Response.Code = protocol.ContractSdkSignalResultFail
+			response.Response.Code = protogo.DockerVMCode_FAIL
 			response.Response.Message = err.Error()
 			return response
 		}
 
-		response.Response.Code = protocol.ContractSdkSignalResultSuccess
+		response.Response.Code = protogo.DockerVMCode_OK
 		//response.SysCallMessage.Payload = map[string][]byte{
 		//	config.KeyContractFullName: contractByteCode,
 		//}
@@ -1057,12 +1066,14 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	return response
 }
 
-func (r *RuntimeInstance) errorResult(contractResult *commonPb.ContractResult,
-	err error, errMsg string) (*commonPb.ContractResult, protocol.ExecOrderTxType) {
+func (r *RuntimeInstance) errorResult(
+	contractResult *commonPb.ContractResult,
+	err error,
+	errMsg string) (*commonPb.ContractResult, protocol.ExecOrderTxType) {
 	contractResult.Code = uint32(1)
-	if err != nil {
-		errMsg += ", " + err.Error()
-	}
+	//if err != nil {
+	//	errMsg += ", " + err.Error()
+	//}
 	contractResult.Message = errMsg
 	//r.logger.Error(errMsg)
 	return contractResult, protocol.ExecOrderTxTypeNormal
