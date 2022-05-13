@@ -1,7 +1,7 @@
 ########### RPC ###########
 rpc:
   chain_rpc_protocol: 1 # chain rpc protocol, 0 for unix domain socket, 1 for tcp
-  chain_host: 9.134.162.18 # chain tcp host
+  chain_host: 172.16.10.228 # chain tcp host
   chain_rpc_port: 22359 # chain rpc port, valid when protocol is tcp
   sandbox_rpc_port: 22459 # sandbox rpc port, valid when protocol is tcp
   max_send_msg_size: 20 # max send msg size(MB)
@@ -25,10 +25,10 @@ process:
 ########### Log ###########
 log:
   contract_engine:
-    level: "debug"
+    level: "info"
     console: true
   sandbox:
-    level: "debug"
+    level: "info"
     console: true
 
 ########### Pprof ###########
