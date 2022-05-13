@@ -278,9 +278,6 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 
 	needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
 
-	r.logger.Debugf("request group %s try to get %d processes",
-		utils.ConstructContractKey(r.contractName, r.contractVersion), needProcessNum)
-
 	var err error
 	// need more processes
 	if needProcessNum > 0 {
@@ -288,6 +285,8 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 		if controller.processWaiting {
 			return 0, nil
 		}
+		r.logger.Debugf("request group %s try to get %d processes, tx chan size: %d",
+			utils.ConstructContractKey(r.contractName, r.contractVersion), needProcessNum, len(controller.txCh))
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
@@ -303,6 +302,8 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 		if !controller.processWaiting {
 			return 0, nil
 		}
+		r.logger.Debugf("request group %s stop to waiting for processes, tx chan size: %d",
+			utils.ConstructContractKey(r.contractName, r.contractVersion), len(controller.txCh))
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
