@@ -20,13 +20,13 @@ const (
 )
 
 type ContractEngineClientMgr interface {
-	ForClient
-	ForRuntimeInstance
+	forClient
+	forRuntimeInstance
 	Start() error
 	Stop() error
 }
 
-type ForClient interface {
+type forClient interface {
 	GetTxSendCh() chan *protogo.DockerVMMessage                               // runtime instance 向Mgr中放入消息，client消费消息
 	PutEvent(event *Event)                                                    // 关闭CLIENT等事件
 	GetByteCodeRespSendCh() chan *protogo.DockerVMMessage                     // runtime instance 向Mgr中放入消息，client消费消息
@@ -34,7 +34,8 @@ type ForClient interface {
 	GetVMConfig() *config.DockerVMConfig                                      // 获取VM配置
 }
 
-type ForRuntimeInstance interface {
+// TODO: rename
+type forRuntimeInstance interface {
 	PutTxRequestWithNotify(
 		txRequest *protogo.DockerVMMessage,
 		chainId string,

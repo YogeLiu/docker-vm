@@ -7,6 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
+	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strconv"
+
 	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
@@ -14,10 +23,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
-	"context"
-	"encoding/binary"
-	"errors"
-	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -25,10 +30,6 @@ import (
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/docker/go-connections/nat"
 	"github.com/mitchellh/mapstructure"
-	"io"
-	"os"
-	"path/filepath"
-	"strconv"
 )
 
 const (
@@ -40,13 +41,17 @@ const (
 )
 
 var (
+	// TODO: 独立部署之后移除
 	imageName = fmt.Sprintf("chainmakerofficial/chainmaker-vm-docker-go:%s", imageVersion)
 )
 
+// TODO: rename -> VMInstanceManager
 type DockerManager struct {
-	chainId               string
-	mgrLogger             protocol.Logger
-	ctx                   context.Context
+	chainId   string
+	mgrLogger protocol.Logger
+	// TODO: 不需要docker manager拉起后可以移除
+	ctx context.Context
+	// TODO: contractEngine 容器手动启动，不需要docker manager拉起
 	dockerAPIClient       *client.Client                     // docker client
 	clientMgr             interfaces.ContractEngineClientMgr // grpc client
 	runtimeService        *rpc.RuntimeService                //
@@ -68,7 +73,8 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 	}
 
 	// init docker manager logger
-	dockerManagerLogger := logger.GetLoggerByChain("[Docker Manager]", chainId)
+	// TODO: 移除logger库引用, 统一使用VM传递过来的logger
+	dockerManagerLogger := logger.GetLoggerByChain("[VM]", chainId)
 	dockerManagerLogger.Debugf("init docker manager")
 
 	// validate and init settings
