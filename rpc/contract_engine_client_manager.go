@@ -166,7 +166,7 @@ func (cm *ContractEngineClientManager) GetByteCodeRespChLen() int {
 	return len(cm.byteCodeRespCh)
 }
 
-// === ForClient ===
+// === forClient ===
 
 func (cm *ContractEngineClientManager) GetTxSendCh() chan *protogo.DockerVMMessage {
 	return cm.txSendCh
