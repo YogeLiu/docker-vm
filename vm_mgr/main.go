@@ -42,7 +42,7 @@ func main() {
 	// init docker manager
 	go manager.InitContainer()
 
-	managerLogger.Debugf("docker manager init...")
+	managerLogger.Debugf("docker manager initialized")
 
 	// infinite loop, finished when call stopVM outside
 	for i := 0; ; i++ {

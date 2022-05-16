@@ -36,10 +36,10 @@ func TestNewProcessManager(t *testing.T) {
 	log := logger.NewTestDockerLogger()
 
 	type args struct {
-		maxProcessNum  int
-		rate           float64
-		isCrossManager bool
-		userManager    interfaces.UserManager
+		maxProcessNum int
+		rate          float64
+		isOrigManager bool
+		userManager   interfaces.UserManager
 	}
 	tests := []struct {
 		name string
@@ -49,15 +49,15 @@ func TestNewProcessManager(t *testing.T) {
 		{
 			name: "TestNewProcessManager",
 			args: args{
-				maxProcessNum:  maxOriginalProcessNum,
-				rate:           releaseRate,
-				isCrossManager: false,
-				userManager:    userManager,
+				maxProcessNum: maxOriginalProcessNum,
+				rate:          releaseRate,
+				isOrigManager: true,
+				userManager:   userManager,
 			},
 			want: &ProcessManager{
 				maxProcessNum:        maxOriginalProcessNum,
 				releaseRate:          releaseRate,
-				isCrossManager:       false,
+				isOrigManager:        true,
 				userManager:          userManager,
 				logger:               log,
 				idleProcesses:        idleProcesses,
@@ -70,7 +70,7 @@ func TestNewProcessManager(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewProcessManager(tt.args.maxProcessNum, tt.args.rate, tt.args.isCrossManager, tt.args.userManager)
+			got := NewProcessManager(tt.args.maxProcessNum, tt.args.rate, tt.args.isOrigManager, tt.args.userManager)
 			got.logger = log
 			got.idleProcesses = idleProcesses
 			got.busyProcesses = busyProcesses

@@ -138,7 +138,7 @@ func TestRequestGroup_GetTxCh(t *testing.T) {
 		group *RequestGroup
 	}
 	type args struct {
-		isCross bool
+		isOrig bool
 	}
 	tests := []struct {
 		name   string
@@ -151,7 +151,7 @@ func TestRequestGroup_GetTxCh(t *testing.T) {
 			fields: fields{
 				group: requestGroup,
 			},
-			args: args{isCross: false},
+			args: args{isOrig: true},
 			want: testOrigTxCh,
 		},
 		{
@@ -159,14 +159,14 @@ func TestRequestGroup_GetTxCh(t *testing.T) {
 			fields: fields{
 				group: requestGroup,
 			},
-			args: args{isCross: true},
+			args: args{isOrig: false},
 			want: testCrossTxCh,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := tt.fields.group
-			if got := r.GetTxCh(tt.args.isCross); got != tt.want {
+			if got := r.GetTxCh(tt.args.isOrig); got != tt.want {
 				t.Errorf("GetTxCh() = %v, wantNum %v", got, tt.want)
 			}
 		})

@@ -34,9 +34,9 @@ type ProcessManager struct {
 	logger *zap.SugaredLogger // process scheduler logger
 	lock   sync.RWMutex       // process scheduler lock
 
-	maxProcessNum  int     // max process num
-	releaseRate    float64 // the minimum rate of available process
-	isCrossManager bool    // cross process manager or original process manager
+	maxProcessNum int     // max process num
+	releaseRate   float64 // the minimum rate of available process
+	isOrigManager bool    // cross process manager or original process manager
 
 	idleProcesses        *linkedhashmap.Map            // idle processes linked hashmap (process name -> idle Process)
 	busyProcesses        map[string]interfaces.Process // busy process map (process name -> busy Process)
@@ -51,14 +51,14 @@ type ProcessManager struct {
 }
 
 // NewProcessManager returns new process manager
-func NewProcessManager(maxProcessNum int, rate float64, isCrossManager bool, userManager interfaces.UserManager) *ProcessManager {
+func NewProcessManager(maxProcessNum int, rate float64, isOrigManager bool, userManager interfaces.UserManager) *ProcessManager {
 	return &ProcessManager{
 		logger: logger.NewDockerLogger(logger.MODULE_PROCESS_MANAGER),
 		lock:   sync.RWMutex{},
 
-		maxProcessNum:  maxProcessNum,
-		releaseRate:    rate,
-		isCrossManager: isCrossManager,
+		maxProcessNum: maxProcessNum,
+		releaseRate:   rate,
+		isOrigManager: isOrigManager,
 
 		idleProcesses:        linkedhashmap.New(),
 		busyProcesses:        make(map[string]interfaces.Process),
@@ -380,7 +380,7 @@ func (pm *ProcessManager) createNewProcess(contractName, contractVersion, proces
 
 	// new process and start
 	var process interfaces.Process
-	process = NewProcess(user, contractName, contractVersion, processName, pm, pm.requestScheduler, pm.isCrossManager)
+	process = NewProcess(user, contractName, contractVersion, processName, pm, pm.requestScheduler, pm.isOrigManager)
 	go process.Start()
 
 	return process, nil
@@ -611,13 +611,16 @@ func (pm *ProcessManager) closeRequestGroup(contractName, contractVersion string
 	)
 }
 
+// sendProcessReadyResp sends process ready resp to request group
 func (pm *ProcessManager) sendProcessReadyResp(processNum int, toWaiting bool, contractName, contractVersion string) error {
+
 	group, ok := pm.requestScheduler.GetRequestGroup(contractName, contractVersion)
 	if !ok {
 		return fmt.Errorf("failed to get request group, contract name: %s, contract version: %s", contractName, contractVersion)
 	}
+
 	if err := group.PutMsg(&messages.GetProcessRespMsg{
-		IsCross:    pm.isCrossManager,
+		IsOrig:     pm.isOrigManager,
 		ToWaiting:  toWaiting,
 		ProcessNum: processNum,
 	}); err != nil {

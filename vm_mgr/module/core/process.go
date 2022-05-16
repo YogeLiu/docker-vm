@@ -71,8 +71,8 @@ type Process struct {
 	user       interfaces.User
 	cmd        *exec.Cmd
 
-	processState   processState
-	isCrossProcess bool
+	processState  processState
+	isOrigProcess bool
 
 	eventCh    chan interface{}
 	cmdReadyCh chan bool
@@ -96,7 +96,7 @@ type Process struct {
 
 // NewProcess new process, process working on main contract which is not called cross contract
 func NewProcess(user interfaces.User, contractName, contractVersion, processName string,
-	manager interfaces.ProcessManager, scheduler interfaces.RequestScheduler, isCrossProcess bool) *Process {
+	manager interfaces.ProcessManager, scheduler interfaces.RequestScheduler, isOrigProcess bool) *Process {
 
 	process := &Process{
 		processName: processName,
@@ -107,8 +107,8 @@ func NewProcess(user interfaces.User, contractName, contractVersion, processName
 		cGroupPath: filepath.Join(security.CGroupRoot, security.ProcsFile),
 		user:       user,
 
-		processState:   created,
-		isCrossProcess: isCrossProcess,
+		processState:  created,
+		isOrigProcess: isOrigProcess,
 
 		eventCh:    make(chan interface{}, processEventChSize),
 		cmdReadyCh: make(chan bool, 1),
@@ -126,7 +126,7 @@ func NewProcess(user interfaces.User, contractName, contractVersion, processName
 
 	process.requestGroup, _ = scheduler.GetRequestGroup(contractName, contractVersion)
 
-	process.txCh = process.requestGroup.GetTxCh(isCrossProcess)
+	process.txCh = process.requestGroup.GetTxCh(isOrigProcess)
 
 	return process
 }
@@ -587,7 +587,7 @@ func (p *Process) resetContext(msg *messages.ChangeSandboxReqMsg) error {
 	}
 
 	// reset tx chan
-	p.txCh = p.requestGroup.GetTxCh(p.isCrossProcess)
+	p.txCh = p.requestGroup.GetTxCh(p.isOrigProcess)
 	return nil
 }
 

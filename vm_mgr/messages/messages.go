@@ -15,8 +15,8 @@ type GetProcessReqMsg struct {
 
 // GetProcessRespMsg is the get process request msg (process manager -> request group)
 type GetProcessRespMsg struct {
-	IsCross    bool
-	ToWaiting  bool
+	IsOrig    bool
+	ToWaiting bool
 	ProcessNum int
 }
 

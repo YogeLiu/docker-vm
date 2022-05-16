@@ -189,7 +189,7 @@ func TestProcess_GetUser(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -225,7 +225,7 @@ func TestProcess_GetUser(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -320,7 +320,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -357,7 +357,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -388,7 +388,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -424,7 +424,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -455,7 +455,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -487,7 +487,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -518,7 +518,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -554,7 +554,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -585,7 +585,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -617,7 +617,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -648,7 +648,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -684,7 +684,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -715,7 +715,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -751,7 +751,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -782,7 +782,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -813,7 +813,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -842,7 +842,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -874,7 +874,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -905,7 +905,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -936,7 +936,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -965,7 +965,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1000,7 +1000,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -1029,7 +1029,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1065,7 +1065,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -1096,7 +1096,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1132,7 +1132,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -1161,7 +1161,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1197,7 +1197,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -1228,7 +1228,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1259,7 +1259,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -1288,7 +1288,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1319,7 +1319,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -1348,7 +1348,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1379,7 +1379,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -1408,7 +1408,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1439,7 +1439,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,
@@ -1468,7 +1468,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		user             interfaces.User
 //		cmd              *exec.Cmd
 //		processState     processState
-//		isCrossProcess   bool
+//		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
 //		exitCh           chan *exitErr
@@ -1503,7 +1503,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
 //				processState:     tt.fields.processState,
-//				isCrossProcess:   tt.fields.isCrossProcess,
+//				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
 //				exitCh:           tt.fields.exitCh,

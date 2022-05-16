@@ -53,8 +53,8 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	maxCrossProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum * protocol.CallContractDepth
 	releaseRate := config.DockerVMConfig.GetReleaseRate()
 
-	origProcessManager := core.NewProcessManager(maxOriginalProcessNum, releaseRate, false, usersManager)
-	crossProcessManager := core.NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
+	origProcessManager := core.NewProcessManager(maxOriginalProcessNum, releaseRate, true, usersManager)
+	crossProcessManager := core.NewProcessManager(maxCrossProcessNum, releaseRate, false, usersManager)
 
 	// start original process manager
 	origProcessManager.Start()

@@ -47,13 +47,13 @@ const (
 	contractReady                        // contract is ready
 )
 
-// TxType is the type of tx request
-type TxType int
-
-const (
-	origTx  TxType = iota // original tx, send by chain, depth = 0
-	crossTx               // cross contract tx, send by sandbox, invoked by contract, depth > 0
-)
+//// TxType is the type of tx request
+//type TxType int
+//
+//const (
+//	origTx  TxType = iota // original tx, send by chain, depth = 0
+//	crossTx               // cross contract tx, send by sandbox, invoked by contract, depth > 0
+//)
 
 // txController handle the tx request chan and process status
 type txController struct {
@@ -170,12 +170,13 @@ func (r *RequestGroup) GetContractPath() string {
 }
 
 // GetTxCh returns tx chan
-func (r *RequestGroup) GetTxCh(isCross bool) chan *protogo.DockerVMMessage {
+func (r *RequestGroup) GetTxCh(isOrig bool) chan *protogo.DockerVMMessage {
 
-	if isCross {
-		return r.crossTxController.txCh
+	if isOrig {
+		return r.origTxController.txCh
 	}
-	return r.origTxController.txCh
+	return r.crossTxController.txCh
+
 }
 
 // handleTxReq handle all tx request
@@ -211,9 +212,9 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 	// see if we should get new processes, if so, try to get
 	case contractReady:
 		if req.CrossContext.CurrentDepth == 0 || !utils.HasUsed(req.CrossContext.CrossInfo) {
-			_, err = r.getProcesses(origTx)
+			_, err = r.getProcesses(true)
 		} else {
-			_, err = r.getProcesses(crossTx)
+			_, err = r.getProcesses(false)
 		}
 		if err != nil {
 			return fmt.Errorf("failed to get processes, %v", err)
@@ -261,24 +262,18 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 }
 
 // getProcesses try to get processes from process manager
-func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
+func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 	var controller *txController
 	var reqNumPerProcess int
-	var isOrig bool
 
 	// get corresponding controller and request number per process
-	switch txType {
-	case origTx:
+	if isOrig {
 		controller = r.origTxController
 		reqNumPerProcess = reqNumPerOrigProcess
-		isOrig = true
-
-	case crossTx:
+	} else {
 		controller = r.crossTxController
 		reqNumPerProcess = reqNumPerCrossProcess
-	default:
-		return 0, fmt.Errorf("unknown tx type, txType: %+v", txType)
 	}
 
 	// calculate how many processes it needs:
@@ -332,11 +327,11 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 func (r *RequestGroup) handleContractReadyResp() {
 
 	r.contractState = contractReady
-	_, err := r.getProcesses(origTx)
+	_, err := r.getProcesses(true)
 	if err != nil {
 		r.logger.Errorf("failed to get orig processes, %v", err)
 	}
-	_, err = r.getProcesses(crossTx)
+	_, err = r.getProcesses(false)
 	if err != nil {
 		r.logger.Errorf("failed to get cross processes, %v", err)
 	}
@@ -347,20 +342,16 @@ func (r *RequestGroup) handleProcessReadyResp(msg *messages.GetProcessRespMsg) e
 
 	r.logger.Debugf("handle process ready resp: %+v", msg)
 
-	var txType TxType
-
 	// restore the state of request group to idle
-	if msg.IsCross {
-		r.updateControllerState(false, msg.ToWaiting)
-		txType = crossTx
-	} else {
+	if msg.IsOrig {
 		r.updateControllerState(true, msg.ToWaiting)
-		txType = origTx
+	} else {
+		r.updateControllerState(false, msg.ToWaiting)
 	}
 
 	if !msg.ToWaiting {
 		// try to get processes from process manager
-		if _, err := r.getProcesses(txType); err != nil {
+		if _, err := r.getProcesses(msg.IsOrig); err != nil {
 			return fmt.Errorf("failed to handle contract ready resp, %v", err)
 		}
 	}
