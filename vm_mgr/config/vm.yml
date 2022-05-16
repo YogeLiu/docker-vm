@@ -42,4 +42,4 @@ pprof:
 
 ########### Contract ###########
 contract:
-  max_file_num: 1024
+  max_file_num: 102400

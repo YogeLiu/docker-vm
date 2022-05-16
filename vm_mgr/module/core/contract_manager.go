@@ -24,6 +24,7 @@ import (
 const (
 	ContractsDir               = "contracts" // ContractsDir dir save executable contract
 	contractManagerEventChSize = 64
+	// TODO： sizePerContract = 10M
 )
 
 // ContractManager manage all contracts with LRU cache
@@ -56,6 +57,9 @@ func (cm *ContractManager) SetScheduler(scheduler interfaces.RequestScheduler) {
 
 // Start contract manager, listen event chan
 func (cm *ContractManager) Start() {
+
+	cm.logger.Debugf("start contract manager routine")
+
 	go func() {
 		for {
 			select {
@@ -227,6 +231,7 @@ func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion
 	}
 
 	// get request group
+	// TODO：交给request scheduler处理
 	requestGroup, ok := cm.scheduler.GetRequestGroup(contractName, contractVersion)
 	if !ok {
 		return fmt.Errorf("failed to get request group")

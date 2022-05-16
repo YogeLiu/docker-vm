@@ -115,11 +115,14 @@ func NewRequestGroup(
 // Start request manager, listen event chan,
 // event chan req types: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (r *RequestGroup) Start() {
+
+	r.logger.Debugf("start request group routine")
+
 	go func() {
 		for {
 			select {
 			case msg := <-r.eventCh:
-				r.logger.Debugf("receive message from event channel, msg: [%+v]", msg)
+				r.logger.Debugf("recv msg from event channel, msg: [%+v]", msg)
 				switch msg.(type) {
 				case *protogo.DockerVMMessage:
 					m := msg.(*protogo.DockerVMMessage)
@@ -280,6 +283,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 	// calculate how many processes it needs:
 	// (currProcessNum + needProcessNum) * reqNumPerProcess = processingReqNum + inQueueReqNum
+
 	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
 	currChSize := len(controller.txCh)
 

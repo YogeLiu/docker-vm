@@ -48,9 +48,11 @@ func (u *UserManager) BatchCreateUsers() error {
 
 	var err error
 	var wg sync.WaitGroup
-	batchCreateUsersThreadNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
-	createUserNumPerThread := protocol.CallContractDepth + 1                         // user num per thread
-	totalNum := batchCreateUsersThreadNum * createUserNumPerThread
+
+	origProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
+	maxDepth := protocol.CallContractDepth + 1                            // user num per thread
+	totalNum := origProcessNum * maxDepth                                 // total user num
+
 	startTime := time.Now()
 	createdUserNum := atomic.NewInt64(0)
 	for i := 0; i < totalNum; i++ {
@@ -131,9 +133,9 @@ func (u *UserManager) ReleaseUsers() error {
 
 	var err error
 	var wg sync.WaitGroup
-	batchCreateUsersThreadNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
-	createUserNumPerThread := protocol.CallContractDepth + 1                         // user num per thread
-	totalNum := batchCreateUsersThreadNum * createUserNumPerThread
+	origProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
+	maxDepth := protocol.CallContractDepth + 1                            // user num per thread
+	totalNum := origProcessNum * maxDepth                                 // total user num
 
 	for i := 0; i < totalNum; i++ {
 		wg.Add(1)

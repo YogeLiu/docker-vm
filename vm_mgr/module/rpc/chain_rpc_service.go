@@ -87,11 +87,11 @@ func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerV
 // recvMsgRoutine handles messages received from stream
 // message types include: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (s *ChainRPCService) recvMsgRoutine() {
-	s.logger.Debugf("start receive_msg_routine...")
+	s.logger.Debugf("start recv msg routine...")
 	for {
 		select {
 		case <-s.stopRecvCh:
-			s.logger.Debugf("stop receive_msg_routine...")
+			s.logger.Debugf("stop recv msg routine...")
 			s.wg.Done()
 			return
 		default:
@@ -103,6 +103,7 @@ func (s *ChainRPCService) recvMsgRoutine() {
 			}
 			switch msg.Type {
 			case protogo.DockerVMType_TX_REQUEST, protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+				s.logger.Debugf("chain -> contract engine, put msg [%s] into request scheduler", msg.TxId)
 				err = s.scheduler.PutMsg(msg)
 				if err != nil {
 					s.logger.Errorf("fail to put msg into request scheduler chan: [%s]", err)
@@ -117,13 +118,13 @@ func (s *ChainRPCService) recvMsgRoutine() {
 // sendMsgRoutine send messages (<- eventCh) to chain
 // message types include: DockerVMType_GET_BYTECODE_REQUEST and DockerVMType_ERROR
 func (s *ChainRPCService) sendMsgRoutine() {
-	s.logger.Infof("start send_msg_routine...")
+	s.logger.Infof("start send msg routine")
 	var err error
 	for {
 		select {
 		case <-s.stopSendCh:
 			s.wg.Done()
-			s.logger.Debugf("stop send_msg_routine...")
+			s.logger.Debugf("stop send msg routine")
 			return
 
 		case msg := <-s.eventCh:
@@ -136,18 +137,6 @@ func (s *ChainRPCService) sendMsgRoutine() {
 				s.logger.Debugf("contract engine -> chain, send err msg, txId: [%s], chan len: [%d]", msg.TxId, len(s.eventCh))
 				err = s.sendMsg(msg)
 
-			//case protogo.DockerVMType_INIT:
-			//	s.logger.Debugf("contract engine -> sandbox, send init msg, txId: [%s], chan len: [%d]", msg.TxId, len(s.eventCh))
-			//	err = s.sendMsg(msg)
-			//
-			//case protogo.DockerVMType_INVOKE:
-			//	s.logger.Debugf("contract engine -> sandbox, send invoke msg, txId: [%s], chan len: [%d]", msg.TxId, len(s.eventCh))
-			//	err = s.sendMsg(msg)
-			//
-			//case protogo.DockerVMType_CALL_CONTRACT_RESPONSE:
-			//	s.logger.Debugf("contract engine -> sandbox, send call contract response, txId: [%s], chan len: [%d]", msg.TxId, len(s.eventCh))
-			//	err = s.sendMsg(msg)
-
 			default:
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)
 			}
@@ -155,7 +144,7 @@ func (s *ChainRPCService) sendMsgRoutine() {
 
 		if err != nil {
 			errStatus, _ := status.FromError(err)
-			s.logger.Errorf("fail to send msg: err: %s, err massage: %s, err code: %s", err,
+			s.logger.Errorf("fail to send msg: err: %s, err msg: %s, err code: %s", err,
 				errStatus.Message(), errStatus.Code())
 			if errStatus.Code() != codes.ResourceExhausted {
 				close(s.stopRecvCh)
@@ -170,15 +159,15 @@ func (s *ChainRPCService) sendMsgRoutine() {
 func (s *ChainRPCService) recvMsg() (*protogo.DockerVMMessage, error) {
 	msg, err := s.stream.Recv()
 	if err != nil {
-		s.logger.Errorf("receive err %s, existed...", err)
+		s.logger.Errorf("recv err %s, existed", err)
 		return nil, err
 	}
-	s.logger.Debugf("receive msg [%s]", msg)
+	s.logger.Debugf("recv msg [%s]", msg)
 	return msg, nil
 }
 
 // sendMsg sends messages to chainmaker
 func (s *ChainRPCService) sendMsg(msg *protogo.DockerVMMessage) error {
-	s.logger.Debugf("send message [%s]", msg)
+	s.logger.Debugf("send msg [%s]", msg)
 	return s.stream.Send(msg)
 }

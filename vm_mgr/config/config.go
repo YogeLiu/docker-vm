@@ -198,3 +198,10 @@ func (c *conf) GetReleaseRate() float64 {
 func (c *conf) GetMaxUserNum() int {
 	return c.Process.MaxOriginalProcessNum * (protocol.CallContractDepth + 1)
 }
+
+// TODO: ready timeout 配置改名
+// TODO：busy timeout 配置改名， 改为8s
+// TODO： 配置统一为毫秒，是否可以写单位
+// TODO： rpc server数量
+// 独立部署，同一个，只能和链的通信方式保持一致(也可以动态配置)
+// TODO：max_file_num改为max_disk_size

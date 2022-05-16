@@ -40,7 +40,7 @@ type RequestScheduler struct {
 
 	requestGroups       map[string]interfaces.RequestGroup // contractName#contractVersion
 	chainRPCService     interfaces.ChainRPCService         // chain rpc service
-	contractManager     *ContractManager                   // contract manager
+	contractManager     *ContractManager                   // contract manager // TODO
 	origProcessManager  interfaces.ProcessManager          // manager for original process
 	crossProcessManager interfaces.ProcessManager          // manager for cross process
 }
@@ -71,7 +71,7 @@ func NewRequestScheduler(
 // Start starts request scheduler
 func (s *RequestScheduler) Start() {
 
-	s.logger.Debugf("start request scheduler")
+	s.logger.Debugf("start request scheduler routine")
 
 	go func() {
 		for {
@@ -90,10 +90,10 @@ func (s *RequestScheduler) Start() {
 					if err := s.handleTxReq(msg); err != nil {
 						s.logger.Errorf("failed to handle tx request, %v", err)
 					}
-				case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
-					if err := s.handleTxReq(msg); err != nil {
-						s.logger.Errorf("failed to handle call contract request, %v", err)
-					}
+				//case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
+				//	if err := s.handleTxReq(msg); err != nil {
+				//		s.logger.Errorf("failed to handle call contract request, %v", err)
+				//	}
 				case protogo.DockerVMType_ERROR:
 					if err := s.handleErrResp(msg); err != nil {
 						s.logger.Errorf("failed to handle error response, %v", err)
@@ -125,6 +125,7 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 	return nil
 }
 
+// TODO： GetRequestGroup外部并发问题
 // GetRequestGroup returns request group
 func (s *RequestScheduler) GetRequestGroup(contractName, contractVersion string) (interfaces.RequestGroup, bool) {
 

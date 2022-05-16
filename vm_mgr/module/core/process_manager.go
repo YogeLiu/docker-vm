@@ -75,6 +75,9 @@ func NewProcessManager(maxProcessNum int, rate float64, isOrigManager bool, user
 // Start process manager, listen event chan and clean timer,
 // types: messages.GetProcessReqMsg, messages.SandboxExitRespMsg and cleanIdleProcesses timer
 func (pm *ProcessManager) Start() {
+
+	pm.logger.Debugf("start process manager routine")
+
 	go func() {
 		for {
 			select {
@@ -280,6 +283,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 	}
 
 	// no available process, put to waiting request group
+	// TODO： 如果msg.ProcessNum-needProcessNum>0，不再加入waitingRequestGroups
 	if needProcessNum > 0 {
 		group := &messages.RequestGroupKey{
 			ContractName:    msg.ContractName,
@@ -593,6 +597,7 @@ func (pm *ProcessManager) removeFromProcessGroup(contractName, contractVersion, 
 	delete(pm.processGroups[groupKey], processName)
 
 	// remove a group in process groups
+	// TODO: 跨合约调用删除不统一
 	if len(pm.processGroups[groupKey]) == 0 {
 		delete(pm.processGroups, groupKey)
 		if err := pm.closeRequestGroup(contractName, contractVersion); err != nil {

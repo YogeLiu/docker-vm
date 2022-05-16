@@ -22,7 +22,6 @@ type SandboxRPCService struct {
 	logger          *zap.SugaredLogger        // sandbox rpc service logger
 	origProcessMgr  interfaces.ProcessManager // process manager
 	crossProcessMgr interfaces.ProcessManager // process manager
-
 }
 
 // NewSandboxRPCService returns a sandbox rpc service
@@ -46,7 +45,7 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			s.logger.Errorf("fail to receive msg: %s", err)
+			s.logger.Errorf("fail to recv msg: %s", err)
 			return err
 		}
 		var process interfaces.Process

@@ -149,6 +149,9 @@ func (p *Process) PutMsg(msg interface{}) error {
 
 // Start process, listen channels and exec cmd
 func (p *Process) Start() {
+
+	p.logger.Debugf("start process")
+
 	go p.listenProcess()
 	p.startProcess()
 }
@@ -288,8 +291,8 @@ func (p *Process) launchProcess() *exitErr {
 
 // listenProcess listen to eventCh, txCh, respCh and timer
 func (p *Process) listenProcess() {
-	for {
 
+	for {
 		if p.processState == idle {
 			select {
 			case msg := <-p.eventCh:
@@ -632,7 +635,7 @@ func (p *Process) returnErrorResponse(txId string, errMsg string) {
 
 // sendMsg sends messages to sandbox
 func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
-	p.logger.Debugf("send message [%s] process [%s]", msg, p.processName)
+	p.logger.Debugf("send msg [%s] to process [%s]", msg, p.processName)
 	return p.stream.Send(msg)
 }
 

@@ -72,20 +72,6 @@ func RunCmd(command string) error {
 	return nil
 }
 
-func ProcessLoggerName(processName string) string {
-	loggerName := "[ " + processName + " ]"
-	return loggerName
-}
-
-//func GetTestLogPath() string {
-//	basePath, _ := os.Getwd()
-//	return basePath + config.TestPath
-//}
-
-//func GetTestLogHandler() *zap.SugaredLogger {
-//	return logger.NewTestDockerLogger(logger.MODULE_PROCESS)
-//}
-
 // ConstructContractKey contractName#contractVersion
 func ConstructContractKey(contractName, contractVersion string) string {
 	var sb strings.Builder
