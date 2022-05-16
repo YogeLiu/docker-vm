@@ -34,18 +34,22 @@ func NewUser(id int) *User {
 	}
 }
 
+// GetUid returns user id
 func (u *User) GetUid() int {
 	return u.Uid
 }
 
+// GetGid returns group id
 func (u *User) GetGid() int {
 	return u.Gid
 }
 
+// GetSockPath returns sock path
 func (u *User) GetSockPath() string {
 	return u.SockPath
 }
 
+// GetUserName returns user name
 func (u *User) GetUserName() string {
 	return u.UserName
 }

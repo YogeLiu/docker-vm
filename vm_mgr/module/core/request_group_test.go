@@ -12,6 +12,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"path/filepath"
 	"reflect"
@@ -27,7 +28,7 @@ func TestNewRequestGroup(t *testing.T) {
 
 	testContractName := "testContractName"
 	testContractVersion := "1.0.0"
-	eventCh := make(chan *protogo.DockerVMMessage, requestGroupEventChSize)
+	eventCh := make(chan interface{}, requestGroupEventChSize)
 	stopCh := make(chan struct{})
 	origTxCh := make(chan *protogo.DockerVMMessage, origTxChSize)
 	crossTxCh := make(chan *protogo.DockerVMMessage, crossTxChSize)
@@ -283,7 +284,7 @@ func TestRequestGroup_getProcesses(t *testing.T) {
 		group *RequestGroup
 	}
 	type args struct {
-		txType TxType
+		isOrig bool
 	}
 	tests := []struct {
 		name      string
@@ -298,7 +299,7 @@ func TestRequestGroup_getProcesses(t *testing.T) {
 			fields: fields{
 				group: requestGroup,
 			},
-			args:      args{txType: origTx},
+			args:      args{isOrig: true},
 			wantNum:   1,
 			wantState: true,
 			wantErr:   false,
@@ -308,38 +309,38 @@ func TestRequestGroup_getProcesses(t *testing.T) {
 			fields: fields{
 				group: requestGroup,
 			},
-			args:      args{txType: crossTx},
+			args:      args{isOrig: false},
 			wantNum:   0,
 			wantState: false,
 			wantErr:   false,
 		},
-		{
-			name: "TestRequestGroup_getProcesses_unknown_txtype",
-			fields: fields{
-				group: requestGroup,
-			},
-			args:      args{txType: 3},
-			wantNum:   0,
-			wantState: false,
-			wantErr:   true,
-		},
+		//{
+		//	name: "TestRequestGroup_getProcesses_unknown_txtype",
+		//	fields: fields{
+		//		group: requestGroup,
+		//	},
+		//	args:      args{isOrig: 3},
+		//	wantNum:   0,
+		//	wantState: false,
+		//	wantErr:   true,
+		//},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := tt.fields.group
-			num, err := r.getProcesses(tt.args.txType)
+			num, err := r.getProcesses(tt.args.isOrig)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getProcesses() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if num != tt.wantNum {
 				t.Errorf("getProcesses() got = %v, wantNum %v", num, tt.wantNum)
 			}
-			if tt.args.txType == origTx {
+			if tt.args.isOrig {
 				if r.origTxController.processWaiting != tt.wantState {
 					t.Errorf("getProcesses() got = %v, wantState %v",
 						r.origTxController.processWaiting, tt.wantState)
 				}
-			} else if tt.args.txType == crossTx {
+			} else {
 				if r.crossTxController.processWaiting != tt.wantState {
 					t.Errorf("getProcesses() got = %v, wantState %v",
 						r.crossTxController.processWaiting, tt.wantState)
@@ -432,7 +433,8 @@ func TestRequestGroup_handleProcessReadyResp(t *testing.T) {
 		group *RequestGroup
 	}
 	type args struct {
-		txType TxType
+		isOrig    bool
+		toWaiting bool
 	}
 	tests := []struct {
 		name      string
@@ -446,7 +448,7 @@ func TestRequestGroup_handleProcessReadyResp(t *testing.T) {
 			fields: fields{
 				group: requestGroup,
 			},
-			args:      args{txType: origTx},
+			args:      args{isOrig: true, toWaiting: true},
 			wantState: true,
 			wantErr:   false,
 		},
@@ -455,33 +457,37 @@ func TestRequestGroup_handleProcessReadyResp(t *testing.T) {
 			fields: fields{
 				group: requestGroup,
 			},
-			args:      args{txType: crossTx},
+			args:      args{isOrig: false, toWaiting: false},
 			wantState: false,
 			wantErr:   false,
 		},
-		{
-			name: "TestRequestGroup_handleProcessReadyResp_unknown_txtype",
-			fields: fields{
-				group: requestGroup,
-			},
-			args:      args{txType: 3},
-			wantState: false,
-			wantErr:   true,
-		},
+		//{
+		//	name: "TestRequestGroup_handleProcessReadyResp_unknown_txtype",
+		//	fields: fields{
+		//		group: requestGroup,
+		//	},
+		//	args:      args{isOrig: 3},
+		//	wantState: false,
+		//	wantErr:   true,
+		//},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := tt.fields.group
-			err := r.handleProcessReadyResp(tt.args.txType)
+			err := r.handleProcessReadyResp(&messages.GetProcessRespMsg{
+				IsOrig:     tt.args.isOrig,
+				ToWaiting:  tt.args.toWaiting,
+				ProcessNum: 0,
+			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getProcesses() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if tt.args.txType == origTx {
+			if tt.args.isOrig {
 				if r.origTxController.processWaiting != tt.wantState {
 					t.Errorf("getProcesses() got = %v, wantState %v",
 						r.origTxController.processWaiting, tt.wantState)
 				}
-			} else if tt.args.txType == crossTx {
+			} else {
 				if r.crossTxController.processWaiting != tt.wantState {
 					t.Errorf("getProcesses() got = %v, wantState %v",
 						r.crossTxController.processWaiting, tt.wantState)
@@ -500,8 +506,8 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 	}
 	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil,
 		nil, cMgr, &RequestScheduler{
-			lock:                sync.RWMutex{},
-			eventCh:             make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+			lock:    sync.RWMutex{},
+			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
 		})
 	log := logger.NewTestDockerLogger()
 	requestGroup.logger = log
@@ -511,14 +517,14 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 	}
 
 	type args struct {
-		req *protogo.DockerVMMessage
+		req   *protogo.DockerVMMessage
 		state contractState
 	}
 
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name    string
+		fields  fields
+		args    args
 		wantErr bool
 	}{
 		{
@@ -635,8 +641,8 @@ func TestRequestGroup_putTxReqToCh(t *testing.T) {
 	log := logger.NewTestDockerLogger()
 	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil,
 		nil, nil, &RequestScheduler{
-			lock:                sync.RWMutex{},
-			eventCh:             make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+			lock:    sync.RWMutex{},
+			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
 		})
 	requestGroup.logger = log
 
@@ -649,9 +655,9 @@ func TestRequestGroup_putTxReqToCh(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name    string
+		fields  fields
+		args    args
 		wantErr bool
 	}{
 		{

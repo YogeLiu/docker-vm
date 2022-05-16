@@ -289,19 +289,18 @@ func (p *Process) launchProcess() *exitErr {
 // listenProcess listen to eventCh, txCh, respCh and timer
 func (p *Process) listenProcess() {
 	for {
+
 		if p.processState == idle {
 			select {
 			case msg := <-p.eventCh:
 				switch msg.(type) {
 
-				// only when [idle]
 				case *messages.ChangeSandboxReqMsg:
 					m, _ := msg.(*messages.ChangeSandboxReqMsg)
 					if err := p.handleChangeSandboxReq(m); err != nil {
 						p.logger.Errorf("failed to handle change sandbox request, %v", err)
 					}
 
-				// only when [idle]
 				case *messages.CloseSandboxReqMsg:
 					if err := p.handleCloseSandboxReq(); err != nil {
 						p.logger.Errorf("failed to handle close sandbox request, %v", err)
@@ -311,9 +310,10 @@ func (p *Process) listenProcess() {
 			default:
 				break
 			}
+
 		} else if p.processState == busy {
 			select {
-			// when [busy]
+
 			case resp := <-p.respCh:
 				if err := p.handleTxResp(resp); err != nil {
 					p.logger.Warnf("failed to handle tx response, %v", err)
@@ -326,7 +326,7 @@ func (p *Process) listenProcess() {
 
 		if p.processState == ready || p.processState == busy {
 			select {
-			// when [ready, busy]
+
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
 					p.logger.Errorf("failed to handle timeout timer, %v", err)
@@ -339,7 +339,7 @@ func (p *Process) listenProcess() {
 
 		if p.processState == ready || p.processState == idle {
 			select {
-			// when [ready, idle]
+
 			case tx := <-p.txCh:
 				// condition: during cmd.wait
 				if err := p.handleTxRequest(tx); err != nil {
@@ -351,8 +351,8 @@ func (p *Process) listenProcess() {
 			}
 		}
 
-		select {
 		// all
+		select {
 		case err := <-p.exitCh:
 			processReleased := p.handleProcessExit(err)
 			if processReleased {
@@ -367,10 +367,10 @@ func (p *Process) listenProcess() {
 // handleChangeSandboxReq handle change sandbox request, change context, kill process, then restart process
 func (p *Process) handleChangeSandboxReq(msg *messages.ChangeSandboxReqMsg) error {
 
-	p.logger.Debugf("process [%s] is changing...", p.processName)
-
 	p.lock.Lock()
 	defer p.lock.Unlock()
+
+	p.logger.Debugf("process [%s] is changing...", p.processName)
 
 	p.updateProcessState(changing)
 	if err := p.resetContext(msg); err != nil {
@@ -390,10 +390,10 @@ func (p *Process) handleChangeSandboxReq(msg *messages.ChangeSandboxReqMsg) erro
 // handleCloseSandboxReq handle close sandbox request
 func (p *Process) handleCloseSandboxReq() error {
 
-	p.logger.Debugf("process [%s] is killing...", p.processName)
-
 	p.lock.Lock()
 	defer p.lock.Unlock()
+
+	p.logger.Debugf("process [%s] is killing...", p.processName)
 
 	p.killProcess()
 	return nil

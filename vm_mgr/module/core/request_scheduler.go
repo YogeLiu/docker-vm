@@ -68,7 +68,7 @@ func NewRequestScheduler(
 	return scheduler
 }
 
-// Start starts docker scheduler
+// Start starts request scheduler
 func (s *RequestScheduler) Start() {
 
 	s.logger.Debugf("start request scheduler")

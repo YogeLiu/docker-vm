@@ -182,6 +182,8 @@ func (r *RequestGroup) GetTxCh(isOrig bool) chan *protogo.DockerVMMessage {
 // handleTxReq handle all tx request
 func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 
+	r.logger.Debugf("handle tx request: [%s]", req.TxId)
+
 	// put tx request into chan at first
 	err := r.putTxReqToCh(req)
 	if err != nil {
@@ -325,6 +327,8 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 // handleContractReadyResp set the request group's contract state to contractReady
 func (r *RequestGroup) handleContractReadyResp() {
+
+	r.logger.Debugf("handle contract ready resp")
 
 	r.contractState = contractReady
 	_, err := r.getProcesses(true)
