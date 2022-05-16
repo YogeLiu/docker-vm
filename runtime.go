@@ -60,6 +60,7 @@ func (r *RuntimeInstance) Invoke(
 
 	// contract response
 	contractResult = &commonPb.ContractResult{
+		// TODO
 		Code:    uint32(1),
 		Result:  nil,
 		Message: "",
@@ -120,15 +121,17 @@ func (r *RuntimeInstance) Invoke(
 	}
 
 	dockerVMMsg := &protogo.DockerVMMessage{
-		TxId:           uniqueTxKey,
-		Type:           protogo.DockerVMType_TX_REQUEST,
-		Request:        txRequest,
+		TxId:    uniqueTxKey,
+		Type:    protogo.DockerVMType_TX_REQUEST,
+		Request: txRequest,
+		// TODO:
 		Response:       nil,
 		SysCallMessage: nil,
 		CrossContext:   crossCtx,
 	}
 
 	// register notify for sandbox msg
+	// TODO: to method
 	sandboxMsgCh := make(chan *protogo.DockerVMMessage, 1)
 	sandboxMsgNotify := func(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
 		sandboxMsgCh <- msg
@@ -140,6 +143,7 @@ func (r *RuntimeInstance) Invoke(
 	}
 
 	// register receive notify
+	// TODO: to method
 	contractEngineMsgCh := make(chan *protogo.DockerVMMessage, 1)
 	contractEngineMsgNotify := func(msg *protogo.DockerVMMessage) {
 		contractEngineMsgCh <- msg
@@ -185,6 +189,7 @@ func (r *RuntimeInstance) Invoke(
 				)
 			}
 
+			// TODO: 超时时间自定义
 		case <-timeoutC:
 			r.logger.Debugf(
 				"handle tx [%s] failed, fail to receive response in %d seconds and return timeout response",
@@ -202,6 +207,7 @@ func (r *RuntimeInstance) Invoke(
 			switch recvMsg.Type {
 			case protogo.DockerVMType_GET_STATE_REQUEST:
 				r.logger.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
+				// TODO: pass to error, gasUsed 在内部处理并返回
 				getStateResponse, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
 
 				if pass {
@@ -290,6 +296,17 @@ func (r *RuntimeInstance) Invoke(
 					"unknown msg type",
 				)
 			}
+
+			// map[depth + count]channel
+			// TODO: 监听区块调度超时的信号(交易积压问题)
+			// a.
+			// 	1. chain端清理当前高度的所有交易
+			//	2. 发送信号通知engine清理当前高度交易
+			//  3. 发送信号通知sandbox清理当前高度交易 (是否能做到丢掉当前正在处理的交易信息，重制整个sandbox，监听新的消息)
+			// b. 重启docker
+
+			// TODO: process name
+			// contract_name#contract_version#1652356841624880612:0
 		}
 	}
 }
