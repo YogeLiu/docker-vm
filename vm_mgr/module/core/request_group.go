@@ -72,9 +72,9 @@ type RequestGroup struct {
 	contractManager *ContractManager // contract manager, request contract / receive contract ready signal
 	contractState   contractState    // handle tx with different contract state
 
-	requestScheduler *RequestScheduler             // used for return err req to chain
-	eventCh          chan *protogo.DockerVMMessage // request group invoking handler
-	stopCh           chan struct{}                 // stop request group
+	requestScheduler *RequestScheduler // used for return err req to chain
+	eventCh          chan interface{}  // request group invoking handler
+	stopCh           chan struct{}     // stop request group
 
 	origTxController  *txController // original tx controller
 	crossTxController *txController // cross contract tx controller
@@ -98,7 +98,7 @@ func NewRequestGroup(
 		contractState:   contractEmpty,
 
 		requestScheduler: scheduler,
-		eventCh:          make(chan *protogo.DockerVMMessage, requestGroupEventChSize),
+		eventCh:          make(chan interface{}, requestGroupEventChSize),
 		stopCh:           make(chan struct{}),
 
 		origTxController: &txController{
@@ -120,17 +120,26 @@ func (r *RequestGroup) Start() {
 			select {
 			case msg := <-r.eventCh:
 				r.logger.Debugf("receive message from event channel, msg: [%+v]", msg)
-				switch msg.Type {
-				case protogo.DockerVMType_TX_REQUEST:
-					if err := r.handleTxReq(msg); err != nil {
-						r.logger.Errorf("failed to handle tx request, %v", err)
+				switch msg.(type) {
+				case *protogo.DockerVMMessage:
+					m := msg.(*protogo.DockerVMMessage)
+					switch m.Type {
+					case protogo.DockerVMType_TX_REQUEST:
+						if err := r.handleTxReq(m); err != nil {
+							r.logger.Errorf("failed to handle tx request, %v", err)
+						}
+
+					case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+						r.handleContractReadyResp()
+
+					default:
+						r.logger.Errorf("unknown msg type, msg: %+v", msg)
 					}
-
-				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-					r.handleContractReadyResp()
-
-				default:
-					r.logger.Errorf("unknown msg type, msg: %+v", msg)
+				case *messages.GetProcessRespMsg:
+					m := msg.(*messages.GetProcessRespMsg)
+					if err := r.handleProcessReadyResp(m); err != nil {
+						r.logger.Errorf("failed to handle process ready resp, %v", err)
+					}
 				}
 			case <-r.stopCh:
 				return
@@ -143,9 +152,8 @@ func (r *RequestGroup) Start() {
 //  @param req types include DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (r *RequestGroup) PutMsg(msg interface{}) error {
 	switch msg.(type) {
-	case *protogo.DockerVMMessage:
-		m, _ := msg.(*protogo.DockerVMMessage)
-		r.eventCh <- m
+	case *protogo.DockerVMMessage, *messages.GetProcessRespMsg:
+		r.eventCh <- msg
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
 	default:
@@ -257,12 +265,14 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 
 	var controller *txController
 	var reqNumPerProcess int
+	var isOrig bool
 
 	// get corresponding controller and request number per process
 	switch txType {
 	case origTx:
 		controller = r.origTxController
 		reqNumPerProcess = reqNumPerOrigProcess
+		isOrig = true
 
 	case crossTx:
 		controller = r.crossTxController
@@ -293,7 +303,7 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 			ProcessNum:      needProcessNum,
 		})
 		// avoid duplicate getting processes
-		controller.processWaiting = true
+		r.updateControllerState(isOrig, true)
 		if err != nil {
 			return 0, err
 		}
@@ -302,7 +312,7 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 		if !controller.processWaiting {
 			return 0, nil
 		}
-		r.logger.Debugf("request group %s stop to waiting for processes, tx chan size: %d",
+		r.logger.Debugf("request group %s stop waiting for processes, tx chan size: %d",
 			utils.ConstructContractKey(r.contractName, r.contractVersion), len(controller.txCh))
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
@@ -310,7 +320,7 @@ func (r *RequestGroup) getProcesses(txType TxType) (int, error) {
 			ProcessNum:      0, // 0 for no need
 		})
 		// avoid duplicate stopping to get processes
-		controller.processWaiting = false
+		r.updateControllerState(isOrig, false)
 		if err != nil {
 			return 0, err
 		}
@@ -333,23 +343,45 @@ func (r *RequestGroup) handleContractReadyResp() {
 }
 
 // handleProcessReadyResp handles process ready response
-func (r *RequestGroup) handleProcessReadyResp(txType TxType) error {
+func (r *RequestGroup) handleProcessReadyResp(msg *messages.GetProcessRespMsg) error {
+
+	r.logger.Debugf("handle process ready resp: %v", msg)
+	var txType TxType
 
 	// restore the state of request group to idle
-	switch txType {
-	case origTx:
-		r.origTxController.processWaiting = false
-
-	case crossTx:
-		r.crossTxController.processWaiting = false
-
-	default:
-		return fmt.Errorf("unknown tx type, txType: %+v", txType)
+	if msg.IsCross {
+		r.updateControllerState(false, msg.ToWaiting)
+		txType = crossTx
+	} else {
+		r.updateControllerState(true, msg.ToWaiting)
+		txType = origTx
 	}
 
-	// try to get processes from process manager
-	if _, err := r.getProcesses(txType); err != nil {
-		return fmt.Errorf("failed to handle contract ready resp, %v", err)
+	if !msg.ToWaiting {
+		// try to get processes from process manager
+		if _, err := r.getProcesses(txType); err != nil {
+			return fmt.Errorf("failed to handle contract ready resp, %v", err)
+		}
 	}
+
 	return nil
+}
+
+// updateControllerState update the controller state
+func (r *RequestGroup) updateControllerState(isOrig, toWaiting bool) {
+
+	r.logger.Debugf("update controller state, is original: %v, to waiting: %v", isOrig, toWaiting)
+
+	var controller *txController
+	if isOrig {
+		controller = r.origTxController
+	} else {
+		controller = r.crossTxController
+	}
+
+	if toWaiting {
+		controller.processWaiting = true
+	} else {
+		controller.processWaiting = false
+	}
 }

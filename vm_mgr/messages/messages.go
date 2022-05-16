@@ -13,57 +13,64 @@ type GetProcessReqMsg struct {
 	ProcessNum      int
 }
 
+// GetProcessRespMsg is the get process request msg (process manager -> request group)
+type GetProcessRespMsg struct {
+	IsCross    bool
+	ToWaiting  bool
+	ProcessNum int
+}
+
 // LaunchSandboxRespMsg is the launch sandbox resp msg (process -> process manager)
 type LaunchSandboxRespMsg struct {
-	ContractName string
+	ContractName    string
 	ContractVersion string
-	ProcessName  string
-	Err          error
+	ProcessName     string
+	Err             error
 }
 
 // ChangeSandboxRespMsg is the change sandbox resp msg (process manager -> process)
 type ChangeSandboxRespMsg struct {
-	ContractName string
+	ContractName    string
 	ContractVersion string
-	ProcessName  string
-	Err          error
+	ProcessName     string
+	Err             error
 }
 
 // CloseSandboxReqMsg is the close sandbox req msg (process manager -> process)
 type CloseSandboxReqMsg struct {
-	ContractName string
+	ContractName    string
 	ContractVersion string
-	ProcessName  string
+	ProcessName     string
 }
 
 // CloseSandboxRespMsg is the close sandbox resp msg (process -> process manager)
 type CloseSandboxRespMsg struct {
-	ContractName string
+	ContractName    string
 	ContractVersion string
-	ProcessName  string
-	Err          error
+	ProcessName     string
+	Err             error
 }
 
 // SandboxExitRespMsg is the sandbox exit resp msg (process -> process manager)
 type SandboxExitRespMsg struct {
-	ContractName string
+	ContractName    string
 	ContractVersion string
-	ProcessName  string
-	Err          error
+	ProcessName     string
+	Err             error
 }
 
 // ChangeStateReqMsg is the change state req msg (process -> process manager)
 type ChangeStateReqMsg struct {
-	ContractName string
+	ContractName    string
 	ContractVersion string
-	ProcessName  string
+	ProcessName     string
 }
 
 // ChangeSandboxReqMsg is the change sandbox req msg (process manager -> process)
 type ChangeSandboxReqMsg struct {
-	ContractName string
+	ContractName    string
 	ContractVersion string
-	ProcessName  string
+	ProcessName     string
 }
 
 // TxCompleteMsg is the tx complete msg
@@ -73,7 +80,7 @@ type TxCompleteMsg struct {
 
 // RequestGroupKey is the request group key msg
 type RequestGroupKey struct {
-	ContractName string
+	ContractName    string
 	ContractVersion string
 }
 
