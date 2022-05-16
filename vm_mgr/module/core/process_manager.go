@@ -205,6 +205,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 
 		// create new process concurrently
 		var wg sync.WaitGroup
+		lock := sync.Mutex{}
 		for i := 0; i < newProcessNum; i++ {
 			wg.Add(1)
 			index := i
@@ -219,7 +220,9 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 				}
 
 				// add process to cache
+				lock.Lock()
 				pm.addProcessToCache(msg.ContractName, msg.ContractVersion, processName, process, true)
+				lock.Unlock()
 				wg.Done()
 			}()
 		}
@@ -295,7 +298,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 
 // handleSandboxExitResp handle sandbox exit response, release user and remove process from cache
 func (pm *ProcessManager) handleSandboxExitResp(msg *messages.SandboxExitRespMsg) {
-	// TODO： allocate to waiting group
+
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 

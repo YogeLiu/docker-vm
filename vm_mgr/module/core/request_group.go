@@ -345,7 +345,8 @@ func (r *RequestGroup) handleContractReadyResp() {
 // handleProcessReadyResp handles process ready response
 func (r *RequestGroup) handleProcessReadyResp(msg *messages.GetProcessRespMsg) error {
 
-	r.logger.Debugf("handle process ready resp: %v", msg)
+	r.logger.Debugf("handle process ready resp: %+v", msg)
+
 	var txType TxType
 
 	// restore the state of request group to idle
