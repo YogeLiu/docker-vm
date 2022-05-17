@@ -117,7 +117,7 @@ func (m *DockerManager) initMountDirectory() error {
 	mountDir := m.dockerContainerConfig.HostMountDir
 	err = m.createDir(mountDir)
 	if err != nil {
-		return nil
+		return err
 	}
 	m.mgrLogger.Debug("set mount dir: ", mountDir)
 
