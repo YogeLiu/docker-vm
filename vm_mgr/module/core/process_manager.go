@@ -133,6 +133,9 @@ func (pm *ProcessManager) GetProcessByName(processName string) (interfaces.Proce
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
 
+	startTime := time.Now()
+	defer pm.logger.Debugf("get process by name succeed, time: [%s]", time.Since(startTime))
+
 	return pm.getProcessByName(processName)
 }
 
@@ -141,6 +144,9 @@ func (pm *ProcessManager) GetProcessNumByContractKey(contractName, contractVersi
 
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
+
+	startTime := time.Now()
+	defer pm.logger.Debugf("handle get process num by contract key succeed, time: [%s]", time.Since(startTime))
 
 	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
 	if val, ok := pm.processGroups[groupKey]; ok {

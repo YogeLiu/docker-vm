@@ -57,7 +57,7 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 
 		if !ok {
-			s.logger.Errorf("fail to get process: [%v]", err)
+			s.logger.Errorf("failed to get process, %v", err)
 			return err
 		}
 
