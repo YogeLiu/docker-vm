@@ -117,19 +117,19 @@ func (m *DockerManager) initMountDirectory() error {
 	mountDir := m.dockerContainerConfig.HostMountDir
 	err = m.createDir(mountDir)
 	if err != nil {
-		return nil
+		return err
 	}
 	m.mgrLogger.Debug("set mount dir: ", mountDir)
 
-	// create sub directory: contracts, share, sock
+	// create subdirectory: contracts
 	contractDir := filepath.Join(mountDir, config.ContractsDir)
 	err = m.createDir(contractDir)
 	if err != nil {
-		m.mgrLogger.Errorf("fail to build image, err: [%s]", err)
 		return err
 	}
 	m.mgrLogger.Debug("set contract dir: ", contractDir)
 
+	// create dms sock directory
 	sockDir := filepath.Join(mountDir, config.SockDir)
 	err = m.createDir(sockDir)
 	if err != nil {
