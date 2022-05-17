@@ -130,11 +130,14 @@ func (pm *ProcessManager) PutMsg(msg interface{}) error {
 // GetProcessByName returns process by process name
 func (pm *ProcessManager) GetProcessByName(processName string) (interfaces.Process, bool) {
 
+	startTime := time.Now()
+	pm.logger.Debugf("start to get process by name")
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
+	pm.logger.Debugf("get lock time: [%s]", time.Since(startTime))
 
-	startTime := time.Now()
-	defer pm.logger.Debugf("get process by name succeed, time: [%s]", time.Since(startTime))
+	startLockTime := time.Now()
+	defer pm.logger.Debugf("get process by name succeed, time: [%s]", time.Since(startLockTime))
 
 	return pm.getProcessByName(processName)
 }
