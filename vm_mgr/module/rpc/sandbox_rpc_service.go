@@ -48,6 +48,7 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			s.logger.Errorf("fail to recv msg: %s", err)
 			return err
 		}
+		s.logger.Debugf("recv msg [%+v]", msg)
 		var process interfaces.Process
 		var ok bool
 		process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)

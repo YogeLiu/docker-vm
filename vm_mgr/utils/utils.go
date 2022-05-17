@@ -81,7 +81,7 @@ func ConstructContractKey(contractName, contractVersion string) string {
 }
 
 // ConstructProcessName contractName#contractVersion#timestamp:index
-func ConstructProcessName(contractName, contractVersion string, index uint64, isOrig bool) string {
+func ConstructProcessName(contractName, contractVersion string, groupIndex int, totalIndex uint64, isOrig bool) string {
 	var sb strings.Builder
 	typeStr := "o"
 	if !isOrig {
@@ -92,6 +92,8 @@ func ConstructProcessName(contractName, contractVersion string, index uint64, is
 	sb.WriteString(contractName)
 	sb.WriteString("#")
 	sb.WriteString(contractVersion)
+	sb.WriteString("#")
+	sb.WriteString(strconv.Itoa(groupIndex))
 	sb.WriteString("#")
 	sb.WriteString(strconv.FormatUint(index, 10))
 	return sb.String()
