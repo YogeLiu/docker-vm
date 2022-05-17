@@ -290,6 +290,7 @@ func (p *Process) launchProcess() *exitErr {
 }
 
 // listenProcess listen to eventCh, txCh, respCh and timer
+// TODO： 按照状态来分
 func (p *Process) listenProcess() {
 
 	for {

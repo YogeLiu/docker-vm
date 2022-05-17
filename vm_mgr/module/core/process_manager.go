@@ -130,14 +130,14 @@ func (pm *ProcessManager) PutMsg(msg interface{}) error {
 // GetProcessByName returns process by process name
 func (pm *ProcessManager) GetProcessByName(processName string) (interfaces.Process, bool) {
 
-	startTime := time.Now()
-	pm.logger.Debugf("start to get process by name")
+	//startTime := time.Now()
+	//pm.logger.Debugf("start to get process by name")
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
-	pm.logger.Debugf("get lock time: [%s]", time.Since(startTime))
+	//pm.logger.Debugf("get lock time: [%s]", time.Since(startTime))
 
-	startLockTime := time.Now()
-	defer pm.logger.Debugf("get process by name succeed, time: [%s]", time.Since(startLockTime))
+	//startLockTime := time.Now()
+	//defer pm.logger.Debugf("get process by name succeed, time: [%s]", time.Since(startLockTime))
 
 	return pm.getProcessByName(processName)
 }
@@ -493,6 +493,8 @@ func (pm *ProcessManager) getAvailableProcessNum() int {
 }
 
 // allocateIdleProcess allocate idle process to waiting request groups
+// TODO：有idle时把对应的waitingRequestGroups中合约实例删掉，发送response
+// TODO：状态不一致，是否要加一个changing的状态
 func (pm *ProcessManager) allocateIdleProcess() error {
 
 	// calculate allocate num
