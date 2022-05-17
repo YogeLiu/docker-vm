@@ -155,6 +155,9 @@ func (pm *ProcessManager) ChangeProcessState(processName string, toBusy bool) er
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
+	startTime := time.Now()
+	defer pm.logger.Debugf("change process state succeed, time: [%s]", time.Since(startTime))
+
 	if toBusy {
 		process, ok := pm.idleProcesses.Get(processName)
 		if !ok {
@@ -181,6 +184,9 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
+
+	startTime := time.Now()
+	defer pm.logger.Debugf("handle get processes req succeed, time: [%s]", time.Since(startTime))
 
 	groupKey := utils.ConstructContractKey(msg.ContractName, msg.ContractVersion)
 	pm.logger.Debugf("request group %s request to get %d process(es)", groupKey, msg.ProcessNum)
@@ -309,6 +315,9 @@ func (pm *ProcessManager) handleSandboxExitResp(msg *messages.SandboxExitRespMsg
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
+	startTime := time.Now()
+	defer pm.logger.Debugf("handle sandbox exit resp succeed, time: [%s]", time.Since(startTime))
+
 	pm.closeSandbox(msg.ContractName, msg.ContractVersion, msg.ProcessName)
 	pm.logger.Debugf("sandbox exited, %v", msg.Err)
 
@@ -322,6 +331,9 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
+
+	startTime := time.Now()
+	defer pm.logger.Debugf("handle clean idle processes succeed, time: [%s]", time.Since(startTime))
 
 	// calculate the process num to release
 	availableProcessNum := pm.getAvailableProcessNum()
