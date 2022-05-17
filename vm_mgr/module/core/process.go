@@ -116,7 +116,7 @@ func NewProcess(user interfaces.User, contractName, contractVersion, processName
 		respCh:     make(chan *protogo.DockerVMMessage, 1),
 		timer:      time.NewTimer(math.MaxInt32 * time.Second), //initial tx timer, never triggered
 
-		logger: logger.NewDockerLogger(logger.MODULE_PROCESS),
+		logger: logger.NewDockerLogger(logger.MODULE_PROCESS + " " + processName),
 
 		processManager:   manager,
 		requestScheduler: scheduler,
