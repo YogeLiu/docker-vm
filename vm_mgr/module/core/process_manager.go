@@ -10,6 +10,7 @@ package core
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
@@ -48,6 +49,7 @@ type ProcessManager struct {
 
 	userManager      interfaces.UserManager      // user manager
 	requestScheduler interfaces.RequestScheduler // request scheduler
+	processCnt       uint64
 }
 
 // NewProcessManager returns new process manager
@@ -211,10 +213,10 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 		lock := sync.Mutex{}
 		for i := 0; i < newProcessNum; i++ {
 			wg.Add(1)
-			index := i
 			go func() {
 				// create new process
-				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, index)
+				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, pm.processCnt, pm.isOrigManager)
+				atomic.AddUint64(&pm.processCnt, 1)
 				process, err := pm.createNewProcess(msg.ContractName, msg.ContractVersion, processName)
 				if err != nil {
 					pm.logger.Errorf("failed to create new process, %v", err)
@@ -257,8 +259,8 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 			index := i
 			go func() {
 				// generate new process name
-				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, index)
-
+				processName := utils.ConstructProcessName(msg.ContractName, msg.ContractVersion, pm.processCnt, pm.isOrigManager)
+				atomic.AddUint64(&pm.processCnt, 1)
 				// notify process to change context
 				err = removedIdleProcesses[index].PutMsg(&messages.ChangeSandboxReqMsg{
 					ContractName:    msg.ContractName,
@@ -283,8 +285,9 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 	}
 
 	// no available process, put to waiting request group
-	// TODO： 如果msg.ProcessNum-needProcessNum>0，不再加入waitingRequestGroups
-	if needProcessNum > 0 {
+	var toWaiting bool
+	if needProcessNum > 0 && msg.ProcessNum == needProcessNum {
+		toWaiting = true
 		group := &messages.RequestGroupKey{
 			ContractName:    msg.ContractName,
 			ContractVersion: msg.ContractVersion,
@@ -295,7 +298,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 		}
 	}
 
-	if err := pm.sendProcessReadyResp(msg.ProcessNum-needProcessNum, needProcessNum > 0, msg.ContractName, msg.ContractVersion); err != nil {
+	if err := pm.sendProcessReadyResp(msg.ProcessNum-needProcessNum, toWaiting, msg.ContractName, msg.ContractVersion); err != nil {
 		pm.logger.Errorf("failed to send process ready resp, %v", err)
 	}
 }
@@ -512,7 +515,8 @@ func (pm *ProcessManager) allocateIdleProcess() error {
 		pm.removeFromProcessGroup(contractName, contractVersion, processName)
 
 		// notify process change sandbox context
-		newProcessName := utils.ConstructProcessName(newGroupKey.ContractName, newGroupKey.ContractVersion, i)
+		newProcessName := utils.ConstructProcessName(newGroupKey.ContractName, newGroupKey.ContractVersion, pm.processCnt, pm.isOrigManager)
+		atomic.AddUint64(&pm.processCnt, 1)
 		err := process.PutMsg(&messages.ChangeSandboxReqMsg{
 			ContractName:    newGroupKey.ContractName,
 			ContractVersion: newGroupKey.ContractVersion,
@@ -562,7 +566,8 @@ func (pm *ProcessManager) allocateNewProcess() error {
 		pm.waitingRequestGroups.Remove(newGroupKey)
 
 		// create new process
-		processName := utils.ConstructProcessName(newGroupKey.ContractName, newGroupKey.ContractVersion, i)
+		processName := utils.ConstructProcessName(newGroupKey.ContractName, newGroupKey.ContractVersion, pm.processCnt, pm.isOrigManager)
+		atomic.AddUint64(&pm.processCnt, 1)
 		process, err := pm.createNewProcess(newGroupKey.ContractName, newGroupKey.ContractVersion, processName)
 		if err != nil {
 			return fmt.Errorf("failed to create new process, %v", err)

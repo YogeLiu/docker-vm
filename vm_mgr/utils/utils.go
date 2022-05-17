@@ -15,7 +15,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // WriteToFile WriteFile write value to file
@@ -82,15 +81,19 @@ func ConstructContractKey(contractName, contractVersion string) string {
 }
 
 // ConstructProcessName contractName#contractVersion#timestamp:index
-func ConstructProcessName(contractName, contractVersion string, index int) string {
+func ConstructProcessName(contractName, contractVersion string, index uint64, isOrig bool) string {
 	var sb strings.Builder
+	typeStr := "o"
+	if !isOrig {
+		typeStr = "c"
+	}
+	sb.WriteString(typeStr)
+	sb.WriteString("#")
 	sb.WriteString(contractName)
 	sb.WriteString("#")
 	sb.WriteString(contractVersion)
 	sb.WriteString("#")
-	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
-	sb.WriteString(":")
-	sb.WriteString(strconv.Itoa(index))
+	sb.WriteString(strconv.FormatUint(index, 10))
 	return sb.String()
 }
 
