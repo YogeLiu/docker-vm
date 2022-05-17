@@ -10,7 +10,7 @@ build-test:
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} \
+	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION221} \
 	--build-arg BUILD_TIME=${BUILD_TIME} \
 	--build-arg GIT_BRANCH=${GIT_BRANCH} \
 	--build-arg GIT_COMMIT=${GIT_COMMIT} \
@@ -18,7 +18,7 @@ build-image:
 	docker images | grep chainmaker-vm-docker-go
 
 image-push:
-	docker push chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	docker push chainmakerofficial/chainmaker-vm-docker-go:${VERSION221}
 
 update-gomod:
 	cd vm_mgr && rm -rf vendor
@@ -37,7 +37,7 @@ clean-test:
 clean:
 	cd vm_mgr && rm -rf vendor
 	cd test/scripts && ./dockerclean.sh
-	docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION221}
 	docker image prune -f
 
 ci:
