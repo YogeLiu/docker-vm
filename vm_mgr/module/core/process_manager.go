@@ -41,6 +41,7 @@ type ProcessManager struct {
 
 	idleProcesses        *linkedhashmap.Map            // idle processes linked hashmap (process name -> idle Process)
 	busyProcesses        map[string]interfaces.Process // busy process map (process name -> busy Process)
+	changingProcesses    map[string]interfaces.Process // changing process map (process name -> changing Process)
 	processGroups        map[string]map[string]bool    // process group by contract key (contract key -> Process name set)
 	waitingRequestGroups *linkedhashmap.Map            // waiting request groups linked hashmap (group key -> bool)
 
@@ -64,6 +65,7 @@ func NewProcessManager(maxProcessNum int, rate float64, isOrigManager bool, user
 
 		idleProcesses:        linkedhashmap.New(),
 		busyProcesses:        make(map[string]interfaces.Process),
+		changingProcesses:    make(map[string]interfaces.Process),
 		processGroups:        make(map[string]map[string]bool),
 		waitingRequestGroups: linkedhashmap.New(),
 
@@ -485,7 +487,7 @@ func (pm *ProcessManager) removeProcessFromCache(contractName, contractVersion, 
 // getAvailableProcessNum returns available process num
 func (pm *ProcessManager) getAvailableProcessNum() int {
 
-	return pm.maxProcessNum - pm.idleProcesses.Size() - len(pm.busyProcesses)
+	return pm.maxProcessNum - pm.idleProcesses.Size() - len(pm.busyProcesses) - len(pm.changingProcesses)
 }
 
 // allocateIdleProcess allocate idle process to waiting request groups
@@ -519,6 +521,11 @@ func (pm *ProcessManager) allocateIdleProcess() error {
 
 		// get new contract name and contract version
 		newGroupKey := groupIt.Key().(*messages.RequestGroupKey)
+
+		if _, ok := pm.waitingRequestGroups.Get(newGroupKey); ok {
+			pm.waitingRequestGroups.Remove(newGroupKey)
+			continue
+		}
 
 		// send process ready resp to request group
 		if err := pm.sendProcessReadyResp(1, false, newGroupKey.ContractName, newGroupKey.ContractVersion); err != nil {

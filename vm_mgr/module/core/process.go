@@ -668,6 +668,7 @@ func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
 	return p.stream.Send(msg)
 }
 
+// constructErrorResponse construct error response
 func (p *Process) constructErrorResponse(txId string, errMsg string) *protogo.DockerVMMessage {
 	return &protogo.DockerVMMessage{
 		Type: protogo.DockerVMType_ERROR,
