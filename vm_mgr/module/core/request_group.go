@@ -284,7 +284,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 	// calculate how many processes it needs:
 	// (currProcessNum + needProcessNum) * reqNumPerProcess = processingReqNum + inQueueReqNum
-
+	// TODO: 有未启动进程则迅速拉起
 	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
 	currChSize := len(controller.txCh)
 
