@@ -250,7 +250,6 @@ func (p *Process) launchProcess() *exitErr {
 }
 
 // listenProcess listen to eventCh, txCh, respCh and timer
-// TODO： 按照状态来分
 func (p *Process) listenProcess() {
 
 	for {
@@ -275,6 +274,7 @@ func (p *Process) listenProcess() {
 				if processReleased {
 					return
 				}
+				break
 			}
 		} else if p.processState == busy {
 			select {
@@ -296,6 +296,7 @@ func (p *Process) listenProcess() {
 				if processReleased {
 					return
 				}
+				break
 			}
 		} else if p.processState == idle {
 			select {
@@ -326,6 +327,7 @@ func (p *Process) listenProcess() {
 				if processReleased {
 					return
 				}
+				break
 			}
 		} else {
 			select {

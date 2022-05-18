@@ -30,3 +30,7 @@ require (
 	golang.org/x/time v0.0.0-20210608053304-ed9ce3a009e4 // indirect
 	google.golang.org/grpc v1.41.0
 )
+
+replace (
+	chainmaker.org/chainmaker/logger/v2 v2.2.0 => ../logger
+)

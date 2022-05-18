@@ -23,7 +23,7 @@ const (
 
 	timeFormat = "2006-01-02 15:04:05"
 
-	loopNum   = 2
+	loopNum   = 100
 	threadNum = 1000
 )
 
@@ -79,7 +79,7 @@ func TestDockerGoPerformance(t *testing.T) {
 
 func performMultipleTxs(loopNum, threadNum int) {
 	fmt.Println("--------- Ready to analysis --------------")
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
 	fmt.Println("---------- Start -------------------------")
 
 	var totalTps float64
