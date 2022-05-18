@@ -77,6 +77,7 @@ type Process struct {
 	eventCh    chan interface{}
 	cmdReadyCh chan bool
 	exitCh     chan *exitErr
+	updateCh   chan struct{}
 	txCh       chan *protogo.DockerVMMessage
 	respCh     chan *protogo.DockerVMMessage
 	timer      *time.Timer
@@ -113,6 +114,7 @@ func NewProcess(user interfaces.User, contractName, contractVersion, processName
 		eventCh:    make(chan interface{}, processEventChSize),
 		cmdReadyCh: make(chan bool, 1),
 		exitCh:     make(chan *exitErr),
+		updateCh:   make(chan struct{}),
 		respCh:     make(chan *protogo.DockerVMMessage, 1),
 		timer:      time.NewTimer(math.MaxInt32 * time.Second), //initial tx timer, never triggered
 
@@ -154,48 +156,6 @@ func (p *Process) Start() {
 
 	go p.listenProcess()
 	p.startProcess()
-}
-
-// GetProcessName returns process name
-func (p *Process) GetProcessName() string {
-
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	return p.processName
-}
-
-// GetContractName returns contract name
-func (p *Process) GetContractName() string {
-
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	return p.contractName
-}
-
-// GetContractVersion returns contract version
-func (p *Process) GetContractVersion() string {
-
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	return p.contractVersion
-}
-
-// GetUser returns user
-func (p *Process) GetUser() interfaces.User {
-	return p.user
-}
-
-// SetStream sets grpc stream
-func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) {
-
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	p.stream = stream
-	p.updateProcessState(ready)
 }
 
 // startProcess starts the process cmd
@@ -293,54 +253,7 @@ func (p *Process) launchProcess() *exitErr {
 func (p *Process) listenProcess() {
 
 	for {
-		if p.processState == idle {
-			select {
-			case msg := <-p.eventCh:
-				switch msg.(type) {
-
-				case *messages.ChangeSandboxReqMsg:
-					m, _ := msg.(*messages.ChangeSandboxReqMsg)
-					if err := p.handleChangeSandboxReq(m); err != nil {
-						p.logger.Errorf("failed to handle change sandbox request, %v", err)
-					}
-
-				case *messages.CloseSandboxReqMsg:
-					if err := p.handleCloseSandboxReq(); err != nil {
-						p.logger.Errorf("failed to handle close sandbox request, %v", err)
-					}
-				}
-
-			default:
-				break
-			}
-
-		} else if p.processState == busy {
-			select {
-
-			case resp := <-p.respCh:
-				if err := p.handleTxResp(resp); err != nil {
-					p.logger.Warnf("failed to handle tx response, %v", err)
-				}
-
-			default:
-				break
-			}
-		}
-
-		if p.processState == ready || p.processState == busy {
-			select {
-
-			case <-p.timer.C:
-				if err := p.handleTimeout(); err != nil {
-					p.logger.Errorf("failed to handle timeout timer, %v", err)
-				}
-
-			default:
-				break
-			}
-		}
-
-		if p.processState == ready || p.processState == idle {
+		if p.processState == ready {
 			select {
 
 			case tx := <-p.txCh:
@@ -348,24 +261,132 @@ func (p *Process) listenProcess() {
 				if err := p.handleTxRequest(tx); err != nil {
 					p.returnErrorResponse(tx.TxId, err.Error())
 				}
+				break
 
-			default:
+			case <-p.timer.C:
+				if err := p.handleTimeout(); err != nil {
+					p.logger.Errorf("failed to handle timeout timer, %v", err)
+				}
+				break
+
+			case err := <-p.exitCh:
+				processReleased := p.handleProcessExit(err)
+				if processReleased {
+					return
+				}
+			}
+		} else if p.processState == busy {
+			select {
+
+			case resp := <-p.respCh:
+				if err := p.handleTxResp(resp); err != nil {
+					p.logger.Warnf("failed to handle tx response, %v", err)
+				}
+				break
+
+			case <-p.timer.C:
+				if err := p.handleTimeout(); err != nil {
+					p.logger.Errorf("failed to handle timeout timer, %v", err)
+				}
+				break
+
+			case err := <-p.exitCh:
+				processReleased := p.handleProcessExit(err)
+				if processReleased {
+					return
+				}
+			}
+		} else if p.processState == idle {
+			select {
+
+			case msg := <-p.eventCh:
+				switch msg.(type) {
+				case *messages.ChangeSandboxReqMsg:
+					m, _ := msg.(*messages.ChangeSandboxReqMsg)
+					if err := p.handleChangeSandboxReq(m); err != nil {
+						p.logger.Errorf("failed to handle change sandbox request, %v", err)
+					}
+				case *messages.CloseSandboxReqMsg:
+					if err := p.handleCloseSandboxReq(); err != nil {
+						p.logger.Errorf("failed to handle close sandbox request, %v", err)
+					}
+				}
+				break
+
+			case tx := <-p.txCh:
+				// condition: during cmd.wait
+				if err := p.handleTxRequest(tx); err != nil {
+					p.returnErrorResponse(tx.TxId, err.Error())
+				}
+				break
+
+			case err := <-p.exitCh:
+				processReleased := p.handleProcessExit(err)
+				if processReleased {
+					return
+				}
+			}
+		} else {
+			select {
+
+			case err := <-p.exitCh:
+				processReleased := p.handleProcessExit(err)
+				if processReleased {
+					return
+				}
+				break
+			case _ = <-p.updateCh:
 				break
 			}
 		}
-
-		// all
-		select {
-		case err := <-p.exitCh:
-			processReleased := p.handleProcessExit(err)
-			if processReleased {
-				return
-			}
-		default:
-			break
-		}
 	}
 }
+
+// GetProcessName returns process name
+func (p *Process) GetProcessName() string {
+
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.processName
+}
+
+// GetContractName returns contract name
+func (p *Process) GetContractName() string {
+
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.contractName
+}
+
+// GetContractVersion returns contract version
+func (p *Process) GetContractVersion() string {
+
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.contractVersion
+}
+
+// GetUser returns user
+func (p *Process) GetUser() interfaces.User {
+	return p.user
+}
+
+// SetStream sets grpc stream
+func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) {
+
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.stream = stream
+	p.updateProcessState(ready)
+}
+
+// chan <- update state
+// map {state -> select func{}}
+// select {chans, update state chan} --- ready
 
 // handleChangeSandboxReq handle change sandbox request, change context, kill process, then restart process
 func (p *Process) handleChangeSandboxReq(msg *messages.ChangeSandboxReqMsg) error {
@@ -622,7 +643,12 @@ func (p *Process) killProcess() {
 // updateProcessState updates process state
 func (p *Process) updateProcessState(state processState) {
 	p.logger.Debugf("[%s] update process state from [%+v] to [%+v]", p.processName, p.processState, state)
+	cpState := p.processState
 	p.processState = state
+
+	if cpState != ready && cpState != busy && cpState != idle && (state == ready || state == busy || state == idle) {
+		p.updateCh <- struct{}{}
+	}
 }
 
 // returnErrorResponse return error to request scheduler

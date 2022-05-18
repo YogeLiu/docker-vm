@@ -136,8 +136,7 @@ func (pm *ProcessManager) GetProcessByName(processName string) (interfaces.Proce
 	defer pm.lock.RUnlock()
 	pm.logger.Debugf("get lock time: [%s]", time.Since(startTime))
 
-	startLockTime := time.Now()
-	defer pm.logger.Debugf("get process by name succeed, time: [%s]", time.Since(startLockTime))
+	defer pm.testTimeCost("get process by name succeed, time ", time.Now())
 
 	return pm.getProcessByName(processName)
 }
@@ -148,8 +147,7 @@ func (pm *ProcessManager) GetProcessNumByContractKey(contractName, contractVersi
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
 
-	startTime := time.Now()
-	defer pm.logger.Debugf("handle get process num by contract key succeed, time: [%s]", time.Since(startTime))
+	defer pm.testTimeCost("handle get process num by contract key succeed, time ", time.Now())
 
 	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
 	if val, ok := pm.processGroups[groupKey]; ok {
@@ -164,8 +162,7 @@ func (pm *ProcessManager) ChangeProcessState(processName string, toBusy bool) er
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
-	startTime := time.Now()
-	defer pm.logger.Debugf("change process state succeed, time: [%s]", time.Since(startTime))
+	defer pm.testTimeCost("change process state succeed, time ", time.Now())
 
 	if toBusy {
 		process, ok := pm.idleProcesses.Get(processName)
@@ -194,8 +191,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
-	startTime := time.Now()
-	defer pm.logger.Debugf("handle get processes req succeed, time: [%s]", time.Since(startTime))
+	defer pm.testTimeCost("handle get processes req succeed, time ", time.Now())
 
 	groupKey := utils.ConstructContractKey(msg.ContractName, msg.ContractVersion)
 	pm.logger.Debugf("request group %s request to get %d process(es)", groupKey, msg.ProcessNum)
@@ -214,6 +210,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 	needProcessNum := msg.ProcessNum
 	availableProcessNum := pm.getAvailableProcessNum()
 
+	durationStart := time.Now()
 	// firstly, allocate processes that can be launch
 	if availableProcessNum > 0 {
 		newProcessNum := needProcessNum
@@ -250,6 +247,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) {
 		// update the process num still need
 		needProcessNum -= newProcessNum
 	}
+	pm.logger.Debugf("start avalible process cost [%s], still need %d processes", time.Since(durationStart), needProcessNum)
 
 	// secondly, allocate processes from idle processes
 	if needProcessNum > 0 {
@@ -324,8 +322,7 @@ func (pm *ProcessManager) handleSandboxExitResp(msg *messages.SandboxExitRespMsg
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
-	startTime := time.Now()
-	defer pm.logger.Debugf("handle sandbox exit resp succeed, time: [%s]", time.Since(startTime))
+	defer pm.testTimeCost("handle sandbox exit resp succeed, time ", time.Now())
 
 	pm.closeSandbox(msg.ContractName, msg.ContractVersion, msg.ProcessName)
 	pm.logger.Debugf("sandbox exited, %v", msg.Err)
@@ -341,8 +338,7 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
-	startTime := time.Now()
-	defer pm.logger.Debugf("handle clean idle processes succeed, time: [%s]", time.Since(startTime))
+	defer pm.testTimeCost("handle clean idle processes succeed, time ", time.Now())
 
 	// calculate the process num to release
 	availableProcessNum := pm.getAvailableProcessNum()
@@ -667,4 +663,9 @@ func (pm *ProcessManager) startTimer() {
 		<-pm.cleanTimer.C
 	}
 	pm.cleanTimer.Reset(config.DockerVMConfig.GetReleasePeriod())
+}
+
+func (pm *ProcessManager) testTimeCost(str string, start time.Time) {
+	terminal := time.Since(start)
+	pm.logger.Debugf("%s, %s", str, terminal)
 }

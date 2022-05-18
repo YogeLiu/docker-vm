@@ -157,6 +157,7 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 	switch msg.(type) {
 	case *protogo.DockerVMMessage, *messages.GetProcessRespMsg:
 		r.eventCh <- msg
+		r.logger.Debugf("curr eventCh size: %d", len(r.eventCh))
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
 	default:

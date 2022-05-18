@@ -1,7 +1,7 @@
 ########### RPC ###########
 rpc:
   chain_rpc_protocol: 1 # chain rpc protocol, 0 for unix domain socket, 1 for tcp
-  chain_host: 172.16.10.228 # chain tcp host
+  chain_host: 9.134.162.18 # chain tcp host
   chain_rpc_port: 22359 # chain rpc port, valid when protocol is tcp
   sandbox_rpc_port: 22459 # sandbox rpc port, valid when protocol is tcp
   max_send_msg_size: 20 # max send msg size(MB)
@@ -16,16 +16,16 @@ process:
   # max original process num,
   # max_call_contract_process_num = max_original_process_num * max_contract_depth (defined in protocol)
   # max_total_process_num = max_call_contract_process_num + max_original_process_num
-  max_original_process_num: 5
+  max_original_process_num: 20
   busy_timeout: 2000 # process timeout while busy (ms)
   ready_timeout: 200 # process timeout while tx completed (busy -> idle) (ms)
   release_rate: 30 # percentage of idle processes released periodically in total processes (0-100)
-  release_period: 10 # period of idle processes released periodically in total processes (s)
+  release_period: 1000 # period of idle processes released periodically in total processes (s)
 
 ########### Log ###########
 log:
   contract_engine:
-    level: "info"
+    level: "debug"
     console: true
   sandbox:
     level: "info"
