@@ -1,0 +1,45 @@
+########### RPC ###########
+rpc:
+  chain_rpc_protocol: 1 # chain rpc protocol, 0 for unix domain socket, 1 for tcp
+  chain_host: 9.134.162.18 # chain tcp host
+  chain_rpc_port: 22359 # chain rpc port, valid when protocol is tcp
+  sandbox_rpc_port: 22459 # sandbox rpc port, valid when protocol is tcp
+  max_send_msg_size: 20 # max send msg size(MB)
+  max_recv_msg_size: 20 # max recv msg size(MB)
+  server_min_interval: 60 # server min interval(s)
+  connection_timeout: 5 # connection timeout time(s)
+  server_keep_alive_time: 60 # idle duration before server ping(s)
+  server_keep_alive_timeout: 20 # ping timeout(s)
+
+########### Process ###########
+process:
+  # max original process num,
+  # max_call_contract_process_num = max_original_process_num * max_contract_depth (defined in protocol)
+  # max_total_process_num = max_call_contract_process_num + max_original_process_num
+  max_original_process_num: 20
+  busy_timeout: 2000 # process timeout while busy (ms)
+  ready_timeout: 200 # process timeout while tx completed (busy -> idle) (ms)
+  release_rate: 30 # percentage of idle processes released periodically in total processes (0-100)
+  release_period: 1000 # period of idle processes released periodically in total processes (s)
+
+########### Log ###########
+log:
+  contract_engine:
+    level: "info"
+    console: true
+  sandbox:
+    level: "info"
+    console: true
+
+########### Pprof ###########
+pprof:
+  contract_engine:
+    enable: false
+    port: 21521
+  sandbox:
+    enable: false
+    port: 21522
+
+########### Contract ###########
+contract:
+  max_file_num: 102400

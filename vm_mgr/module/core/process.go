@@ -327,26 +327,17 @@ func (p *Process) listenProcess() {
 // GetProcessName returns process name
 func (p *Process) GetProcessName() string {
 
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
 	return p.processName
 }
 
 // GetContractName returns contract name
 func (p *Process) GetContractName() string {
 
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
 	return p.contractName
 }
 
 // GetContractVersion returns contract version
 func (p *Process) GetContractVersion() string {
-
-	p.lock.RLock()
-	defer p.lock.RUnlock()
 
 	return p.contractVersion
 }
@@ -429,9 +420,10 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 			return fmt.Errorf("failed to change process [%s] state of tx [%s], %v", p.processName, tx.TxId, err)
 		}
 	}
-	p.updateProcessState(busy)
 
 	p.Tx = tx
+
+	p.updateProcessState(busy)
 
 	msg := &protogo.DockerVMMessage{
 		TxId:         p.Tx.TxId,
@@ -500,8 +492,7 @@ func (p *Process) handleTimeout() error {
 	// ready timeout, process state: ready -> idle, process manager: busy -> idle
 	case ready:
 		p.logger.Debugf("process [%s] ready timeout, go to idle", p.processName)
-		err := p.processManager.ChangeProcessState(p.processName, false)
-		if err != nil {
+		if err := p.processManager.ChangeProcessState(p.processName, false); err != nil {
 			return fmt.Errorf("change process state error, %v", err)
 		}
 		p.updateProcessState(idle)
@@ -637,9 +628,9 @@ func (p *Process) updateProcessState(state processState) {
 	}
 
 	// jump out from the state that need to be timed
-	if oldState == ready || oldState == busy {
-		p.stopTimer()
-	}
+	//if oldState == ready || oldState == busy {
+	//	p.stopTimer()
+	//}
 
 	// jump in the state that need to be timed
 	if state == ready {
@@ -684,7 +675,11 @@ func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
 // start when new tx come
 // stop when resp come
 func (p *Process) startBusyTimer() {
-	p.logger.Debugf("start busy tx timer: process [%s], tx [%s]", p.processName, p.Tx.TxId)
+	var txId string
+	if p.Tx != nil {
+		txId = p.Tx.TxId
+	}
+	p.logger.Debugf("start busy tx timer: process [%s], tx [%s]", p.processName, txId)
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}

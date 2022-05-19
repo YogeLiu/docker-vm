@@ -676,6 +676,8 @@ func (pm *ProcessManager) closeRequestGroup(contractName, contractVersion string
 // sendProcessReadyResp sends process ready resp to request group
 func (pm *ProcessManager) sendProcessReadyResp(processNum int, contractName, contractVersion string) error {
 
+	pm.logger.Debugf("send process ready resp")
+
 	group, ok := pm.requestScheduler.GetRequestGroup(contractName, contractVersion)
 	if !ok {
 		return fmt.Errorf("failed to get request group, contract name: %s, contract version: %s", contractName, contractVersion)
