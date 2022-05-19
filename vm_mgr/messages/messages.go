@@ -16,20 +16,11 @@ type GetProcessReqMsg struct {
 // GetProcessRespMsg is the get process request msg (process manager -> request group)
 type GetProcessRespMsg struct {
 	IsOrig    bool
-	ToWaiting bool
 	ProcessNum int
 }
 
 // LaunchSandboxRespMsg is the launch sandbox resp msg (process -> process manager)
 type LaunchSandboxRespMsg struct {
-	ContractName    string
-	ContractVersion string
-	ProcessName     string
-	Err             error
-}
-
-// ChangeSandboxRespMsg is the change sandbox resp msg (process manager -> process)
-type ChangeSandboxRespMsg struct {
 	ContractName    string
 	ContractVersion string
 	ProcessName     string
@@ -51,8 +42,8 @@ type CloseSandboxRespMsg struct {
 	Err             error
 }
 
-// SandboxExitRespMsg is the sandbox exit resp msg (process -> process manager)
-type SandboxExitRespMsg struct {
+// SandboxExitMsg is the sandbox exit resp msg (process -> process manager)
+type SandboxExitMsg struct {
 	ContractName    string
 	ContractVersion string
 	ProcessName     string

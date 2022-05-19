@@ -33,13 +33,15 @@ type ProcessManager interface {
 }
 
 type Process interface {
-	PutMsg(msg interface{}) error
+	PutMsg(msg *protogo.DockerVMMessage)
 	Start()
 	GetProcessName() string
 	GetContractName() string
 	GetContractVersion() string
 	GetUser() User
-	SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer)
+	SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error
+	ChangeSandbox(contractName, contractVersion, processName string) error
+	CloseSandbox() error
 }
 
 type UserManager interface {

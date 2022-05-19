@@ -714,32 +714,32 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := processManager
-			if err := pm.allocateIdleProcess(); (err != nil) != tt.wantErr {
-				t.Errorf("allocateIdleProcess() error = %v, wantErr %v", err, tt.wantErr)
+			if err := pm.handleAllocateIdleProcesses(); (err != nil) != tt.wantErr {
+				t.Errorf("handleAllocateIdleProcesses() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			requestGroupNum := pm.waitingRequestGroups.Size()
 			if requestGroupNum != tt.wantWaitingRequestGroupsNum {
-				t.Errorf("allocateIdleProcess() waiting request group size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() waiting request group size = %v, "+
 					"wantWaitingRequestGroupsNum %v", requestGroupNum, tt.wantWaitingRequestGroupsNum)
 			}
 			idleProcessNum := pm.idleProcesses.Size()
 			if idleProcessNum != tt.wantIdleProcessNum {
-				t.Errorf("allocateIdleProcess() idle process size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() idle process size = %v, "+
 					"wantIdleProcessNum %v", idleProcessNum, tt.wantIdleProcessNum)
 			}
 			busyProcessNum := len(pm.busyProcesses)
 			if busyProcessNum != tt.wantBusyProcessNum {
-				t.Errorf("allocateIdleProcess() busy process size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() busy process size = %v, "+
 					"wantBusyProcessNum %v", busyProcessNum, tt.wantBusyProcessNum)
 			}
 			origContractProcessNum := len(pm.processGroups["testContractName1#1.0.0"])
 			if origContractProcessNum != tt.wantOrigContractProcessNum {
-				t.Errorf("allocateIdleProcess() original contract process size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() original contract process size = %v, "+
 					"wantOrigContractProcessNum %v", origContractProcessNum, tt.wantOrigContractProcessNum)
 			}
 			newContractProcessNum := len(pm.processGroups["testContractName2#1.0.0"])
 			if newContractProcessNum != tt.wantNewContractProcessNum {
-				t.Errorf("allocateIdleProcess() new contract process size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() new contract process size = %v, "+
 					"wantNewContractProcessNum %v", newContractProcessNum, tt.wantNewContractProcessNum)
 			}
 		})
@@ -831,16 +831,16 @@ func TestProcessManager_batchPopIdleProcesses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := processManager
-			got, err := pm.batchPopIdleProcesses(tt.args.num)
+			got, err := pm.peekIdleProcesses(tt.args.num)
 			if len(got) != tt.wantProcessNum {
-				t.Errorf("batchPopIdleProcesses() = %v, want %v", len(got), tt.wantProcessNum)
+				t.Errorf("peekIdleProcesses() = %v, want %v", len(got), tt.wantProcessNum)
 			}
 			if (err != nil) != tt.wantErr {
-				t.Errorf("batchPopIdleProcesses() err = %v, wantErr %v", got, tt.wantErr)
+				t.Errorf("peekIdleProcesses() err = %v, wantErr %v", got, tt.wantErr)
 			}
 			idleProcessNum := pm.idleProcesses.Size()
 			if idleProcessNum != tt.wantIdleProcessNum {
-				t.Errorf("batchPopIdleProcesses() idleProcessNum = %v, wantIdleProcessNum %v", idleProcessNum, tt.wantIdleProcessNum)
+				t.Errorf("peekIdleProcesses() idleProcessNum = %v, wantIdleProcessNum %v", idleProcessNum, tt.wantIdleProcessNum)
 			}
 		})
 	}
@@ -1089,7 +1089,7 @@ func TestProcessManager_handleSandboxExitResp(t *testing.T) {
 	}
 
 	type args struct {
-		msg *messages.SandboxExitRespMsg
+		msg *messages.SandboxExitMsg
 	}
 	tests := []struct {
 		name           string
@@ -1100,7 +1100,7 @@ func TestProcessManager_handleSandboxExitResp(t *testing.T) {
 		{
 			name:   "TestProcessManager_handleSandboxExitResp",
 			fields: fields{processManager: processManager},
-			args: args{msg: &messages.SandboxExitRespMsg{
+			args: args{msg: &messages.SandboxExitMsg{
 				ContractName:    testContractName1,
 				ContractVersion: testContractVersion,
 				ProcessName:     testProcessName1,
@@ -1112,7 +1112,7 @@ func TestProcessManager_handleSandboxExitResp(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
-			pm.handleSandboxExitResp(tt.args.msg)
+			pm.handleSandboxExitMsg(tt.args.msg)
 			if pm.idleProcesses.Size() != tt.wantProcessNum {
 				t.Errorf("TestProcessManager_handleSandboxExitResp() process num= %v, want %v", pm.idleProcesses.Size(), tt.wantProcessNum)
 			}

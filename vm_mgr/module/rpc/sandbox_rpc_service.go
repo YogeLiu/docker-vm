@@ -48,9 +48,13 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			s.logger.Errorf("fail to recv msg: %s", err)
 			return err
 		}
-		s.logger.Debugf("recv msg [%+v]", msg)
 		var process interfaces.Process
 		var ok bool
+		// process may be created, busy, timeout, recreated
+		// created: ok (regular)
+		// busy: ok (regular)
+		// timeout: ok (restart, process abandon tx)
+		// recreated: ok (process abandon tx)
 		process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
 		if !ok {
 			process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
@@ -62,21 +66,19 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 
 		if msg.Type == protogo.DockerVMType_REGISTER {
-			process.SetStream(stream)
+			if err = process.SetStream(stream); err != nil {
+				s.logger.Errorf("failed to set stream, %v", err)
+			}
 			continue
 		}
 
 		switch msg {
 		case nil:
-			s.logger.Errorf("[%s] received nil message, ending contract stream", process.GetProcessName())
+			s.logger.Errorf("recv nil message, ending contract stream")
 			return err
 		default:
-			s.logger.Debugf("[%s] handle msg [%v]", process.GetProcessName(), msg)
-			err = process.PutMsg(msg)
-			if err != nil {
-				s.logger.Errorf("fail to put msg into process chan: [%c]", err)
-				return err
-			}
+			s.logger.Debugf("resv msg [%+v]", msg)
+			process.PutMsg(msg)
 		}
 	}
 }

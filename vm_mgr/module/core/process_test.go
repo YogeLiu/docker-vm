@@ -188,7 +188,7 @@ func TestProcess_GetUser(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -224,7 +224,7 @@ func TestProcess_GetUser(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -261,7 +261,7 @@ func TestProcess_SetStream(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   processState
+		want   ProcessState
 	}{
 		{
 
@@ -319,7 +319,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -356,7 +356,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -372,8 +372,8 @@ func TestProcess_SetStream(t *testing.T) {
 //				requestScheduler: tt.fields.requestScheduler,
 //				lock:             tt.fields.lock,
 //			}
-//			if got := p.constructErrorResponse(tt.args.txId, tt.args.errMsg); !reflect.DeepEqual(got, tt.want) {
-//				t.Errorf("constructErrorResponse() = %v, want %v", got, tt.want)
+//			if got := p.constructErrorResp(tt.args.txId, tt.args.errMsg); !reflect.DeepEqual(got, tt.want) {
+//				t.Errorf("constructErrorResp() = %v, want %v", got, tt.want)
 //			}
 //		})
 //	}
@@ -387,7 +387,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -423,7 +423,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -454,7 +454,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -486,7 +486,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -517,7 +517,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -553,7 +553,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -584,7 +584,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -616,7 +616,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -647,7 +647,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -683,7 +683,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -714,7 +714,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -750,7 +750,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -781,7 +781,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -812,7 +812,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -841,7 +841,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -873,7 +873,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -904,7 +904,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -935,7 +935,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -964,7 +964,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -999,7 +999,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -1028,7 +1028,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -1064,7 +1064,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -1095,7 +1095,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -1131,7 +1131,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -1147,7 +1147,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				requestScheduler: tt.fields.requestScheduler,
 //				lock:             tt.fields.lock,
 //			}
-//			p.returnErrorResponse(tt.args.txId, tt.args.errMsg)
+//			p.returnTxErrorResp(tt.args.txId, tt.args.errMsg)
 //		})
 //	}
 //}
@@ -1160,7 +1160,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -1196,7 +1196,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -1227,7 +1227,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -1258,7 +1258,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -1287,7 +1287,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -1318,7 +1318,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -1347,7 +1347,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -1378,7 +1378,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -1407,7 +1407,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -1438,7 +1438,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,
@@ -1467,7 +1467,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		cGroupPath       string
 //		user             interfaces.User
 //		cmd              *exec.Cmd
-//		processState     processState
+//		ProcessState     ProcessState
 //		isOrigProcess   bool
 //		eventCh          chan interface{}
 //		cmdReadyCh       chan bool
@@ -1484,7 +1484,7 @@ func TestProcess_SetStream(t *testing.T) {
 //		lock             sync.RWMutex
 //	}
 //	type args struct {
-//		state processState
+//		state ProcessState
 //	}
 //	tests := []struct {
 //		name   string
@@ -1502,7 +1502,7 @@ func TestProcess_SetStream(t *testing.T) {
 //				cGroupPath:       tt.fields.cGroupPath,
 //				user:             tt.fields.user,
 //				cmd:              tt.fields.cmd,
-//				processState:     tt.fields.processState,
+//				ProcessState:     tt.fields.ProcessState,
 //				isOrigProcess:   tt.fields.isOrigProcess,
 //				eventCh:          tt.fields.eventCh,
 //				cmdReadyCh:       tt.fields.cmdReadyCh,

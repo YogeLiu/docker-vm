@@ -353,16 +353,14 @@ func (r *RequestGroup) handleProcessReadyResp(msg *messages.GetProcessRespMsg) e
 
 	// restore the state of request group to idle
 	if msg.IsOrig {
-		r.updateControllerState(true, msg.ToWaiting)
+		r.updateControllerState(true, false)
 	} else {
-		r.updateControllerState(false, msg.ToWaiting)
+		r.updateControllerState(false, false)
 	}
 
-	if !msg.ToWaiting {
-		// try to get processes from process manager
-		if _, err := r.getProcesses(msg.IsOrig); err != nil {
-			return fmt.Errorf("failed to handle contract ready resp, %v", err)
-		}
+	// try to get processes from process manager
+	if _, err := r.getProcesses(msg.IsOrig); err != nil {
+		return fmt.Errorf("failed to handle contract ready resp, %v", err)
 	}
 
 	return nil

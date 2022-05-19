@@ -81,7 +81,7 @@ func ConstructContractKey(contractName, contractVersion string) string {
 }
 
 // ConstructProcessName contractName#contractVersion#timestamp:index
-func ConstructProcessName(contractName, contractVersion string, index uint64, isOrig bool) string {
+func ConstructProcessName(contractName, contractVersion string, localIndex int, overallIndex uint64, isOrig bool) string {
 	var sb strings.Builder
 	typeStr := "o"
 	if !isOrig {
@@ -93,7 +93,9 @@ func ConstructProcessName(contractName, contractVersion string, index uint64, is
 	sb.WriteString("#")
 	sb.WriteString(contractVersion)
 	sb.WriteString("#")
-	sb.WriteString(strconv.FormatUint(index, 10))
+	sb.WriteString(strconv.Itoa(localIndex))
+	sb.WriteString("#")
+	sb.WriteString(strconv.FormatUint(overallIndex, 10))
 	return sb.String()
 }
 
@@ -110,4 +112,12 @@ func ConstructRequestGroupKey(contractName string, contractVersion string) strin
 func HasUsed(ctxBitmap uint64) bool {
 	typeBit := uint64(1 << (59 - common.RuntimeType_DOCKER_GO))
 	return typeBit&ctxBitmap > 0
+}
+
+// Min returns min value
+func Min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
