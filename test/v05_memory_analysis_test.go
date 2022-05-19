@@ -50,6 +50,7 @@ func TestDockerGoMemory(t *testing.T) {
 		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
 	}
 	mockTxContext = initMockSimContext(t)
+	mockTxContext.EXPECT().GetBlockVersion().Return(uint32(2220)).AnyTimes()
 
 	filePath := fmt.Sprintf("./testdata/%s.7z", contractName)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
