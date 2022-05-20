@@ -40,7 +40,7 @@ type RequestScheduler struct {
 
 	requestGroups       map[string]interfaces.RequestGroup // contractName#contractVersion
 	chainRPCService     interfaces.ChainRPCService         // chain rpc service
-	contractManager     *ContractManager                   // contract manager // TODO
+	contractManager     interfaces.ContractManager         // contract manager
 	origProcessManager  interfaces.ProcessManager          // manager for original process
 	crossProcessManager interfaces.ProcessManager          // manager for cross process
 }
@@ -50,7 +50,7 @@ func NewRequestScheduler(
 	service interfaces.ChainRPCService,
 	oriPMgr interfaces.ProcessManager,
 	crossPMgr interfaces.ProcessManager,
-	cMgr *ContractManager) *RequestScheduler {
+	cMgr interfaces.ContractManager) *RequestScheduler {
 
 	scheduler := &RequestScheduler{
 		logger: logger.NewDockerLogger(logger.MODULE_REQUEST_SCHEDULER),
@@ -90,10 +90,6 @@ func (s *RequestScheduler) Start() {
 					if err := s.handleTxReq(msg); err != nil {
 						s.logger.Errorf("failed to handle tx request, %v", err)
 					}
-				//case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
-				//	if err := s.handleTxReq(msg); err != nil {
-				//		s.logger.Errorf("failed to handle call contract request, %v", err)
-				//	}
 				case protogo.DockerVMType_ERROR:
 					if err := s.handleErrResp(msg); err != nil {
 						s.logger.Errorf("failed to handle error response, %v", err)
@@ -125,7 +121,6 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 	return nil
 }
 
-// TODO： GetRequestGroup外部并发问题
 // GetRequestGroup returns request group
 func (s *RequestScheduler) GetRequestGroup(contractName, contractVersion string) (interfaces.RequestGroup, bool) {
 
@@ -174,7 +169,7 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 	// construct request group key from request
 	contractName := req.Request.ContractName
 	contractVersion := req.Request.ContractVersion
-	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
+	groupKey := utils.ConstructContractKey(contractName, contractVersion)
 
 	// try to get request group, if not, add it
 	group, ok := s.requestGroups[groupKey]
@@ -213,7 +208,13 @@ func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 	s.logger.Debugf("handle close request group reqest, contract name: [%s], contract version: [%s]",
 		msg.ContractName, msg.ContractVersion)
 
-	groupKey := utils.ConstructRequestGroupKey(msg.ContractName, msg.ContractVersion)
+	if s.origProcessManager.GetProcessNumByContractKey(msg.ContractName, msg.ContractVersion) != 0 &&
+		s.crossProcessManager.GetProcessNumByContractKey(msg.ContractName, msg.ContractVersion) != 0 {
+		s.logger.Debugf("process exists, stop to close request group")
+		return nil
+	}
+
+	groupKey := utils.ConstructContractKey(msg.ContractName, msg.ContractVersion)
 	if _, ok := s.requestGroups[groupKey]; ok {
 		_ = s.requestGroups[groupKey].PutMsg(&messages.CloseMsg{})
 		delete(s.requestGroups, groupKey)

@@ -91,6 +91,7 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
 	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.DockerVMConfig.GetConnectionTimeout()))
+	log.Infof("time duration: %v", config.DockerVMConfig.GetConnectionTimeout())
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.DockerVMConfig.RPC.MaxSendMsgSize*1024*1024))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.DockerVMConfig.RPC.MaxRecvMsgSize*1024*1024))
 

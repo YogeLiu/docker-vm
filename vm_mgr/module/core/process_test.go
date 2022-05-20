@@ -16,7 +16,7 @@ const (
 )
 
 var (
-	groupKey        = utils.ConstructRequestGroupKey(testContractName, testContractVersion)
+	groupKey        = utils.ConstructContractKey(testContractName, testContractVersion)
 	testProcessName = utils.ConstructProcessName(testContractName, testContractVersion, 0)
 )
 

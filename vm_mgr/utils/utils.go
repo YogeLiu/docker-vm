@@ -99,15 +99,6 @@ func ConstructProcessName(contractName, contractVersion string, localIndex int, 
 	return sb.String()
 }
 
-// ConstructRequestGroupKey contractName#contractVersion#timestamp:index
-func ConstructRequestGroupKey(contractName string, contractVersion string) string {
-	var sb strings.Builder
-	sb.WriteString(contractName)
-	sb.WriteString("#")
-	sb.WriteString(contractVersion)
-	return sb.String()
-}
-
 // HasUsed judge whether a vm has been used
 func HasUsed(ctxBitmap uint64) bool {
 	typeBit := uint64(1 << (59 - common.RuntimeType_DOCKER_GO))

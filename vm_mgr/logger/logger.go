@@ -10,6 +10,7 @@ package logger
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	rotatelogs "chainmaker.org/chainmaker/common/v2/log/file-rotatelogs"
@@ -26,21 +27,21 @@ const (
 
 const (
 	// docker module for logging
-	MODULE_MANAGER             = "[Docker Manager]"
-	MODULE_CONFIG              = "[Docker Config]"
-	MODULE_REQUEST_SCHEDULER   = "[Docker Request Scheduler]"
-	MODULE_REQUEST_GROUP       = "[Docker Request Group]"
-	MODULE_USERCONTROLLER      = "[Docker User Controller]"
-	MODULE_PROCESS_MANAGER     = "[Docker Process Manager]"
-	MODULE_PROCESS             = "[Docker Process]"
-	MODULE_SANDBOX_RPC_HANDLER = "[Docker Sandbox RPC Handler]"
-	MODULE_SANDBOX_RPC_SERVER  = "[Docker Sandbox RPC Server]"
-	MODULE_CHAIN_RPC_SERVER    = "[Docker Chain RPC Server]"
-	MODULE_CHAIN_RPC_SERVICE   = "[Docker Chain RPC Service]"
-	MODULE_SECURITY_ENV        = "[Docker Security Env]"
-	MODULE_CONTRACT_MANAGER    = "[Docker Contract Manager]"
-	MODULE_CONTRACT            = "[Docker Contract]"
-	MODULE_TEST                = "[Docker Test]"
+	MODULE_MANAGER             = "[Manager]"
+	MODULE_CONFIG              = "[Config]"
+	MODULE_REQUEST_SCHEDULER   = "[Request Scheduler]"
+	MODULE_REQUEST_GROUP       = "[Request Group]"
+	MODULE_USERCONTROLLER      = "[User Controller]"
+	MODULE_PROCESS_MANAGER     = "[Process Manager]"
+	MODULE_PROCESS             = "[Process]"
+	MODULE_SANDBOX_RPC_HANDLER = "[Sandbox RPC Handler]"
+	MODULE_SANDBOX_RPC_SERVER  = "[Sandbox RPC Server]"
+	MODULE_CHAIN_RPC_SERVER    = "[Chain RPC Server]"
+	MODULE_CHAIN_RPC_SERVICE   = "[Chain RPC Service]"
+	MODULE_SECURITY_ENV        = "[Security Env]"
+	MODULE_CONTRACT_MANAGER    = "[Contract Manager]"
+	MODULE_CONTRACT            = "[Contract]"
+	MODULE_TEST                = "[Test]"
 )
 
 const (
@@ -177,4 +178,20 @@ func CustomLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) 
 
 func CustomTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
+}
+
+func GenerateProcessLoggerName(name string) string {
+	var sb strings.Builder
+	sb.WriteString("[Process ")
+	sb.WriteString(name)
+	sb.WriteString("]")
+	return sb.String()
+}
+
+func GenerateRequestGroupLoggerName(name string) string {
+	var sb strings.Builder
+	sb.WriteString("[Request Group ")
+	sb.WriteString(name)
+	sb.WriteString("]")
+	return sb.String()
 }

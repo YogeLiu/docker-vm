@@ -554,7 +554,7 @@ func TestProcessManager_addProcessToCache(t *testing.T) {
 			if _, ok := pm.busyProcesses[tt.args.processName]; ok != tt.wantInBusy {
 				t.Errorf("addProcessToCache() inBusy = %v, wantInBusy %v", ok, tt.wantInBusy)
 			}
-			groupKey := utils.ConstructRequestGroupKey(tt.args.contractName, tt.args.contractVersion)
+			groupKey := utils.ConstructContractKey(tt.args.contractName, tt.args.contractVersion)
 			_, ok := pm.processGroups[groupKey][tt.args.processName]
 			if ok != tt.wantInCache {
 				t.Errorf("addProcessToCache() inCache = %v, wantInCache %v", ok, tt.wantInBusy)
@@ -623,7 +623,7 @@ func TestProcessManager_addToProcessGroup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
 			pm.addToProcessGroup(tt.args.contractName, tt.args.contractVersion, tt.args.processName)
-			groupKey := utils.ConstructRequestGroupKey(tt.args.contractName, tt.args.contractVersion)
+			groupKey := utils.ConstructContractKey(tt.args.contractName, tt.args.contractVersion)
 			_, ok := pm.processGroups[groupKey][tt.args.processName]
 			if ok != tt.wantInCache {
 				t.Errorf("addProcessToCache() inCache = %v, wantInCache %v", ok, tt.wantInBusy)
@@ -1185,7 +1185,7 @@ func TestProcessManager_removeFromProcessGroup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
 			pm.removeFromProcessGroup(tt.args.contractName, tt.args.contractVersion, tt.args.processName)
-			groupKey := utils.ConstructRequestGroupKey(tt.args.contractName, tt.args.contractVersion)
+			groupKey := utils.ConstructContractKey(tt.args.contractName, tt.args.contractVersion)
 			if len(pm.processGroups[groupKey]) != tt.wantProcessNum {
 				t.Errorf("TestProcessManager_removeFromProcessGroup() process num= %v, want %v", pm.idleProcesses.Size(), tt.wantProcessNum)
 			}

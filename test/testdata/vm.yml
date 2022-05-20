@@ -6,7 +6,7 @@ rpc:
   max_send_msg_size: 4 # max send msg size(MB)
   max_recv_msg_size: 4 # max recv msg size(MB)
   server_min_interval: 60 # server min interval(s)
-  connection_timeout: 5 # connection timeout time(s)
+  connection_timeout: 5s # connection timeout time(s)
   server_keep_alive_time: 60 # idle duration before server ping(s)
   server_keep_alive_timeout: 20 # ping timeout(s)
 

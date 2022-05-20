@@ -63,3 +63,9 @@ type ChainRPCService interface {
 	DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error
 }
 
+type ContractManager interface {
+	Start()
+	SetScheduler(RequestScheduler)
+	PutMsg(msg interface{}) error
+	GetContractMountDir() string
+}

@@ -32,10 +32,10 @@ const (
 	crossTxChSize = 10000
 
 	// reqNumPerOrigProcess is the request num for one process can handle
-	reqNumPerOrigProcess = 5
+	reqNumPerOrigProcess = 1
 
 	// reqNumPerCrossProcess is the request num for one process can handle
-	reqNumPerCrossProcess = 5
+	reqNumPerCrossProcess = 1
 )
 
 // contractState is the contract state of request group
@@ -64,15 +64,16 @@ type txController struct {
 
 // RequestGroup is a batch of txs group by contract name
 type RequestGroup struct {
+
 	logger *zap.SugaredLogger // request group logger
 
 	contractName    string // contract name
 	contractVersion string // contract version
 
-	contractManager *ContractManager // contract manager, request contract / receive contract ready signal
+	contractManager interfaces.ContractManager // contract manager, request contract / receive contract ready signal
 	contractState   contractState    // handle tx with different contract state
 
-	requestScheduler *RequestScheduler // used for return err req to chain
+	requestScheduler interfaces.RequestScheduler // used for return err req to chain
 	eventCh          chan interface{}  // request group invoking handler
 	stopCh           chan struct{}     // stop request group
 
@@ -86,10 +87,11 @@ func NewRequestGroup(
 	contractVersion string,
 	oriPMgr interfaces.ProcessManager,
 	crossPMgr interfaces.ProcessManager,
-	cMgr *ContractManager,
-	scheduler *RequestScheduler) *RequestGroup {
+	cMgr interfaces.ContractManager,
+	scheduler interfaces.RequestScheduler) *RequestGroup {
 	return &RequestGroup{
-		logger: logger.NewDockerLogger(logger.MODULE_REQUEST_GROUP),
+
+		logger: logger.NewDockerLogger(logger.GenerateProcessLoggerName(utils.ConstructContractKey(contractName, contractVersion))),
 
 		contractName:    contractName,
 		contractVersion: contractVersion,
@@ -122,7 +124,6 @@ func (r *RequestGroup) Start() {
 		for {
 			select {
 			case msg := <-r.eventCh:
-				r.logger.Debugf("recv msg from event channel, msg: [%+v]", msg)
 				switch msg.(type) {
 				case *protogo.DockerVMMessage:
 					m := msg.(*protogo.DockerVMMessage)
@@ -157,7 +158,6 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 	switch msg.(type) {
 	case *protogo.DockerVMMessage, *messages.GetProcessRespMsg:
 		r.eventCh <- msg
-		r.logger.Debugf("curr eventCh size: %d", len(r.eventCh))
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
 	default:
@@ -169,7 +169,7 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 // GetContractPath returns contract path
 func (r *RequestGroup) GetContractPath() string {
 
-	contractKey := utils.ConstructRequestGroupKey(r.contractName, r.contractVersion)
+	contractKey := utils.ConstructContractKey(r.contractName, r.contractVersion)
 	return filepath.Join(r.contractManager.GetContractMountDir(), contractKey)
 }
 
@@ -256,13 +256,13 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
 	// original tx, send to original tx chan
 	if req.CrossContext.CurrentDepth == 0 || !utils.HasUsed(req.CrossContext.CrossInfo) {
-		r.logger.Debugf("put tx request [txId: %s] into orig chan", req.TxId)
+		r.logger.Debugf("put tx request [%s] into orig chan", req.TxId)
 		r.origTxController.txCh <- req
 		return nil
 	}
 
 	// cross contract tx, send to cross contract tx chan
-	r.logger.Debugf("put tx request [txId: %s] into cross chan", req.TxId)
+	r.logger.Debugf("put tx request [%s] into cross chan", req.TxId)
 	r.crossTxController.txCh <- req
 	return nil
 }
@@ -284,7 +284,6 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 	// calculate how many processes it needs:
 	// (currProcessNum + needProcessNum) * reqNumPerProcess = processingReqNum + inQueueReqNum
-	// TODO: 有未启动进程则迅速拉起
 	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
 	currChSize := len(controller.txCh)
 
@@ -297,8 +296,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		if controller.processWaiting {
 			return 0, nil
 		}
-		r.logger.Debugf("request group %s try to get %d processes, tx chan size: %d",
-			utils.ConstructContractKey(r.contractName, r.contractVersion), needProcessNum, len(controller.txCh))
+		r.logger.Debugf("try to get %d processes, tx chan size: %d", needProcessNum, len(controller.txCh))
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
@@ -314,8 +312,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		if !controller.processWaiting {
 			return 0, nil
 		}
-		r.logger.Debugf("request group %s stop waiting for processes, tx chan size: %d",
-			utils.ConstructContractKey(r.contractName, r.contractVersion), len(controller.txCh))
+		r.logger.Debugf("stop waiting for processes, tx chan size: %d", len(controller.txCh))
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,

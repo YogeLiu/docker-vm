@@ -155,7 +155,7 @@ func (pm *ProcessManager) GetProcessNumByContractKey(contractName, contractVersi
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
 
-	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
+	groupKey := utils.ConstructContractKey(contractName, contractVersion)
 	if val, ok := pm.processGroups[groupKey]; ok {
 		return len(val)
 	}
@@ -634,7 +634,7 @@ func (pm *ProcessManager) getAvailableProcessNum() int {
 // addToProcessGroup add process to process map group by contract key
 func (pm *ProcessManager) addToProcessGroup(contractName, contractVersion, processName string) {
 
-	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
+	groupKey := utils.ConstructContractKey(contractName, contractVersion)
 
 	if _, ok := pm.processGroups[groupKey]; !ok {
 		pm.processGroups[groupKey] = make(map[string]bool)
@@ -645,7 +645,7 @@ func (pm *ProcessManager) addToProcessGroup(contractName, contractVersion, proce
 // removeFromProcessGroup remove process from process group
 func (pm *ProcessManager) removeFromProcessGroup(contractName, contractVersion, processName string) {
 
-	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
+	groupKey := utils.ConstructContractKey(contractName, contractVersion)
 
 	// remove process from process group
 	if _, ok := pm.processGroups[groupKey]; !ok {
@@ -653,10 +653,13 @@ func (pm *ProcessManager) removeFromProcessGroup(contractName, contractVersion, 
 	}
 	delete(pm.processGroups[groupKey], processName)
 
-	// remove a group in process groups
-	// TODO: 跨合约调用删除不统一
+	// remove group in process groups and waiting groups
 	if len(pm.processGroups[groupKey]) == 0 {
 		delete(pm.processGroups, groupKey)
+		pm.waitingRequestGroups.Remove(&messages.RequestGroupKey{
+			ContractName:    contractName,
+			ContractVersion: contractVersion,
+		})
 		if err := pm.closeRequestGroup(contractName, contractVersion); err != nil {
 			pm.logger.Warnf("failed to close request group, %v", err)
 		}
@@ -678,6 +681,7 @@ func (pm *ProcessManager) sendProcessReadyResp(processNum int, contractName, con
 
 	pm.logger.Debugf("send process ready resp")
 
+	// GetRequestGroup is safe because waiting group exists -> request group exists
 	group, ok := pm.requestScheduler.GetRequestGroup(contractName, contractVersion)
 	if !ok {
 		return fmt.Errorf("failed to get request group, contract name: %s, contract version: %s", contractName, contractVersion)
@@ -703,7 +707,7 @@ func (pm *ProcessManager) startTimer() {
 
 // generateProcessName generate new process name
 func (pm *ProcessManager) generateProcessName(contractName, contractVersion string) string {
-	groupKey := utils.ConstructRequestGroupKey(contractName, contractVersion)
+	groupKey := utils.ConstructContractKey(contractName, contractVersion)
 	localIndex := len(pm.processGroups[groupKey])
 	overallIndex := pm.processCnt
 	atomic.AddUint64(&pm.processCnt, 1)

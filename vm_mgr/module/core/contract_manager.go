@@ -198,7 +198,7 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	}
 
 	// save contract in lru (contract file already saved in disk by chain)
-	groupKey := utils.ConstructRequestGroupKey(resp.Response.ContractName, resp.Response.ContractVersion)
+	groupKey := utils.ConstructContractKey(resp.Response.ContractName, resp.Response.ContractVersion)
 
 	path := filepath.Join(cm.mountDir, groupKey)
 	cm.contractsLRU.Add(groupKey, path)
@@ -231,7 +231,7 @@ func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion
 	}
 
 	// get request group
-	// TODO：交给request scheduler处理
+	// GetRequestGroup is safe because it's a new request group, no process exist trigger
 	requestGroup, ok := cm.scheduler.GetRequestGroup(contractName, contractVersion)
 	if !ok {
 		return fmt.Errorf("failed to get request group")

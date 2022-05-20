@@ -51,7 +51,7 @@ type rpcConf struct {
 	MaxSendMsgSize         int                  `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize         int                  `mapstructure:"max_recv_msg_size"`
 	ServerMinInterval      int                  `mapstructure:"server_min_interval"`
-	ConnectionTimeout      int                  `mapstructure:"connection_timeout"`
+	ConnectionTimeout      time.Duration         `mapstructure:"connection_timeout"`
 	ServerKeepAliveTime    int                  `mapstructure:"server_keep_alive_time"`
 	ServerKeepAliveTimeout int                  `mapstructure:"server_keep_alive_timeout"`
 }
@@ -119,7 +119,7 @@ func (c *conf) setDefaultConfigs() {
 	viper.SetDefault(rpcPrefix+".max_send_msg_size", 20)
 	viper.SetDefault(rpcPrefix+".max_recv_msg_size", 20)
 	viper.SetDefault(rpcPrefix+".server_min_interval", 60)
-	viper.SetDefault(rpcPrefix+".connection_timeout", 5)
+	viper.SetDefault(rpcPrefix+".connection_timeout", 5*time.Second)
 	viper.SetDefault(rpcPrefix+".server_keep_alive_time", 60)
 	viper.SetDefault(rpcPrefix+".server_keep_alive_timeout", 20)
 
@@ -161,7 +161,8 @@ func (c *conf) GetServerMinInterval() time.Duration {
 
 // GetConnectionTimeout get connection timeout
 func (c *conf) GetConnectionTimeout() time.Duration {
-	return time.Duration(c.RPC.ConnectionTimeout) * time.Second
+	return c.RPC.ConnectionTimeout
+	//return time.Duration(c.RPC.ConnectionTimeout) * time.Second
 }
 
 // GetServerKeepAliveTime returns get server keep alive time
