@@ -635,6 +635,7 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 		ContractVersion: process.GetContractVersion(),
 	}
 
+	pm.logger.Debugf("waitingRequestGroups size: %d", pm.waitingRequestGroups.Size())
 	// remove waiting request group if meet the same group
 	if _, ok := pm.waitingRequestGroups.Get(groupKey); ok {
 		pm.waitingRequestGroups.Remove(groupKey)
@@ -647,6 +648,7 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 
 	// allocate idle process to waiting request group
 	if pm.waitingRequestGroups.Size() > 0 {
+		pm.logger.Debugf("try to allocate")
 		pm.allocateIdleCh <- struct{}{}
 	}
 }
@@ -704,8 +706,6 @@ func (pm *ProcessManager) closeRequestGroup(contractName, contractVersion string
 
 // sendProcessReadyResp sends process ready resp to request group
 func (pm *ProcessManager) sendProcessReadyResp(processNum int, contractName, contractVersion string) error {
-
-	pm.logger.Debugf("send process ready resp")
 
 	// GetRequestGroup is safe because waiting group exists -> request group exists
 	group, ok := pm.requestScheduler.GetRequestGroup(contractName, contractVersion)
