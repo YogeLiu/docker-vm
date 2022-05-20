@@ -197,7 +197,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 	// do not need any process
 	if msg.ProcessNum == 0 {
-		pm.waitingRequestGroups.Remove(&messages.RequestGroupKey{
+		pm.waitingRequestGroups.Remove(messages.RequestGroupKey{
 			ContractName: msg.ContractName,
 			ContractVersion: msg.ContractVersion,
 		})
@@ -291,7 +291,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 	// no available process, put to waiting request group
 	if msg.ProcessNum == needProcessNum {
-		group := &messages.RequestGroupKey{
+		group := messages.RequestGroupKey{
 			ContractName:    msg.ContractName,
 			ContractVersion: msg.ContractVersion,
 		}
@@ -422,7 +422,7 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 			// meet the same idle process
 			if group.ContractName == oldContractName && group.ContractVersion == oldContractVersion {
 				lock.Lock()
-				pm.waitingRequestGroups.Remove(group)
+				pm.waitingRequestGroups.Remove(*group)
 				lock.Unlock()
 				// send process ready resp to request group
 				if err := pm.sendProcessReadyResp(0, group.ContractName, group.ContractVersion); err != nil {
@@ -630,7 +630,7 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 	pm.idleProcesses.Put(processName, process)
 
 	// construct group key
-	groupKey := &messages.RequestGroupKey{
+	groupKey := messages.RequestGroupKey{
 		ContractName:    process.GetContractName(),
 		ContractVersion: process.GetContractVersion(),
 	}
@@ -684,7 +684,7 @@ func (pm *ProcessManager) removeFromProcessGroup(contractName, contractVersion, 
 	// remove group in process groups and waiting groups
 	if len(pm.processGroups[groupKey]) == 0 {
 		delete(pm.processGroups, groupKey)
-		pm.waitingRequestGroups.Remove(&messages.RequestGroupKey{
+		pm.waitingRequestGroups.Remove(messages.RequestGroupKey{
 			ContractName:    contractName,
 			ContractVersion: contractVersion,
 		})
