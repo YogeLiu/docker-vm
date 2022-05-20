@@ -688,7 +688,7 @@ func (p *Process) startBusyTimer() {
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
-	p.timer.Reset(config.DockerVMConfig.GetBusyTimeout())
+	p.timer.Reset(config.DockerVMConfig.Process.BusyTimeout)
 }
 
 // startReadyTimer start timer at ready state
@@ -703,7 +703,7 @@ func (p *Process) startReadyTimer() {
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
-	p.timer.Reset(config.DockerVMConfig.GetReadyTimeout())
+	p.timer.Reset(config.DockerVMConfig.Process.ReadyTimeout)
 }
 
 // stopTimer stop timer

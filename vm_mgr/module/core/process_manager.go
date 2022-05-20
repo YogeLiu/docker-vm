@@ -72,7 +72,7 @@ func NewProcessManager(maxProcessNum int, rate float64, isOrigManager bool, user
 		allocateIdleCh: make(chan struct{}, processManagerEventChSize),
 		allocateNewCh:  make(chan struct{}, processManagerEventChSize),
 
-		cleanTimer: time.NewTimer(config.DockerVMConfig.GetReleasePeriod()),
+		cleanTimer: time.NewTimer(config.DockerVMConfig.Process.ReleasePeriod),
 
 		userManager: userManager,
 	}
@@ -702,7 +702,7 @@ func (pm *ProcessManager) startTimer() {
 	if !pm.cleanTimer.Stop() && len(pm.cleanTimer.C) > 0 {
 		<-pm.cleanTimer.C
 	}
-	pm.cleanTimer.Reset(config.DockerVMConfig.GetReleasePeriod())
+	pm.cleanTimer.Reset(config.DockerVMConfig.Process.ReadyTimeout)
 }
 
 // generateProcessName generate new process name

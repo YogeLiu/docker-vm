@@ -50,18 +50,18 @@ type rpcConf struct {
 	SandboxRPCPort         int                  `mapstructure:"sandbox_rpc_port"`
 	MaxSendMsgSize         int                  `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize         int                  `mapstructure:"max_recv_msg_size"`
-	ServerMinInterval      int                  `mapstructure:"server_min_interval"`
+	ServerMinInterval      time.Duration                  `mapstructure:"server_min_interval"`
 	ConnectionTimeout      time.Duration         `mapstructure:"connection_timeout"`
-	ServerKeepAliveTime    int                  `mapstructure:"server_keep_alive_time"`
-	ServerKeepAliveTimeout int                  `mapstructure:"server_keep_alive_timeout"`
+	ServerKeepAliveTime    time.Duration                  `mapstructure:"server_keep_alive_time"`
+	ServerKeepAliveTimeout time.Duration                  `mapstructure:"server_keep_alive_timeout"`
 }
 
 type processConf struct {
 	MaxOriginalProcessNum int `mapstructure:"max_original_process_num"`
-	BusyTimeout           int `mapstructure:"busy_timeout"`
-	ReadyTimeout          int `mapstructure:"ready_timeout"`
+	BusyTimeout           time.Duration `mapstructure:"busy_timeout"`
+	ReadyTimeout          time.Duration `mapstructure:"ready_timeout"`
 	ReleaseRate           int `mapstructure:"release_rate"`
-	ReleasePeriod         int `mapstructure:"release_period"`
+	ReleasePeriod         time.Duration `mapstructure:"release_period"`
 }
 
 type logConf struct {
@@ -118,18 +118,18 @@ func (c *conf) setDefaultConfigs() {
 	viper.SetDefault(rpcPrefix+".sandbox_rpc_port", 22459)
 	viper.SetDefault(rpcPrefix+".max_send_msg_size", 20)
 	viper.SetDefault(rpcPrefix+".max_recv_msg_size", 20)
-	viper.SetDefault(rpcPrefix+".server_min_interval", 60)
+	viper.SetDefault(rpcPrefix+".server_min_interval", 60*time.Second)
 	viper.SetDefault(rpcPrefix+".connection_timeout", 5*time.Second)
-	viper.SetDefault(rpcPrefix+".server_keep_alive_time", 60)
-	viper.SetDefault(rpcPrefix+".server_keep_alive_timeout", 20)
+	viper.SetDefault(rpcPrefix+".server_keep_alive_time", 60*time.Second)
+	viper.SetDefault(rpcPrefix+".server_keep_alive_timeout", 20*time.Second)
 
 	// set process default configs
 	const processPrefix = "process"
 	viper.SetDefault(processPrefix+".max_original_process_num", 50)
-	viper.SetDefault(processPrefix+".busy_timeout", 2000)
-	viper.SetDefault(processPrefix+".ready_timeout", 200)
+	viper.SetDefault(processPrefix+".busy_timeout", 8*time.Second)
+	viper.SetDefault(processPrefix+".ready_timeout", 200*time.Millisecond)
 	viper.SetDefault(processPrefix+".release_rate", 30)
-	viper.SetDefault(processPrefix+".release_period", 10)
+	viper.SetDefault(processPrefix+".release_period", 2*time.Minute)
 
 	// set log default configs
 	const logPrefix = "log"
@@ -154,42 +154,6 @@ func (c *conf) restrainConfig() {
 	}
 }
 
-// GetServerMinInterval returns server min interval
-func (c *conf) GetServerMinInterval() time.Duration {
-	return time.Duration(c.RPC.ServerMinInterval) * time.Second
-}
-
-// GetConnectionTimeout get connection timeout
-func (c *conf) GetConnectionTimeout() time.Duration {
-	return c.RPC.ConnectionTimeout
-	//return time.Duration(c.RPC.ConnectionTimeout) * time.Second
-}
-
-// GetServerKeepAliveTime returns get server keep alive time
-func (c *conf) GetServerKeepAliveTime() time.Duration {
-	return time.Duration(c.RPC.ServerKeepAliveTime) * time.Second
-}
-
-// GetServerKeepAliveTimeout returns get server keep alive timeout
-func (c *conf) GetServerKeepAliveTimeout() time.Duration {
-	return time.Duration(c.RPC.ServerKeepAliveTimeout) * time.Second
-}
-
-// GetBusyTimeout returns busy timeout
-func (c *conf) GetBusyTimeout() time.Duration {
-	return time.Duration(c.Process.BusyTimeout) * time.Millisecond
-}
-
-// GetReadyTimeout returns ready timeout
-func (c *conf) GetReadyTimeout() time.Duration {
-	return time.Duration(c.Process.ReadyTimeout) * time.Millisecond
-}
-
-// GetReleasePeriod returns release period
-func (c *conf) GetReleasePeriod() time.Duration {
-	return time.Duration(c.Process.ReleasePeriod) * time.Second
-}
-
 // GetReleaseRate returns release rate
 func (c *conf) GetReleaseRate() float64 {
 	return float64(c.Process.ReleaseRate) / 100.0
@@ -201,8 +165,6 @@ func (c *conf) GetMaxUserNum() int {
 }
 
 // TODO: ready timeout 配置改名
-// TODO：busy timeout 配置改名， 改为8s
 // TODO： 配置统一为毫秒，是否可以写单位
 // TODO： rpc server数量 改名为 contract_engine_chain_server 和 contract_engine_sandbox_server
-// 独立部署，同一个，只能和链的通信方式保持一致(也可以动态配置)
 // TODO：max_file_num改为max_disk_size

@@ -57,18 +57,18 @@ func NewSandboxRPCServer(sockDir string) (*SandboxRPCServer, error) {
 
 	// add keepalive
 	serverKeepAliveParameters := keepalive.ServerParameters{
-		Time:    config.DockerVMConfig.GetServerKeepAliveTime(),
-		Timeout: config.DockerVMConfig.GetServerKeepAliveTimeout(),
+		Time:    config.DockerVMConfig.RPC.ServerKeepAliveTime,
+		Timeout: config.DockerVMConfig.RPC.ServerKeepAliveTimeout,
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveParams(serverKeepAliveParameters))
 
 	//set enforcement policy
 	kep := keepalive.EnforcementPolicy{
-		MinTime:             config.DockerVMConfig.GetServerMinInterval(),
+		MinTime:             config.DockerVMConfig.RPC.ServerMinInterval,
 		PermitWithoutStream: true,
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
-	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.DockerVMConfig.GetConnectionTimeout()))
+	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.DockerVMConfig.RPC.ConnectionTimeout))
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.DockerVMConfig.RPC.MaxSendMsgSize*1024*1024))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.DockerVMConfig.RPC.MaxRecvMsgSize*1024*1024))
 
