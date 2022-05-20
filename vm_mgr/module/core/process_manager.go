@@ -635,12 +635,10 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 		ContractVersion: process.GetContractVersion(),
 	}
 
-	pm.logger.Debugf("waitingRequestGroups size: %d", pm.waitingRequestGroups.Size())
 	// remove waiting request group if meet the same group
 	if _, ok := pm.waitingRequestGroups.Get(groupKey); ok {
 		pm.waitingRequestGroups.Remove(groupKey)
 		// send process ready resp to request group
-		pm.logger.Debugf("remove waiting request group because new idle process with same group released")
 		if err := pm.sendProcessReadyResp(0, groupKey.ContractName, groupKey.ContractVersion); err != nil {
 			pm.logger.Errorf("failed to send process ready resp, %v", err)
 		}
@@ -648,7 +646,6 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 
 	// allocate idle process to waiting request group
 	if pm.waitingRequestGroups.Size() > 0 {
-		pm.logger.Debugf("try to allocate")
 		pm.allocateIdleCh <- struct{}{}
 	}
 }
