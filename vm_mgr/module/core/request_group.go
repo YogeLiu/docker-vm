@@ -16,7 +16,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"fmt"
 	"go.uber.org/zap"
-	"math"
 	"path/filepath"
 	"strconv"
 )
@@ -271,23 +270,25 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 	var controller *txController
-	var reqNumPerProcess int
+	//var reqNumPerProcess int
 
 	// get corresponding controller and request number per process
 	if isOrig {
 		controller = r.origTxController
-		reqNumPerProcess = reqNumPerOrigProcess
+		//reqNumPerProcess = reqNumPerOrigProcess
 	} else {
 		controller = r.crossTxController
-		reqNumPerProcess = reqNumPerCrossProcess
+		//reqNumPerProcess = reqNumPerCrossProcess
 	}
 
 	// calculate how many processes it needs:
 	// (currProcessNum + needProcessNum) * reqNumPerProcess = processingReqNum + inQueueReqNum
-	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
-	currChSize := len(controller.txCh)
+	//currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
+	//currChSize := len(controller.txCh)
+	//
+	//needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
 
-	needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
+	needProcessNum := len(controller.txCh) - controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
 
 	var err error
 	// need more processes
@@ -296,7 +297,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		if controller.processWaiting {
 			return 0, nil
 		}
-		r.logger.Debugf("try to get %d processes, tx chan size: %d", needProcessNum, len(controller.txCh))
+		r.logger.Debugf("try to get %d process(es), tx chan size: %d", needProcessNum, len(controller.txCh))
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,

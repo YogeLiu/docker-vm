@@ -238,7 +238,6 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 	// 2. allocate processes from idle processes
 	if needProcessNum > 0 {
-
 		newProcessNum := utils.Min(needProcessNum, pm.idleProcesses.Size())
 		// idle processes to remove
 		idleProcesses, err := pm.peekIdleProcesses(newProcessNum)
@@ -258,6 +257,14 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 				oldContractName := process.GetContractName()
 				oldContractVersion := process.GetContractVersion()
 				oldProcessName := process.GetProcessName()
+
+				// meet the same idle process
+				if msg.ContractName == oldContractName && msg.ContractVersion == oldContractVersion {
+					lock.Lock()
+					needProcessNum--
+					defer lock.Unlock()
+					return
+				}
 
 				newProcessName := pm.generateProcessName(msg.ContractName, msg.ContractVersion)
 
@@ -280,7 +287,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 	}
 
 	// no available process, put to waiting request group
-	if needProcessNum > 0 && msg.ProcessNum == needProcessNum {
+	if msg.ProcessNum == needProcessNum {
 		group := &messages.RequestGroupKey{
 			ContractName:    msg.ContractName,
 			ContractVersion: msg.ContractVersion,

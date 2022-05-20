@@ -165,6 +165,5 @@ func (c *conf) GetMaxUserNum() int {
 }
 
 // TODO: ready timeout 配置改名
-// TODO： 配置统一为毫秒，是否可以写单位
-// TODO： rpc server数量 改名为 contract_engine_chain_server 和 contract_engine_sandbox_server
+// TODO：rpc server数量 改名为 contract_engine_chain_server 和 contract_engine_sandbox_server
 // TODO：max_file_num改为max_disk_size
