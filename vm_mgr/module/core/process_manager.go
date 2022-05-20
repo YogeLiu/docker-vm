@@ -421,7 +421,9 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 
 			// meet the same idle process
 			if group.ContractName == oldContractName && group.ContractVersion == oldContractVersion {
+				lock.Lock()
 				pm.waitingRequestGroups.Remove(group)
+				lock.Unlock()
 				// send process ready resp to request group
 				if err := pm.sendProcessReadyResp(0, group.ContractName, group.ContractVersion); err != nil {
 					pm.logger.Errorf("failed to send process ready resp, %v", err)
