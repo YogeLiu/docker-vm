@@ -114,7 +114,7 @@ func (pm *ProcessManager) Start() {
 				}
 
 			case <-pm.allocateNewCh:
-				if err := pm.handleAllocateIdleProcesses(); err != nil {
+				if err := pm.handleAllocateNewProcesses(); err != nil {
 					pm.logger.Errorf("failed to allocate idle processes, %v", err)
 				}
 
@@ -197,7 +197,10 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 	// do not need any process
 	if msg.ProcessNum == 0 {
-		pm.waitingRequestGroups.Remove(groupKey)
+		pm.waitingRequestGroups.Remove(&messages.RequestGroupKey{
+			ContractName: msg.ContractName,
+			ContractVersion: msg.ContractVersion,
+		})
 		pm.logger.Debugf("request group %s does not need more processes, removed from waiting request group", groupKey)
 
 		return nil
@@ -411,21 +414,32 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 		go func() {
 			defer wg.Done()
 
-			// send process ready resp to request group
-			if err := pm.sendProcessReadyResp(1, group.ContractName, group.ContractVersion); err != nil {
-				pm.logger.Errorf("failed to send process ready resp, %v", err)
-				return
-			}
-
 			// generate new process name
 			oldContractName := process.GetContractName()
 			oldContractVersion := process.GetContractVersion()
 			oldProcessName := process.GetProcessName()
 
+			// meet the same idle process
+			if group.ContractName == oldContractName && group.ContractVersion == oldContractVersion {
+				pm.waitingRequestGroups.Remove(group)
+				// send process ready resp to request group
+				if err := pm.sendProcessReadyResp(0, group.ContractName, group.ContractVersion); err != nil {
+					pm.logger.Errorf("failed to send process ready resp, %v", err)
+					return
+				}
+				return
+			}
+
 			newProcessName := pm.generateProcessName(group.ContractName, group.ContractVersion)
 
 			if err := process.ChangeSandbox(group.ContractName, group.ContractVersion, newProcessName); err != nil {
 				pm.logger.Warnf("failed to change sandbox, %v", err)
+				return
+			}
+
+			// send process ready resp to request group
+			if err := pm.sendProcessReadyResp(1, group.ContractName, group.ContractVersion); err != nil {
+				pm.logger.Errorf("failed to send process ready resp, %v", err)
 				return
 			}
 
@@ -623,13 +637,16 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 	if _, ok := pm.waitingRequestGroups.Get(groupKey); ok {
 		pm.waitingRequestGroups.Remove(groupKey)
 		// send process ready resp to request group
+		pm.logger.Debugf("remove waiting request group because new idle process with same group released")
 		if err := pm.sendProcessReadyResp(0, groupKey.ContractName, groupKey.ContractVersion); err != nil {
 			pm.logger.Errorf("failed to send process ready resp, %v", err)
 		}
 	}
 
 	// allocate idle process to waiting request group
-	pm.allocateIdleCh <- struct{}{}
+	if pm.waitingRequestGroups.Size() > 0 {
+		pm.allocateIdleCh <- struct{}{}
+	}
 }
 
 // getAvailableProcessNum returns available process num
