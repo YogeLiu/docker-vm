@@ -48,7 +48,7 @@ ut:
 	./test/scripts/prepare.sh
 	make build-image
 	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
-	sleep 1
+	sleep 5
 	./ut_cover.sh
 	docker stop chaimaker_vm_test
 
