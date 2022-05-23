@@ -125,7 +125,7 @@ vm:
   log_level: INFO
   max_send_msg_size: 20
   max_recv_msg_size: 20
-  max_connection: 20
+  max_connection: 5
   docker_vm_host: 127.0.0.1
   docker_vm_port: 22359
 
