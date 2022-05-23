@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #
 # Copyright (C) BABEC. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
@@ -21,7 +23,7 @@ if [ "$(docker ps -aq -f status=exited -f name=${TESTCONTAINERNAME})" ]; then
   sleep 2
 fi
 
-if [ ${docker_image_name} ]; then
+if [ "${docker_image_name}" ]; then
   docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
   rm -fr ../testdata/org1
   rm -fr ../testdata/log
