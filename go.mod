@@ -5,7 +5,6 @@ go 1.15
 require (
 	chainmaker.org/chainmaker/common/v2 v2.2.1-0.20220419120639-3f11d401538b
 	chainmaker.org/chainmaker/localconf/v2 v2.2.0
-	chainmaker.org/chainmaker/logger/v2 v2.2.0
 	chainmaker.org/chainmaker/pb-go/v2 v2.2.1-0.20220330115503-be7240795241
 	chainmaker.org/chainmaker/protocol/v2 v2.2.2-0.20220507040216-42659b58ef08
 	chainmaker.org/chainmaker/utils/v2 v2.2.1
@@ -29,8 +28,4 @@ require (
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
 	golang.org/x/time v0.0.0-20210608053304-ed9ce3a009e4 // indirect
 	google.golang.org/grpc v1.41.0
-)
-
-replace (
-	chainmaker.org/chainmaker/logger/v2 v2.2.0 => ../logger
 )

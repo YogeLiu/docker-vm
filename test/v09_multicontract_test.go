@@ -11,8 +11,6 @@ import (
 	"time"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-
-	"chainmaker.org/chainmaker/logger/v2"
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 )
 
@@ -31,7 +29,7 @@ func TestMultiContractByRounds(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewDockerManager(chainId, cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockLogger(nil, testVMLogName), cmConfig)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")
@@ -43,7 +41,7 @@ func TestMultiContractByRounds(t *testing.T) {
 	//step4: mock sim context
 	fmt.Printf("===step 4 Mock txContext====\n")
 	performTxContext = InitContextTest()
-	mockLogger = logger.GetLogger(logger.MODULE_VM)
+	mockLogger = newMockLogger(nil, testVMLogName)
 
 	testDeployCutVersion(performContractVersion)
 	testDeployCutVersion(performContractVersion2)
@@ -70,7 +68,7 @@ func TestMultiContractMixed(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewDockerManager(chainId, cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockLogger(nil, testVMLogName), cmConfig)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")
@@ -82,7 +80,7 @@ func TestMultiContractMixed(t *testing.T) {
 	//step4: mock sim context
 	fmt.Printf("===step 4 Mock txContext====\n")
 	performTxContext = InitContextTest()
-	mockLogger = logger.GetLogger(logger.MODULE_VM)
+	mockLogger = newMockLogger(nil, testVMLogName)
 
 	testDeployCutVersion(performContractVersion)
 	testDeployCutVersion(performContractVersion2)

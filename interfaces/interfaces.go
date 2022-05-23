@@ -5,9 +5,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 )
 
-type ContractEngineClient interface {
-}
-
 type EventType int
 
 type Event struct {

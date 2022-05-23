@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"chainmaker.org/chainmaker/protocol/v2"
-
-	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"google.golang.org/grpc"
@@ -28,7 +26,7 @@ type RuntimeServer struct {
 	logger    protocol.Logger
 }
 
-func NewRuntimeServer(chainId string, vmConfig *config.DockerVMConfig) (*RuntimeServer, error) {
+func NewRuntimeServer(chainId string, logger protocol.Logger, vmConfig *config.DockerVMConfig) (*RuntimeServer, error) {
 	errCh := make(chan error, 1)
 	instanceCh := make(chan *RuntimeServer, 1)
 
@@ -70,7 +68,7 @@ func NewRuntimeServer(chainId string, vmConfig *config.DockerVMConfig) (*Runtime
 		instanceCh <- &RuntimeServer{
 			listener:  listener,
 			rpcServer: server,
-			logger:    logger.GetLoggerByChain("[Runtime Server]", chainId),
+			logger:    logger,
 			config:    vmConfig,
 		}
 	})

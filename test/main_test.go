@@ -23,7 +23,7 @@ import (
 */
 
 var (
-	//mockDockerManager   *dockergo.DockerManager
+	//mockDockerManager   *dockergo.InstancesManager
 	mockContractId      *commonPb.Contract
 	mockTxContext       *mock.MockTxSimContext
 	mockRuntimeInstance protocol.RuntimeInstance

@@ -54,7 +54,7 @@ func NewContractEngineClient(chainId string, id uint64, logger protocol.Logger, 
 	}
 }
 
-func (c *ContractEngineClient) StartClient() error {
+func (c *ContractEngineClient) Start() error {
 
 	c.logger.Infof("start contract engine client[%d]", c.id)
 	conn, err := c.NewClientConn()
@@ -85,6 +85,13 @@ func (c *ContractEngineClient) StartClient() error {
 	go c.receiveMsgRoutine()
 
 	return nil
+}
+
+func (c *ContractEngineClient) Stop() {
+	err := c.stream.CloseSend()
+	if err != nil {
+		c.logger.Errorf("close stream failed: ", err)
+	}
 }
 
 func (c *ContractEngineClient) sendMsgRoutine() {
@@ -121,6 +128,12 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 func (c *ContractEngineClient) receiveMsgRoutine() {
 
 	c.logger.Infof("start receiving contract engine message ")
+	defer func() {
+		c.clientMgr.PutEvent(&interfaces.Event{
+			Id:        c.id,
+			EventType: interfaces.EventType_ConnectionStopped,
+		})
+	}()
 
 	for {
 		select {

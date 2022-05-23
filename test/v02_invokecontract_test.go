@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"chainmaker.org/chainmaker/protocol/v2"
-
 	"github.com/stretchr/testify/assert"
 )
 
