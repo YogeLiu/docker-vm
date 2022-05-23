@@ -106,23 +106,25 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	var err error
 	// init func gas used calc and check gas limit
-	if gasUsed, err = gas.InitFuncGasUsed(gasUsed, parameters,
-		gas.ContractParamCreatorOrgId,
-		gas.ContractParamCreatorRole,
-		gas.ContractParamCreatorPk,
-		gas.ContractParamSenderOrgId,
-		gas.ContractParamSenderRole,
-		gas.ContractParamSenderPk,
-		gas.ContractParamBlockHeight,
-		gas.ContractParamTxId,
-		gas.ContractParamTxTimeStamp,
-	); err != nil {
-		contractResult.GasUsed = gasUsed
-		return r.errorResult(contractResult, err, err.Error())
+	if txSimContext.GetBlockVersion() >= 2300 {
+		gasUsed, err = gas.InitFuncGasUsed(gasUsed, r.getChainConfigDefaultGas(txSimContext))
+		if err != nil {
+			contractResult.GasUsed = gasUsed
+			return r.errorResult(contractResult, err, err.Error())
+		}
+	} else {
+		gasUsed, err = gas.InitFuncGasUsedOld(gasUsed, parameters, gas.ContractParamCreatorOrgId,
+			gas.ContractParamCreatorRole, gas.ContractParamCreatorPk, gas.ContractParamSenderOrgId,
+			gas.ContractParamSenderRole, gas.ContractParamSenderPk, gas.ContractParamBlockHeight,
+			gas.ContractParamTxId, gas.ContractParamTxTimeStamp)
+		if err != nil {
+			contractResult.GasUsed = gasUsed
+			return r.errorResult(contractResult, err, err.Error())
+		}
 	}
 
 	//init contract gas used calc and check gas limit
-	gasUsed, err = gas.ContractGasUsed(txSimContext, gasUsed, method, contract.Name, byteCode)
+	gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode)
 	if err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
@@ -1290,4 +1292,17 @@ func (r *RuntimeInstance) runCmd(command string) error {
 	}
 
 	return cmd.Wait()
+}
+
+func (r *RuntimeInstance) getChainConfigDefaultGas(txSimContext protocol.TxSimContext) uint64 {
+	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
+	if err != nil {
+		r.Log.Debugf("get last chain config err [%v]", err.Error())
+		return 0
+	}
+	if chainConfig.AccountConfig != nil && chainConfig.AccountConfig.DefaultGas > 0 {
+		return chainConfig.AccountConfig.DefaultGas
+	}
+	r.Log.Debug("account config not set default gas value")
+	return 0
 }

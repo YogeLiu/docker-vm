@@ -12,61 +12,6 @@ import (
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 )
 
-func TestInitFuncGasUsed(t *testing.T) {
-	type args struct {
-		gasUsed    uint64
-		parameters map[string][]byte
-		keys       []string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    uint64
-		wantErr bool
-	}{
-		{
-			name: "testInitFuncGasUsed",
-			args: args{
-				gasUsed: 0,
-				parameters: map[string][]byte{
-					ContractParamCreatorOrgId: []byte("orgId1"),
-					ContractParamCreatorRole:  []byte("creatorRole1"),
-					ContractParamCreatorPk:    []byte("creatorPk1"),
-					ContractParamSenderOrgId:  []byte("senderOrgId1"),
-					ContractParamSenderRole:   []byte("senderRole11"),
-					ContractParamSenderPk:     []byte("senderPk1"),
-					ContractParamBlockHeight:  []byte("blockHeight1"),
-					ContractParamTxId:         []byte("txId1"),
-				},
-				keys: []string{
-					ContractParamCreatorOrgId,
-					ContractParamCreatorRole,
-					ContractParamCreatorPk,
-					ContractParamSenderOrgId,
-					ContractParamSenderRole,
-					ContractParamSenderPk,
-					ContractParamBlockHeight,
-					ContractParamTxId,
-				},
-			},
-			want:    10078,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitFuncGasUsed(tt.args.gasUsed, tt.args.parameters, tt.args.keys...)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("InitFuncGasUsed() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("InitFuncGasUsed() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestDelStateGasUsed(t *testing.T) {
 	type args struct {
 		gasUsed uint64
@@ -215,6 +160,41 @@ func TestPutStateGasUsed(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("PutStateGasUsed() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInitFuncGasUsed(t *testing.T) {
+	type args struct {
+		gasUsed          uint64
+		configDefaultGas uint64
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    uint64
+		wantErr bool
+	}{
+		{
+			name: "t1",
+			args: args{
+				gasUsed:          0,
+				configDefaultGas: defaultInvokeBaseGas,
+			},
+			want:    defaultInvokeBaseGas + initFuncGas,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := InitFuncGasUsed(tt.args.gasUsed, tt.args.configDefaultGas)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("InitFuncGasUsed() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("InitFuncGasUsed() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

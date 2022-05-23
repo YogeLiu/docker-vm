@@ -106,6 +106,7 @@ func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	ctrl := gomock.NewController(t)
 	simContext := mock.NewMockTxSimContext(ctrl)
+	blockchainStore := mock.NewMockBlockchainStore(ctrl)
 
 	tmpSimContextMap = make(map[string][]byte)
 
@@ -124,7 +125,14 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return tx
 		}).AnyTimes()
 
-	simContext.EXPECT().GetBlockVersion().Return(uint32(2201)).AnyTimes()
+	simContext.EXPECT().GetBlockVersion().Return(uint32(230)).AnyTimes()
+	blockchainStore.EXPECT().GetLastChainConfig().Return(&configPb.ChainConfig{
+		AccountConfig: &configPb.GasAccountConfig{
+			DefaultGas: 200000,
+		},
+	}, nil).AnyTimes()
+	simContext.EXPECT().GetBlockchainStore().Return(blockchainStore).AnyTimes()
+
 	return simContext
 
 }
@@ -565,16 +573,6 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 }
 
 func (iter *mockHistoryKeyIterator) Release() {}
-
-func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
-	simContext.EXPECT().GetBlockVersion().DoAndReturn(
-		mockTxSimContextGetBlockVersion,
-	).AnyTimes()
-}
-
-func mockTxSimContextGetBlockVersion() uint32 {
-	return 2201
-}
 
 // 获取sender公钥
 func mockGetSender(simContext *mock.MockTxSimContext) {
