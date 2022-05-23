@@ -38,8 +38,20 @@ const (
 	// SockName domain socket file name
 	SockName = "cdm.sock"
 
+	// DefaultUserNum user num
+	DefaultUserNum = 1000
+	// DefaultListenPort default listening port in container
+	DefaultListenPort   = 22359
+	DefaultTxTimeLimit  = 2
+	DefaultLogLevel     = "INFO"
+	DefaultLogInConsole = false
+
 	// TestPath docker log dir for test
 	TestPath = "/"
+
+	DefaultMaxSendSize = 20
+	DefaultMaxRecvSize = 20
+	DefaultMaxProcess  = 100
 )
 
 var (
@@ -64,6 +76,7 @@ const (
 	ENV_MAX_CONCURRENCY   = "ENV_MAX_CONCURRENCY"
 	ENV_MAX_SEND_MSG_SIZE = "ENV_MAX_SEND_MSG_SIZE"
 	ENV_MAX_RECV_MSG_SIZE = "ENV_MAX_RECV_MSG_SIZE"
+	ENV_VM_SERVICE_PORT   = "ENV_VM_SERVICE_PORT"
 
 	EnvEnablePprof = "ENV_ENABLE_PPROF"
 	EnvPprofPort   = "ENV_PPROF_PORT"

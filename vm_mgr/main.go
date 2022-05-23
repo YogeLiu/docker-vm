@@ -1,18 +1,25 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package main
 
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
-	_ "net/http/pprof"
-
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
 
@@ -25,6 +32,13 @@ func main() {
 
 	// start pprof
 	startPProf(managerLogger)
+
+	// init files paths
+	err := initFilesPath(managerLogger)
+	if err != nil {
+		managerLogger.Errorf("fail to init paths, err: [%s]", err)
+		return
+	}
 
 	// new docker manager
 	manager, err := module.NewManager(managerLogger)
@@ -65,4 +79,24 @@ func startPProf(managerLogger *zap.SugaredLogger) {
 			}()
 		}
 	}
+}
+
+func initFilesPath(logger *zap.SugaredLogger) error {
+	var err error
+	// mkdir paths
+	contractDir := filepath.Join(config.DockerMountDir, config.ContractsDir)
+	err = utils.CreateDir(contractDir)
+	if err != nil {
+		return err
+	}
+	logger.Debug("set contract dir: ", contractDir)
+
+	sockDir := filepath.Join(config.DockerMountDir, config.SockDir)
+	err = utils.CreateDir(sockDir)
+	if err != nil {
+		return err
+	}
+	logger.Debug("set sock dir: ", sockDir)
+
+	return nil
 }

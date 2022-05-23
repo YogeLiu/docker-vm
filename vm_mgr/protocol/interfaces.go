@@ -22,23 +22,23 @@ type Scheduler interface {
 	GetGetStateReqCh() chan *protogo.CDMMessage
 
 	// RegisterResponseCh register response chan
-	RegisterResponseCh(txId string, responseCh chan *protogo.CDMMessage)
+	RegisterResponseCh(chainId, txId string, responseCh chan *protogo.CDMMessage)
 
 	// RegisterCrossContractResponseCh register cross contract response chan
-	RegisterCrossContractResponseCh(responseId string, responseCh chan *SDKProtogo.DMSMessage)
+	RegisterCrossContractResponseCh(chainId, responseId string, responseCh chan *SDKProtogo.DMSMessage)
 
 	// GetCrossContractResponseCh get cross contract response chan
-	GetCrossContractResponseCh(responseId string) chan *SDKProtogo.DMSMessage
+	GetCrossContractResponseCh(chainId, responseId string) chan *SDKProtogo.DMSMessage
 
 	// GetResponseChByTxId get response chan
-	GetResponseChByTxId(txId string) chan *protogo.CDMMessage
+	GetResponseChByTxId(chainId, txId string) chan *protogo.CDMMessage
 
 	// GetByteCodeReqCh get get_bytecode request chan
 	GetByteCodeReqCh() chan *protogo.CDMMessage
 
 	GetCrossContractReqCh() chan *protogo.TxRequest
 
-	ReturnErrorResponse(string, string)
+	ReturnErrorResponse(chainId, txId, errMsg string)
 
 	ReturnErrorCrossContractResponse(txRequest *protogo.TxRequest, resp *SDKProtogo.DMSMessage)
 }

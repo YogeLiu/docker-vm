@@ -20,10 +20,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	defaultMaxProcess = 10
-)
-
 type ProcessManager struct {
 	logger         *zap.SugaredLogger
 	balanceRWMutex sync.RWMutex
@@ -65,8 +61,8 @@ func (pm *ProcessManager) SetScheduler(scheduler protocol.Scheduler) {
 func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
 	pm.balanceRWMutex.Lock()
 	defer pm.balanceRWMutex.Unlock()
-	// processNamePrefix: contractName#contractVersion
-	contractKey := utils.ConstructContractKey(txRequest.ContractName, txRequest.ContractVersion)
+	// processNamePrefix: chainId#contractName#contractVersion
+	contractKey := utils.ConstructContractKey(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion)
 	// process exist, put current tx into process waiting queue and return
 	processBalance := pm.balanceTable[contractKey]
 	if processBalance == nil {
@@ -79,53 +75,36 @@ func (pm *ProcessManager) AddTx(txRequest *protogo.TxRequest) error {
 }
 
 func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, processBalance *ProcessBalance) error {
-	process, err := processBalance.GetAvailableProcess()
-	if err != nil {
-		return err
-	}
-	if process != nil {
-		process.AddTxWaitingQueue(txRequest)
+
+	processBalance.AddTx(txRequest)
+
+	if !processBalance.needCreateNewProcess() {
 		return nil
 	}
-	processName := utils.ConstructProcessName(txRequest.ContractName, txRequest.ContractVersion,
+	processName := utils.ConstructProcessName(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion,
 		processBalance.GetNextProcessIndex())
-	process, err = pm.createNewProcess(processName, txRequest)
+	process, err := pm.createNewProcess(processName, txRequest, processBalance)
 	if err == utils.ContractFileError {
+		// using existing process to handle tx
+		if processBalance.Size() > 0 {
+			return nil
+		}
+		// remove tx request from queue
+		<-processBalance.GetTxQueue()
 		return err
 	}
 	if err != nil {
 		return fmt.Errorf("faild to create process, err is: %s, txId: %s", err, txRequest.TxId)
 	}
 	processBalance.AddProcess(process, processName)
-	process.AddTxWaitingQueue(txRequest)
 	go process.ExecProcess()
 
 	return nil
 }
 
-func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, processName string) bool {
-	pm.balanceRWMutex.Lock()
-	defer pm.balanceRWMutex.Unlock()
-	processBalance, ok := pm.balanceTable[contractKey]
-	if !ok {
-		return true
-	}
-	process := processBalance.GetProcess(processName)
-	if process == nil {
-		return true
-	}
-	if process.Size() > 0 {
-		return false
-	}
-	processBalance.RemoveProcess(processName)
-	if processBalance.Size() == 0 {
-		delete(pm.balanceTable, contractKey)
-	}
-	return true
-}
-
 // CreateNewProcess create a new process
-func (pm *ProcessManager) createNewProcess(processName string, txRequest *protogo.TxRequest) (*Process, error) {
+func (pm *ProcessManager) createNewProcess(processName string, txRequest *protogo.TxRequest,
+	processBalance *ProcessBalance) (*Process, error) {
 	var (
 		err          error
 		user         *security.User
@@ -139,20 +118,65 @@ func (pm *ProcessManager) createNewProcess(processName string, txRequest *protog
 	}
 
 	// get contract deploy path
-	contractKey := utils.ConstructContractKey(txRequest.ContractName, txRequest.ContractVersion)
-	contractPath, err = pm.contractManager.GetContract(txRequest.TxId, contractKey)
+	contractKey := utils.ConstructContractKey(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion)
+	contractPath, err = pm.contractManager.GetContract(txRequest.ChainId, txRequest.TxId, contractKey)
 	if err != nil || len(contractPath) == 0 {
 		pm.logger.Errorf("fail to get contract path, contractName is [%s], err is [%s]", contractKey, err)
 		return nil, utils.ContractFileError
 	}
 
-	return NewProcess(user, txRequest, pm.scheduler, processName, contractPath, pm), nil
+	return NewProcess(user, txRequest, pm.scheduler, processName, contractPath, pm, processBalance), nil
+}
+
+// GetProcess retrieve process from process manager, could be original process or cross process:
+// cross process: contractName:contractVersion#timestamp:index#txCount#depth
+// original process: contractName:contractVersion#timestamp:index
+func (pm *ProcessManager) GetProcess(processName string) *Process {
+	pm.logger.Debugf("get process [%s]", processName)
+	isCrossProcess, processName1, processName2 := utils.TrySplitCrossProcessNames(processName)
+	if isCrossProcess {
+		pm.crossRWMutex.RLock()
+		defer pm.crossRWMutex.RUnlock()
+		crossDepth := pm.crossTable[processName1]
+		return crossDepth.GetProcess(processName2)
+	}
+	pm.balanceRWMutex.RLock()
+	defer pm.balanceRWMutex.RUnlock()
+	processBalance := pm.balanceTable[processName1]
+	return processBalance.GetProcess(processName2)
+}
+
+// ReleaseProcess release balance process
+// @param: processName: contract:version#timestamp:index
+func (pm *ProcessManager) ReleaseProcess(processName string, user *security.User) {
+	pm.logger.Infof("release process: [%s]", processName)
+	contractKey := utils.GetContractKeyFromProcessName(processName)
+	//released := pm.removeProcessFromProcessBalance(contractKey, processName)
+	pm.removeProcessFromProcessBalance(contractKey, processName)
+	_ = pm.usersManager.FreeUser(user)
+}
+
+func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, processName string) {
+	pm.balanceRWMutex.Lock()
+	defer pm.balanceRWMutex.Unlock()
+	processBalance, ok := pm.balanceTable[contractKey]
+	if !ok {
+		return
+	}
+	process := processBalance.GetProcess(processName)
+	if process == nil {
+		return
+	}
+	processBalance.RemoveProcess(processName)
+	if processBalance.Size() == 0 {
+		delete(pm.balanceTable, contractKey)
+	}
 }
 
 func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
 	// validate contract deployed or not
-	contractKey := utils.ConstructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
-	contractPath, err := pm.contractManager.GetContract(crossContractTx.TxId, contractKey)
+	contractKey := utils.ConstructContractKey(crossContractTx.ChainId, crossContractTx.ContractName, crossContractTx.ContractVersion)
+	contractPath, err := pm.contractManager.GetContract(crossContractTx.ChainId, crossContractTx.TxId, contractKey)
 	if err != nil {
 		pm.logger.Errorf(err.Error())
 		errResponse := constructCallContractErrorResponse(err.Error(), crossContractTx.TxId,
@@ -171,7 +195,7 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 		return
 	}
 
-	processName := utils.ConstructCrossContractProcessName(crossContractTx.TxId,
+	processName := utils.ConstructCrossContractProcessName(crossContractTx.ChainId, crossContractTx.TxId,
 		uint64(crossContractTx.TxContext.CurrentHeight))
 
 	newCrossProcess := NewCrossProcess(user, crossContractTx, pm.scheduler, processName, contractPath, pm)
@@ -192,37 +216,6 @@ func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxReq
 	txContext := newCrossProcess.Handler.TxRequest.TxContext
 	pm.ReleaseCrossProcess(newCrossProcess.processName, txContext.OriginalProcessName)
 	_ = pm.usersManager.FreeUser(newCrossProcess.user)
-}
-
-// ReleaseProcess release balance process
-// @param: processName: contract:version#timestamp:index
-func (pm *ProcessManager) ReleaseProcess(processName string, user *security.User) bool {
-	pm.logger.Infof("release process: [%s]", processName)
-	contractKey := utils.GetContractKeyFromProcessName(processName)
-	released := pm.removeProcessFromProcessBalance(contractKey, processName)
-	if !released {
-		return false
-	}
-	_ = pm.usersManager.FreeUser(user)
-	return true
-}
-
-// GetProcess retrieve process from process manager, could be original process or cross process:
-// cross process: contractName:contractVersion#timestamp:index#txCount#depth
-// original process: contractName:contractVersion#timestamp:index
-func (pm *ProcessManager) GetProcess(processName string) *Process {
-	pm.logger.Debugf("get process [%s]", processName)
-	isCrossProcess, processName1, processName2 := utils.TrySplitCrossProcessNames(processName)
-	if isCrossProcess {
-		pm.crossRWMutex.RLock()
-		defer pm.crossRWMutex.RUnlock()
-		crossDepth := pm.crossTable[processName1]
-		return crossDepth.GetProcess(processName2)
-	}
-	pm.balanceRWMutex.RLock()
-	defer pm.balanceRWMutex.RUnlock()
-	processBalance := pm.balanceTable[processName1]
-	return processBalance.GetProcess(processName2)
 }
 
 func (pm *ProcessManager) RegisterCrossProcess(originalProcessName string, crossProcess *Process) {
@@ -254,7 +247,7 @@ func (pm *ProcessManager) ReleaseCrossProcess(crossProcessName string, originalP
 	}
 }
 
-func (pm *ProcessManager) getProcessDepth(originalProcessName string) *ProcessDepth {
+func (pm *ProcessManager) GetProcessDepth(originalProcessName string) *ProcessDepth {
 	pm.crossRWMutex.RLock()
 	defer pm.crossRWMutex.RUnlock()
 	return pm.crossTable[originalProcessName]

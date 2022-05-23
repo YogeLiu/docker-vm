@@ -1,21 +1,26 @@
+/*
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+Copyright (C) BABEC. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 package utils
 
 import (
+	"fmt"
 	"strings"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 )
 
 const (
-	DefaultMaxSendSize    = 4
-	DefaultMaxRecvSize    = 4
-	DefaultUserNum        = 1000
-	DefaultTxTimeLimit    = 5
-	DefaultMaxConcurrency = 500
+	DefaultMaxSendSize   = 20
+	DefaultMaxRecvSize   = 20
+	DefaultMaxConnection = 1
 )
 
 func SplitContractName(contractNameAndVersion string) string {
-	contractName := strings.Split(contractNameAndVersion, "#")[0]
+	contractName := strings.Split(contractNameAndVersion, "#")[1]
 	return contractName
 }
 
@@ -33,23 +38,27 @@ func GetMaxRecvMsgSizeFromConfig(config *config.DockerVMConfig) uint32 {
 	return config.MaxRecvMsgSize
 }
 
-func GetMaxConcurrencyFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.MaxConcurrency == 0 {
-		return DefaultMaxConcurrency
+func GetURLFromConfig(config *config.DockerVMConfig) string {
+	ip := config.DockerVMHost
+	port := config.DockerVMPort
+	if ip == "" {
+		ip = "127.0.0.1"
 	}
-	return config.MaxConcurrency
+	if port == 0 {
+		port = 22359
+	}
+	url := fmt.Sprintf("%s:%d", ip, port)
+	return url
 }
 
-func GetTxTimeLimitFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.TxTimeLimit == 0 {
-		return DefaultTxTimeLimit
+func GetMaxConnectionFromConfig(config *config.DockerVMConfig) uint32 {
+	if config.MaxConnection == 0 {
+		return DefaultMaxConnection
 	}
-	return config.TxTimeLimit
+	return config.MaxConnection
 }
 
-func GetUserNumFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.UserNum == 0 {
-		return DefaultUserNum
-	}
-	return config.UserNum
+// ConstructReceiveChannelMapKey contractName#txId
+func ConstructReceiveMapKey(names ...string) string {
+	return strings.Join(names, "#")
 }

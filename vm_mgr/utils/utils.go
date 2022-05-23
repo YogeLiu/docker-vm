@@ -21,11 +21,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	DefaultMaxSendSize = 4
-	DefaultMaxRecvSize = 4
-)
-
 // WriteToFile WriteFile write value to file
 func WriteToFile(path string, value int) error {
 	if err := ioutil.WriteFile(path, []byte(fmt.Sprintf("%d", value)), 0755); err != nil {
@@ -73,18 +68,25 @@ func GetLogHandler() *zap.SugaredLogger {
 	return logger.NewDockerLogger(logger.MODULE_PROCESS, GetTestLogPath())
 }
 
-// ConstructContractKey contractName#contractVersion
-func ConstructContractKey(contractName, contractVersion string) string {
-	var sb strings.Builder
-	sb.WriteString(contractName)
-	sb.WriteString("#")
-	sb.WriteString(contractVersion)
-	return sb.String()
+// ConstructContractKey chainId#contractName#contractVersion
+func ConstructContractKey(names ...string) string {
+	return ConstructKey(names...)
 }
 
-// ConstructProcessName contractName#contractVersion#timestamp:index
-func ConstructProcessName(contractName, contractVersion string, index uint64) string {
+// ConstructSchedulerKey chainId#txId/responseId
+func ConstructSchedulerKey(chainId, schedulerKey string) string {
+	return ConstructKey(chainId, schedulerKey)
+}
+
+func ConstructKey(names ...string) string {
+	return strings.Join(names, "#")
+}
+
+// ConstructProcessName chainId#contractName#contractVersion#timestamp:index
+func ConstructProcessName(chainId, contractName, contractVersion string, index uint64) string {
 	var sb strings.Builder
+	sb.WriteString(chainId)
+	sb.WriteString("#")
 	sb.WriteString(contractName)
 	sb.WriteString("#")
 	sb.WriteString(contractVersion)
@@ -95,7 +97,7 @@ func ConstructProcessName(contractName, contractVersion string, index uint64) st
 	return sb.String()
 }
 
-// ConstructOriginalProcessName contractName#contractVersion#timestamp:index#txCount
+// ConstructOriginalProcessName chainId#contractName#contractVersion#timestamp:index#txCount
 func ConstructOriginalProcessName(processName string, txCount uint64) string {
 	var sb strings.Builder
 	sb.WriteString(processName)
@@ -104,7 +106,7 @@ func ConstructOriginalProcessName(processName string, txCount uint64) string {
 	return sb.String()
 }
 
-// ConstructConcatOriginalAndCrossProcessName contractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
+// ConstructConcatOriginalAndCrossProcessName chainId#contractName#contractVersion#timestamp:index#txCount&txId:timestamp:depth
 func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProcessName string) string {
 	var sb strings.Builder
 	sb.WriteString(originalProcessName)
@@ -113,9 +115,11 @@ func ConstructConcatOriginalAndCrossProcessName(originalProcessName, crossProces
 	return sb.String()
 }
 
-// ConstructCrossContractProcessName txId:timestamp:depth
-func ConstructCrossContractProcessName(txId string, txDepth uint64) string {
+// ConstructCrossContractProcessName chainId:txId:timestamp:depth
+func ConstructCrossContractProcessName(chainId, txId string, txDepth uint64) string {
 	var sb strings.Builder
+	sb.WriteString(chainId)
+	sb.WriteString(":")
 	sb.WriteString(txId)
 	sb.WriteString(":")
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
@@ -132,19 +136,19 @@ func TrySplitCrossProcessNames(processName string) (bool, string, string) {
 		return true, nameList[0], nameList[1]
 	}
 	nameList = strings.Split(processName, "#")
-	return false, ConstructContractKey(nameList[0], nameList[1]), processName
+	return false, ConstructContractKey(nameList[0], nameList[1], nameList[2]), processName
 }
 
 func GetContractKeyFromProcessName(processName string) string {
 	nameList := strings.Split(processName, "#")
-	return ConstructContractKey(nameList[0], nameList[1])
+	return ConstructContractKey(nameList[0], nameList[1], nameList[2])
 }
 
 func GetMaxSendMsgSizeFromEnv() int {
 	maxSendSizeFromEnv := os.Getenv(config.ENV_MAX_SEND_MSG_SIZE)
 	maxSendSize, err := strconv.Atoi(maxSendSizeFromEnv)
 	if err != nil {
-		return DefaultMaxSendSize
+		return config.DefaultMaxSendSize
 	}
 	return maxSendSize
 }
@@ -153,7 +157,43 @@ func GetMaxRecvMsgSizeFromEnv() int {
 	maxRecvSizeFromEnv := os.Getenv(config.ENV_MAX_RECV_MSG_SIZE)
 	maxRecvSize, err := strconv.Atoi(maxRecvSizeFromEnv)
 	if err != nil {
-		return DefaultMaxRecvSize
+		return config.DefaultMaxRecvSize
 	}
 	return maxRecvSize
+}
+
+func GetMaxConcurrencyFromEnv() int64 {
+	mc := os.Getenv(config.ENV_MAX_CONCURRENCY)
+	maxConcurrency, err := strconv.Atoi(mc)
+	if err != nil {
+		maxConcurrency = config.DefaultMaxProcess
+	}
+	return int64(maxConcurrency)
+}
+
+func CreateDir(directory string) error {
+	exist, err := exists(directory)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		err = os.MkdirAll(directory, 0755)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

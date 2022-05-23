@@ -83,12 +83,12 @@ func TestDockerGoMemory(t *testing.T) {
 
 func testMultipleTxs(mockLogger *logger.CMLogger) {
 	fmt.Println("--------- Ready to analysis --------------")
-	time.Sleep(20 * time.Second)
+	time.Sleep(5 * time.Second)
 	fmt.Println("---------- Start -------------------------")
 
 	mockTxContext.EXPECT().Put(contractName, []byte("key"), []byte("name")).Return(nil).AnyTimes()
 
-	loopNum := 2000
+	loopNum := 300
 	threadNum := 300
 
 	for loopIndex := 0; loopIndex < loopNum; loopIndex++ {

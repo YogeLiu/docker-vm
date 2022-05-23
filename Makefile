@@ -1,11 +1,19 @@
 VERSION=develop
 
+BUILD_TIME = $(shell date "+%Y%m%d%H%M%S")
+GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
+GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
+
 build-test:
 	cd test/scripts && ./prepare.sh
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} -f Dockerfile ./
+	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} \
+	--build-arg BUILD_TIME=${BUILD_TIME} \
+	--build-arg GIT_BRANCH=${GIT_BRANCH} \
+	--build-arg GIT_COMMIT=${GIT_COMMIT} \
+	-f Dockerfile ./
 	docker images | grep chainmaker-vm-docker-go
 
 image-push:
@@ -34,13 +42,14 @@ clean:
 ci:
 	make build-test
 	golangci-lint run ./...
-	go test -v ./...
 	make clean
 
 ut:
-	make build-test
-	go test -v ./...
-	make clean
+	./test/scripts/prepare.sh
+	make build-image
+	docker run -itd --rm -p22359:22359 -e ENV_USER_NUM=100 -e ENV_MAX_CONCURRENCY=20 --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	./ut_cover.sh
+	docker stop chaimaker_vm_test
 
 gomod:
 	cd scripts && sh gomod_update.sh

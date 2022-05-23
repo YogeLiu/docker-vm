@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"testing"
+	"time"
 
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +46,7 @@ func setupTest(t *testing.T) {
 	fmt.Printf("=== step 3 start Docker VM ===\n")
 	dockerContainErr := mockDockerManager.StartVM()
 	if dockerContainErr != nil {
-		log.Fatalf("start docmer manager instance failed %v\n", dockerContainErr)
+		log.Fatalf("start docker manager instance failed %v\n", dockerContainErr)
 	}
 
 	//step4: mock contractId, contractBin
@@ -68,6 +69,8 @@ func setupTest(t *testing.T) {
 		log.Fatal(fmt.Errorf("get byte code failed %v", err))
 	}
 
+	time.Sleep(50 * time.Millisecond)
+
 	//step6: invoke user contract --- create user contract
 	fmt.Printf("=== step 6 init user contract ===\n")
 	parameters := generateInitParams()
@@ -79,10 +82,11 @@ func setupTest(t *testing.T) {
 }
 
 func tearDownTest() {
-	err := mockDockerManager.StopVM()
-	if err != nil {
-		log.Fatalf("stop docmer manager instance failed %v\n", err)
-	}
+	//err := mockDockerManager.StopVM()
+	//if err != nil {
+	//	log.Fatalf("stop docker manager instance failed %v\n", err)
+	//}
+	time.Sleep(1000 * time.Millisecond)
 }
 
 func TestDockerGoBasicInvoke(t *testing.T) {

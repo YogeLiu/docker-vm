@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,9 +43,10 @@ import (
 )
 
 const (
-	mountContractDir = "contracts"
-	msgIterIsNil     = "iterator is nil"
-	timeout          = 10000 // tx execution timeout(milliseconds)
+	mountContractDir                = "contracts"
+	msgIterIsNil                    = "iterator is nil"
+	timeout                         = 10000 // tx execution timeout(milliseconds)
+	versionCompatibilityFlag uint32 = 2201
 )
 
 var (
@@ -52,26 +54,30 @@ var (
 	keyChainConfig          = chainConfigContractName
 )
 
-type CDMClient interface {
-	GetTxSendCh() chan *protogo.CDMMessage
+type ClientManager interface {
+	PutTxRequest(txRequest *protogo.CDMMessage)
 
-	GetStateResponseSendCh() chan *protogo.CDMMessage
+	PutSysCallResponse(sysCallResp *protogo.CDMMessage)
 
-	RegisterRecvChan(txId string, recvCh chan *protogo.CDMMessage) error
+	RegisterReceiveChan(chainId, txId string, receiveCh chan *protogo.CDMMessage) error
 
-	DeleteRecvChan(txId string) bool
+	DeleteReceiveChan(chainId, txId string) bool
 
-	GetCMConfig() *config.DockerVMConfig
+	GetVMConfig() *config.DockerVMConfig
 
 	GetUniqueTxKey(txId string) string
+
+	NeedSendContractByteCode() bool
+
+	HasActiveConnections() bool
 }
 
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
-	rowIndex int32  // iterator index
-	ChainId  string // chain id
-	Client   CDMClient
-	Log      protocol.Logger
+	rowIndex      int32  // iterator index
+	ChainId       string // chain id
+	ClientManager ClientManager
+	Log           protocol.Logger
 }
 
 // Invoke process one tx in docker and return result
@@ -79,8 +85,16 @@ type RuntimeInstance struct {
 func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	byteCode []byte, parameters map[string][]byte, txSimContext protocol.TxSimContext,
 	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
+
 	originalTxId := txSimContext.GetTx().Payload.TxId
-	uniqueTxKey := r.Client.GetUniqueTxKey(originalTxId)
+
+	if !r.ClientManager.HasActiveConnections() {
+		r.Log.Errorf("cdm client stream not ready, waiting reconnect, tx id: %s", originalTxId)
+		err := errors.New("cdm client not connected")
+		return r.errorResult(contractResult, err, err.Error())
+	}
+
+	uniqueTxKey := r.ClientManager.GetUniqueTxKey(originalTxId)
 
 	// contract response
 	contractResult = &commonPb.ContractResult{
@@ -124,6 +138,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// construct cdm message
 	txRequest := &protogo.TxRequest{
+		ChainId:         r.ChainId,
 		TxId:            uniqueTxKey,
 		ContractName:    contract.Name,
 		ContractVersion: contract.Version,
@@ -137,6 +152,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		},
 	}
 	cdmMessage := &protogo.CDMMessage{
+		ChainId:   r.ChainId,
 		TxId:      uniqueTxKey,
 		Type:      protogo.CDMType_CDM_TYPE_TX_REQUEST,
 		TxRequest: txRequest,
@@ -144,15 +160,13 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	// register result chan
 	responseCh := make(chan *protogo.CDMMessage, 1)
-	err = r.Client.RegisterRecvChan(uniqueTxKey, responseCh)
+	err = r.ClientManager.RegisterReceiveChan(r.ChainId, uniqueTxKey, responseCh)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
 
 	// send message to tx chan
-	sendCh := r.Client.GetTxSendCh()
-	r.Log.Debugf("[%s] put tx in send chan with length [%d]", txRequest.TxId, len(sendCh))
-	sendCh <- cdmMessage
+	r.ClientManager.PutTxRequest(cdmMessage)
 
 	timeoutC := time.After(timeout * time.Millisecond)
 
@@ -165,8 +179,8 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
 				r.Log.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
 				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
-				r.Client.GetStateResponseSendCh() <- getByteCodeResponse
-				r.Log.Debugf("tx [%s] finish get bytecode [%v]", uniqueTxKey, getByteCodeResponse)
+				r.ClientManager.PutSysCallResponse(getByteCodeResponse)
+				r.Log.Debugf("tx [%s] finish get bytecode", uniqueTxKey)
 
 			case protogo.CDMType_CDM_TYPE_GET_STATE:
 				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
@@ -180,8 +194,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 						getStateResponse.Message = err.Error()
 					}
 				}
-
-				r.Client.GetStateResponseSendCh() <- getStateResponse
+				r.ClientManager.PutSysCallResponse(getStateResponse)
 				r.Log.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
 
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
@@ -202,7 +215,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				contractResult.Result = txResponse.Result
 				contractResult.Message = txResponse.Message
 
-				// merge the sim context write map
+				// merge read map to sim context
+				r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap())
+
+				// merge write map to sim context
 				gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 				if err != nil {
 					contractResult.GasUsed = gasUsed
@@ -251,7 +267,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
-				r.Client.GetStateResponseSendCh() <- createKvIteratorResponse
+				r.ClientManager.PutSysCallResponse(createKvIteratorResponse)
 				r.Log.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxKey, createKvIteratorResponse)
 
 			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
@@ -259,7 +275,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				var consumeKvIteratorResponse *protogo.CDMMessage
 				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
-				r.Client.GetStateResponseSendCh() <- consumeKvIteratorResponse
+				r.ClientManager.PutSysCallResponse(consumeKvIteratorResponse)
 				r.Log.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxKey, consumeKvIteratorResponse)
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
@@ -267,21 +283,21 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				var createKeyHistoryIterResp *protogo.CDMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
-				r.Client.GetStateResponseSendCh() <- createKeyHistoryIterResp
+				r.ClientManager.PutSysCallResponse(createKeyHistoryIterResp)
 				r.Log.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxKey, createKeyHistoryIterResp)
 
 			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER:
 				r.Log.Debugf("tx [%s] start consume key history iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKeyHistoryResp *protogo.CDMMessage
 				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
-				r.Client.GetStateResponseSendCh() <- consumeKeyHistoryResp
+				r.ClientManager.PutSysCallResponse(consumeKeyHistoryResp)
 				r.Log.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxKey, consumeKeyHistoryResp)
 
 			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
 				r.Log.Debugf("tx [%s] start get sender address [%v]", uniqueTxKey, recvMsg)
 				var getSenderAddressResp *protogo.CDMMessage
 				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxKey, txSimContext, gasUsed)
-				r.Client.GetStateResponseSendCh() <- getSenderAddressResp
+				r.ClientManager.PutSysCallResponse(getSenderAddressResp)
 				r.Log.Debugf("tx [%s] finish get sender address [%v]", uniqueTxKey, getSenderAddressResp)
 
 			default:
@@ -293,7 +309,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				)
 			}
 		case <-timeoutC:
-			deleted := r.Client.DeleteRecvChan(uniqueTxKey)
+			deleted := r.ClientManager.DeleteReceiveChan(r.ChainId, uniqueTxKey)
 			if deleted {
 				r.Log.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
 					uniqueTxKey)
@@ -313,6 +329,7 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.CDMType)
 		ResultCode: protocol.ContractSdkSignalResultFail,
 		Payload:    nil,
 		Message:    "",
+		ChainId:    r.ChainId,
 	}
 }
 
@@ -355,55 +372,13 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		| MemberType_CERT       | PEM        |
 		| MemberType_CERT_HASH  | HASH       |
 		| MemberType_PUBLIC_KEY | PEM        |
+		| MemberType_ALIAS      | ALIAS      |
 	*/
 
 	var address string
-	sender := txSimContext.GetSender()
-	switch sender.MemberType {
-	case accesscontrol.MemberType_CERT:
-		address, err = getSenderAddressFromCert(sender.MemberInfo, chainConfig.GetVm().GetAddrType())
-		if err != nil {
-			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
-			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			getSenderAddressResponse.Message = err.Error()
-			getSenderAddressResponse.Payload = nil
-			return getSenderAddressResponse, gasUsed
-		}
-
-	case accesscontrol.MemberType_CERT_HASH:
-		certHashKey := hex.EncodeToString(sender.MemberInfo)
-		var certBytes []byte
-		certBytes, err = txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
-		if err != nil {
-			r.Log.Errorf("get cert from chain fialed, %s", err.Error())
-			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			getSenderAddressResponse.Message = err.Error()
-			getSenderAddressResponse.Payload = nil
-			return getSenderAddressResponse, gasUsed
-		}
-
-		address, err = getSenderAddressFromCert(certBytes, chainConfig.GetVm().GetAddrType())
-		if err != nil {
-			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
-			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			getSenderAddressResponse.Message = err.Error()
-			getSenderAddressResponse.Payload = nil
-			return getSenderAddressResponse, gasUsed
-		}
-
-	case accesscontrol.MemberType_PUBLIC_KEY:
-		address, err = getSenderAddressFromPublicKeyPEM(sender.MemberInfo, chainConfig.GetVm().GetAddrType(),
-			crypto.HashAlgoMap[chainConfig.GetCrypto().Hash])
-		if err != nil {
-			r.Log.Errorf("getSenderAddressFromPublicKeyPEM failed, %s", err.Error())
-			getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
-			getSenderAddressResponse.Message = err.Error()
-			getSenderAddressResponse.Payload = nil
-			return getSenderAddressResponse, gasUsed
-		}
-
-	default:
-		r.Log.Errorf("handleGetSenderAddress failed, invalid member type")
+	address, err = r.getSenderAddrWithBlockVersion(txSimContext.GetBlockVersion(), chainConfig, txSimContext)
+	if err != nil {
+		r.Log.Error(err.Error())
 		getSenderAddressResponse.ResultCode = protocol.ContractSdkSignalResultFail
 		getSenderAddressResponse.Message = err.Error()
 		getSenderAddressResponse.Payload = nil
@@ -417,7 +392,86 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 	return getSenderAddressResponse, gasUsed
 }
 
-func getSenderAddressFromCert(certPem []byte, addressType configPb.AddrType) (string, error) {
+func (r *RuntimeInstance) getSenderAddrWithBlockVersion(blockVersion uint32, chainConfig configPb.ChainConfig,
+	txSimContext protocol.TxSimContext) (string, error) {
+	var address string
+	var err error
+
+	sender := txSimContext.GetSender()
+
+	switch sender.MemberType {
+	case accesscontrol.MemberType_CERT:
+		address, err = r.getSenderAddressFromCert(blockVersion, sender.MemberInfo, chainConfig.Vm.AddrType)
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			return "", err
+		}
+	case accesscontrol.MemberType_CERT_HASH,
+		accesscontrol.MemberType_ALIAS:
+		if blockVersion < versionCompatibilityFlag && sender.MemberType == accesscontrol.MemberType_ALIAS {
+			r.Log.Error("handleGetSenderAddress failed, invalid member type")
+			return "", err
+		}
+
+		address, err = r.getSenderAddressFromCertHash(
+			blockVersion,
+			sender.MemberInfo,
+			chainConfig.Vm.AddrType,
+			txSimContext,
+		)
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			return "", err
+		}
+
+	case accesscontrol.MemberType_PUBLIC_KEY:
+		address, err = r.getSenderAddressFromPublicKeyPEM(blockVersion, sender.MemberInfo, chainConfig.Vm.AddrType,
+			crypto.HashAlgoMap[chainConfig.GetCrypto().Hash])
+		if err != nil {
+			r.Log.Errorf("getSenderAddressFromPublicKeyPEM failed, %s", err.Error())
+			return "", err
+		}
+
+	default:
+		r.Log.Errorf("getSenderAddrWithBlockVersion failed, invalid member type")
+		return "", err
+	}
+
+	return address, nil
+}
+
+func (r *RuntimeInstance) getSenderAddressFromCertHash(blockVersion uint32, memberInfo []byte,
+	addressType configPb.AddrType, txSimContext protocol.TxSimContext) (string, error) {
+	var certBytes []byte
+	var err error
+	certBytes, err = r.getCertFromChain(memberInfo, txSimContext)
+	if err != nil {
+		return "", err
+	}
+
+	var address string
+	address, err = r.getSenderAddressFromCert(blockVersion, certBytes, addressType)
+	if err != nil {
+		r.Log.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+		return "", err
+	}
+
+	return address, nil
+}
+
+func (r *RuntimeInstance) getCertFromChain(memberInfo []byte, txSimContext protocol.TxSimContext) ([]byte, error) {
+	certHashKey := hex.EncodeToString(memberInfo)
+	certBytes, err := txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
+	if err != nil {
+		r.Log.Errorf("get cert from chain failed, %s", err.Error())
+		return nil, err
+	}
+
+	return certBytes, nil
+}
+
+func (r *RuntimeInstance) getSenderAddressFromCert(blockVersion uint32, certPem []byte,
+	addressType configPb.AddrType) (string, error) {
 	if addressType == configPb.AddrType_ZXL {
 		address, err := evmutils.ZXAddressFromCertificatePEM(certPem)
 		if err != nil {
@@ -425,52 +479,72 @@ func getSenderAddressFromCert(certPem []byte, addressType configPb.AddrType) (st
 		}
 
 		return address, nil
-	} else if addressType == configPb.AddrType_ETHEREUM {
-		blockCrt, _ := pem.Decode(certPem)
-		crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
-		if err != nil {
-			return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
-		}
-
-		ski := hex.EncodeToString(crt.SubjectKeyId)
-		addrInt, err := evmutils.MakeAddressFromHex(ski)
-		if err != nil {
-			return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
-		}
-
-		return addrInt.String(), nil
-	} else {
-		return "", errors.New("invalid address type")
 	}
+
+	if addressType == configPb.AddrType_ETHEREUM && blockVersion < versionCompatibilityFlag {
+		return r.calculateCertAddr(certPem)
+	}
+
+	if addressType == configPb.AddrType_CHAINMAKER && blockVersion >= versionCompatibilityFlag {
+		return r.calculateCertAddr(certPem)
+	}
+
+	return "", errors.New("invalid address type")
 }
 
-func getSenderAddressFromPublicKeyPEM(publicKeyPem []byte, addressType configPb.AddrType,
-	hashType crypto.HashType) (string, error) {
+func (r *RuntimeInstance) calculateCertAddr(certPem []byte) (string, error) {
+	blockCrt, _ := pem.Decode(certPem)
+	crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
+	}
+
+	ski := hex.EncodeToString(crt.SubjectKeyId)
+	addrInt, err := evmutils.MakeAddressFromHex(ski)
+	if err != nil {
+		return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
+	}
+
+	return addrInt.String(), nil
+}
+
+func (r *RuntimeInstance) getSenderAddressFromPublicKeyPEM(blockVersion uint32, publicKeyPem []byte,
+	addressType configPb.AddrType, hashType crypto.HashType) (string, error) {
 	if addressType == configPb.AddrType_ZXL {
 		address, err := evmutils.ZXAddressFromPublicKeyPEM(publicKeyPem)
 		if err != nil {
-			return "", fmt.Errorf("ZXAddressFromPublicKeyPEM, failed, %s", err.Error())
+			r.Log.Errorf("ZXAddressFromPublicKeyPEM, failed, %s", err.Error())
 		}
-		return address, nil
-	} else if addressType == configPb.AddrType_ETHEREUM {
-		publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
-		if err != nil {
-			return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
-		}
-
-		ski, err := commonCrt.ComputeSKI(hashType, publicKey.ToStandardKey())
-		if err != nil {
-			return "", fmt.Errorf("computeSKI from public key failed, %s", err.Error())
-		}
-
-		addr, err := evmutils.MakeAddressFromHex(hex.EncodeToString(ski))
-		if err != nil {
-			return "", fmt.Errorf("make address from cert SKI failed, %s", err)
-		}
-		return addr.String(), nil
-	} else {
-		return "", errors.New("invalid address type")
+		return address, err
 	}
+
+	if addressType == configPb.AddrType_ETHEREUM && blockVersion < versionCompatibilityFlag {
+		return r.calculatePubKeyAddr(publicKeyPem, hashType)
+	}
+
+	if addressType == configPb.AddrType_CHAINMAKER && blockVersion >= versionCompatibilityFlag {
+		return r.calculatePubKeyAddr(publicKeyPem, hashType)
+	}
+
+	return "", errors.New("invalid address type")
+}
+
+func (r *RuntimeInstance) calculatePubKeyAddr(publicKeyPem []byte, hashType crypto.HashType) (string, error) {
+	publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
+	if err != nil {
+		return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
+	}
+
+	ski, err := commonCrt.ComputeSKI(hashType, publicKey.ToStandardKey())
+	if err != nil {
+		return "", fmt.Errorf("computeSKI from public key failed, %s", err.Error())
+	}
+
+	addr, err := evmutils.MakeAddressFromHex(hex.EncodeToString(ski))
+	if err != nil {
+		return "", fmt.Errorf("make address from cert SKI failed, %s", err)
+	}
+	return addr.String(), nil
 }
 
 func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *protogo.CDMMessage,
@@ -875,6 +949,24 @@ func kvIteratorClose(kvIterator protocol.StateIterator, gasUsed uint64,
 	return response, gasUsed
 }
 
+func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimContext,
+	readMap map[string][]byte) {
+
+	for key, value := range readMap {
+		var contractName string
+		var contractKey string
+		var contractField string
+		keyList := strings.Split(key, "#")
+		contractName = keyList[0]
+		contractKey = keyList[1]
+		if len(keyList) == 3 {
+			contractField = keyList[2]
+		}
+
+		txSimContext.PutIntoReadSet(contractName, protocol.GetKeyStr(contractKey, contractField), value)
+	}
+}
+
 func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimContext,
 	writeMap map[string][]byte, gasUsed uint64) (uint64, error) {
 	// merge the sim context write map
@@ -1039,7 +1131,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE)
 
-	contractNameAndVersion := string(recvMsg.Payload)               // e.g: contract1#1.0.0
+	contractNameAndVersion := string(recvMsg.Payload)               // e.g: chain1#contract1#1.0.0
 	contractName := utils.SplitContractName(contractNameAndVersion) // e.g: contract1
 
 	if len(byteCode) == 0 {
@@ -1053,7 +1145,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		}
 	}
 
-	hostMountPath := r.Client.GetCMConfig().DockerVMMountPath
+	hostMountPath := r.ClientManager.GetVMConfig().DockerVMMountPath
 	hostMountPath = filepath.Join(hostMountPath, r.ChainId)
 
 	contractDir := filepath.Join(hostMountPath, mountContractDir)
@@ -1061,44 +1153,67 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
 	contractPathWithVersion := filepath.Join(contractDir, contractNameAndVersion)
 
-	// save bytecode to disk
-	err = r.saveBytesToDisk(byteCode, contractZipPath)
+	_, err = os.Stat(contractPathWithVersion)
 	if err != nil {
-		r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
-		response.Message = err.Error()
-		return response
+		if !errors.Is(err, os.ErrNotExist) {
+			// file may or may not exist, just run into another problem.
+			r.Log.Errorf("read file failed", err)
+			response.Message = err.Error()
+			return response
+		}
+
+		// save bytecode to disk
+		err = r.saveBytesToDisk(byteCode, contractZipPath)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
+			response.Message = err.Error()
+			return response
+		}
+
+		// extract 7z file
+		unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // e.g: contract1
+		err = r.runCmd(unzipCommand)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
+			response.Message = err.Error()
+			return response
+		}
+
+		// remove 7z file
+		err = os.Remove(contractZipPath)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
+				contractZipPath)
+			response.Message = err.Error()
+			return response
+		}
+
+		// replace contract name to contractName:version
+		err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
+		if err != nil {
+			r.Log.Errorf("[%s] fail to rename contract name: %s, "+
+				"please make sure contract name should be same as contract name (first input name) while compiling",
+				txId, err)
+			response.Message = err.Error()
+			return response
+		}
+
 	}
 
-	// extract 7z file
-	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // e.g: contract1
-	err = r.runCmd(unzipCommand)
-	if err != nil {
-		r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
-		response.Message = err.Error()
-		return response
-	}
+	if r.ClientManager.NeedSendContractByteCode() {
+		contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
+		if err != nil {
+			r.Log.Errorf("fail to load contract executable file: %s, ", err)
+			response.Message = err.Error()
+			return response
+		}
 
-	// remove 7z file
-	err = os.Remove(contractZipPath)
-	if err != nil {
-		r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
-			contractZipPath)
-		response.Message = err.Error()
-		return response
+		response.ResultCode = protocol.ContractSdkSignalResultSuccess
+		response.Payload = contractByteCode
+	} else {
+		response.ResultCode = protocol.ContractSdkSignalResultSuccess
+		response.Payload = []byte(contractNameAndVersion)
 	}
-
-	// replace contract name to contractName:version
-	err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
-	if err != nil {
-		r.Log.Errorf("[%s] fail to rename contract name: %s, "+
-			"please make sure contract name should be same as contract name (first input name) while compiling",
-			txId, err)
-		response.Message = err.Error()
-		return response
-	}
-
-	response.ResultCode = protocol.ContractSdkSignalResultSuccess
-	response.Payload = []byte(contractNameAndVersion)
 
 	return response
 }

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #
 # Copyright (C) BABEC. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
@@ -5,14 +7,26 @@
 
 VERSION=develop
 
-docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`)
+TESTCONTAINERNAME=chaimaker_vm_test
 
-if [ ${docker_image_name} ]; then
+docker_image_name=`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`
+
+if [ "$(docker ps -q -f status=running -f name=${TESTCONTAINERNAME})" ]; then
+  echo "stop container"
+  docker stop ${TESTCONTAINERNAME}
+  sleep 3
+fi
+
+if [ "$(docker ps -aq -f status=exited -f name=${TESTCONTAINERNAME})" ]; then
+  echo "clean container"
+  docker rm ${TESTCONTAINERNAME}
+  sleep 2
+fi
+
+if [ "${docker_image_name}" ]; then
   docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
   rm -fr ../testdata/org1
   rm -fr ../testdata/log
   rm -fr ../default.log*
 fi
 
-cd ../../vm_mgr && go mod vendor
-docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} -f Dockerfile ./
