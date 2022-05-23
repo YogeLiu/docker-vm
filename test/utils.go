@@ -125,7 +125,7 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return tx
 		}).AnyTimes()
 
-	simContext.EXPECT().GetBlockVersion().Return(uint32(230)).AnyTimes()
+	simContext.EXPECT().GetBlockVersion().Return(uint32(2300)).AnyTimes()
 	blockchainStore.EXPECT().GetLastChainConfig().Return(&configPb.ChainConfig{
 		AccountConfig: &configPb.GasAccountConfig{
 			DefaultGas: 200000,
