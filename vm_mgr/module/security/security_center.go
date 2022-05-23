@@ -35,12 +35,12 @@ func (s *SecurityCenter) InitSecurityCenter() error {
 	}
 
 	if err := setCGroup(); err != nil {
-		s.logger.Errorf("fail to setCGroup, err : [%s]", err)
+		s.logger.Errorf("failed to setCGroup, err : [%s]", err)
 		return err
 	}
 
 	if err := s.disableIPC(); err != nil {
-		s.logger.Errorf("fail to set ipc err: [%s]", err)
+		s.logger.Errorf("failed to set ipc err: [%s]", err)
 		return err
 	}
 
@@ -48,4 +48,3 @@ func (s *SecurityCenter) InitSecurityCenter() error {
 
 	return nil
 }
-

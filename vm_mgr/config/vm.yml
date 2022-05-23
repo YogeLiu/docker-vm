@@ -4,8 +4,8 @@ rpc:
   chain_host: 9.134.162.18 # chain tcp host
   chain_rpc_port: 22359 # chain rpc port, valid when protocol is tcp
   sandbox_rpc_port: 22459 # sandbox rpc port, valid when protocol is tcp
-  max_send_msg_size: 20 # max send msg size(MB)
-  max_recv_msg_size: 20 # max recv msg size(MB)
+  max_send_msg_size: 20 # max send msg size(MiB)
+  max_recv_msg_size: 20 # max recv msg size(MiB)
   server_min_interval: 60s # server min interval
   connection_timeout: 5s # connection timeout time
   server_keep_alive_time: 60s # idle duration before server ping
@@ -17,15 +17,15 @@ process:
   # max_call_contract_process_num = max_original_process_num * max_contract_depth (defined in protocol)
   # max_total_process_num = max_call_contract_process_num + max_original_process_num
   max_original_process_num: 20
-  busy_timeout: 8s # process timeout while busy
-  ready_timeout: 200ms # process timeout while tx completed (busy -> idle)
+  exec_tx_timeout: 8s # process timeout while busy
+  waiting_tx_time: 50ms # process timeout while tx completed (busy -> idle)
   release_rate: 30 # percentage of idle processes released periodically in total processes (0-100)
   release_period: 2m # period of idle processes released periodically in total processes
 
 ########### Log ###########
 log:
   contract_engine:
-    level: "info"
+    level: "debug"
     console: true
   sandbox:
     level: "info"
@@ -42,4 +42,4 @@ pprof:
 
 ########### Contract ###########
 contract:
-  max_file_num: 102400
+  max_file_size: 20480 # contract size(MiB)

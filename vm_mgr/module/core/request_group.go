@@ -63,18 +63,17 @@ type txController struct {
 
 // RequestGroup is a batch of txs group by contract name
 type RequestGroup struct {
-
 	logger *zap.SugaredLogger // request group logger
 
 	contractName    string // contract name
 	contractVersion string // contract version
 
 	contractManager interfaces.ContractManager // contract manager, request contract / receive contract ready signal
-	contractState   contractState    // handle tx with different contract state
+	contractState   contractState              // handle tx with different contract state
 
 	requestScheduler interfaces.RequestScheduler // used for return err req to chain
-	eventCh          chan interface{}  // request group invoking handler
-	stopCh           chan struct{}     // stop request group
+	eventCh          chan interface{}            // request group invoking handler
+	stopCh           chan struct{}               // stop request group
 
 	origTxController  *txController // original tx controller
 	crossTxController *txController // cross contract tx controller
@@ -90,7 +89,7 @@ func NewRequestGroup(
 	scheduler interfaces.RequestScheduler) *RequestGroup {
 	return &RequestGroup{
 
-		logger: logger.NewDockerLogger(logger.GenerateProcessLoggerName(utils.ConstructContractKey(contractName, contractVersion))),
+		logger: logger.NewDockerLogger(logger.GenerateRequestGroupLoggerName(utils.ConstructContractKey(contractName, contractVersion))),
 
 		contractName:    contractName,
 		contractVersion: contractVersion,

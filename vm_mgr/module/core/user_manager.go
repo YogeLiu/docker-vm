@@ -61,7 +61,7 @@ func (u *UserManager) BatchCreateUsers() error {
 			id := baseUid + i
 			err = u.generateNewUser(id)
 			if err != nil {
-				u.logger.Errorf("fail to create user [%d]", id)
+				u.logger.Errorf("failed to create user [%d]", id)
 			} else {
 				createdUserNum.Add(1)
 			}
@@ -84,7 +84,7 @@ func (u *UserManager) generateNewUser(uid int) error {
 
 	createSuccess := false
 
-	// it may fail to create user in centos, so add retry until it success
+	// it may failed to create user in centos, so add retry until it success
 	for !createSuccess {
 		if err := utils.RunCmd(addUserCommand); err != nil {
 			u.logger.Warnf("failed to create user [%+v], err: [%s] and begin to retry", user, err)
@@ -98,7 +98,7 @@ func (u *UserManager) generateNewUser(uid int) error {
 	// add created user to queue
 	err := u.userQueue.Enqueue(user)
 	if err != nil {
-		return fmt.Errorf("fail to add created user %+v to queue, %v", user, err)
+		return fmt.Errorf("failed to add created user %+v to queue, %v", user, err)
 	}
 	//u.logger.Debugf("success add user to user queue: %+v", user)
 
@@ -110,7 +110,7 @@ func (u *UserManager) GetAvailableUser() (interfaces.User, error) {
 
 	user, err := u.userQueue.DequeueOrWaitForNextElement()
 	if err != nil {
-		return nil, fmt.Errorf("fail to call DequeueOrWaitForNextElement, %v", err)
+		return nil, fmt.Errorf("failed to call DequeueOrWaitForNextElement, %v", err)
 	}
 
 	u.logger.Debugf("get available user: [%v]", user)
@@ -122,7 +122,7 @@ func (u *UserManager) FreeUser(user interfaces.User) error {
 
 	err := u.userQueue.Enqueue(user)
 	if err != nil {
-		return fmt.Errorf("fail to enqueue user: %v", err)
+		return fmt.Errorf("failed to enqueue user: %v", err)
 	}
 	u.logger.Debugf("free user: %v", user)
 	return nil

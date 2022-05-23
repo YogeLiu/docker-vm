@@ -22,7 +22,7 @@ func TestContractManager_GetContractMountDir(t *testing.T) {
 	SetConfig()
 
 	cMgr := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
@@ -59,7 +59,7 @@ func TestContractManager_PutMsg(t *testing.T) {
 	SetConfig()
 
 	cMgr := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
@@ -117,7 +117,7 @@ func TestContractManager_SetScheduler(t *testing.T) {
 	SetConfig()
 
 	cMgr := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
@@ -156,7 +156,7 @@ func TestContractManager_Start(t *testing.T) {
 	SetConfig()
 
 	cMgr := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
@@ -211,7 +211,7 @@ func TestContractManager_handleGetContractReq(t *testing.T) {
 	SetConfig()
 
 	cMgr := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
@@ -278,7 +278,7 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 	SetConfig()
 
 	cMgr := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
@@ -354,7 +354,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 	SetConfig()
 
 	cMgr := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),

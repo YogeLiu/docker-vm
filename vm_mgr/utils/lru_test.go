@@ -2,6 +2,7 @@ package utils
 
 import (
 	"container/list"
+	"github.com/emirpasic/gods/maps/linkedhashmap"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -249,6 +250,46 @@ func TestNewCache(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_ = NewCache(tt.args.maxEntries)
+		})
+	}
+}
+
+func TestIterator(t *testing.T) {
+
+	hmap := linkedhashmap.New()
+	hmap.Put("key0", "val0")
+	hmap.Put("key1", "val1")
+	hmap.Put("key2", "val2")
+
+	type args struct {
+		key string
+		val string
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "TestNewCache",
+			args: args{key: "key0", val: "val0"},
+		},
+		{
+			name: "TestNewCache",
+			args: args{key: "key1", val: "val1"},
+		},
+		{
+			name: "TestNewCache",
+			args: args{key: "key2", val: "val2"},
+		},
+	}
+	hmapIt := hmap.Iterator()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hmapIt.Next()
+			val := hmapIt.Value().(string)
+			if !assert.Equal(t, val, tt.args.val) {
+				t.Errorf("TestIterator, want %v, got %v", tt.args.val, val)
+			}
 		})
 	}
 }

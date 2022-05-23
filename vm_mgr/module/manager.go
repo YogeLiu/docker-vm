@@ -66,13 +66,13 @@ func NewManager(managerLogger *zap.SugaredLogger) (*ManagerImpl, error) {
 	// new chain maker to docker manager server
 	chainRPCServer, err := rpc.NewChainRPCServer()
 	if err != nil {
-		return nil, fmt.Errorf("fail to init new ChainRPCServer, %v", err)
+		return nil, fmt.Errorf("failed to init new ChainRPCServer, %v", err)
 	}
 
 	// new docker manager to sandbox server
 	sandboxRPCServer, err := rpc.NewSandboxRPCServer(config.SandboxRPCDir)
 	if err != nil {
-		return nil, fmt.Errorf("fail to init new SandboxRPCServer, %v", err)
+		return nil, fmt.Errorf("failed to init new SandboxRPCServer, %v", err)
 	}
 
 	// start chain rpc server

@@ -106,7 +106,7 @@ func (s *ChainRPCService) recvMsgRoutine() {
 				s.logger.Debugf("chain -> contract engine, put msg [%s] into request scheduler", msg.TxId)
 				err = s.scheduler.PutMsg(msg)
 				if err != nil {
-					s.logger.Errorf("fail to put msg into request scheduler chan: [%s]", err)
+					s.logger.Errorf("failed to put msg into request scheduler chan: [%s]", err)
 				}
 			default:
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)
@@ -144,7 +144,7 @@ func (s *ChainRPCService) sendMsgRoutine() {
 
 		if err != nil {
 			errStatus, _ := status.FromError(err)
-			s.logger.Errorf("fail to send msg: err: %s, err msg: %s, err code: %s", err,
+			s.logger.Errorf("failed to send msg: err: %s, err msg: %s, err code: %s", err,
 				errStatus.Message(), errStatus.Code())
 			if errStatus.Code() != codes.ResourceExhausted {
 				close(s.stopRecvCh)

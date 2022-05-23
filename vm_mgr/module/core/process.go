@@ -206,7 +206,7 @@ func (p *Process) launchProcess() *exitErr {
 	p.cmd = &cmd
 
 	if err = cmd.Start(); err != nil {
-		p.logger.Errorf("fail to start process: %v", err)
+		p.logger.Errorf("failed to start process: %v", err)
 		return &exitErr{
 			err:  utils.ContractExecError,
 			desc: "",
@@ -216,7 +216,7 @@ func (p *Process) launchProcess() *exitErr {
 
 	// add control group
 	if err = utils.WriteToFile(p.cGroupPath, strconv.Itoa(cmd.Process.Pid)); err != nil {
-		p.logger.Errorf("fail to add cgroup: %s", err)
+		p.logger.Errorf("failed to add cgroup: %s", err)
 		return &exitErr{
 			err:  err,
 			desc: "",
@@ -508,9 +508,6 @@ func (p *Process) handleTimeout() error {
 // release process fail: false
 func (p *Process) handleProcessExit(existErr *exitErr) bool {
 
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
@@ -688,7 +685,7 @@ func (p *Process) startBusyTimer() {
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
-	p.timer.Reset(config.DockerVMConfig.Process.BusyTimeout)
+	p.timer.Reset(config.DockerVMConfig.Process.ExecTxTimeout)
 }
 
 // startReadyTimer start timer at ready state
@@ -703,7 +700,7 @@ func (p *Process) startReadyTimer() {
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
-	p.timer.Reset(config.DockerVMConfig.Process.ReadyTimeout)
+	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime)
 }
 
 // stopTimer stop timer

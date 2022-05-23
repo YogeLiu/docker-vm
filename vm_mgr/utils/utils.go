@@ -36,7 +36,7 @@ func Mkdir(path string) error {
 
 	// make dir
 	if err = os.Mkdir(path, 0755); err != nil {
-		return fmt.Errorf("fail to create directory, [%s]", err)
+		return fmt.Errorf("failed to create directory, [%s]", err)
 	}
 	return nil
 }
@@ -45,10 +45,10 @@ func Mkdir(path string) error {
 func RemoveDir(path string) error {
 	// chmod contract file
 	if err := os.Chmod(path, 0755); err != nil {
-		return fmt.Errorf("fail to set mod of %s, %v", path, err)
+		return fmt.Errorf("failed to set mod of %s, %v", path, err)
 	}
 	if err := os.Remove(path); err != nil {
-		return fmt.Errorf("fail to remove file %s, %v", path, err)
+		return fmt.Errorf("failed to remove file %s, %v", path, err)
 	}
 	return nil
 }

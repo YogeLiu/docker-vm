@@ -50,17 +50,17 @@ type rpcConf struct {
 	SandboxRPCPort         int                  `mapstructure:"sandbox_rpc_port"`
 	MaxSendMsgSize         int                  `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize         int                  `mapstructure:"max_recv_msg_size"`
-	ServerMinInterval      time.Duration                  `mapstructure:"server_min_interval"`
-	ConnectionTimeout      time.Duration         `mapstructure:"connection_timeout"`
-	ServerKeepAliveTime    time.Duration                  `mapstructure:"server_keep_alive_time"`
-	ServerKeepAliveTimeout time.Duration                  `mapstructure:"server_keep_alive_timeout"`
+	ServerMinInterval      time.Duration        `mapstructure:"server_min_interval"`
+	ConnectionTimeout      time.Duration        `mapstructure:"connection_timeout"`
+	ServerKeepAliveTime    time.Duration        `mapstructure:"server_keep_alive_time"`
+	ServerKeepAliveTimeout time.Duration        `mapstructure:"server_keep_alive_timeout"`
 }
 
 type processConf struct {
-	MaxOriginalProcessNum int `mapstructure:"max_original_process_num"`
-	BusyTimeout           time.Duration `mapstructure:"busy_timeout"`
-	ReadyTimeout          time.Duration `mapstructure:"ready_timeout"`
-	ReleaseRate           int `mapstructure:"release_rate"`
+	MaxOriginalProcessNum int           `mapstructure:"max_original_process_num"`
+	ExecTxTimeout         time.Duration `mapstructure:"exec_tx_timeout"`
+	WaitingTxTime         time.Duration `mapstructure:"waiting_tx_time"`
+	ReleaseRate           int           `mapstructure:"release_rate"`
 	ReleasePeriod         time.Duration `mapstructure:"release_period"`
 }
 
@@ -85,7 +85,7 @@ type pprofInstanceConf struct {
 }
 
 type contractConf struct {
-	MaxFileNum int `mapstructure:"max_file_num"`
+	MaxFileSize int `mapstructure:"max_file_size"`
 }
 
 func InitConfig(configFileName string) error {
@@ -126,8 +126,8 @@ func (c *conf) setDefaultConfigs() {
 	// set process default configs
 	const processPrefix = "process"
 	viper.SetDefault(processPrefix+".max_original_process_num", 50)
-	viper.SetDefault(processPrefix+".busy_timeout", 8*time.Second)
-	viper.SetDefault(processPrefix+".ready_timeout", 200*time.Millisecond)
+	viper.SetDefault(processPrefix+".exec_tx_timeout", 8*time.Second)
+	viper.SetDefault(processPrefix+".waiting_tx_time", 50*time.Millisecond)
 	viper.SetDefault(processPrefix+".release_rate", 30)
 	viper.SetDefault(processPrefix+".release_period", 2*time.Minute)
 
@@ -143,7 +143,7 @@ func (c *conf) setDefaultConfigs() {
 
 	// set contract default configs
 	const contractPrefix = "contract"
-	viper.SetDefault(contractPrefix+".max_file_num", 1024)
+	viper.SetDefault(contractPrefix+".max_file_size", 20480)
 }
 
 func (c *conf) restrainConfig() {
@@ -163,7 +163,3 @@ func (c *conf) GetReleaseRate() float64 {
 func (c *conf) GetMaxUserNum() int {
 	return c.Process.MaxOriginalProcessNum * (protocol.CallContractDepth + 1)
 }
-
-// TODO: ready timeout 配置改名
-// TODO：rpc server数量 改名为 contract_engine_chain_server 和 contract_engine_sandbox_server
-// TODO：max_file_num改为max_disk_size

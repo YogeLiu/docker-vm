@@ -24,7 +24,7 @@ import (
 const (
 	ContractsDir               = "contracts" // ContractsDir dir save executable contract
 	contractManagerEventChSize = 64
-	// TODO： sizePerContract = 10M
+	sizePerContract            = 15 // MiB
 )
 
 // ContractManager manage all contracts with LRU cache
@@ -39,7 +39,7 @@ type ContractManager struct {
 // NewContractManager returns new contract manager
 func NewContractManager() (*ContractManager, error) {
 	contractManager := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileNum),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize / sizePerContract),
 		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER),
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
@@ -109,7 +109,7 @@ func (cm *ContractManager) initContractLRU() error {
 
 	files, err := ioutil.ReadDir(cm.mountDir)
 	if err != nil {
-		return fmt.Errorf("fail to read contract dir [%s], %v", cm.mountDir, err)
+		return fmt.Errorf("failed to read contract dir [%s], %v", cm.mountDir, err)
 	}
 
 	// contracts that exceed the limit will be cleaned up
@@ -123,7 +123,7 @@ func (cm *ContractManager) initContractLRU() error {
 		}
 		// file num >= max entries
 		if err = utils.RemoveDir(path); err != nil {
-			return fmt.Errorf("fail to remove contract files, file path: [%s], %v", path, err)
+			return fmt.Errorf("failed to remove contract files, file path: [%s], %v", path, err)
 		}
 	}
 	cm.logger.Debugf("init contract LRU with size [%d]", cm.contractsLRU.Len())

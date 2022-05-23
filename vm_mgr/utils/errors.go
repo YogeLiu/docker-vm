@@ -20,5 +20,5 @@ var (
 	RuntimePanicError   = errors.New("runtime panic")
 	TxTimeoutPanicError = errors.New("tx time out")
 
-	RegisterProcessError = errors.New("fail to register process")
+	RegisterProcessError = errors.New("failed to register process")
 )

@@ -205,7 +205,7 @@ func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.logger.Debugf("handle close request group reqest, contract name: [%s], contract version: [%s]",
+	s.logger.Debugf("handle close request group request, contract name: [%s], contract version: [%s]",
 		msg.ContractName, msg.ContractVersion)
 
 	if s.origProcessManager.GetProcessNumByContractKey(msg.ContractName, msg.ContractVersion) != 0 &&

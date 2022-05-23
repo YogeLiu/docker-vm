@@ -106,9 +106,10 @@ func (r *RuntimeInstance) Invoke(
 
 	// construct DockerVMMessage
 	txRequest := &protogo.TxRequest{
-		ContractName: contract.Name,
-		Method:       method,
-		Parameters:   parameters,
+		ContractName:    contract.Name,
+		ContractVersion: contract.Version,
+		Method:          method,
+		Parameters:      parameters,
 		TxContext: &protogo.TxContext{
 			WriteMap: nil,
 			ReadMap:  nil,

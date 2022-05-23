@@ -45,7 +45,7 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			s.logger.Errorf("fail to recv msg: %s", err)
+			s.logger.Errorf("failed to recv msg: %s", err)
 			return err
 		}
 		var process interfaces.Process
@@ -66,6 +66,7 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 
 		if msg.Type == protogo.DockerVMType_REGISTER {
+			s.logger.Debugf("try to set stream, %v", msg)
 			if err = process.SetStream(stream); err != nil {
 				s.logger.Errorf("failed to set stream, %v", err)
 			}
