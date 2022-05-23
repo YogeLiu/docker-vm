@@ -25,7 +25,7 @@ process:
 ########### Log ###########
 log:
   contract_engine:
-    level: "debug"
+    level: "info"
     console: true
   sandbox:
     level: "info"

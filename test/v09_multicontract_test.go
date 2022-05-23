@@ -20,7 +20,7 @@ const (
 	performContractVersion2 = "1.0.1"
 )
 
-func TestMultiContract(t *testing.T) {
+func TestMultiContractByRounds(t *testing.T) {
 
 	//step1: get chainmaker configuration setting from mocked data
 	fmt.Printf("=== step 1 load mocked chainmaker configuration file ===\n")
@@ -52,14 +52,53 @@ func TestMultiContract(t *testing.T) {
 	//testCutSave()
 	//testDeployZXL()
 
-	performMultiContractTxs(loopNum, threadNum, []string{performContractVersion, performContractVersion2})
+	performMultiContractTxs(loopNum, threadNum, []string{performContractVersion, performContractVersion2}, true)
 
 	time.Sleep(5 * time.Second)
 	fmt.Println("tear down")
 	tearDownTest()
 }
 
-func performMultiContractTxs(loopNum, threadNum int, versions []string) {
+func TestMultiContractMixed(t *testing.T) {
+
+	//step1: get chainmaker configuration setting from mocked data
+	fmt.Printf("=== step 1 load mocked chainmaker configuration file ===\n")
+	cmConfig, err := getMockedCMConfig()
+	if err != nil {
+		log.Fatalf("get the mocked chainmaker configuration failed %v\n", err)
+	}
+
+	//step2: generate a docker manager instance
+	fmt.Printf("=== step 2 Create docker instance ===\n")
+	mockDockerManager = docker_go.NewDockerManager(chainId, cmConfig)
+
+	//step3: start docker VM
+	fmt.Printf("=== step 3 start Docker VM ===\n")
+	dockerContainErr := mockDockerManager.StartVM()
+	if dockerContainErr != nil {
+		log.Fatalf("start docmer manager instance failed %v\n", dockerContainErr)
+	}
+
+	//step4: mock sim context
+	fmt.Printf("===step 4 Mock txContext====\n")
+	performTxContext = InitContextTest()
+	mockLogger = logger.GetLogger(logger.MODULE_VM)
+
+	testDeployCutVersion(performContractVersion)
+	testDeployCutVersion(performContractVersion2)
+	time.Sleep(10 * time.Second)
+
+	//testCutSave()
+	//testDeployZXL()
+
+	performMultiContractTxs(loopNum, threadNum, []string{performContractVersion, performContractVersion2}, false)
+
+	time.Sleep(5 * time.Second)
+	fmt.Println("tear down")
+	tearDownTest()
+}
+
+func performMultiContractTxs(loopNum, threadNum int, versions []string, byRounds bool) {
 	fmt.Println("--------- Ready to analysis --------------")
 	fmt.Println("---------- Start -------------------------")
 
@@ -69,6 +108,11 @@ func performMultiContractTxs(loopNum, threadNum int, versions []string) {
 	groupResultList := make([]*GroupRunInfo, 0, loopNum)
 
 	for loopIndex := 0; loopIndex < loopNum; loopIndex++ {
+
+		var version string
+		if byRounds {
+			version = versions[loopIndex%len(versions)]
+		}
 
 		// create a groupRunInfo instance
 		groupRunInfo := &GroupRunInfo{
@@ -90,10 +134,14 @@ func performMultiContractTxs(loopNum, threadNum int, versions []string) {
 
 			go func(i int) {
 
+				if !byRounds {
+					version = versions[i%len(versions)]
+				}
+
 				startTimeCh <- time.Now().UnixNano()
 
 				//testCutFindByHash()
-				testCutSaveVersion(versions[loopIndex%len(versions)])
+				testCutSaveVersion(version)
 				//testZXLAddPoint()
 
 				endTimeCh <- time.Now().UnixNano()
