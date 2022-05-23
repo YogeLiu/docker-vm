@@ -129,14 +129,6 @@ func (m *DockerManager) initMountDirectory() error {
 	}
 	m.mgrLogger.Debug("set contract dir: ", contractDir)
 
-	// create dms sock directory
-	sockDir := filepath.Join(mountDir, config.SockDir)
-	err = m.createDir(sockDir)
-	if err != nil {
-		return err
-	}
-	m.mgrLogger.Debug("set sock dir: ", sockDir)
-
 	// create log directory
 	logDir := m.dockerContainerConfig.HostLogDir
 	err = m.createDir(logDir)
