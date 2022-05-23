@@ -154,11 +154,7 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 	}
 
 	// request contract from chain
-	err := cm.requestContractFromChain(req)
-	if err != nil {
-		return fmt.Errorf("failed to request contract from chain, contract key: [%s], txId [%s] ",
-			contractKey, req.TxId)
-	}
+	cm.requestContractFromChain(req)
 
 	cm.logger.Debugf("send get bytecode request to chain, contract name: [%s], "+
 		"contract version: [%s], txId [%s] ", req.Request.ContractName, req.Request.ContractVersion, req.TxId)
@@ -208,18 +204,15 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	// send contract ready signal to request group
 	if err := cm.sendContractReadySignal(resp.Response.ContractName,
 		resp.Response.ContractVersion); err != nil {
-		cm.logger.Errorf("failed to send contract ready signal, %v", err)
+		return fmt.Errorf("failed to send contract ready signal, %v", err)
 	}
 	return nil
 }
 
 // requestContractFromChain request contract from chain
-func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage) error {
+func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage) {
 	// send request to request scheduler
-	if err := cm.scheduler.PutMsg(msg); err != nil {
-		return err
-	}
-	return nil
+	_ = cm.scheduler.PutMsg(msg)
 }
 
 // sendContractReadySignal send contract ready signal to request group, request group can request process now.
@@ -236,11 +229,8 @@ func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion
 	if !ok {
 		return fmt.Errorf("failed to get request group")
 	}
-	err := requestGroup.PutMsg(&protogo.DockerVMMessage{
+	_ = requestGroup.PutMsg(&protogo.DockerVMMessage{
 		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 	})
-	if err != nil {
-		return fmt.Errorf("failed to put req into request group's event chan")
-	}
 	return nil
 }

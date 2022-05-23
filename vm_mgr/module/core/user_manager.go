@@ -76,35 +76,6 @@ func (u *UserManager) BatchCreateUsers() error {
 	return nil
 }
 
-//  generateNewUser generate a new user of process
-func (u *UserManager) generateNewUser(uid int) error {
-
-	user := NewUser(uid)
-	addUserCommand := fmt.Sprintf(addUserFormat, uid, user.UserName)
-
-	createSuccess := false
-
-	// it may failed to create user in centos, so add retry until it success
-	for !createSuccess {
-		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Warnf("failed to create user [%+v], err: [%s] and begin to retry", user, err)
-			continue
-		}
-
-		createSuccess = true
-	}
-	//u.logger.Debugf("create user succeed: %+v", user)
-
-	// add created user to queue
-	err := u.userQueue.Enqueue(user)
-	if err != nil {
-		return fmt.Errorf("failed to add created user %+v to queue, %v", user, err)
-	}
-	//u.logger.Debugf("success add user to user queue: %+v", user)
-
-	return nil
-}
-
 // GetAvailableUser pop user from queue header
 func (u *UserManager) GetAvailableUser() (interfaces.User, error) {
 
@@ -149,6 +120,33 @@ func (u *UserManager) ReleaseUsers() error {
 		}(i)
 	}
 	wg.Wait()
+
+	return nil
+}
+
+//  generateNewUser generate a new user of process
+func (u *UserManager) generateNewUser(uid int) error {
+
+	user := NewUser(uid)
+	addUserCommand := fmt.Sprintf(addUserFormat, uid, user.UserName)
+
+	createSuccess := false
+
+	// it may failed to create user in centos, so add retry until it success
+	for !createSuccess {
+		if err := utils.RunCmd(addUserCommand); err != nil {
+			u.logger.Warnf("failed to create user [%+v], err: [%s] and begin to retry", user, err)
+			continue
+		}
+		createSuccess = true
+	}
+
+	// add created user to queue
+	err := u.userQueue.Enqueue(user)
+	if err != nil {
+		return fmt.Errorf("failed to add created user %+v to queue, %v", user, err)
+	}
+	//u.logger.Debugf("success add user to user queue: %+v", user)
 
 	return nil
 }
