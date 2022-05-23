@@ -69,6 +69,8 @@ func setupTest(t *testing.T) {
 		log.Fatal(fmt.Errorf("get byte code failed %v", err))
 	}
 
+	time.Sleep(50 * time.Millisecond)
+
 	//step6: invoke user contract --- create user contract
 	fmt.Printf("=== step 6 init user contract ===\n")
 	parameters := generateInitParams()

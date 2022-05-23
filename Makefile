@@ -47,8 +47,7 @@ ci:
 ut:
 	./test/scripts/prepare.sh
 	make build-image
-	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=false -e ENV_USER_NUM=100 -e ENV_MAX_CONCURRENCY=20 --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
-	sleep 5
+	docker run -itd --rm -p22359:22359 -e ENV_USER_NUM=100 -e ENV_MAX_CONCURRENCY=20 --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
 	./ut_cover.sh
 	docker stop chaimaker_vm_test
 
