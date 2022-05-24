@@ -106,6 +106,10 @@ func (cm *ContractManager) GetContractMountDir() string {
 
 // initContractLRU loads contract files from disk to lru
 func (cm *ContractManager) initContractLRU() error {
+	err := cm.initContractPath()
+	if err != nil {
+		return fmt.Errorf("failed to init contract path, %v", err)
+	}
 
 	files, err := ioutil.ReadDir(cm.mountDir)
 	if err != nil {
@@ -199,6 +203,17 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	path := filepath.Join(cm.mountDir, groupKey)
 	cm.contractsLRU.Add(groupKey, path)
 
+	if config.DockerVMConfig.RPC.ChainRPCProtocol == config.TCP {
+		if len(resp.Response.Result) == 0 {
+			return fmt.Errorf("invalid contract, contract is nil")
+		}
+
+		err := ioutil.WriteFile(path, resp.Response.Result, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to write contract file, [%s]", groupKey)
+		}
+	}
+
 	cm.logger.Infof("contract [%s] saved in lru and dir [%s]", groupKey, path)
 
 	// send contract ready signal to request group
@@ -232,5 +247,18 @@ func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion
 	_ = requestGroup.PutMsg(&protogo.DockerVMMessage{
 		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 	})
+	return nil
+}
+
+func (cm *ContractManager) initContractPath() error {
+	var err error
+	// mkdir paths
+	contractDir := filepath.Join(config.DockerMountDir, ContractsDir)
+	err = utils.CreateDir(contractDir)
+	if err != nil {
+		return err
+	}
+	cm.logger.Debug("set contract dir: ", contractDir)
+
 	return nil
 }

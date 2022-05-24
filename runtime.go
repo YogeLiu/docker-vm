@@ -170,10 +170,10 @@ func (r *RuntimeInstance) Invoke(
 		case recvMsg := <-r.contractEngineMsgCh:
 			switch recvMsg.Type {
 			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
-				r.logger.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
+				r.logger.Debugf("tx [%s] start get bytecode", uniqueTxKey)
 				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode)
 				r.clientMgr.PutByteCodeResp(getByteCodeResponse)
-				r.logger.Debugf("tx [%s] finish get bytecode [%v]", uniqueTxKey, getByteCodeResponse)
+				r.logger.Debugf("tx [%s] finish get bytecode", uniqueTxKey)
 			case protogo.DockerVMType_ERROR:
 				r.logger.Debugf("handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
 				return r.errorResult(

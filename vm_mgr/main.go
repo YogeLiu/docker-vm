@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -26,7 +27,11 @@ func main() {
 
 	// init docker container logger
 	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER)
-
+	err := initSockPath(managerLogger)
+	if err != nil {
+		managerLogger.Errorf("failed to init sock path, %v", err)
+		return
+	}
 	// start pprof
 	startPProf(managerLogger)
 
@@ -66,4 +71,16 @@ func startPProf(managerLogger *zap.SugaredLogger) {
 			}
 		}()
 	}
+}
+
+func initSockPath(managerLogger *zap.SugaredLogger) error {
+	// mkdir paths
+	sockDir := filepath.Join(config.DockerMountDir, config.SandboxRPCDir)
+	err := utils.CreateDir(sockDir)
+	if err != nil {
+		return err
+	}
+	managerLogger.Debug("set sock dir: ", sockDir)
+
+	return nil
 }
