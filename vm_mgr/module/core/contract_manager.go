@@ -203,6 +203,17 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	path := filepath.Join(cm.mountDir, groupKey)
 	cm.contractsLRU.Add(groupKey, path)
 
+	if config.DockerVMConfig.RPC.ChainRPCProtocol == config.TCP {
+		if len(resp.Response.Result) == 0 {
+			return fmt.Errorf("invalid contract, contract is nil")
+		}
+
+		err := ioutil.WriteFile(groupKey, resp.Response.Result, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to write contract file, [%s]", groupKey)
+		}
+	}
+
 	cm.logger.Infof("contract [%s] saved in lru and dir [%s]", groupKey, path)
 
 	// send contract ready signal to request group
