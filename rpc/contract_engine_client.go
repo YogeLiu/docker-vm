@@ -191,7 +191,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 
 func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
 	c.logger.Debugf("send message[%s], type: [%s]", msg.TxId, msg.Type)
-	c.logger.Debugf("msg [%+v]", msg)
+	//c.logger.Debugf("msg [%+v]", msg)
 	return c.stream.Send(msg)
 }
 
