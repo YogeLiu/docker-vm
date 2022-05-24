@@ -208,7 +208,7 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 			return fmt.Errorf("invalid contract, contract is nil")
 		}
 
-		err := ioutil.WriteFile(groupKey, resp.Response.Result, 0755)
+		err := ioutil.WriteFile(path, resp.Response.Result, 0755)
 		if err != nil {
 			return fmt.Errorf("failed to write contract file, [%s]", groupKey)
 		}
