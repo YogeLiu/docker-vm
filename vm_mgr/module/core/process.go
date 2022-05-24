@@ -531,6 +531,12 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		return false
 	}
 
+	if p.processState == ready {
+		p.logger.Warnf("process exited when ready: %s", existErr.err)
+		p.returnSandboxExitResp(existErr.err)
+		return true
+	}
+
 	//  ========= condition: after cmd.wait
 	// 4. process change context, restart process
 	if p.processState == changing {
