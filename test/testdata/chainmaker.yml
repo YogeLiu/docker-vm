@@ -144,7 +144,7 @@ vm:
     dial_timeout: 10
     max_send_msg_size: 20
     max_recv_msg_size: 20
-    max_connection: 20
+    max_connection: 5
     tls:                          # tls相关配置
       enabled: false              # 是否开启tls
       priv_key_file: "../tls.key" # 用于tls的私钥文件路径

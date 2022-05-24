@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"testing"
+	"time"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
@@ -78,10 +79,11 @@ func setupTest(t *testing.T) {
 }
 
 func tearDownTest() {
-	err := mockDockerManager.StopVM()
-	if err != nil {
-		log.Fatalf("stop docmer manager instance failed %v\n", err)
-	}
+	//err := mockDockerManager.StopVM()
+	//if err != nil {
+	//	log.Fatalf("stop docmer manager instance failed %v\n", err)
+	//}
+	time.Sleep(1000 * time.Millisecond)
 }
 
 func TestDockerGoBasicInvoke(t *testing.T) {
