@@ -537,6 +537,12 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		return true
 	}
 
+	if p.processState == idle {
+		p.logger.Warnf("process exited when idle: %s", existErr.err)
+		p.returnSandboxExitResp(existErr.err)
+		return true
+	}
+
 	//  ========= condition: after cmd.wait
 	// 4. process change context, restart process
 	if p.processState == changing {
@@ -562,7 +568,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 	}
 
 	// 7. process panic, return error response and relaunch
-	if p.processState == busy || p.processState == idle {
+	if p.processState == busy {
 		err = utils.RuntimePanicError
 		<-p.cmdReadyCh
 	}
