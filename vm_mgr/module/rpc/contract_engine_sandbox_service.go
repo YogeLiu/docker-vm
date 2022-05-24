@@ -12,6 +12,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"fmt"
 	"go.uber.org/zap"
 )
 
@@ -45,9 +46,13 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			s.logger.Errorf("failed to recv msg: %s", err)
-			return err
+			return fmt.Errorf("failed to recv msg: %s", err)
 		}
+
+		if msg == nil {
+			return fmt.Errorf("recv nil message, ending contract stream")
+		}
+
 		var process interfaces.Process
 		var ok bool
 		// process may be created, busy, timeout, recreated
@@ -61,25 +66,17 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 
 		if !ok {
-			s.logger.Errorf("failed to get process, %v", err)
-			return err
+			return fmt.Errorf("failed to get process, %v", err)
 		}
 
 		if msg.Type == protogo.DockerVMType_REGISTER {
 			s.logger.Debugf("try to set stream, %v", msg)
 			if err = process.SetStream(stream); err != nil {
-				s.logger.Errorf("failed to set stream, %v", err)
+				return fmt.Errorf("failed to set stream, %v", err)
 			}
 			continue
 		}
 
-		switch msg {
-		case nil:
-			s.logger.Errorf("recv nil message, ending contract stream")
-			return err
-		default:
-			s.logger.Debugf("resv msg [%+v]", msg)
-			process.PutMsg(msg)
-		}
+		process.PutMsg(msg)
 	}
 }

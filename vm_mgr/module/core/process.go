@@ -681,7 +681,7 @@ func (p *Process) returnSandboxExitResp(err error) {
 
 // sendMsg sends messages to sandbox
 func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
-	p.logger.Debugf("send msg [%s] to sandbox", msg)
+	p.logger.Debugf("send msg to sandbox, tx_id: %s", msg.TxId)
 	return p.stream.Send(msg)
 }
 

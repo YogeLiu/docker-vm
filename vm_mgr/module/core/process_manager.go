@@ -215,12 +215,15 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 		// create new process concurrently
 		var wg sync.WaitGroup
 		lock := sync.Mutex{}
+		wg.Add(newProcessNum)
 		for i := 0; i < newProcessNum; i++ {
-			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				// create new process
+				lock.Lock()
 				processName := pm.generateProcessName(msg.ContractName, msg.ContractVersion)
+				lock.Unlock()
+
 				process, err := pm.createNewProcess(msg.ContractName, msg.ContractVersion, processName)
 				if err != nil {
 					pm.logger.Errorf("failed to create new process, %v", err)
@@ -259,11 +262,11 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 		// change processes context concurrently
 		var wg sync.WaitGroup
 		lock := sync.Mutex{}
+		wg.Add(newProcessNum)
 		for i := 0; i < newProcessNum; i++ {
-			wg.Add(1)
-			process := idleProcesses[i]
-			go func() {
+			go func(process interfaces.Process) {
 				defer wg.Done()
+
 				// generate new process name
 				oldContractName := process.GetContractName()
 				oldContractVersion := process.GetContractVersion()
@@ -272,12 +275,14 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 				// meet the same idle process
 				if msg.ContractName == oldContractName && msg.ContractVersion == oldContractVersion {
 					lock.Lock()
-					needProcessNum--
 					defer lock.Unlock()
+					needProcessNum--
 					return
 				}
 
+				lock.Lock()
 				newProcessName := pm.generateProcessName(msg.ContractName, msg.ContractVersion)
+				lock.Unlock()
 
 				// waiting for kill completed
 				if err := process.ChangeSandbox(msg.ContractName, msg.ContractVersion, newProcessName); err != nil {
@@ -285,14 +290,14 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 					return
 				}
 
-				// remove process from idle process list, add to busy process list
 				lock.Lock()
 				defer lock.Unlock()
-
+				// remove process from idle process list, add to busy process list
 				needProcessNum--
 				pm.removeProcessFromCache(oldContractName, oldContractVersion, oldProcessName)
 				pm.addProcessToCache(msg.ContractName, msg.ContractVersion, newProcessName, process, true)
-			}()
+
+			}(idleProcesses[i])
 		}
 		wg.Wait()
 	}
@@ -364,8 +369,8 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 	var actualNum int
 	var wg sync.WaitGroup
 	var lock sync.Mutex
+	wg.Add(releaseNum)
 	for i := 0; i < releaseNum; i++ {
-		wg.Add(1)
 		process := processes[i]
 		go func() {
 			defer wg.Done()
@@ -426,8 +431,8 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 	// change processes context concurrently
 	var wg sync.WaitGroup
 	lock := sync.Mutex{}
+	wg.Add(allocateNum)
 	for i := 0; i < allocateNum; i++ {
-		wg.Add(1)
 		process := idleProcesses[i]
 		group := waitingRequestGroups[i]
 		go func() {
@@ -452,7 +457,9 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 				return
 			}
 
+			lock.Lock()
 			newProcessName := pm.generateProcessName(group.ContractName, group.ContractVersion)
+			lock.Unlock()
 
 			if err := process.ChangeSandbox(group.ContractName, group.ContractVersion, newProcessName); err != nil {
 				pm.logger.Warnf("failed to change sandbox, %v", err)
@@ -500,8 +507,8 @@ func (pm *ProcessManager) handleAllocateNewProcesses() error {
 
 	var wg sync.WaitGroup
 	lock := sync.Mutex{}
+	wg.Add(allocateNum)
 	for i := 0; i < allocateNum; i++ {
-		wg.Add(1)
 		group := waitingRequestGroups[i]
 		go func() {
 			defer wg.Done()
@@ -513,7 +520,10 @@ func (pm *ProcessManager) handleAllocateNewProcesses() error {
 			}
 
 			// create new process
+			lock.Lock()
 			processName := pm.generateProcessName(group.ContractName, group.ContractVersion)
+			lock.Unlock()
+
 			process, err := pm.createNewProcess(group.ContractName, group.ContractVersion, processName)
 			if err != nil {
 				pm.logger.Errorf("failed to create new process, %v", err)
@@ -759,8 +769,7 @@ func (pm *ProcessManager) startTimer() {
 func (pm *ProcessManager) generateProcessName(contractName, contractVersion string) string {
 	groupKey := utils.ConstructContractKey(contractName, contractVersion)
 	localIndex := len(pm.processGroups[groupKey])
-	overallIndex := pm.processCnt
 	atomic.AddUint64(&pm.processCnt, 1)
 
-	return utils.ConstructProcessName(contractName, contractVersion, localIndex, overallIndex, pm.isOrigManager)
+	return utils.ConstructProcessName(contractName, contractVersion, localIndex, pm.processCnt, pm.isOrigManager)
 }
