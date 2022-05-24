@@ -30,10 +30,14 @@ type ChainRPCService struct {
 	logger     *zap.SugaredLogger                            // chain rpc service logger
 	scheduler  interfaces.RequestScheduler                   // tx request scheduler
 	eventCh    chan *protogo.DockerVMMessage                 // invoking handler
-	stopSendCh chan struct{}                                 // stop send message goroutine
-	stopRecvCh chan struct{}                                 // stop receive message goroutine
-	wg         *sync.WaitGroup                               // send / receive goroutine waiting group
-	stream     protogo.DockerVMRpc_DockerVMCommunicateServer // rpc stream
+}
+
+// communicateConn is the communication connection info
+type communicateConn struct {
+	stream          protogo.DockerVMRpc_DockerVMCommunicateServer // rpc stream
+	stopSendCh    chan struct{} // stop send message goroutine
+	stopRecvCh chan struct{} // stop receive message goroutine
+	wg              *sync.WaitGroup // send / receive goroutine waiting group
 }
 
 // NewChainRPCService returns a chain rpc service
@@ -44,10 +48,6 @@ func NewChainRPCService() *ChainRPCService {
 	return &ChainRPCService{
 		logger:     logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVICE),
 		eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
-		stopSendCh: make(chan struct{}),
-		stopRecvCh: make(chan struct{}),
-		wg:         new(sync.WaitGroup),
-		stream:     nil,
 	}
 }
 
@@ -75,30 +75,38 @@ func (s *ChainRPCService) PutMsg(msg interface{}) error {
 //  @return error
 func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	s.logger.Infof("new chain rpc connection")
-	s.stream = stream
-	s.wg.Add(2)
-	go s.recvMsgRoutine()
-	go s.sendMsgRoutine()
-	s.wg.Wait()
+
+	conn := &communicateConn{
+		stream:          stream,
+		stopSendCh:    make(chan struct{}),
+		stopRecvCh: make(chan struct{}),
+		wg:              new(sync.WaitGroup),
+	}
+
+	conn.stream = stream
+	conn.wg.Add(2)
+	go s.recvMsgRoutine(conn)
+	go s.sendMsgRoutine(conn)
+	conn.wg.Wait()
 	s.logger.Infof("chain rpc connection end")
 	return nil
 }
 
 // recvMsgRoutine handles messages received from stream
 // message types include: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
-func (s *ChainRPCService) recvMsgRoutine() {
+func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 	s.logger.Debugf("start recv msg routine...")
 	for {
 		select {
-		case <-s.stopRecvCh:
+		case <-conn.stopRecvCh:
 			s.logger.Debugf("stop recv msg routine...")
-			s.wg.Done()
+			conn.wg.Done()
 			return
 		default:
-			msg, err := s.recvMsg()
+			msg, err := s.recvMsg(conn)
 			if err != nil {
-				close(s.stopSendCh)
-				s.wg.Done()
+				close(conn.stopSendCh)
+				conn.wg.Done()
 				return
 			}
 			switch msg.Type {
@@ -117,13 +125,13 @@ func (s *ChainRPCService) recvMsgRoutine() {
 
 // sendMsgRoutine send messages (<- eventCh) to chain
 // message types include: DockerVMType_GET_BYTECODE_REQUEST and DockerVMType_ERROR
-func (s *ChainRPCService) sendMsgRoutine() {
+func (s *ChainRPCService) sendMsgRoutine(conn *communicateConn) {
 	s.logger.Infof("start send msg routine")
 	var err error
 	for {
 		select {
-		case <-s.stopSendCh:
-			s.wg.Done()
+		case <-conn.stopSendCh:
+			conn.wg.Done()
 			s.logger.Debugf("stop send msg routine")
 			return
 
@@ -131,11 +139,11 @@ func (s *ChainRPCService) sendMsgRoutine() {
 			switch msg.Type {
 			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
 				s.logger.Debugf("contract engine -> chain, send get bytecode request, txId: [%s], chan len: [%d]", msg.TxId, len(s.eventCh))
-				err = s.sendMsg(msg)
+				err = s.sendMsg(msg, conn)
 
 			case protogo.DockerVMType_ERROR:
 				s.logger.Debugf("contract engine -> chain, send err msg, txId: [%s], chan len: [%d]", msg.TxId, len(s.eventCh))
-				err = s.sendMsg(msg)
+				err = s.sendMsg(msg, conn)
 
 			default:
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)
@@ -147,8 +155,8 @@ func (s *ChainRPCService) sendMsgRoutine() {
 			s.logger.Errorf("failed to send msg: err: %s, err msg: %s, err code: %s", err,
 				errStatus.Message(), errStatus.Code())
 			if errStatus.Code() != codes.ResourceExhausted {
-				close(s.stopRecvCh)
-				s.wg.Done()
+				close(conn.stopRecvCh)
+				conn.wg.Done()
 				return
 			}
 		}
@@ -156,8 +164,8 @@ func (s *ChainRPCService) sendMsgRoutine() {
 }
 
 // recvMsg receives messages from chainmaker
-func (s *ChainRPCService) recvMsg() (*protogo.DockerVMMessage, error) {
-	msg, err := s.stream.Recv()
+func (s *ChainRPCService) recvMsg(conn *communicateConn) (*protogo.DockerVMMessage, error) {
+	msg, err := conn.stream.Recv()
 	if err != nil {
 		s.logger.Errorf("recv err %s, existed", err)
 		return nil, err
@@ -167,7 +175,7 @@ func (s *ChainRPCService) recvMsg() (*protogo.DockerVMMessage, error) {
 }
 
 // sendMsg sends messages to chainmaker
-func (s *ChainRPCService) sendMsg(msg *protogo.DockerVMMessage) error {
+func (s *ChainRPCService) sendMsg(msg *protogo.DockerVMMessage, conn *communicateConn) error {
 	s.logger.Debugf("send msg [%s]", msg)
-	return s.stream.Send(msg)
+	return conn.stream.Send(msg)
 }
