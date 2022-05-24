@@ -39,7 +39,6 @@ func TestDockerGoPutState(t *testing.T) {
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key2"), []byte("field2")), []byte("500"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters1, mockTxContext, uint64(123))
-	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
 	assert.Contains(t, tmpSimContextMap, fmt.Sprintf("%s::key2#field2", ContractNameTest))
 
@@ -51,7 +50,6 @@ func TestDockerGoPutState(t *testing.T) {
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key3"), nil), []byte("300"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters2, mockTxContext, uint64(123))
-	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
 	assert.Contains(t, tmpSimContextMap, fmt.Sprintf("%s::key3", ContractNameTest))
 	value, ok := tmpSimContextMap[fmt.Sprintf("%s::key3", ContractNameTest)]
@@ -66,7 +64,6 @@ func TestDockerGoPutState(t *testing.T) {
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key4"), nil), []byte("400"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters3, mockTxContext, uint64(123))
-	fmt.Println(result)
 	assert.Equal(t, uint32(0), result.Code)
 	value, ok = tmpSimContextMap[fmt.Sprintf("%s::key4", ContractNameTest)]
 	assert.True(t, ok)

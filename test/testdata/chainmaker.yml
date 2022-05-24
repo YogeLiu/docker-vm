@@ -122,7 +122,7 @@ vm:
   dockervm_mount_path: ../data/org1/docker-go     # mount point in chain maker
   dockervm_log_path: ../log/org1/dockervm
   log_in_console: false
-  log_level: INFO
+  log_level: DEBUG
   uds_open: false                             # default is unix domain socket connection
   runtime_server:
     port: 22459
@@ -144,7 +144,7 @@ vm:
     dial_timeout: 10
     max_send_msg_size: 20
     max_recv_msg_size: 20
-    max_connection: 1
+    max_connection: 20
     tls:                          # tls相关配置
       enabled: false              # 是否开启tls
       priv_key_file: "../tls.key" # 用于tls的私钥文件路径

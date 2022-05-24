@@ -50,6 +50,7 @@ func setupTest(t *testing.T) {
 	fmt.Printf("======step4 mock contractId and txContext=======\n")
 	mockContractId = initContractId(commonPb.RuntimeType_DOCKER_GO)
 	mockTxContext = initMockSimContext(t)
+	mockNormalGetDepth(mockTxContext)
 
 	filePath := fmt.Sprintf("./testdata/%s.7z", ContractNameTest)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)

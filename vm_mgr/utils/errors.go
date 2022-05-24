@@ -18,7 +18,7 @@ var (
 	CrossContractRuntimePanicError = errors.New("cross contract runtime panic")
 
 	RuntimePanicError   = errors.New("runtime panic")
-	TxTimeoutPanicError = errors.New("tx time out")
+	TxTimeoutPanicError = errors.New("tx timeout")
 
 	RegisterProcessError = errors.New("failed to register process")
 )

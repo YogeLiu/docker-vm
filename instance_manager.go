@@ -7,6 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
+
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
@@ -14,11 +18,8 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
 	"chainmaker.org/chainmaker/vm-native/v2/common"
-	"errors"
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/mitchellh/mapstructure"
-	"os"
-	"path/filepath"
 )
 
 type InstancesManager struct {

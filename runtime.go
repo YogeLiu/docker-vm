@@ -207,18 +207,18 @@ func (r *RuntimeInstance) Invoke(
 		case recvMsg := <-r.sandboxMsgCh:
 			switch recvMsg.Type {
 			case protogo.DockerVMType_GET_STATE_REQUEST:
-				r.logger.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
+				r.logger.Debugf("tx [%s] start get state", uniqueTxKey)
 				var getStateResponse *protogo.DockerVMMessage
 				getStateResponse, gasUsed = r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
 				r.sendSysResponse(getStateResponse)
-				r.logger.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
+				r.logger.Debugf("tx [%s] finish get state", uniqueTxKey)
 			case protogo.DockerVMType_TX_RESPONSE:
 				r.logger.Debugf(" finish handle tx [%s]", originalTxId)
 				return r.handleTxResponse(recvMsg.TxId, recvMsg, txSimContext, gasUsed, specialTxType)
 
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
-				r.logger.Debugf("tx [%s] start call contract [%v]", uniqueTxKey, recvMsg)
+				r.logger.Debugf("tx [%s] start call contract", uniqueTxKey)
 				var callContractResponse *protogo.DockerVMMessage
 				var crossTxType protocol.ExecOrderTxType
 				callContractResponse, gasUsed, crossTxType = r.handlerCallContract(
@@ -234,45 +234,45 @@ func (r *RuntimeInstance) Invoke(
 				r.sendSysResponse(callContractResponse)
 
 			case protogo.DockerVMType_CREATE_KV_ITERATOR_REQUEST:
-				r.logger.Debugf("tx [%s] start create kv iterator [%v]", uniqueTxKey, recvMsg)
+				r.logger.Debugf("tx [%s] start create kv iterator", uniqueTxKey)
 				var createKvIteratorResponse *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
 				r.sendSysResponse(createKvIteratorResponse)
-				r.logger.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxKey, createKvIteratorResponse)
+				r.logger.Debugf("tx [%s] finish create kv iterator", uniqueTxKey)
 
 			case protogo.DockerVMType_CONSUME_KV_ITERATOR_REQUEST:
-				r.logger.Debugf("tx [%s] start consume kv iterator [%v]", uniqueTxKey, recvMsg)
+				r.logger.Debugf("tx [%s] start consume kv iterator", uniqueTxKey)
 				var consumeKvIteratorResponse *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
 				r.sendSysResponse(consumeKvIteratorResponse)
-				r.logger.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxKey, consumeKvIteratorResponse)
+				r.logger.Debugf("tx [%s] finish consume kv iterator", uniqueTxKey)
 
 			case protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST:
-				r.logger.Debugf("tx [%s] start create key history iterator [%v]", uniqueTxKey, recvMsg)
+				r.logger.Debugf("tx [%s] start create key history iterator", uniqueTxKey)
 				var createKeyHistoryIterResp *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 				r.sendSysResponse(createKeyHistoryIterResp)
-				r.logger.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxKey, createKeyHistoryIterResp)
+				r.logger.Debugf("tx [%s] finish create key history iterator", uniqueTxKey)
 
 			case protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST:
-				r.logger.Debugf("tx [%s] start consume key history iterator [%v]", uniqueTxKey, recvMsg)
+				r.logger.Debugf("tx [%s] start consume key history iterator", uniqueTxKey)
 				var consumeKeyHistoryResp *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 				r.sendSysResponse(consumeKeyHistoryResp)
-				r.logger.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxKey, consumeKeyHistoryResp)
+				r.logger.Debugf("tx [%s] finish consume key history iteratorc", uniqueTxKey)
 
 			case protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
-				r.logger.Debugf("tx [%s] start get sender address [%v]", uniqueTxKey, recvMsg)
+				r.logger.Debugf("tx [%s] start get sender address", uniqueTxKey)
 				var getSenderAddressResp *protogo.DockerVMMessage
 				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxKey, txSimContext, gasUsed)
 				r.sendSysResponse(getSenderAddressResp)
-				r.logger.Debugf("tx [%s] finish get sender address [%v]", uniqueTxKey, getSenderAddressResp)
+				r.logger.Debugf("tx [%s] finish get sender address", uniqueTxKey)
 
 			default:
 				contractResult.GasUsed = gasUsed

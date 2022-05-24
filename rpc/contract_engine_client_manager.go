@@ -1,11 +1,12 @@
 package rpc
 
 import (
-	"chainmaker.org/chainmaker/protocol/v2"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"chainmaker.org/chainmaker/protocol/v2"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
@@ -14,7 +15,10 @@ import (
 	"go.uber.org/atomic"
 )
 
-var clientMgrOnce sync.Once
+var (
+	clientMgrOnce sync.Once
+	mgrInstance   *ContractEngineClientManager
+)
 
 const (
 	txSize               = 15000
@@ -40,9 +44,8 @@ type ContractEngineClientManager struct {
 }
 
 func NewClientManager(chainId string, logger protocol.Logger, vmConfig *config.DockerVMConfig) interfaces.ContractEngineClientMgr {
-	mgrCh := make(chan *ContractEngineClientManager, 1)
 	clientMgrOnce.Do(func() {
-		mgrCh <- &ContractEngineClientManager{
+		mgrInstance = &ContractEngineClientManager{
 			chainId:        chainId,
 			startOnce:      sync.Once{},
 			logger:         logger,
@@ -59,30 +62,28 @@ func NewClientManager(chainId string, logger protocol.Logger, vmConfig *config.D
 		}
 	})
 
-	return <-mgrCh
+	return mgrInstance
 }
 
 func (cm *ContractEngineClientManager) Start() error {
 	cm.logger.Infof("start client manager")
+	cm.logger.Infof("before start: alive conn %d", len(cm.aliveClientMap))
 
-	startErrCh := make(chan error, 1)
-	defer close(startErrCh)
+	var err error
 
 	cm.startOnce.Do(func() {
 		// 1. start all clients
-		if err := cm.establishConnections(); err != nil {
+		if err = cm.establishConnections(); err != nil {
 			cm.logger.Errorf("fail to create client: %s", err)
-			startErrCh <- err
 			return
 		}
-
-		startErrCh <- nil
 
 		// 2. start event listen
 		go cm.listen()
 	})
 
-	return <-startErrCh
+	cm.logger.Infof("after start: alive conn %d", len(cm.aliveClientMap))
+	return err
 }
 
 func (cm *ContractEngineClientManager) Stop() error {

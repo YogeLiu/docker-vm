@@ -30,10 +30,10 @@ func GetMaxRecvMsgSizeFromConfig(conf *config.DockerVMConfig) uint32 {
 }
 
 func GetMaxConnectionFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.MaxConnection == 0 {
+	if config.ContractEngine.MaxConnection == 0 {
 		return DefaultMaxConnection
 	}
-	return config.MaxConnection
+	return uint32(config.ContractEngine.MaxConnection)
 }
 
 // ConstructNotifyMapKey chainId#txId

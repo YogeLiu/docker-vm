@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
-	"chainmaker.org/chainmaker/protocol/v2/test"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -14,6 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"chainmaker.org/chainmaker/protocol/v2/test"
 
 	"chainmaker.org/chainmaker/common/v2/sortedmap"
 	"chainmaker.org/chainmaker/localconf/v2"
@@ -39,7 +40,8 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_test05"
+	//ContractNameTest    = "contract_test05"
+	ContractNameTest    = "contract_test06"
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"
@@ -142,7 +144,19 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return crossInfo.GetCtxBitmap()
 		},
 	).AnyTimes()
+	return simContext
 
+}
+
+func mockNormalGetDepth(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetDepth().DoAndReturn(
+		func() int {
+			return 0
+		},
+	).AnyTimes()
+}
+
+func mockCrossCallGetDepth(simContext *mock.MockTxSimContext) {
 	var depth int
 	simContext.EXPECT().GetDepth().DoAndReturn(
 		func() int {
@@ -150,8 +164,6 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return depth
 		},
 	).AnyTimes()
-	return simContext
-
 }
 
 func mockPut(simContext *mock.MockTxSimContext, name string, key, value []byte) {

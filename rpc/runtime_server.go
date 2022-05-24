@@ -17,18 +17,23 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
-var runtimeServerOnce sync.Once
+var (
+	runtimeServerOnce      sync.Once
+	runtimeServerInstance  *RuntimeServer
+	runtimeServerStartOnce sync.Once
+)
 
 type RuntimeServer struct {
 	listener  net.Listener
 	rpcServer *grpc.Server
 	config    *config.DockerVMConfig
 	logger    protocol.Logger
+	startOnce sync.Once
+	stopOnce  sync.Once
 }
 
 func NewRuntimeServer(chainId string, logger protocol.Logger, vmConfig *config.DockerVMConfig) (*RuntimeServer, error) {
 	errCh := make(chan error, 1)
-	instanceCh := make(chan *RuntimeServer, 1)
 
 	runtimeServerOnce.Do(func() {
 		if vmConfig == nil {
@@ -65,7 +70,7 @@ func NewRuntimeServer(chainId string, logger protocol.Logger, vmConfig *config.D
 
 		server := grpc.NewServer(serverOpts...)
 
-		instanceCh <- &RuntimeServer{
+		runtimeServerInstance = &RuntimeServer{
 			listener:  listener,
 			rpcServer: server,
 			logger:    logger,
@@ -76,39 +81,46 @@ func NewRuntimeServer(chainId string, logger protocol.Logger, vmConfig *config.D
 	select {
 	case err := <-errCh:
 		return nil, err
-	case instance := <-instanceCh:
-		return instance, nil
+	default:
+		return runtimeServerInstance, nil
 	}
 }
 
 func (s *RuntimeServer) StartRuntimeServer(runtimeService *RuntimeService) error {
-	if s.listener == nil {
-		return errors.New("nil listener")
-	}
+	var startErr error
+	s.startOnce.Do(
+		func() {
+			if s.listener == nil {
+				startErr = errors.New("nil listener")
+				return
+			}
 
-	if s.rpcServer == nil {
-		return errors.New("nil server")
-	}
+			if s.rpcServer == nil {
+				startErr = errors.New("nil server")
+				return
+			}
 
-	protogo.RegisterDockerVMRpcServer(s.rpcServer, runtimeService)
+			protogo.RegisterDockerVMRpcServer(s.rpcServer, runtimeService)
 
-	s.logger.Debug("start runtime server")
-	go func() {
-		err := s.rpcServer.Serve(s.listener)
-		if err != nil {
-			s.logger.Errorf("runtime server fail to start: %s", err)
-		}
-	}()
+			s.logger.Debug("start runtime server")
+			go func() {
+				err := s.rpcServer.Serve(s.listener)
+				if err != nil {
+					s.logger.Errorf("runtime server fail to start: %s", err)
+				}
+			}()
+		})
 
-	return nil
+	return startErr
 }
 
 func (s *RuntimeServer) StopRuntimeServer() {
-	s.logger.Info("stop runtime server")
-
-	if s.rpcServer != nil {
-		s.rpcServer.Stop()
-	}
+	s.stopOnce.Do(func() {
+		s.logger.Info("stop runtime server")
+		if s.rpcServer != nil {
+			s.rpcServer.Stop()
+		}
+	})
 }
 
 func createListener(chainId string, vmConfig *config.DockerVMConfig) (net.Listener, error) {

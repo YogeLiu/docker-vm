@@ -1,9 +1,10 @@
 package rpc
 
 import (
-	"go.uber.org/atomic"
 	"io"
 	"sync"
+
+	"go.uber.org/atomic"
 
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
@@ -12,7 +13,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var runtimeServiceOnce sync.Once
+var (
+	runtimeServiceOnce     sync.Once
+	runtimeServiceInstance *RuntimeService
+)
 
 type RuntimeService struct {
 	streamCounter    atomic.Uint64
@@ -26,9 +30,8 @@ type RuntimeService struct {
 }
 
 func NewRuntimeService(chainId string, logger protocol.Logger) *RuntimeService {
-	instanceCh := make(chan *RuntimeService, 1)
 	runtimeServiceOnce.Do(func() {
-		instanceCh <- &RuntimeService{
+		runtimeServiceInstance = &RuntimeService{
 			streamCounter:    atomic.Uint64{},
 			chainId:          chainId,
 			lock:             sync.RWMutex{},
@@ -37,7 +40,7 @@ func NewRuntimeService(chainId string, logger protocol.Logger) *RuntimeService {
 			responseChanMap:  sync.Map{},
 		}
 	})
-	return <-instanceCh
+	return runtimeServiceInstance
 }
 
 func (s *RuntimeService) getStreamId() uint64 {
@@ -135,7 +138,7 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				return
 			}
 
-			s.logger.Debugf("runtime server recv msg [%s]", receivedMsg)
+			s.logger.Debugf("runtime server recveive msg, txId [%s], type [%s]", receivedMsg.TxId, receivedMsg.Type)
 
 			switch receivedMsg.Type {
 			case protogo.DockerVMType_TX_RESPONSE,
@@ -146,7 +149,12 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
-				s.getNotify(s.chainId, receivedMsg.TxId)(receivedMsg, ss.putResp)
+				notify := s.getNotify(s.chainId, receivedMsg.TxId)
+				if notify == nil {
+					s.logger.Debugf("get receive notify[%s] failed, please check your key", receivedMsg.TxId)
+					break
+				}
+				notify(receivedMsg, ss.putResp)
 			}
 		}
 	}
