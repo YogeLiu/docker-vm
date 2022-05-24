@@ -231,6 +231,9 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 // putTxReqToCh put tx request into chan
 func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
+	if req.CrossContext == nil {
+		return fmt.Errorf("nil cross context")
+	}
 	// call contract depth overflow
 	if req.CrossContext.CurrentDepth > protocol.CallContractDepth {
 
