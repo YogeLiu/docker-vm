@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
+	"chainmaker.org/chainmaker/protocol/v2/test"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 
 	"chainmaker.org/chainmaker/common/v2/sortedmap"
 	"chainmaker.org/chainmaker/localconf/v2"
-	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
@@ -34,6 +34,8 @@ import (
 )
 
 const (
+	testVMLogName = "vm"
+
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
@@ -79,7 +81,7 @@ CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
 )
 
 var (
-	mockDockerManager *dockergo.DockerManager
+	mockDockerManager *dockergo.InstancesManager
 	iteratorWSets     map[string]*common.TxWrite
 	keyHistoryData    map[string]*store.KeyModification
 	kvSetIndex        int32
@@ -103,6 +105,10 @@ func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 		Version:     ContractVersionTest,
 		RuntimeType: runtimeType,
 	}
+}
+
+func newMockLogger(ctrl *gomock.Controller, name string) protocol.Logger {
+	return &test.GoLogger{}
 }
 
 func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
@@ -687,9 +693,6 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	}
 }
 
-//func (mr *MockTxSimContextMockRecorder) CallContract(contract, method, byteCode, parameter, gasUsed, refTxType interface{}) *gomock.Call {
-//func (mr *MockTxSimContextMockRecorder) CallContract(contract, method, byteCode, parameter, gasUsed, refTxType interface{}) *gomock.Call {
-
 func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte) {
 	simContext.EXPECT().CallContract(
 		gomock.Any(),
@@ -705,7 +708,7 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 			gasUsed uint64,
 			refTxType common.TxType) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
 
-			mockLogger := logger.GetLogger(logger.MODULE_VM)
+			mockLogger := newMockLogger(nil, testVMLogName)
 			callContractRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 				"", nil, nil, mockLogger)
 
@@ -733,7 +736,7 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 }
 
 func callContract(simContext *mock.MockTxSimContext, param map[string][]byte) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
-	mockLogger := logger.GetLogger(logger.MODULE_VM)
+	mockLogger := newMockLogger(nil, testVMLogName)
 	callContractRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 		"", nil, nil, mockLogger)
 

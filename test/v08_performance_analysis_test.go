@@ -11,8 +11,6 @@ import (
 	"time"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-
-	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/protocol/v2"
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 )
@@ -29,7 +27,7 @@ const (
 
 var (
 	performTxContext protocol.TxSimContext
-	mockLogger       *logger.CMLogger
+	mockLogger       protocol.Logger
 )
 
 type GroupRunInfo struct {
@@ -52,7 +50,7 @@ func TestDockerGoPerformance(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewDockerManager(chainId, cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockLogger(nil, testVMLogName), cmConfig)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")
@@ -64,7 +62,7 @@ func TestDockerGoPerformance(t *testing.T) {
 	//step4: mock sim context
 	fmt.Printf("======step4 mock txContext=======\n")
 	performTxContext = InitContextTest()
-	mockLogger = logger.GetLogger(logger.MODULE_VM)
+	mockLogger = newMockLogger(nil, testVMLogName)
 
 	testDeployCut()
 	//testCutSave()

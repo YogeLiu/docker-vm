@@ -1,12 +1,12 @@
 package rpc
 
 import (
+	"chainmaker.org/chainmaker/protocol/v2"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"chainmaker.org/chainmaker/logger/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
@@ -25,13 +25,13 @@ const (
 type ContractEngineClientManager struct {
 	chainId        string
 	startOnce      sync.Once
-	logger         *logger.CMLogger
+	logger         protocol.Logger
 	count          *atomic.Uint64 // tx count
 	index          uint64         // client index
 	config         *config.DockerVMConfig
 	notifyLock     sync.RWMutex
 	clientLock     sync.Mutex
-	aliveClientMap map[uint64]interfaces.ContractEngineClient    // used to restore alive client
+	aliveClientMap map[uint64]*ContractEngineClient              // used to restore alive client
 	txSendCh       chan *protogo.DockerVMMessage                 // used to send tx to docker-go instance
 	byteCodeRespCh chan *protogo.DockerVMMessage                 // used to receive GetByteCode response from docker-go
 	notify         map[string]func(msg *protogo.DockerVMMessage) // used to receive tx response from docker-go
@@ -39,18 +39,18 @@ type ContractEngineClientManager struct {
 	stop           bool
 }
 
-func NewClientManager(chainId string, vmConfig *config.DockerVMConfig) interfaces.ContractEngineClientMgr {
+func NewClientManager(chainId string, logger protocol.Logger, vmConfig *config.DockerVMConfig) interfaces.ContractEngineClientMgr {
 	mgrCh := make(chan *ContractEngineClientManager, 1)
 	clientMgrOnce.Do(func() {
 		mgrCh <- &ContractEngineClientManager{
 			chainId:        chainId,
 			startOnce:      sync.Once{},
-			logger:         logger.GetLoggerByChain(logger.MODULE_VM, chainId),
+			logger:         logger,
 			count:          atomic.NewUint64(0),
 			config:         vmConfig,
 			notifyLock:     sync.RWMutex{},
 			clientLock:     sync.Mutex{},
-			aliveClientMap: make(map[uint64]interfaces.ContractEngineClient),
+			aliveClientMap: make(map[uint64]*ContractEngineClient),
 			txSendCh:       make(chan *protogo.DockerVMMessage, txSize),
 			byteCodeRespCh: make(chan *protogo.DockerVMMessage, txSize*8),
 			notify:         make(map[string]func(msg *protogo.DockerVMMessage)),
@@ -86,7 +86,15 @@ func (cm *ContractEngineClientManager) Start() error {
 }
 
 func (cm *ContractEngineClientManager) Stop() error {
+	cm.closeAllConnections()
 	return nil
+}
+
+func (cm *ContractEngineClientManager) closeAllConnections() {
+	cm.stop = true
+	for _, client := range cm.aliveClientMap {
+		client.Stop()
+	}
 }
 
 // === ForRuntimeInstance ===
@@ -145,9 +153,7 @@ func (cm *ContractEngineClientManager) GetUniqueTxKey(txId string) string {
 }
 
 func (cm *ContractEngineClientManager) NeedSendContractByteCode() bool {
-	// TODO:
-	//return !cm.config.DockerVMUDSOpen
-	return false
+	return !cm.config.DockerVMUDSOpen
 }
 
 func (cm *ContractEngineClientManager) HasActiveConnections() bool {
@@ -222,7 +228,7 @@ func (cm *ContractEngineClientManager) establishConnections() error {
 				if cm.stop {
 					return
 				}
-				err := newClient.StartClient()
+				err := newClient.Start()
 				if err == nil {
 					break
 				}
@@ -259,7 +265,7 @@ func (cm *ContractEngineClientManager) reconnect() {
 			return
 		}
 
-		if err := newClient.StartClient(); err != nil {
+		if err := newClient.Start(); err != nil {
 			break
 		}
 		cm.logger.Warnf("client[%d] connect fail, try reconnect...", newIndex)

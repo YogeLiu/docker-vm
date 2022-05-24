@@ -62,19 +62,8 @@ type TLSConfig struct {
 
 // DockerContainerConfig docker container settings
 type DockerContainerConfig struct {
-	AttachStdOut bool
-	AttachStderr bool
-	ShowStdout   bool
-	ShowStderr   bool
-
-	ImageName     string
-	ContainerName string
-	VMMgrDir      string
-
-	DockerMountDir string
-	DockerLogDir   string
-	HostMountDir   string
-	HostLogDir     string
+	HostMountDir string
+	HostLogDir   string
 }
 
 type Bool int32

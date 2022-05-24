@@ -41,6 +41,20 @@ type RuntimeInstance struct {
 	event           []*commonPb.ContractEvent          // tx event cache
 	clientMgr       interfaces.ContractEngineClientMgr //
 	runtimeService  interfaces.RuntimeService          //
+
+	sandboxMsgCh chan *protogo.DockerVMMessage
+	//sandboxMsgCh := make(chan *protogo.DockerVMMessage, 1)
+	contractEngineMsgCh chan *protogo.DockerVMMessage
+	//contractEngineMsgCh := make(chan *protogo.DockerVMMessage, 1)
+}
+
+func (r *RuntimeInstance) contractEngineMsgNotify(msg *protogo.DockerVMMessage) {
+	r.contractEngineMsgCh <- msg
+}
+
+func (r *RuntimeInstance) sandboxMsgNotify(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
+	r.sandboxMsgCh <- msg
+	r.sendSysResponse = sendF
 }
 
 // Invoke process one tx in docker and return result
@@ -122,34 +136,20 @@ func (r *RuntimeInstance) Invoke(
 	}
 
 	dockerVMMsg := &protogo.DockerVMMessage{
-		TxId:    uniqueTxKey,
-		Type:    protogo.DockerVMType_TX_REQUEST,
-		Request: txRequest,
-		// TODO:
-		Response:       nil,
-		SysCallMessage: nil,
-		CrossContext:   crossCtx,
+		TxId:         uniqueTxKey,
+		Type:         protogo.DockerVMType_TX_REQUEST,
+		Request:      txRequest,
+		CrossContext: crossCtx,
 	}
 
 	// register notify for sandbox msg
-	// TODO: to method
-	sandboxMsgCh := make(chan *protogo.DockerVMMessage, 1)
-	sandboxMsgNotify := func(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
-		sandboxMsgCh <- msg
-		r.sendSysResponse = sendF
-	}
-	err = r.runtimeService.RegisterSandboxMsgNotify(r.chainId, uniqueTxKey, sandboxMsgNotify)
+	err = r.runtimeService.RegisterSandboxMsgNotify(r.chainId, uniqueTxKey, r.sandboxMsgNotify)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
 
 	// register receive notify
-	// TODO: to method
-	contractEngineMsgCh := make(chan *protogo.DockerVMMessage, 1)
-	contractEngineMsgNotify := func(msg *protogo.DockerVMMessage) {
-		contractEngineMsgCh <- msg
-	}
-	err = r.clientMgr.PutTxRequestWithNotify(dockerVMMsg, r.chainId, contractEngineMsgNotify)
+	err = r.clientMgr.PutTxRequestWithNotify(dockerVMMsg, r.chainId, r.contractEngineMsgNotify)
 	if err != nil {
 		return r.errorResult(contractResult, err, err.Error())
 	}
@@ -167,7 +167,7 @@ func (r *RuntimeInstance) Invoke(
 	// wait this chan
 	for {
 		select {
-		case recvMsg := <-contractEngineMsgCh:
+		case recvMsg := <-r.contractEngineMsgCh:
 			switch recvMsg.Type {
 			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
 				r.logger.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
@@ -204,27 +204,12 @@ func (r *RuntimeInstance) Invoke(
 				"tx timeout",
 			)
 
-		case recvMsg := <-sandboxMsgCh:
+		case recvMsg := <-r.sandboxMsgCh:
 			switch recvMsg.Type {
 			case protogo.DockerVMType_GET_STATE_REQUEST:
 				r.logger.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
-				// TODO: pass to error, gasUsed 在内部处理并返回
-				getStateResponse, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
-
-				if pass {
-					bytes, err := getStateResponse.SysCallMessage.Marshal()
-					if err != nil {
-						getStateResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-						getStateResponse.SysCallMessage.Payload = nil
-						getStateResponse.SysCallMessage.Message = err.Error()
-					}
-					gasUsed, err = gas.GetStateGasUsed(gasUsed, bytes)
-					if err != nil {
-						getStateResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-						getStateResponse.SysCallMessage.Payload = nil
-						getStateResponse.SysCallMessage.Message = err.Error()
-					}
-				}
+				var getStateResponse *protogo.DockerVMMessage
+				getStateResponse, gasUsed = r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
 				r.sendSysResponse(getStateResponse)
 				r.logger.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
@@ -297,17 +282,6 @@ func (r *RuntimeInstance) Invoke(
 					"unknown msg type",
 				)
 			}
-
-			// map[depth + count]channel
-			// TODO: 监听区块调度超时的信号(交易积压问题)
-			// a.
-			// 	1. chain端清理当前高度的所有交易
-			//	2. 发送信号通知engine清理当前高度交易
-			//  3. 发送信号通知sandbox清理当前高度交易 (是否能做到丢掉当前正在处理的交易信息，重制整个sandbox，监听新的消息)
-			// b. 重启docker
-
-			// TODO: process name
-			// contract_name#contract_version#1652356841624880612:0
 		}
 	}
 }

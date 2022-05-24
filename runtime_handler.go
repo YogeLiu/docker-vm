@@ -218,7 +218,7 @@ func constructCallContractResponse(
 }
 
 func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext) (*protogo.DockerVMMessage, bool) {
+	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_GET_STATE_RESPONSE)
 
@@ -232,7 +232,7 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 		r.logger.Errorf("%s", err)
 		response.SysCallMessage.Message = err.Error()
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		return response, false
+		return response, gasUsed
 	}
 	stateKey := recvMsg.SysCallMessage.Payload[config.KeyStateKey]
 
@@ -244,7 +244,7 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 		r.logger.Errorf("fail to get state from sim context: %s", err)
 		response.SysCallMessage.Message = err.Error()
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		return response, false
+		return response, gasUsed
 	}
 
 	//r.logger.Debug("get value: ", string(value))
@@ -253,7 +253,15 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 	response.SysCallMessage.Payload = map[string][]byte{
 		config.KeyStateValue: value,
 	}
-	return response, true
+	gasUsed, err = gas.GetStateGasUsed(gasUsed, value)
+	if err != nil {
+		r.logger.Errorf("%s", err)
+		response.SysCallMessage.Message = err.Error()
+		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+		return response, gasUsed
+	}
+
+	return response, gasUsed
 }
 
 func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.DockerVMMessage,
@@ -986,10 +994,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 			Result: make([]byte, 1),
 		},
 	}
-	//response := r.newEmptyResponse(txId, protogo.DockerVMType_GET_BYTECODE_RESPONSE)
 
 	contractFullName := recvMsg.Request.ContractName + "#" + recvMsg.Request.ContractVersion // contract1#1.0.0
-	//contractName := strings.Split(contractFullName, "#")[0]                                  // contract1
 	contractName := recvMsg.Request.ContractName
 	contractVersion := recvMsg.Request.ContractVersion
 	r.logger.Debugf("name: %s", contractName)
@@ -1042,10 +1048,6 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	}
 
 	response.Response.Code = protogo.DockerVMCode_OK
-	//response.Response.Payload = map[string][]byte{
-	//	config.KeyContractFullName: []byte(contractFullName),
-	//}
-	//response.Response.Result = []byte(contractFullName)
 	response.Response.ContractName = contractName
 	response.Response.ContractVersion = contractVersion
 
@@ -1059,9 +1061,6 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		}
 
 		response.Response.Code = protogo.DockerVMCode_OK
-		//response.SysCallMessage.Payload = map[string][]byte{
-		//	config.KeyContractFullName: contractByteCode,
-		//}
 		response.Response.Result = contractByteCode
 	}
 
