@@ -45,6 +45,7 @@ func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessMana
 func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	for {
 		msg, err := stream.Recv()
+		s.logger.Debugf("recv msg, txId: %s", msg.TxId)
 		if err != nil {
 			return fmt.Errorf("failed to recv msg: %s", err)
 		}
@@ -74,7 +75,7 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			process.SetStream(stream)
 			continue
 		}
-		s.logger.Debugf("recv msg, txId: %s", msg.TxId)
+		s.logger.Debugf("end recv msg, txId: %s", msg.TxId)
 		process.PutMsg(msg)
 	}
 }
