@@ -30,7 +30,7 @@ type SandboxRPCService struct {
 //  @return *SandboxRPCService
 func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessManager) *SandboxRPCService {
 	return &SandboxRPCService{
-		logger:          logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER),
+		logger:          logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVICE),
 		origProcessMgr:  origProcessMgr,
 		crossProcessMgr: crossProcessMgr,
 	}
@@ -76,7 +76,7 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			}
 			continue
 		}
-
+		s.logger.Debugf("recv msg, txId: %s", msg.TxId)
 		process.PutMsg(msg)
 	}
 }
