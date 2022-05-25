@@ -6,13 +6,14 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
-	"chainmaker.org/chainmaker/protocol/v2"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"sync"
 	"testing"
 	"time"
+
+	"chainmaker.org/chainmaker/protocol/v2"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
@@ -50,6 +51,7 @@ func TestDockerGoMemory(t *testing.T) {
 		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
 	}
 	mockTxContext = initMockSimContext(t)
+	mockNormalGetDepth(mockTxContext)
 
 	filePath := fmt.Sprintf("./testdata/%s.7z", contractName)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)

@@ -29,10 +29,16 @@ clean:
 	docker image prune -f
 
 ci:
-	make build-test
-	golangci-lint run ./...
-	go test -v ./...
-	make clean
+#	make build-test
+#	golangci-lint run ./...
+#	make clean
+
+ut:
+	./test/scripts/prepare.sh
+	make build-image
+	docker run -itd --rm --net=host -v $(pwd)/vm_mgr/config:/mount/config -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	sh ./ut_cover.sh
+	docker stop chaimaker_vm_test
 
 gomod:
 	cd scripts && sh gomod_update.sh

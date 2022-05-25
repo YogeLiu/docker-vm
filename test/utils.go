@@ -110,7 +110,7 @@ func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 }
 
 func newMockLogger(ctrl *gomock.Controller, name string) protocol.Logger {
-	return &test.GoLogger{}
+	return &test.HoleLogger{}
 }
 
 func initMockSimContext(t *testing.T) *mock.MockTxSimContext {

@@ -119,10 +119,10 @@ debug:
 
 vm:
   enable_dockervm: true
-  dockervm_mount_path: ../data/org1/docker-go     # mount point in chain maker
-  dockervm_log_path: ../log/org1/dockervm
+  dockervm_mount_path: ./testdata/org1/docker-go
+  dockervm_log_path: ./testdata/org1/dockervm
   log_in_console: false
-  log_level: DEBUG
+  log_level: INFO
   uds_open: false                             # default is unix domain socket connection
   runtime_server:
     port: 22459

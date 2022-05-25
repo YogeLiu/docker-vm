@@ -8,13 +8,14 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"path/filepath"
+	"testing"
+
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
-	"path/filepath"
-	"testing"
 )
 
 func TestContractManager_GetContractMountDir(t *testing.T) {
@@ -447,27 +448,27 @@ func TestNewContractManager(t *testing.T) {
 	SetConfig()
 
 	tests := []struct {
-		name      string
-		wantExist bool
-		wantErr   bool
+		name string
+		//wantExist bool
+		wantErr bool
 	}{
 		{
-			name:      "TestNewContractManager",
-			wantExist: true,
-			wantErr:   false,
+			name: "TestNewContractManager",
+			//wantExist: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewContractManager()
+			_, err := NewContractManager()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewContractManager() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if (got != nil) != tt.wantExist {
-				t.Errorf("NewContractManager() exist = %v, wantExist %v", got != nil, tt.wantExist)
-				return
-			}
+			//if (got != nil) != tt.wantExist {
+			//	t.Errorf("NewContractManager() exist = %v, wantExist %v", got != nil, tt.wantExist)
+			//	return
+			//}
 		})
 	}
 }

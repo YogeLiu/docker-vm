@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-VERSION=develop
+VERSION=refactor
 
 docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`)
 

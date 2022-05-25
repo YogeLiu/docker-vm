@@ -1,5 +1,6 @@
 package test
 
+/*
 import (
 	"fmt"
 	"io/ioutil"
@@ -212,6 +213,18 @@ func testCutSave() {
 		performTxContext, uint64(123))
 }
 
+
+//浮点数切分
+func cutOutFloat64(number float64, n int) float64 {
+	num := strconv.FormatFloat(number, 'f', 2, 64)
+	newNum, err := strconv.ParseFloat(num, 64)
+	if err != nil {
+		return number
+	}
+	return newNum
+}
+*/
+
 //func testCutFindByHash() {
 //	newRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 //		"", nil, nil, mockLogger)
@@ -278,15 +291,6 @@ func testCutSave() {
 //		performTxContext, uint64(123))
 //}
 //
-//浮点数切分
-func cutOutFloat64(number float64, n int) float64 {
-	num := strconv.FormatFloat(number, 'f', 2, 64)
-	newNum, err := strconv.ParseFloat(num, 64)
-	if err != nil {
-		return number
-	}
-	return newNum
-}
 
 //// print all group run result
 //func PrintGroupRunResultAndDraw(title string, groupResultList []*GroupRunInfo, resultFileName, chartFileName string) {
