@@ -56,11 +56,6 @@ const (
 	timeout                      // busy timeout (busy in process manager)
 )
 
-const (
-	// processEventChSize is process manager event chan size
-	processEventChSize = 8
-)
-
 // exitErr is the sandbox exit err
 type exitErr struct {
 	err  error
@@ -349,15 +344,13 @@ func (p *Process) GetUser() interfaces.User {
 }
 
 // SetStream sets grpc stream
-func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
+func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) {
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	p.updateProcessState(ready)
 	p.stream = stream
-
-	return nil
 }
 
 // ChangeSandbox changes sandbox of process

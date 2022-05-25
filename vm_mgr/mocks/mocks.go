@@ -16,7 +16,7 @@ func (pm *MockProcessManager) SetScheduler(scheduler interfaces.RequestScheduler
 }
 
 func (pm *MockProcessManager) PutMsg(msg interface{}) error {
-	panic("implement me")
+	return nil
 }
 
 func (pm *MockProcessManager) GetProcessByName(processName string) (interfaces.Process, bool) {
@@ -63,14 +63,50 @@ func (p *MockProcess) GetUser() interfaces.User {
 	panic("implement me")
 }
 
-func (p *MockProcess) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
-	return nil
-}
+func (p *MockProcess) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) {}
 
 func (p *MockProcess) ChangeSandbox(contractName, contractVersion, processName string) error {
 	return nil
 }
 
 func (p *MockProcess) CloseSandbox() error {
+	panic("implement me")
+}
+
+type MockRequestScheduler struct{}
+
+func (rs *MockRequestScheduler) Start() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (rs *MockRequestScheduler) PutMsg(msg interface{}) error {
+	return nil
+}
+
+func (rs *MockRequestScheduler) GetRequestGroup(contractName, contractVersion string) (interfaces.RequestGroup, bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type MockRequestGroup struct{}
+
+func (rg *MockRequestGroup) Start() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (rg *MockRequestGroup) PutMsg(msg interface{}) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (rg *MockRequestGroup) GetContractPath() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (rg *MockRequestGroup) GetTxCh(isOrig bool) chan *protogo.DockerVMMessage {
+	//TODO implement me
 	panic("implement me")
 }

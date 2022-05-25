@@ -10,30 +10,30 @@ package rpc
 import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/mocks"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"go.uber.org/zap"
-	"sync"
 	"testing"
 )
 
-func TestChainRPCService_DockerVMCommunicate(t *testing.T) {
+func TestChainRPCService_DockerVMCommunicate_Recv(t *testing.T) {
 
 	SetConfig()
 
 	s := newMockStream(t)
 	defer s.finish()
 	stream := s.getStream()
-	stream.EXPECT().Recv().Return(&protogo.DockerVMMessage{}, nil).AnyTimes()
-	stream.EXPECT().Send(&protogo.DockerVMMessage{}).Return(nil).AnyTimes()
+	stream.EXPECT().Send(nil).Return(nil).AnyTimes()
+	stream.EXPECT().Recv().Return(&protogo.DockerVMMessage{Type: protogo.DockerVMType_TX_REQUEST}, nil).Times(1)
+	stream.EXPECT().Recv().Return(&protogo.DockerVMMessage{}, nil).Times(1)
+	stream.EXPECT().Recv().Return(nil, fmt.Errorf("err")).Times(1)
 
 	type fields struct {
-		logger     *zap.SugaredLogger
-		scheduler  interfaces.RequestScheduler
-		eventCh    chan *protogo.DockerVMMessage
-		stopSendCh chan struct{}
-		stopRecvCh chan struct{}
-		wg         *sync.WaitGroup
+		logger    *zap.SugaredLogger
+		scheduler interfaces.RequestScheduler
+		eventCh   chan *protogo.DockerVMMessage
 	}
 	type args struct {
 		stream protogo.DockerVMRpc_DockerVMCommunicateServer
@@ -47,11 +47,9 @@ func TestChainRPCService_DockerVMCommunicate(t *testing.T) {
 		{
 			name: "TestChainRPCService_DockerVMCommunicate",
 			fields: fields{
-				logger:     logger.NewTestDockerLogger(),
-				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
-				stopSendCh: make(chan struct{}),
-				stopRecvCh: make(chan struct{}),
-				wg:         new(sync.WaitGroup),
+				logger:    logger.NewTestDockerLogger(),
+				scheduler: &mocks.MockRequestScheduler{},
+				eventCh:   make(chan *protogo.DockerVMMessage, rpcEventChSize),
 			},
 			args:    args{stream: stream},
 			wantErr: false,
@@ -60,46 +58,88 @@ func TestChainRPCService_DockerVMCommunicate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			service := &ChainRPCService{
-				logger:     tt.fields.logger,
-				eventCh:    tt.fields.eventCh,
-				stopSendCh: tt.fields.stopSendCh,
-				stopRecvCh: tt.fields.stopRecvCh,
-				wg:         tt.fields.wg,
-				stream:     tt.args.stream,
+				logger:  tt.fields.logger,
+				eventCh: tt.fields.eventCh,
 			}
-			sendWait := &sync.WaitGroup{}
-			sendWait.Add(1)
-			go func(group *sync.WaitGroup) {
-				service.stream.Send(&protogo.DockerVMMessage{})
-				sendWait.Done()
-			}(sendWait)
-			sendWait.Wait()
+			service.SetScheduler(tt.fields.scheduler)
 
-			go func() {
-				for {
-					service.stopSendCh <- struct{}{}
-					service.stopRecvCh <- struct{}{}
-				}
-			}()
+			//stream.Send(&protogo.DockerVMMessage{})
 
-			if err := service.DockerVMCommunicate(service.stream); (err != nil) != tt.wantErr {
+			if err := service.DockerVMCommunicate(stream); (err != nil) != tt.wantErr {
 				t.Errorf("DockerVMCommunicate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
+//func TestChainRPCService_DockerVMCommunicate_Send(t *testing.T) {
+//
+//	SetConfig()
+//
+//	s := newMockStream(t)
+//	defer s.finish()
+//	stream := s.getStream()
+//
+//	errMsg := &protogo.DockerVMMessage{Type: protogo.DockerVMType_ERROR}
+//	reqMsg := &protogo.DockerVMMessage{Type: protogo.DockerVMType_GET_BYTECODE_REQUEST}
+//	stream.EXPECT().Send(reqMsg).Return(nil).Times(1)
+//	stream.EXPECT().Send(errMsg).Return(nil).Times(1)
+//	stream.EXPECT().Send(errMsg).Return(fmt.Errorf("err")).Times(1)
+//
+//	type fields struct {
+//		logger    *zap.SugaredLogger
+//		scheduler interfaces.RequestScheduler
+//		eventCh   chan *protogo.DockerVMMessage
+//	}
+//	type args struct {
+//		stream protogo.DockerVMRpc_DockerVMCommunicateServer
+//	}
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		args    args
+//		wantErr bool
+//	}{
+//		{
+//			name: "TestChainRPCService_DockerVMCommunicate",
+//			fields: fields{
+//				logger:    logger.NewTestDockerLogger(),
+//				scheduler: &mocks.MockRequestScheduler{},
+//				eventCh:   make(chan *protogo.DockerVMMessage, rpcEventChSize),
+//			},
+//			args:    args{stream: stream},
+//			wantErr: false,
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			service := &ChainRPCService{
+//				logger:  tt.fields.logger,
+//				eventCh: tt.fields.eventCh,
+//			}
+//			service.PutMsg(reqMsg)
+//			service.PutMsg(errMsg)
+//			service.PutMsg(&protogo.DockerVMMessage{})
+//			service.PutMsg(errMsg)
+//			service.SetScheduler(tt.fields.scheduler)
+//
+//			//stream.Send(&protogo.DockerVMMessage{})
+//
+//			if err := service.DockerVMCommunicate(stream); (err != nil) != tt.wantErr {
+//				t.Errorf("DockerVMCommunicate() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//}
+
 func TestChainRPCService_PutMsg(t *testing.T) {
 
 	SetConfig()
 
 	type fields struct {
-		logger     *zap.SugaredLogger
-		scheduler  interfaces.RequestScheduler
-		eventCh    chan *protogo.DockerVMMessage
-		stopSendCh chan struct{}
-		stopRecvCh chan struct{}
-		wg         *sync.WaitGroup
+		logger    *zap.SugaredLogger
+		scheduler interfaces.RequestScheduler
+		eventCh   chan *protogo.DockerVMMessage
 	}
 
 	type args struct {
@@ -115,25 +155,31 @@ func TestChainRPCService_PutMsg(t *testing.T) {
 		{
 			name: "TestChainRPCService_PutMsg",
 			fields: fields{
-				logger:     logger.NewTestDockerLogger(),
-				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
-				stopSendCh: make(chan struct{}),
-				stopRecvCh: make(chan struct{}),
-				wg:         new(sync.WaitGroup),
+				logger:    logger.NewTestDockerLogger(),
+				scheduler: &mocks.MockRequestScheduler{},
+				eventCh:   make(chan *protogo.DockerVMMessage, rpcEventChSize),
 			},
 			args:    args{msg: &protogo.DockerVMMessage{}},
 			wantErr: false,
+		},
+		{
+			name: "TestChainRPCService_PutMsg",
+			fields: fields{
+				logger:    logger.NewTestDockerLogger(),
+				scheduler: &mocks.MockRequestScheduler{},
+				eventCh:   make(chan *protogo.DockerVMMessage, rpcEventChSize),
+			},
+			args:    args{msg: "string"},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			service := &ChainRPCService{
-				logger:     tt.fields.logger,
-				eventCh:    tt.fields.eventCh,
-				stopSendCh: tt.fields.stopSendCh,
-				stopRecvCh: tt.fields.stopRecvCh,
-				wg:         tt.fields.wg,
+				logger:  tt.fields.logger,
+				eventCh: tt.fields.eventCh,
 			}
+			service.SetScheduler(tt.fields.scheduler)
 
 			if err := service.PutMsg(tt.args.msg); (err != nil) != tt.wantErr {
 				t.Errorf("PutMsg() error = %v, wantErr %v", err, tt.wantErr)
@@ -142,312 +188,61 @@ func TestChainRPCService_PutMsg(t *testing.T) {
 	}
 }
 
-func TestChainRPCService_SetScheduler(t *testing.T) {
-
-	SetConfig()
-
-	type fields struct {
-		logger     *zap.SugaredLogger
-		scheduler  interfaces.RequestScheduler
-		eventCh    chan *protogo.DockerVMMessage
-		stopSendCh chan struct{}
-		stopRecvCh chan struct{}
-		wg         *sync.WaitGroup
-	}
-
-	type args struct {
-		scheduler interfaces.RequestScheduler
-	}
-
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "TestChainRPCService_SetScheduler",
-			fields: fields{
-				logger:     logger.NewTestDockerLogger(),
-				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
-				stopSendCh: make(chan struct{}),
-				stopRecvCh: make(chan struct{}),
-				wg:         new(sync.WaitGroup),
-			},
-			args:    args{scheduler: nil},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service := &ChainRPCService{
-				logger:     tt.fields.logger,
-				eventCh:    tt.fields.eventCh,
-				stopSendCh: tt.fields.stopSendCh,
-				stopRecvCh: tt.fields.stopRecvCh,
-				wg:         tt.fields.wg,
-			}
-
-			service.SetScheduler(tt.args.scheduler)
-		})
-	}
-}
-
-func TestChainRPCService_recvMsgRoutine(t *testing.T) {
-
-	s := newMockStream(t)
-	defer s.finish()
-	stream := s.getStream()
-	stream.EXPECT().Recv().Return(&protogo.DockerVMMessage{}, nil).AnyTimes()
-	stream.EXPECT().Send(&protogo.DockerVMMessage{}).Return(nil).AnyTimes()
-
-	SetConfig()
-
-	type fields struct {
-		logger     *zap.SugaredLogger
-		scheduler  interfaces.RequestScheduler
-		eventCh    chan *protogo.DockerVMMessage
-		stopSendCh chan struct{}
-		stopRecvCh chan struct{}
-		wg         *sync.WaitGroup
-		stream     protogo.DockerVMRpc_DockerVMCommunicateServer
-	}
-
-	type args struct {
-		scheduler interfaces.RequestScheduler
-	}
-
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "TestChainRPCService_recvMsgRoutine",
-			fields: fields{
-				logger:     logger.NewTestDockerLogger(),
-				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
-				stopSendCh: make(chan struct{}),
-				stopRecvCh: make(chan struct{}),
-				wg:         new(sync.WaitGroup),
-				stream:     stream,
-			},
-			args:    args{scheduler: nil},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service := &ChainRPCService{
-				logger:     tt.fields.logger,
-				eventCh:    tt.fields.eventCh,
-				stopSendCh: tt.fields.stopSendCh,
-				stopRecvCh: tt.fields.stopRecvCh,
-				wg:         tt.fields.wg,
-				stream:     tt.fields.stream,
-			}
-
-			service.wg.Add(1)
-
-			go func() {
-				for {
-					service.stopRecvCh <- struct{}{}
-				}
-			}()
-
-			service.recvMsgRoutine()
-
-		})
-	}
-}
-
-func TestChainRPCService_recvMsg(t *testing.T) {
-
-	s := newMockStream(t)
-	defer s.finish()
-	stream := s.getStream()
-	stream.EXPECT().Recv().Return(&protogo.DockerVMMessage{}, nil).AnyTimes()
-	stream.EXPECT().Send(&protogo.DockerVMMessage{}).Return(nil).AnyTimes()
-
-	SetConfig()
-
-	type fields struct {
-		logger     *zap.SugaredLogger
-		scheduler  interfaces.RequestScheduler
-		eventCh    chan *protogo.DockerVMMessage
-		stopSendCh chan struct{}
-		stopRecvCh chan struct{}
-		wg         *sync.WaitGroup
-		stream     protogo.DockerVMRpc_DockerVMCommunicateServer
-	}
-
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		{
-			name: "TestChainRPCService_recvMsg",
-			fields: fields{
-				logger:     logger.NewTestDockerLogger(),
-				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
-				stopSendCh: make(chan struct{}),
-				stopRecvCh: make(chan struct{}),
-				wg:         new(sync.WaitGroup),
-				stream:     stream,
-			},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service := &ChainRPCService{
-				logger:     tt.fields.logger,
-				eventCh:    tt.fields.eventCh,
-				stopSendCh: tt.fields.stopSendCh,
-				stopRecvCh: tt.fields.stopRecvCh,
-				wg:         tt.fields.wg,
-				stream:     tt.fields.stream,
-			}
-
-			if _, err := service.recvMsg(); (err != nil) != tt.wantErr {
-				t.Errorf("recvMsg() error = %v, wantErr %v", err, tt.wantErr)
-			}
-
-		})
-	}
-}
-
-func TestChainRPCService_sendMsg(t *testing.T) {
-	s := newMockStream(t)
-	defer s.finish()
-	stream := s.getStream()
-	stream.EXPECT().Recv().Return(&protogo.DockerVMMessage{}, nil).AnyTimes()
-	stream.EXPECT().Send(&protogo.DockerVMMessage{}).Return(nil).AnyTimes()
-
-	SetConfig()
-
-	type fields struct {
-		logger     *zap.SugaredLogger
-		scheduler  interfaces.RequestScheduler
-		eventCh    chan *protogo.DockerVMMessage
-		stopSendCh chan struct{}
-		stopRecvCh chan struct{}
-		wg         *sync.WaitGroup
-		stream     protogo.DockerVMRpc_DockerVMCommunicateServer
-	}
-
-	type args struct {
-		msg *protogo.DockerVMMessage
-	}
-
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "TestChainRPCService_sendMsg",
-			fields: fields{
-				logger:     logger.NewTestDockerLogger(),
-				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
-				stopSendCh: make(chan struct{}),
-				stopRecvCh: make(chan struct{}),
-				wg:         new(sync.WaitGroup),
-				stream:     stream,
-			},
-			args:    args{msg: &protogo.DockerVMMessage{}},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service := &ChainRPCService{
-				logger:     tt.fields.logger,
-				eventCh:    tt.fields.eventCh,
-				stopSendCh: tt.fields.stopSendCh,
-				stopRecvCh: tt.fields.stopRecvCh,
-				wg:         tt.fields.wg,
-				stream:     tt.fields.stream,
-			}
-
-			if err := service.sendMsg(tt.args.msg); (err != nil) != tt.wantErr {
-				t.Errorf("sendMsg() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestChainRPCService_sendMsgRoutine(t *testing.T) {
-	s := newMockStream(t)
-	defer s.finish()
-	stream := s.getStream()
-	stream.EXPECT().Recv().Return(&protogo.DockerVMMessage{}, nil).AnyTimes()
-	stream.EXPECT().Send(&protogo.DockerVMMessage{}).Return(nil).AnyTimes()
-
-	SetConfig()
-
-	type fields struct {
-		logger     *zap.SugaredLogger
-		scheduler  interfaces.RequestScheduler
-		eventCh    chan *protogo.DockerVMMessage
-		stopSendCh chan struct{}
-		stopRecvCh chan struct{}
-		wg         *sync.WaitGroup
-		stream     protogo.DockerVMRpc_DockerVMCommunicateServer
-	}
-
-	type args struct {
-		scheduler interfaces.RequestScheduler
-	}
-
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "TestChainRPCService_sendMsgRoutine",
-			fields: fields{
-				logger:     logger.NewTestDockerLogger(),
-				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
-				stopSendCh: make(chan struct{}),
-				stopRecvCh: make(chan struct{}),
-				wg:         new(sync.WaitGroup),
-				stream:     stream,
-			},
-			args:    args{scheduler: nil},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service := &ChainRPCService{
-				logger:     tt.fields.logger,
-				eventCh:    tt.fields.eventCh,
-				stopSendCh: tt.fields.stopSendCh,
-				stopRecvCh: tt.fields.stopRecvCh,
-				wg:         tt.fields.wg,
-				stream:     tt.fields.stream,
-			}
-
-			service.wg.Add(1)
-
-			go func() {
-				for {
-					service.stopSendCh <- struct{}{}
-				}
-			}()
-
-
-			service.sendMsgRoutine()
-
-		})
-	}
-}
+//func TestChainRPCService_sendMsgRoutine(t *testing.T) {
+//	s := newMockStream(t)
+//	defer s.finish()
+//	stream := s.getStream()
+//	stream.EXPECT().Recv().Return(&protogo.DockerVMMessage{}, nil).AnyTimes()
+//	stream.EXPECT().Send(&protogo.DockerVMMessage{}).Return(nil).AnyTimes()
+//
+//	SetConfig()
+//
+//	type fields struct {
+//		logger     *zap.SugaredLogger
+//		scheduler  interfaces.RequestScheduler
+//		eventCh    chan *protogo.DockerVMMessage
+//	}
+//
+//	type args struct {
+//		scheduler interfaces.RequestScheduler
+//	}
+//
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		args    args
+//		wantErr bool
+//	}{
+//		{
+//			name: "TestChainRPCService_sendMsgRoutine",
+//			fields: fields{
+//				logger:     logger.NewTestDockerLogger(),
+//				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
+//			},
+//			args:    args{scheduler: nil},
+//			wantErr: false,
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			service := &ChainRPCService{
+//				logger:     tt.fields.logger,
+//				eventCh:    tt.fields.eventCh,
+//			}
+//
+//			service.wg.Add(1)
+//
+//			go func() {
+//				for {
+//					service.stopSendCh <- struct{}{}
+//				}
+//			}()
+//
+//			service.sendMsgRoutine()
+//
+//		})
+//	}
+//}
 
 func TestNewChainRPCService(t *testing.T) {
 	SetConfig()

@@ -18,17 +18,19 @@ import (
 )
 
 func TestNewUsersManager(t *testing.T) {
+
+	SetConfig()
+
 	tests := []struct {
 		name string
-		want *UserManager
 	}{
-		// TODO: Add test cases.
+		{
+			name: "TestNewUsersManager",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewUsersManager(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewUsersManager() = %v, wantNum %v", got, tt.want)
-			}
+			_ = NewUsersManager()
 		})
 	}
 }
@@ -184,42 +186,6 @@ func TestUserManager_GetAvailableUser(t *testing.T) {
 		})
 	}
 }
-
-//func TestUserManager_generateNewUser(t *testing.T) {
-//
-//	SetConfig()
-//
-//	mgr := NewUsersManager()
-//
-//	type fields struct {
-//		userManger *UserManager
-//	}
-//
-//	type args struct {
-//		uid int
-//	}
-//	tests := []struct {
-//		name    string
-//		fields  fields
-//		args    args
-//		wantErr bool
-//	}{
-//		{
-//			name:    "TestUserManager_generateNewUser",
-//			fields:  fields{userManger: mgr},
-//			args:    args{uid: 11001},
-//			wantErr: false,
-//		},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			u := tt.fields.userManger
-//			if err := u.generateNewUser(tt.args.uid); (err != nil) != tt.wantErr {
-//				t.Errorf("generateNewUser() error = %v, wantErr %v", err, tt.wantErr)
-//			}
-//		})
-//	}
-//}
 
 func TestUserManager_ReleaseUsers(t *testing.T) {
 

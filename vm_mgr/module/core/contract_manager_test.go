@@ -330,7 +330,7 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 				},
 			}},
 			wantExist: true,
-			wantErr:   false,
+			wantErr:   true,
 		},
 		{
 			name: "TestContractManager_handleGetContractResp",
@@ -447,14 +447,14 @@ func TestNewContractManager(t *testing.T) {
 	SetConfig()
 
 	tests := []struct {
-		name    string
+		name      string
 		wantExist bool
-		wantErr bool
+		wantErr   bool
 	}{
 		{
-			name:    "TestNewContractManager",
+			name:      "TestNewContractManager",
 			wantExist: true,
-			wantErr: true,
+			wantErr:   false,
 		},
 	}
 	for _, tt := range tests {
@@ -464,7 +464,7 @@ func TestNewContractManager(t *testing.T) {
 				t.Errorf("NewContractManager() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if (got == nil) != tt.wantExist {
+			if (got != nil) != tt.wantExist {
 				t.Errorf("NewContractManager() exist = %v, wantExist %v", got != nil, tt.wantExist)
 				return
 			}

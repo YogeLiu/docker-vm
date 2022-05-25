@@ -70,10 +70,8 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 
 		if msg.Type == protogo.DockerVMType_REGISTER {
-			s.logger.Debugf("try to set stream, %v", msg)
-			if err = process.SetStream(stream); err != nil {
-				return fmt.Errorf("failed to set stream, %v", err)
-			}
+			s.logger.Debugf("try to set stream, %s", msg.TxId)
+			process.SetStream(stream)
 			continue
 		}
 		s.logger.Debugf("recv msg, txId: %s", msg.TxId)

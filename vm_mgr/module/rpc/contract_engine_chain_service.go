@@ -95,7 +95,7 @@ func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerV
 // recvMsgRoutine handles messages received from stream
 // message types include: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
-	s.logger.Debugf("start recv msg routine...")
+	s.logger.Infof("start recv msg routine...")
 	for {
 		select {
 		case <-conn.stopRecvCh:

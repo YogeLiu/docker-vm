@@ -39,7 +39,7 @@ type Process interface {
 	GetContractName() string
 	GetContractVersion() string
 	GetUser() User
-	SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error
+	SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer)
 	ChangeSandbox(contractName, contractVersion, processName string) error
 	CloseSandbox() error
 }
