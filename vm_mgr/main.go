@@ -22,7 +22,7 @@ func main() {
 	// set config
 	if err := config.InitConfig(filepath.Join(config.DockerMountDir, config.ConfigFileName)); err != nil {
 		//managerLogger.Fatalf("failed to init config, %v", err)
-		panic("failed to init config," + err.Error())
+		panic("failed to init config, " + err.Error())
 	}
 
 	// init docker container logger

@@ -39,6 +39,8 @@ func TestUserManager_BatchCreateUsers(t *testing.T) {
 
 	SetConfig()
 
+	config.DockerVMConfig.Process.MaxOriginalProcessNum = 1
+
 	mgr := NewUsersManager()
 
 	type fields struct {
@@ -190,6 +192,8 @@ func TestUserManager_GetAvailableUser(t *testing.T) {
 func TestUserManager_ReleaseUsers(t *testing.T) {
 
 	SetConfig()
+
+	config.DockerVMConfig.Process.MaxOriginalProcessNum = 1
 
 	mgr := NewUsersManager()
 

@@ -7,6 +7,7 @@ build-image:
 	cd vm_mgr && go mod vendor
 	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} -f Dockerfile ./
 	docker images | grep chainmaker-vm-docker-go
+	cd ..
 
 image-push:
 	docker push chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
@@ -36,7 +37,7 @@ ci:
 ut:
 	./test/scripts/prepare.sh
 	make build-image
-	docker run -itd --rm --net=host -v $(pwd)/vm_mgr/config:/mount/config -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	docker run -itd --net=host -v $(pwd)/vm_mgr/config:/mount/config -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
 	sh ./ut_cover.sh
 	docker stop chaimaker_vm_test
 
