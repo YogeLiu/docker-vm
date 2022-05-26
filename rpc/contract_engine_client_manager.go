@@ -43,7 +43,12 @@ type ContractEngineClientManager struct {
 	stop           bool
 }
 
-func NewClientManager(chainId string, logger protocol.Logger, vmConfig *config.DockerVMConfig) interfaces.ContractEngineClientMgr {
+func NewClientManager(
+	chainId string,
+	logger protocol.Logger,
+	vmConfig *config.DockerVMConfig,
+) interfaces.ContractEngineClientMgr {
+
 	clientMgrOnce.Do(func() {
 		mgrInstance = &ContractEngineClientManager{
 			chainId:        chainId,
@@ -100,7 +105,12 @@ func (cm *ContractEngineClientManager) closeAllConnections() {
 
 // === ForRuntimeInstance ===
 
-func (cm *ContractEngineClientManager) PutTxRequestWithNotify(txRequest *protogo.DockerVMMessage, chainId string, notify func(msg *protogo.DockerVMMessage)) error {
+func (cm *ContractEngineClientManager) PutTxRequestWithNotify(
+	txRequest *protogo.DockerVMMessage,
+	chainId string,
+	notify func(msg *protogo.DockerVMMessage),
+) error {
+
 	if err := cm.registerNotify(chainId, txRequest.TxId, notify); err != nil {
 		return err
 	}
@@ -114,7 +124,12 @@ func (cm *ContractEngineClientManager) PutByteCodeResp(getByteCodeResp *protogo.
 	cm.byteCodeRespCh <- getByteCodeResp
 }
 
-func (cm *ContractEngineClientManager) registerNotify(chainId, txId string, notify func(msg *protogo.DockerVMMessage)) error {
+func (cm *ContractEngineClientManager) registerNotify(
+	chainId,
+	txId string,
+	notify func(msg *protogo.DockerVMMessage),
+) error {
+
 	cm.notifyLock.Lock()
 	defer cm.notifyLock.Unlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)

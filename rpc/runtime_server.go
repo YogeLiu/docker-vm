@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	runtimeServerOnce      sync.Once
-	runtimeServerInstance  *RuntimeServer
-	runtimeServerStartOnce sync.Once
+	runtimeServerOnce     sync.Once
+	runtimeServerInstance *RuntimeServer
+	//runtimeServerStartOnce sync.Once
 )
 
 type RuntimeServer struct {

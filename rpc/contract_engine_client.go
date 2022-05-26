@@ -39,7 +39,12 @@ type ContractEngineClient struct {
 	config      *config.DockerVMConfig
 }
 
-func NewContractEngineClient(chainId string, id uint64, logger protocol.Logger, cm interfaces.ContractEngineClientMgr) *ContractEngineClient {
+func NewContractEngineClient(
+	chainId string,
+	id uint64,
+	logger protocol.Logger,
+	cm interfaces.ContractEngineClientMgr,
+) *ContractEngineClient {
 
 	return &ContractEngineClient{
 		id:          id,
@@ -106,7 +111,11 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
 			err = c.sendMsg(txReq)
 		case getByteCodeResp := <-c.clientMgr.GetByteCodeRespSendCh():
-			c.logger.Debugf("[%s] send GetByteCode resp, chan len: [%d]", getByteCodeResp.TxId, c.clientMgr.GetByteCodeRespChLen())
+			c.logger.Debugf(
+				"[%s] send GetByteCode resp, chan len: [%d]",
+				getByteCodeResp.TxId,
+				c.clientMgr.GetByteCodeRespChLen(),
+			)
 			err = c.sendMsg(getByteCodeResp)
 		case <-c.stopSend:
 			c.logger.Debugf("close contract engine send goroutine")

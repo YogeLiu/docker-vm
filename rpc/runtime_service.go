@@ -19,11 +19,11 @@ var (
 )
 
 type RuntimeService struct {
-	streamCounter    atomic.Uint64
-	chainId          string
-	lock             sync.RWMutex
-	logger           protocol.Logger
-	stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+	streamCounter atomic.Uint64
+	chainId       string
+	lock          sync.RWMutex
+	logger        protocol.Logger
+	//stream           protogo.DockerVMRpc_DockerVMCommunicateServer
 	sandboxMsgNotify map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage))
 	//responseChanMap  map[uint64]chan *protogo.DockerVMMessage
 	responseChanMap sync.Map
@@ -32,12 +32,18 @@ type RuntimeService struct {
 func NewRuntimeService(chainId string, logger protocol.Logger) *RuntimeService {
 	runtimeServiceOnce.Do(func() {
 		runtimeServiceInstance = &RuntimeService{
-			streamCounter:    atomic.Uint64{},
-			chainId:          chainId,
-			lock:             sync.RWMutex{},
-			logger:           logger,
-			sandboxMsgNotify: make(map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage)), 1000),
-			responseChanMap:  sync.Map{},
+			streamCounter: atomic.Uint64{},
+			chainId:       chainId,
+			lock:          sync.RWMutex{},
+			logger:        logger,
+			sandboxMsgNotify: make(
+				map[string]func(
+					msg *protogo.DockerVMMessage,
+					sendMsg func(msg *protogo.DockerVMMessage),
+				),
+				1000,
+			),
+			responseChanMap: sync.Map{},
 		}
 	})
 	return runtimeServiceInstance
@@ -58,6 +64,7 @@ func (s *RuntimeService) registerStreamSendCh(streamId uint64, sendCh chan *prot
 	return true
 }
 
+// nolint: unused
 func (s *RuntimeService) getStreamSendCh(streamId uint64) chan *protogo.DockerVMMessage {
 	s.logger.Debugf("get send chan for stream[%d]", streamId)
 	ch, ok := s.responseChanMap.Load(streamId)
