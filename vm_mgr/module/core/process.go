@@ -356,10 +356,14 @@ func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer
 // ChangeSandbox changes sandbox of process
 func (p *Process) ChangeSandbox(contractName, contractVersion, processName string) error {
 
+	p.logger.Debugf("process [%s] is changing to [%s]...", p.processName, processName)
+
+	if p.processState != idle {
+		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
+	}
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
-
-	p.logger.Debugf("process [%s] is changing to [%s]...", p.processName, processName)
 
 	if p.processState != idle {
 		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
@@ -381,14 +385,18 @@ func (p *Process) ChangeSandbox(contractName, contractVersion, processName strin
 // CloseSandbox close sandbox
 func (p *Process) CloseSandbox() error {
 
+	p.logger.Debugf("start to close process...")
+
+	if p.processState != idle {
+		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
+	}
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	if p.processState != idle {
 		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
 	}
-
-	p.logger.Debugf("start to kill process...")
 
 	if err := p.killProcess(); err != nil {
 		return fmt.Errorf("failed to kill process, %v", err)
@@ -409,15 +417,19 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 
 	// ready / idle
 	if p.processState == idle {
+		p.updateProcessState(busy)
 		// change state from idle to busy
 		if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
+			p.updateProcessState(idle)
 			return fmt.Errorf("failed to change state of tx [%s], %v", tx.TxId, err)
 		}
 	}
 
 	p.Tx = tx
 
-	p.updateProcessState(busy)
+	if p.processState != busy {
+		p.updateProcessState(busy)
+	}
 
 	msg := &protogo.DockerVMMessage{
 		TxId:         p.Tx.TxId,

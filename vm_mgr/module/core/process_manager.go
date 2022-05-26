@@ -262,7 +262,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 		var processlist string
 		for _, v := range idleProcesses {
-			processlist += v.GetProcessName() + "-" + fmt.Sprintf("%p", v) + " "
+			processlist += v.GetProcessName() + " "
 		}
 		pm.logger.Debugf("allocate idle process list, %s", processlist)
 
@@ -427,7 +427,7 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 	idleProcesses, err := pm.peekIdleProcesses(allocateNum)
 	var processlist string
 	for _, v := range idleProcesses {
-		processlist += v.GetProcessName() + "-" + fmt.Sprintf("%p", v) + " "
+		processlist += v.GetProcessName() + " "
 	}
 	pm.logger.Debugf("allocate idle process list, %s", processlist)
 	if err != nil {
