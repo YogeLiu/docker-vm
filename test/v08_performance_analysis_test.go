@@ -1,6 +1,5 @@
 package test
 
-/*
 import (
 	"fmt"
 	"io/ioutil"
@@ -22,7 +21,7 @@ const (
 
 	timeFormat = "2006-01-02 15:04:05"
 
-	loopNum   = 10
+	loopNum   = 100
 	threadNum = 1000
 )
 
@@ -51,7 +50,7 @@ func TestDockerGoPerformance(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockLogger(nil, testVMLogName), cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockHoleLogger(nil, testVMLogName), cmConfig)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")
@@ -63,7 +62,7 @@ func TestDockerGoPerformance(t *testing.T) {
 	//step4: mock sim context
 	fmt.Printf("======step4 mock txContext=======\n")
 	performTxContext = InitContextTest()
-	mockLogger = newMockLogger(nil, testVMLogName)
+	mockLogger = newMockHoleLogger(nil, testVMLogName)
 
 	testDeployCut()
 	//testCutSave()
@@ -78,7 +77,7 @@ func TestDockerGoPerformance(t *testing.T) {
 
 func performMultipleTxs(loopNum, threadNum int) {
 	fmt.Println("--------- Ready to analysis --------------")
-	time.Sleep(20 * time.Second)
+	time.Sleep(10 * time.Second)
 	fmt.Println("---------- Start -------------------------")
 
 	var totalTps float64
@@ -213,7 +212,6 @@ func testCutSave() {
 		performTxContext, uint64(123))
 }
 
-
 //浮点数切分
 func cutOutFloat64(number float64, n int) float64 {
 	num := strconv.FormatFloat(number, 'f', 2, 64)
@@ -223,7 +221,6 @@ func cutOutFloat64(number float64, n int) float64 {
 	}
 	return newNum
 }
-*/
 
 //func testCutFindByHash() {
 //	newRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",

@@ -29,8 +29,8 @@ clean:
 	docker image prune -f
 
 ci:
+	golangci-lint run ./...
 #	make build-test
-#	golangci-lint run ./...
 #	make clean
 
 ut:
