@@ -518,6 +518,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 	//
 	//p.lock.Lock()
 	//defer p.lock.Unlock()
+	defer p.popTimer()
 
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
@@ -705,9 +706,7 @@ func (p *Process) startBusyTimer() {
 		txId = p.Tx.TxId
 	}
 	p.logger.Debugf("start busy tx timer for tx [%s]", txId)
-	if !p.timer.Stop() && len(p.timer.C) > 0 {
-		<-p.timer.C
-	}
+	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.ExecTxTimeout)
 }
 
@@ -719,9 +718,7 @@ func (p *Process) startReadyTimer() {
 		txId = p.Tx.TxId
 	}
 	p.logger.Debugf("start ready tx timer for tx [%s]", txId)
-	if !p.timer.Stop() && len(p.timer.C) > 0 {
-		<-p.timer.C
-	}
+	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime)
 }
 
@@ -733,10 +730,14 @@ func (p *Process) startIdleTimer() {
 		txId = p.Tx.TxId
 	}
 	p.logger.Debugf("start ready tx timer for tx [%s]", txId)
+	p.popTimer()
+	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime / readyToIdleTimeoutRatio)
+}
+
+func (p *Process) popTimer() {
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
-	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime / readyToIdleTimeoutRatio)
 }
 
 // stopTimer stop timer
