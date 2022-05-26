@@ -175,7 +175,7 @@ func (r *RuntimeInstance) Invoke(
 				r.clientMgr.PutByteCodeResp(getByteCodeResponse)
 				r.logger.Debugf("tx [%s] finish get bytecode", uniqueTxKey)
 			case protogo.DockerVMType_ERROR:
-				r.logger.Debugf("handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
+				r.logger.Errorf("[from engine] handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
 				return r.errorResult(
 					contractResult,
 					fmt.Errorf("tx timeout"),
@@ -192,8 +192,8 @@ func (r *RuntimeInstance) Invoke(
 
 			// TODO: 超时时间自定义
 		case <-timeoutC:
-			r.logger.Debugf(
-				"handle tx [%s] failed, fail to receive response in %d seconds and return timeout response",
+			r.logger.Errorf(
+				"[from chain] handle tx [%s] failed, fail to receive response in %d seconds and return timeout response",
 				originalTxId,
 				r.clientMgr.GetVMConfig().TxTimeLimit,
 			)

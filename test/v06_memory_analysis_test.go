@@ -34,7 +34,7 @@ func TestDockerGoMemory(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockLogger(nil, testVMLogName), cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockHoleLogger(nil, testVMLogName), cmConfig)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")
@@ -61,7 +61,7 @@ func TestDockerGoMemory(t *testing.T) {
 
 	//step5: create new NewRuntimeInstance -- for create user contract
 	fmt.Printf("=== step 5 create new runtime instance ===\n")
-	mockLogger := newMockLogger(nil, testVMLogName)
+	mockLogger := newMockHoleLogger(nil, testVMLogName)
 	mockRuntimeInstance, err = mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 		"", nil, nil, mockLogger)
 	if err != nil {

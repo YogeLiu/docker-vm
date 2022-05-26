@@ -9,10 +9,11 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"fmt"
+
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"fmt"
 	"go.uber.org/zap"
 )
 
@@ -45,7 +46,6 @@ func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessMana
 func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	for {
 		msg, err := stream.Recv()
-		s.logger.Debugf("recv msg, txId: %s", msg.TxId)
 		if err != nil {
 			return fmt.Errorf("failed to recv msg: %s", err)
 		}
@@ -53,6 +53,8 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		if msg == nil {
 			return fmt.Errorf("recv nil message, ending contract stream")
 		}
+
+		s.logger.Debugf("receive msg from sandbox[%s]", msg.TxId)
 
 		var process interfaces.Process
 		var ok bool
