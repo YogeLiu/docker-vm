@@ -380,6 +380,7 @@ func (p *Process) ChangeSandbox(contractName, contractVersion, processName strin
 		return err
 	}
 
+	// if sandbox exited here, process while be holding util deleted from process manager
 	p.updateProcessState(changing)
 
 	return nil
@@ -514,9 +515,9 @@ func (p *Process) handleTimeout() error {
 // release process success: true
 // release process fail: false
 func (p *Process) handleProcessExit(existErr *exitErr) bool {
-
-	p.lock.Lock()
-	defer p.lock.Unlock()
+	//
+	//p.lock.Lock()
+	//defer p.lock.Unlock()
 
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
