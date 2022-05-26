@@ -506,7 +506,7 @@ func (p *Process) handleTimeout() error {
 		}
 
 	default:
-		return fmt.Errorf("process state should be busy / ready / idle")
+		p.logger.Debugf("process state should be busy / ready / idle, current state is %v", p.processState)
 	}
 	return nil
 }
