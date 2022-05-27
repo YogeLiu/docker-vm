@@ -18,14 +18,14 @@ process:
   # max_total_process_num = max_call_contract_process_num + max_original_process_num
   max_original_process_num: 20
   exec_tx_timeout: 8s # process timeout while busy
-  waiting_tx_time: 50ms # process timeout while tx completed (busy -> idle)
+  waiting_tx_time: 200ms # process timeout while tx completed (busy -> idle)
   release_rate: 30 # percentage of idle processes released periodically in total processes (0-100)
   release_period: 2m # period of idle processes released periodically in total processes
 
 ########### Log ###########
 log:
   contract_engine:
-    level: "debug"
+    level: "info"
     console: true
   sandbox:
     level: "info"

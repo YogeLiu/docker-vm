@@ -217,7 +217,7 @@ func TestContractManager_handleGetContractReq(t *testing.T) {
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
-			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
 				eventCh: make(chan interface{}, requestGroupEventChSize),
 			}},
@@ -284,7 +284,7 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
-			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
 				eventCh: make(chan interface{}, requestGroupEventChSize),
 			}},
@@ -379,7 +379,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
-			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
 				eventCh: make(chan interface{}, requestGroupEventChSize),
 			}},

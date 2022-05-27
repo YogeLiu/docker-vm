@@ -21,11 +21,15 @@ import (
 )
 
 const (
+
+	// requestGroupTxChSize is request scheduler event chan size
+	requestGroupTxChSize = 30000
+
 	// requestGroupEventChSize is request scheduler event chan size
-	requestGroupEventChSize = 15000
+	requestGroupEventChSize = 100
 
 	// origTxChSize is orig tx chan size
-	origTxChSize = 10000
+	origTxChSize = 30000
 
 	// crossTxChSize is cross tx chan size
 	crossTxChSize = 10000
@@ -100,7 +104,7 @@ func NewRequestGroup(
 
 		requestScheduler: scheduler,
 		eventCh:          make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
-		txCh:             make(chan *protogo.DockerVMMessage, requestGroupEventChSize),
+		txCh:             make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
 		stopCh:           make(chan struct{}),
 
 		origTxController: &txController{

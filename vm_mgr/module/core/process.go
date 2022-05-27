@@ -377,6 +377,7 @@ func (p *Process) ChangeSandbox(contractName, contractVersion, processName strin
 		return fmt.Errorf("failed to reset context, %v", err)
 	}
 
+	// TODO: kill process by send signal, reset exitCh, new process will never blocked
 	if err := p.killProcess(); err != nil {
 		return err
 	}

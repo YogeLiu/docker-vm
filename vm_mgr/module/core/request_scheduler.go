@@ -19,9 +19,11 @@ import (
 )
 
 const (
+	// requestSchedulerTxChSize is request scheduler event chan size
+	requestSchedulerTxChSize = 30000
 	// requestSchedulerEventChSize is request scheduler event chan size
-	requestSchedulerEventChSize = 15000
-	// requestSchedulerEventChSize is close request group chan size
+	requestSchedulerEventChSize = 100
+	// closeChSize is close request group chan size
 	closeChSize = 8
 )
 
@@ -36,6 +38,7 @@ type RequestScheduler struct {
 	lock   sync.RWMutex       // request scheduler rw lock
 
 	eventCh chan *protogo.DockerVMMessage  // request scheduler event handler chan
+	txCh    chan *protogo.DockerVMMessage  // request scheduler event handler chan
 	closeCh chan *messages.RequestGroupKey // close request group chan
 
 	requestGroups       map[string]interfaces.RequestGroup // contractName#contractVersion
@@ -57,6 +60,7 @@ func NewRequestScheduler(
 		lock:   sync.RWMutex{},
 
 		eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+		txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
 		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
 
 		requestGroups:       make(map[string]interfaces.RequestGroup),
@@ -82,14 +86,12 @@ func (s *RequestScheduler) Start() {
 					s.handleGetContractReq(msg)
 				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
 					s.handleGetContractResp(msg)
-				case protogo.DockerVMType_TX_REQUEST:
-					if err := s.handleTxReq(msg); err != nil {
-						s.logger.Errorf("failed to handle tx request, %v", err)
-					}
 				case protogo.DockerVMType_ERROR:
 					s.handleErrResp(msg)
-				default:
-					s.logger.Errorf("unknown msg type, %+v", msg)
+				}
+			case msg := <-s.txCh:
+				if err := s.handleTxReq(msg); err != nil {
+					s.logger.Errorf("failed to handle tx request, %v", err)
 				}
 			case msg := <-s.closeCh:
 				if err := s.handleCloseReq(msg); err != nil {
@@ -105,7 +107,15 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 	switch msg.(type) {
 	case *protogo.DockerVMMessage:
 		m, _ := msg.(*protogo.DockerVMMessage)
-		s.eventCh <- m
+		switch m.Type {
+		case protogo.DockerVMType_GET_BYTECODE_REQUEST, protogo.DockerVMType_GET_BYTECODE_RESPONSE, protogo.DockerVMType_ERROR:
+			s.eventCh <- m
+		case protogo.DockerVMType_TX_REQUEST:
+			s.txCh <- m
+		default:
+			return fmt.Errorf("unknown msg type, %+v", msg)
+		}
+
 	case *messages.RequestGroupKey:
 		m, _ := msg.(*messages.RequestGroupKey)
 		s.closeCh <- m
