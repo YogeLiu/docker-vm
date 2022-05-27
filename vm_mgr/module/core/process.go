@@ -502,7 +502,8 @@ func (p *Process) handleTimeout() error {
 			p.logger.Debugf("idle timeout, txCh len > 0, go to ready")
 			// change state from idle to busy
 			if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
-				return fmt.Errorf("failed to change state, %v", err)
+				p.logger.Debugf("failed to change state, %v", err)
+				return nil
 			}
 			p.lock.Lock()
 			defer p.lock.Unlock()

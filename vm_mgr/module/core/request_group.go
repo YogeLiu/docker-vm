@@ -71,9 +71,10 @@ type RequestGroup struct {
 	contractManager interfaces.ContractManager // contract manager, request contract / receive contract ready signal
 	contractState   contractState              // handle tx with different contract state
 
-	requestScheduler interfaces.RequestScheduler // used for return err req to chain
-	eventCh          chan interface{}            // request group invoking handler
-	stopCh           chan struct{}               // stop request group
+	requestScheduler interfaces.RequestScheduler      // used for return err req to chain
+	eventCh          chan *messages.GetProcessRespMsg // request group invoking handler
+	txCh             chan *protogo.DockerVMMessage
+	stopCh           chan struct{} // stop request group
 
 	origTxController  *txController // original tx controller
 	crossTxController *txController // cross contract tx controller
@@ -98,7 +99,8 @@ func NewRequestGroup(
 		contractState:   contractEmpty,
 
 		requestScheduler: scheduler,
-		eventCh:          make(chan interface{}, requestGroupEventChSize),
+		eventCh:          make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
+		txCh:             make(chan *protogo.DockerVMMessage, requestGroupEventChSize),
 		stopCh:           make(chan struct{}),
 
 		origTxController: &txController{
@@ -122,27 +124,24 @@ func (r *RequestGroup) Start() {
 		for {
 			select {
 			case msg := <-r.eventCh:
-				switch msg.(type) {
-				case *protogo.DockerVMMessage:
-					m := msg.(*protogo.DockerVMMessage)
-					switch m.Type {
-					case protogo.DockerVMType_TX_REQUEST:
-						if err := r.handleTxReq(m); err != nil {
-							r.logger.Errorf("failed to handle tx request, %v", err)
-						}
-
-					case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-						r.handleContractReadyResp()
-
-					default:
-						r.logger.Errorf("unknown msg type, msg: %+v", msg)
-					}
-				case *messages.GetProcessRespMsg:
-					m := msg.(*messages.GetProcessRespMsg)
-					if err := r.handleProcessReadyResp(m); err != nil {
-						r.logger.Errorf("failed to handle process ready resp, %v", err)
-					}
+				if err := r.handleProcessReadyResp(msg); err != nil {
+					r.logger.Errorf("failed to handle process ready resp, %v", err)
 				}
+
+			case msg := <-r.txCh:
+				switch msg.Type {
+				case protogo.DockerVMType_TX_REQUEST:
+					if err := r.handleTxReq(msg); err != nil {
+						r.logger.Errorf("failed to handle tx request, %v", err)
+					}
+
+				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+					r.handleContractReadyResp()
+
+				default:
+					r.logger.Errorf("unknown msg type, msg: %+v", msg)
+				}
+
 			case <-r.stopCh:
 				return
 			}
@@ -154,8 +153,10 @@ func (r *RequestGroup) Start() {
 //  @param req types include DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (r *RequestGroup) PutMsg(msg interface{}) error {
 	switch msg.(type) {
-	case *protogo.DockerVMMessage, *messages.GetProcessRespMsg:
-		r.eventCh <- msg
+	case *messages.GetProcessRespMsg:
+		r.eventCh <- msg.(*messages.GetProcessRespMsg)
+	case *protogo.DockerVMMessage:
+		r.txCh <- msg.(*protogo.DockerVMMessage)
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
 	default:
