@@ -751,7 +751,12 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 	).AnyTimes()
 }
 
-func callContract(simContext *mock.MockTxSimContext, param map[string][]byte) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
+// nolint: deadcode,unused
+func callContract(
+	simContext *mock.MockTxSimContext,
+	param map[string][]byte,
+) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
+
 	mockLogger := newMockHoleLogger(nil, testVMLogName)
 	callContractRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 		"", nil, nil, mockLogger)

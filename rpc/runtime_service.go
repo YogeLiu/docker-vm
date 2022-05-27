@@ -206,7 +206,11 @@ func (s *RuntimeService) RegisterSandboxMsgNotify(chainId, txKey string,
 	return nil
 }
 
-func (s *RuntimeService) getNotify(chainId, txId string) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
+func (s *RuntimeService) getNotify(
+	chainId,
+	txId string,
+) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
+
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
