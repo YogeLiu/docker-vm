@@ -475,13 +475,12 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 // handleTimeout handle busy timeout (sandbox timeout) and ready timeout (tx chan empty)
 func (p *Process) handleTimeout() error {
 
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
 	switch p.processState {
 
 	// busy timeout, restart, process state: busy -> timeout -> created -> ready, process manager keep busy
 	case busy:
+		p.lock.Lock()
+		defer p.lock.Unlock()
 		p.logger.Debugf("busy timeout, go to timeout")
 		p.updateProcessState(timeout)
 		if err := p.killProcess(); err != nil {
@@ -490,6 +489,8 @@ func (p *Process) handleTimeout() error {
 
 	// ready timeout, process state: ready -> idle, process manager: busy -> idle
 	case ready:
+		p.lock.Lock()
+		defer p.lock.Unlock()
 		p.logger.Debugf("ready timeout, go to idle")
 		if err := p.processManager.ChangeProcessState(p.processName, false); err != nil {
 			return fmt.Errorf("change process state error, %v", err)
@@ -499,12 +500,13 @@ func (p *Process) handleTimeout() error {
 	case idle:
 		if len(p.txCh) > 0 {
 			p.logger.Debugf("idle timeout, txCh len > 0, go to ready")
-			p.updateProcessState(ready)
 			// change state from idle to busy
 			if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
-				p.updateProcessState(idle)
 				return fmt.Errorf("failed to change state, %v", err)
 			}
+			p.lock.Lock()
+			defer p.lock.Unlock()
+			p.updateProcessState(ready)
 		}
 
 	default:
