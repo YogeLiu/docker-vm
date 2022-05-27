@@ -723,9 +723,9 @@ func (pm *ProcessManager) removeFromProcessGroup(contractName, contractVersion, 
 	if len(pm.processGroups[groupKey]) == 0 {
 		delete(pm.processGroups, groupKey)
 		pm.removeFromWaitingGroup(contractName, contractVersion)
-		if err := pm.closeRequestGroup(contractName, contractVersion); err != nil {
-			pm.logger.Warnf("failed to close request group, %v", err)
-		}
+		//if err := pm.closeRequestGroup(contractName, contractVersion); err != nil {
+		//	pm.logger.Warnf("failed to close request group, %v", err)
+		//}
 	}
 }
 

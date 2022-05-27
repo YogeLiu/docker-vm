@@ -22,7 +22,7 @@ const (
 	timeFormat = "2006-01-02 15:04:05"
 
 	loopNum   = 100
-	threadNum = 8000
+	threadNum = 20000
 )
 
 var (

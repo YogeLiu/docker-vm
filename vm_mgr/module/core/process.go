@@ -455,7 +455,7 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	p.logger.Debugf("start handle tx resp [%s]", p.Tx.TxId)
+	p.logger.Infof("start handle tx resp [%s]", p.Tx.TxId)
 
 	if msg.TxId != p.Tx.TxId {
 		p.logger.Warnf("abandon tx response due to different tx id, response tx id [%s], "+
