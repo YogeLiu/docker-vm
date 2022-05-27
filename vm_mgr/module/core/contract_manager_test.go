@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
 	"path/filepath"
 	"testing"
 
@@ -217,9 +218,11 @@ func TestContractManager_handleGetContractReq(t *testing.T) {
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
-			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
+			txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
+			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
-				eventCh: make(chan interface{}, requestGroupEventChSize),
+				txCh:    make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
+				eventCh: make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
 			}},
 		},
 	}
@@ -284,9 +287,11 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
-			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
+			txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
+			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
-				eventCh: make(chan interface{}, requestGroupEventChSize),
+				txCh:    make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
+				eventCh: make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
 			}},
 		},
 	}
@@ -379,9 +384,11 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
-			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
+			txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
+			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
-				eventCh: make(chan interface{}, requestGroupEventChSize),
+				txCh:    make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
+				eventCh: make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
 			}},
 		},
 	}

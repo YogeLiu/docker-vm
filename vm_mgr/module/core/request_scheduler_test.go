@@ -55,6 +55,7 @@ func TestNewRequestScheduler(t *testing.T) {
 			got := NewRequestScheduler(tt.args.service, tt.args.oriPMgr, tt.args.crossPMgr, tt.args.cMgr)
 			got.logger = tt.want.logger
 			got.eventCh = tt.want.eventCh
+			got.txCh = tt.want.txCh
 			got.closeCh = tt.want.closeCh
 			got.requestGroups = tt.want.requestGroups
 			got.chainRPCService = tt.want.chainRPCService
@@ -157,7 +158,7 @@ func TestRequestScheduler_PutMsg(t *testing.T) {
 			name:    "TestRequestScheduler_PutMsg_DockerVMMessage",
 			fields:  fields{scheduler: scheduler},
 			args:    args{&protogo.DockerVMMessage{}},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "TestRequestScheduler_PutMsg_RequestGroupKey",

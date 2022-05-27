@@ -28,7 +28,8 @@ func TestNewRequestGroup(t *testing.T) {
 
 	testContractName := "testContractName"
 	testContractVersion := "1.0.0"
-	eventCh := make(chan interface{}, requestGroupEventChSize)
+	eventCh := make(chan *messages.GetProcessRespMsg, requestGroupEventChSize)
+	txCh := make(chan *protogo.DockerVMMessage, requestGroupEventChSize)
 	stopCh := make(chan struct{})
 	origTxCh := make(chan *protogo.DockerVMMessage, origTxChSize)
 	crossTxCh := make(chan *protogo.DockerVMMessage, crossTxChSize)
@@ -36,6 +37,7 @@ func TestNewRequestGroup(t *testing.T) {
 	requestGroup := NewRequestGroup(testContractName, testContractVersion, nil, nil, nil, nil)
 	requestGroup.eventCh = eventCh
 	requestGroup.stopCh = stopCh
+	requestGroup.txCh = txCh
 	requestGroup.origTxController.txCh = origTxCh
 	requestGroup.crossTxController.txCh = crossTxCh
 	requestGroup.logger = log
@@ -73,6 +75,7 @@ func TestNewRequestGroup(t *testing.T) {
 				tt.args.scheduler,
 			)
 			got.eventCh = eventCh
+			got.txCh = txCh
 			got.stopCh = stopCh
 			got.origTxController = tt.want.origTxController
 			got.crossTxController = tt.want.crossTxController
@@ -204,7 +207,7 @@ func TestRequestGroup_PutMsg(t *testing.T) {
 	requestGroup.Start()
 
 	defer func() {
-		requestGroup.stopCh <-struct {}{}
+		requestGroup.stopCh <- struct{}{}
 	}()
 
 	type fields struct {
@@ -221,33 +224,33 @@ func TestRequestGroup_PutMsg(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "TestRequestGroup_PutMsg_DockerVMMessage",
-			fields:  fields{group: requestGroup},
-			args:    args{msg: &protogo.DockerVMMessage{
+			name:   "TestRequestGroup_PutMsg_DockerVMMessage",
+			fields: fields{group: requestGroup},
+			args: args{msg: &protogo.DockerVMMessage{
 				Type: protogo.DockerVMType_TX_REQUEST,
 			}},
 			wantErr: false,
 		},
 		{
-			name:    "TestRequestGroup_PutMsg_DockerVMMessage",
-			fields:  fields{group: requestGroup},
-			args:    args{msg: &protogo.DockerVMMessage{
+			name:   "TestRequestGroup_PutMsg_DockerVMMessage",
+			fields: fields{group: requestGroup},
+			args: args{msg: &protogo.DockerVMMessage{
 				Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 			}},
 			wantErr: false,
 		},
 		{
-			name:    "TestRequestGroup_PutMsg_DockerVMMessage",
-			fields:  fields{group: requestGroup},
-			args:    args{msg: &protogo.DockerVMMessage{
+			name:   "TestRequestGroup_PutMsg_DockerVMMessage",
+			fields: fields{group: requestGroup},
+			args: args{msg: &protogo.DockerVMMessage{
 				Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
 			}},
 			wantErr: false,
 		},
 		{
-			name:    "TestRequestGroup_PutMsg_GetProcessRespMsg",
-			fields:  fields{group: requestGroup},
-			args:    args{msg: &messages.GetProcessRespMsg{
+			name:   "TestRequestGroup_PutMsg_GetProcessRespMsg",
+			fields: fields{group: requestGroup},
+			args: args{msg: &messages.GetProcessRespMsg{
 				IsOrig:     true,
 				ProcessNum: 0,
 			}},
@@ -558,6 +561,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil,
 		nil, cMgr, &RequestScheduler{
 			lock:    sync.RWMutex{},
+			txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
 			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
 		})
 	log := logger.NewTestDockerLogger()
@@ -693,6 +697,7 @@ func TestRequestGroup_putTxReqToCh(t *testing.T) {
 	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil,
 		nil, nil, &RequestScheduler{
 			lock:    sync.RWMutex{},
+			txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
 			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
 		})
 	requestGroup.logger = log

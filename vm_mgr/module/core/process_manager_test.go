@@ -12,6 +12,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/mocks"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"github.com/emirpasic/gods/maps/linkedhashmap"
 	"reflect"
@@ -638,7 +639,8 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 	processManager.requestScheduler = &RequestScheduler{
 		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
 		requestGroups: map[string]interfaces.RequestGroup{groupKey: &RequestGroup{
-			eventCh: make(chan interface{}, requestGroupEventChSize),
+			txCh:    make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
+			eventCh: make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
 		}},
 	}
 
@@ -894,6 +896,7 @@ func TestProcessManager_handleCleanIdleProcesses(t *testing.T) {
 			testContractVersion,
 			testProcessName1+strconv.Itoa(i),
 			&Process{
+				logger:          logger.NewTestDockerLogger(),
 				contractName:    testContractName1,
 				contractVersion: testContractVersion,
 				processName:     testProcessName1 + strconv.Itoa(i),
@@ -952,7 +955,8 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 	processManager.SetScheduler(&RequestScheduler{
 		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
 		requestGroups: map[string]interfaces.RequestGroup{contractKey1: &RequestGroup{
-			eventCh: make(chan interface{}, requestGroupEventChSize),
+			txCh:             make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
+			eventCh:          make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
 			origTxController: &txController{}},
 		},
 	})
