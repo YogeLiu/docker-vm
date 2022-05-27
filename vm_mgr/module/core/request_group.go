@@ -257,13 +257,13 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
 	// original tx, send to original tx chan
 	if req.CrossContext.CurrentDepth == 0 || !utils.HasUsed(req.CrossContext.CrossInfo) {
-		r.logger.Debugf("put tx request [%s] into orig chan", req.TxId)
+		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
 		r.origTxController.txCh <- req
 		return nil
 	}
 
 	// cross contract tx, send to cross contract tx chan
-	r.logger.Debugf("put tx request [%s] into cross chan", req.TxId)
+	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
 	r.crossTxController.txCh <- req
 	return nil
 }
@@ -290,8 +290,10 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	//
 	//needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
 
-	needProcessNum := len(controller.txCh) - controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
-
+	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
+	needProcessNum := len(controller.txCh) - currProcessNum
+	r.logger.Debugf("tx chan size: [%d], process num: [%d], need process num: [%d]",
+		len(controller.txCh), currProcessNum, needProcessNum)
 	var err error
 	// need more processes
 	if needProcessNum > 0 {
@@ -299,7 +301,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		if controller.processWaiting {
 			return 0, nil
 		}
-		r.logger.Debugf("try to get %d process(es), tx chan size: %d", needProcessNum, len(controller.txCh))
+		r.logger.Debugf("try to get %d process(es)", needProcessNum)
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
@@ -315,7 +317,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		if !controller.processWaiting {
 			return 0, nil
 		}
-		r.logger.Debugf("stop waiting for processes, tx chan size: %d", len(controller.txCh))
+		r.logger.Debugf("stop waiting for processes")
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,

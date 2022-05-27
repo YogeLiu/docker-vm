@@ -199,14 +199,11 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 	groupKey := utils.ConstructContractKey(msg.ContractName, msg.ContractVersion)
 
-	pm.logger.Debugf("request group %s request to get %d process(es),", groupKey, msg.ProcessNum)
+	pm.logger.Debugf("request group %s request to get %d process(es)", groupKey, msg.ProcessNum)
 
 	// do not need any process
 	if msg.ProcessNum == 0 {
-		pm.waitingRequestGroups.Remove(messages.RequestGroupKey{
-			ContractName:    msg.ContractName,
-			ContractVersion: msg.ContractVersion,
-		})
+		pm.removeFromWaitingGroup(msg.ContractName, msg.ContractVersion)
 		pm.logger.Debugf("request group %s does not need more processes, removed from waiting request group", groupKey)
 
 		return nil
@@ -457,7 +454,7 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 			// meet the same idle process
 			if group.ContractName == oldContractName && group.ContractVersion == oldContractVersion {
 				lock.Lock()
-				pm.waitingRequestGroups.Remove(group)
+				pm.removeFromWaitingGroup(group.ContractName, group.ContractVersion)
 				lock.Unlock()
 				// send process ready resp to request group
 				if err := pm.sendProcessReadyResp(0, group.ContractName, group.ContractVersion); err != nil {
@@ -487,7 +484,7 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 			lock.Lock()
 			defer lock.Unlock()
 
-			pm.waitingRequestGroups.Remove(group)
+			pm.removeFromWaitingGroup(group.ContractName, group.ContractVersion)
 			pm.removeProcessFromCache(oldContractName, oldContractVersion, oldProcessName)
 			pm.addProcessToCache(group.ContractName, group.ContractVersion, newProcessName, process, true)
 		}()
@@ -545,7 +542,7 @@ func (pm *ProcessManager) handleAllocateNewProcesses() error {
 			lock.Lock()
 			defer lock.Unlock()
 
-			pm.waitingRequestGroups.Remove(group)
+			pm.removeFromWaitingGroup(group.ContractName, group.ContractVersion)
 			pm.addProcessToCache(group.ContractName, group.ContractVersion, processName, process, true)
 		}()
 	}
@@ -679,13 +676,9 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 		ContractVersion: process.GetContractVersion(),
 	}
 
-	// remove waiting request group if meet the same group
+	// remove waiting request group if meet the same contract
 	if _, ok := pm.waitingRequestGroups.Get(groupKey); ok {
-		pm.waitingRequestGroups.Remove(groupKey)
-		// send process ready resp to request group
-		if err := pm.sendProcessReadyResp(0, groupKey.ContractName, groupKey.ContractVersion); err != nil {
-			pm.logger.Errorf("failed to send process ready resp, %v", err)
-		}
+		pm.removeFromWaitingGroup(group.ContractName, group.ContractVersion)
 	}
 
 	// allocate idle process to waiting request group
@@ -709,6 +702,8 @@ func (pm *ProcessManager) addToProcessGroup(contractName, contractVersion, proce
 		pm.processGroups[groupKey] = make(map[string]bool)
 	}
 	pm.processGroups[groupKey][processName] = true
+
+	pm.logger.Debugf("add %s - %s to process group, total num [%d]", groupKey, processName, len(pm.processGroups[groupKey]))
 }
 
 // removeFromProcessGroup remove process from process group
@@ -722,16 +717,25 @@ func (pm *ProcessManager) removeFromProcessGroup(contractName, contractVersion, 
 	}
 	delete(pm.processGroups[groupKey], processName)
 
+	pm.logger.Debugf("delete %s - %s from process group, total num [%d]", groupKey, processName, len(pm.processGroups[groupKey]))
+
 	// remove group in process groups and waiting groups
 	if len(pm.processGroups[groupKey]) == 0 {
 		delete(pm.processGroups, groupKey)
-		pm.waitingRequestGroups.Remove(messages.RequestGroupKey{
-			ContractName:    contractName,
-			ContractVersion: contractVersion,
-		})
+		pm.removeFromWaitingGroup(contractName, contractVersion)
 		if err := pm.closeRequestGroup(contractName, contractVersion); err != nil {
 			pm.logger.Warnf("failed to close request group, %v", err)
 		}
+	}
+}
+
+func (pm *ProcessManager) removeFromWaitingGroup(contractName, contractVersion string) {
+	pm.waitingRequestGroups.Remove(messages.RequestGroupKey{
+		ContractName:    contractName,
+		ContractVersion: contractVersion,
+	})
+	if err := pm.sendProcessReadyResp(0, contractName, contractVersion); err != nil {
+		pm.logger.Errorf("failed to send process ready resp, %v", err)
 	}
 }
 

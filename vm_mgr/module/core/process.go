@@ -252,6 +252,7 @@ func (p *Process) listenProcess() {
 			case tx := <-p.txCh:
 				// condition: during cmd.wait
 				if err := p.handleTxRequest(tx); err != nil {
+					p.logger.Errorf("failed to handle tx [%s] request, %v", tx.TxId, err)
 					p.returnTxErrorResp(tx.TxId, err.Error())
 				}
 				break
@@ -581,7 +582,6 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 	// 7. process panic, return error response and relaunch
 	if p.processState == busy {
 		err = utils.RuntimePanicError
-		<-p.cmdReadyCh
 	}
 
 	p.returnTxErrorResp(p.Tx.TxId, err.Error())
@@ -695,7 +695,10 @@ func (p *Process) returnSandboxExitResp(err error) {
 // sendMsg sends messages to sandbox
 func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
 	p.logger.Debugf("send msg to sandbox, tx_id: %s", msg.TxId)
-	return p.stream.Send(msg)
+	if err := p.stream.Send(msg); err != nil {
+		return fmt.Errorf("failed to send msg to stream")
+	}
+	return nil
 }
 
 // startBusyTimer start timer at busy state
@@ -729,7 +732,7 @@ func (p *Process) startIdleTimer() {
 	if p.Tx != nil {
 		txId = p.Tx.TxId
 	}
-	p.logger.Debugf("start ready tx timer for tx [%s]", txId)
+	p.logger.Debugf("start idle tx timer for tx [%s]", txId)
 	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime / readyToIdleTimeoutRatio)
 }
