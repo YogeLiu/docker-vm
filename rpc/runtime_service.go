@@ -132,14 +132,14 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 
 			// 客户端断开连接时会接收到该错误
 			if recvErr == io.EOF {
-				s.logger.Error("runtime service eof and exit receive goroutine")
+				s.logger.Debugf("runtime service eof and exit receive goroutine")
 				close(ss.stopSend)
 				ss.wg.Done()
 				return
 			}
 
 			if recvErr != nil {
-				s.logger.Errorf("runtime service err and exit receive goroutine %s", recvErr)
+				s.logger.Debugf("runtime service err and exit receive goroutine %s", recvErr)
 				close(ss.stopSend)
 				ss.wg.Done()
 				return
