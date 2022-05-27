@@ -678,7 +678,7 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 
 	// remove waiting request group if meet the same contract
 	if _, ok := pm.waitingRequestGroups.Get(groupKey); ok {
-		pm.removeFromWaitingGroup(group.ContractName, group.ContractVersion)
+		pm.removeFromWaitingGroup(groupKey.ContractName, groupKey.ContractVersion)
 	}
 
 	// allocate idle process to waiting request group
