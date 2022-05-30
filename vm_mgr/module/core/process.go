@@ -200,7 +200,7 @@ func (p *Process) launchProcess() *exitErr {
 		Credential: &syscall.Credential{
 			Uid: uint32(p.user.GetUid()),
 		},
-		//Cloneflags: syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWPID,
 	}
 	p.cmd = &cmd
 
@@ -561,6 +561,16 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		return true
 	}
 
+	// 7. process panic, return error response and relaunch
+	if p.processState == busy {
+		p.logger.Warnf("process exited when busy: %s", existErr.err)
+		p.returnSandboxExitResp(existErr.err)
+		p.returnTxErrorResp(p.Tx.TxId, utils.RuntimePanicError.Error())
+		p.updateProcessState(created)
+		go p.startProcess()
+		return true
+	}
+
 	//  ========= condition: after cmd.wait
 	// 4. process change context, restart process
 	if p.processState == changing {
@@ -578,22 +588,12 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		return true
 	}
 
-	var err error
-
 	// 6. process killed because of timeout, return error response and relaunch
 	if p.processState == timeout {
-		err = utils.TxTimeoutPanicError
+		p.returnTxErrorResp(p.Tx.TxId, utils.TxTimeoutPanicError.Error())
+		p.updateProcessState(created)
+		go p.startProcess()
 	}
-
-	// 7. process panic, return error response and relaunch
-	if p.processState == busy {
-		err = utils.RuntimePanicError
-	}
-
-	p.returnTxErrorResp(p.Tx.TxId, err.Error())
-	p.updateProcessState(created)
-
-	go p.startProcess()
 
 	return false
 }
