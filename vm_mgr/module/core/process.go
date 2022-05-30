@@ -567,7 +567,6 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		p.returnSandboxExitResp(existErr.err)
 		p.returnTxErrorResp(p.Tx.TxId, utils.RuntimePanicError.Error())
 		p.updateProcessState(created)
-		go p.startProcess()
 		return true
 	}
 
