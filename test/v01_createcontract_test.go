@@ -38,7 +38,7 @@ func setupTest(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockTestLogger(nil, testVMLogName), cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockHoleLogger(nil, testVMLogName), cmConfig)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")

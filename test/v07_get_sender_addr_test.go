@@ -58,7 +58,7 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 	}
 
 	for index, data := range testData {
-		result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+		result, _ := mockRuntimeInstance.Invoke(mockContractId2, invokeMethod, nil,
 			parameters, mockTxContext, uint64(123))
 		assert.Equal(t, uint32(0), result.GetCode())
 		assert.Equal(t, data.wantAddr, string(result.GetResult()))
