@@ -113,6 +113,7 @@ func newMockHoleLogger(ctrl *gomock.Controller, name string) protocol.Logger {
 	return &test.HoleLogger{}
 }
 
+// nolint: deadcode,unused
 func newMockTestLogger(ctrl *gomock.Controller, name string) protocol.Logger {
 	return &GoLogger{}
 }
