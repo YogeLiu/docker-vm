@@ -509,6 +509,8 @@ func (p *Process) handleTimeout() error {
 			p.lock.Lock()
 			defer p.lock.Unlock()
 			p.updateProcessState(ready)
+		} else {
+			p.startIdleTimer()
 		}
 
 	default:
