@@ -71,14 +71,14 @@ func TestDockerGoPerformance(t *testing.T) {
 
 	performMultipleTxs(loopNum, threadNum)
 
-	time.Sleep(10 * time.Second)
+	//time.Sleep(10 * time.Second)
 	fmt.Println("tear down")
 	tearDownTest()
 }
 
 func performMultipleTxs(loopNum, threadNum int) {
 	fmt.Println("--------- Ready to analysis --------------")
-	time.Sleep(10 * time.Second)
+	time.Sleep(8 * time.Second)
 	fmt.Println("---------- Start -------------------------")
 
 	var totalTps float64

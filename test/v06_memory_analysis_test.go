@@ -52,6 +52,7 @@ func TestDockerGoMemory(t *testing.T) {
 	}
 	mockTxContext = initMockSimContext(t)
 	mockNormalGetDepth(mockTxContext)
+	mockNormalGetrossInfo(mockTxContext)
 
 	filePath := fmt.Sprintf("./testdata/%s.7z", contractName)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)

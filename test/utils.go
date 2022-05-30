@@ -11,6 +11,7 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -140,17 +141,37 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return tx
 		}).AnyTimes()
 
-	//var crossInfo int
-	crossInfo := vm.NewCallContractContext(0)
-	//simContext.EXPECT().GetCrossInfo().Return(uint64(1 << 60)).AnyTimes()
-	simContext.EXPECT().GetCrossInfo().DoAndReturn(
-		func() uint64 {
-			crossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
-			return crossInfo.GetCtxBitmap()
-		},
-	).AnyTimes()
 	return simContext
 
+}
+
+var (
+	normalCrossInfoOnce sync.Once
+	normalCrossInfo     = vm.NewCallContractContext(0)
+	crossCallCrossInfo  = vm.NewCallContractContext(0)
+)
+
+func mockNormalGetrossInfo(simContext *mock.MockTxSimContext) {
+	normalCrossInfoOnce.Do(
+		func() {
+			normalCrossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
+		},
+	)
+
+	simContext.EXPECT().GetCrossInfo().DoAndReturn(
+		func() uint64 {
+			return normalCrossInfo.GetCtxBitmap()
+		},
+	).AnyTimes()
+}
+
+func mockCrossCallGetCrossInfo(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetCrossInfo().DoAndReturn(
+		func() uint64 {
+			crossCallCrossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
+			return crossCallCrossInfo.GetCtxBitmap()
+		},
+	).AnyTimes()
 }
 
 func mockNormalGetDepth(simContext *mock.MockTxSimContext) {
@@ -787,15 +808,15 @@ func callContract(
 type GoLogger struct{}
 
 func (GoLogger) Debug(args ...interface{}) {
-	//log.Printf("DEBUG: %v", args)
+	log.Printf("DEBUG: %v", args)
 }
 
 func (GoLogger) Debugf(format string, args ...interface{}) {
-	//log.Printf("DEBUG: "+format, args...)
+	log.Printf("DEBUG: "+format, args...)
 }
 
 func (GoLogger) Debugw(msg string, keysAndValues ...interface{}) {
-	//log.Printf("DEBUG: "+msg+" %v", keysAndValues...)
+	log.Printf("DEBUG: "+msg+" %v", keysAndValues...)
 }
 
 func (GoLogger) Error(args ...interface{}) {
@@ -808,11 +829,11 @@ func (GoLogger) Errorf(format string, args ...interface{}) {
 }
 
 func (GoLogger) Errorw(msg string, keysAndValues ...interface{}) {
-	//log.Printf("ERROR: "+msg+" %v", keysAndValues...)
+	log.Printf("ERROR: "+msg+" %v", keysAndValues...)
 }
 
 func (GoLogger) Fatal(args ...interface{}) {
-	//log.Fatal(args...)
+	log.Fatal(args...)
 }
 
 func (GoLogger) Fatalf(format string, args ...interface{}) {

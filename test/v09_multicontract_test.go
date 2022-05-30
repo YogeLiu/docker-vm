@@ -45,14 +45,13 @@ func TestMultiContractByRounds(t *testing.T) {
 
 	testDeployCutVersion(performContractVersion)
 	testDeployCutVersion(performContractVersion2)
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	//testCutSave()
 	//testDeployZXL()
 
 	performMultiContractTxs(loopNum, threadNum, []string{performContractVersion, performContractVersion2}, true)
 
-	time.Sleep(5 * time.Second)
 	fmt.Println("tear down")
 	tearDownTest()
 }
@@ -84,14 +83,13 @@ func TestMultiContractMixed(t *testing.T) {
 
 	testDeployCutVersion(performContractVersion)
 	testDeployCutVersion(performContractVersion2)
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	//testCutSave()
 	//testDeployZXL()
 
 	performMultiContractTxs(loopNum, threadNum, []string{performContractVersion, performContractVersion2}, false)
 
-	time.Sleep(5 * time.Second)
 	fmt.Println("tear down")
 	tearDownTest()
 }

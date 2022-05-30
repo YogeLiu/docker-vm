@@ -24,6 +24,7 @@ func TestDockerGoCrossCall(t *testing.T) {
 	parameters0["contract_method"] = []byte("display")
 	mockTxContext2 := initMockSimContext(t)
 	mockCrossCallGetDepth(mockTxContext2)
+	mockCrossCallGetCrossInfo(mockTxContext2)
 
 	mockCallContract(mockTxContext2, parameters0)
 	mockTxContext2.EXPECT().GetTxRWMapByContractName(gomock.Any()).Return(nil, nil).AnyTimes()
