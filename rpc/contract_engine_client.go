@@ -27,6 +27,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// TODO: remove TLS
+
 type ContractEngineClient struct {
 	id          uint64
 	clientMgr   interfaces.ContractEngineClientMgr

@@ -1,3 +1,4 @@
+// nolint:unused, structcheck
 package test
 
 import (
@@ -39,7 +40,9 @@ func (s *TxContextMockTest) GetNoRecord(contractName string, key []byte) ([]byte
 	panic("implement me")
 }
 
-func (s *TxContextMockTest) GetTxRWMapByContractName(contractName string) (map[string]*commonPb.TxRead, map[string]*commonPb.TxWrite) {
+func (s *TxContextMockTest) GetTxRWMapByContractName(
+	contractName string,
+) (map[string]*commonPb.TxRead, map[string]*commonPb.TxWrite) {
 	//TODO implement me
 	panic("implement me")
 }

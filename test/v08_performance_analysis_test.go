@@ -19,10 +19,11 @@ const (
 	performContractName    = "contract_fact_cut01"
 	performContractVersion = "1.0.0"
 
+	// nolint: varcheck,unused
 	timeFormat = "2006-01-02 15:04:05"
 
-	loopNum   = 100
-	threadNum = 50000
+	loopNum   = 5
+	threadNum = 1000
 )
 
 var (
