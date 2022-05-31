@@ -119,6 +119,7 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 	case *messages.RequestGroupKey:
 		m, _ := msg.(*messages.RequestGroupKey)
 		s.closeCh <- m
+
 	default:
 		return fmt.Errorf("unknown msg type, msg: %+v", msg)
 	}

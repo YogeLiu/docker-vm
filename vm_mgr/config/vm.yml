@@ -20,7 +20,7 @@ process:
   exec_tx_timeout: 8s # process timeout while busy
   waiting_tx_time: 200ms # process timeout while tx completed (busy -> idle)
   release_rate: 30 # percentage of idle processes released periodically in total processes (0-100)
-  release_period: 2m # period of idle processes released periodically in total processes
+  release_period: 10m # period of idle processes released periodically in total processes
 
 ########### Log ###########
 log:
@@ -35,7 +35,7 @@ log:
 pprof:
   contract_engine:
     enable: false
-    port: 21521
+    port: 21215
   sandbox:
     enable: false
     port: 21522

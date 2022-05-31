@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"fmt"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	_ "net/http/pprof"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module"
 	"go.uber.org/zap"
 )
@@ -19,14 +19,16 @@ var managerLogger *zap.SugaredLogger
 
 func main() {
 
+	// init docker container logger
+	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER)
+
 	// set config
 	if err := config.InitConfig(filepath.Join(config.DockerMountDir, config.ConfigFileName)); err != nil {
 		//managerLogger.Fatalf("failed to init config, %v", err)
-		panic("failed to init config, " + err.Error())
+		managerLogger.Warnf("failed to init config, %v", err)
+		//panic("failed to init config, " + err.Error())
 	}
 
-	// init docker container logger
-	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER)
 	err := initSockPath(managerLogger)
 	if err != nil {
 		managerLogger.Errorf("failed to init sock path, %v", err)

@@ -94,7 +94,7 @@ func InitConfig(configFileName string) error {
 
 	// read config from file
 	if err := viper.ReadInConfig(); err != nil {
-		return fmt.Errorf("failed to read conf, %v", err)
+		return fmt.Errorf("failed to read conf %v, use default configs", err)
 	}
 
 	DockerVMConfig.setDefaultConfigs()
@@ -125,20 +125,22 @@ func (c *conf) setDefaultConfigs() {
 
 	// set process default configs
 	const processPrefix = "process"
-	viper.SetDefault(processPrefix+".max_original_process_num", 50)
+	viper.SetDefault(processPrefix+".max_original_process_num", 20)
 	viper.SetDefault(processPrefix+".exec_tx_timeout", 8*time.Second)
-	viper.SetDefault(processPrefix+".waiting_tx_time", 50*time.Millisecond)
+	viper.SetDefault(processPrefix+".waiting_tx_time", 200*time.Millisecond)
 	viper.SetDefault(processPrefix+".release_rate", 30)
-	viper.SetDefault(processPrefix+".release_period", 2*time.Minute)
+	viper.SetDefault(processPrefix+".release_period", 10*time.Minute)
 
 	// set log default configs
 	const logPrefix = "log"
 	viper.SetDefault(logPrefix+".contract_engine.level", "info")
+	viper.SetDefault(logPrefix+".contract_engine.console", true)
 	viper.SetDefault(logPrefix+".sandbox.level", "info")
+	viper.SetDefault(logPrefix+".sandbox.console", true)
 
 	// set pprof default configs
 	const pprofPrefix = "pprof"
-	viper.SetDefault(pprofPrefix+".contract_engine.port", 21521)
+	viper.SetDefault(pprofPrefix+".contract_engine.port", 21215)
 	viper.SetDefault(pprofPrefix+".sandbox.port", 21522)
 
 	// set contract default configs
