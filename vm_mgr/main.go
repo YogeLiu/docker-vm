@@ -19,17 +19,16 @@ var managerLogger *zap.SugaredLogger
 
 func main() {
 
+	// set config
+	err := config.InitConfig(filepath.Join(config.DockerMountDir, config.ConfigFileName))
+
 	// init docker container logger
 	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER)
-
-	// set config
-	if err := config.InitConfig(filepath.Join(config.DockerMountDir, config.ConfigFileName)); err != nil {
-		//managerLogger.Fatalf("failed to init config, %v", err)
-		managerLogger.Warnf("failed to init config, %v", err)
-		//panic("failed to init config, " + err.Error())
+	if err != nil {
+		managerLogger.Warnf("failed to init config, %v, use default config", err)
 	}
 
-	err := initSockPath(managerLogger)
+	err = initSockPath(managerLogger)
 	if err != nil {
 		managerLogger.Errorf("failed to init sock path, %v", err)
 		return

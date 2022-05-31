@@ -92,20 +92,21 @@ func InitConfig(configFileName string) error {
 	// init viper
 	viper.SetConfigFile(configFileName)
 
-	// read config from file
-	if err := viper.ReadInConfig(); err != nil {
-		return fmt.Errorf("failed to read conf %v, use default configs", err)
-	}
+	var err error
 
 	DockerVMConfig.setDefaultConfigs()
 
-	// unmarshal config
-	err := viper.Unmarshal(&DockerVMConfig)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal conf file, %v", err)
+	// read config from file
+	if err = viper.ReadInConfig(); err != nil {
+		err = fmt.Errorf("failed to read conf %v, use default configs", err)
 	}
 
-	return nil
+	// unmarshal config
+	if marsErr := viper.Unmarshal(&DockerVMConfig); marsErr != nil {
+		err = fmt.Errorf("%v, failed to unmarshal conf file, %v", err, marsErr)
+	}
+
+	return err
 }
 
 func (c *conf) setDefaultConfigs() {
