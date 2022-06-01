@@ -1,3 +1,4 @@
+VERSION=v2.2.2
 VERSION221=v2.2.2_qc
 VERSION222=v2.2.2
 
@@ -10,7 +11,7 @@ build-test:
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION221} \
+	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} \
 	--build-arg BUILD_TIME=${BUILD_TIME} \
 	--build-arg GIT_BRANCH=${GIT_BRANCH} \
 	--build-arg GIT_COMMIT=${GIT_COMMIT} \
@@ -19,7 +20,7 @@ build-image:
 	docker image prune -f
 
 image-push:
-	docker push chainmakerofficial/chainmaker-vm-docker-go:${VERSION221}
+	docker push chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
 
 update-gomod:
 	cd vm_mgr && rm -rf vendor
@@ -38,7 +39,7 @@ clean-test:
 clean:
 	cd vm_mgr && rm -rf vendor
 	cd test/scripts && ./dockerclean.sh
-	docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION221}
+	docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
 	docker image prune -f
 
 ci:
@@ -58,7 +59,7 @@ gomod:
 ut:
 	./test/scripts/prepare.sh
 	make build-image
-	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION221}
+	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
 	./ut_cover.sh
 	docker stop chaimaker_vm_test
 
