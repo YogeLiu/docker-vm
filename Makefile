@@ -1,6 +1,5 @@
 VERSION=develop
-VERSION221=v2.2.2_qc
-VERSION222=v2.2.2
+VERSION230=v2.3.0_qc
 
 BUILD_TIME = $(shell date "+%Y%m%d%H%M%S")
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
@@ -47,15 +46,6 @@ ci:
 	golangci-lint run ./...
 	make clean
 
-gomod:
-	go get chainmaker.org/chainmaker/common/v2@$(VERSION221)
-	go get chainmaker.org/chainmaker/localconf/v2@$(VERSION221)
-	go get chainmaker.org/chainmaker/logger/v2@$(VERSION221)
-	go get chainmaker.org/chainmaker/pb-go/v2@$(VERSION221)
-	go get chainmaker.org/chainmaker/protocol/v2@$(VERSION222)
-	go get chainmaker.org/chainmaker/utils/v2@$(VERSION222)
-	go mod tidy
-
 ut:
 	./test/scripts/prepare.sh
 	make build-image
@@ -65,6 +55,7 @@ ut:
 
 gomod:
 	cd scripts && sh gomod_update.sh
+
 version:
 	docker inspect chainmakerofficial/chainmaker-vm-docker-go:${VERSION} | jq '.[].ContainerConfig.Labels'
 
