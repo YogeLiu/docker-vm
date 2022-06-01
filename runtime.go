@@ -22,8 +22,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
-
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
 	commonCrt "chainmaker.org/chainmaker/common/v2/cert"
 	"chainmaker.org/chainmaker/common/v2/crypto"
@@ -39,14 +37,17 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 	"github.com/gogo/protobuf/proto"
 )
 
 const (
-	mountContractDir                = "contracts"
-	msgIterIsNil                    = "iterator is nil"
-	timeout                         = 10000 // tx execution timeout(milliseconds)
-	versionCompatibilityFlag uint32 = 2201
+	mountContractDir        = "contracts"
+	msgIterIsNil            = "iterator is nil"
+	timeout                 = 10000 // tx execution timeout(milliseconds)
+	version2201      uint32 = 2201
+	version2210      uint32 = 2210
+	version2220      uint32 = 2220
 )
 
 var (
@@ -408,7 +409,7 @@ func (r *RuntimeInstance) getSenderAddrWithBlockVersion(blockVersion uint32, cha
 		}
 	case accesscontrol.MemberType_CERT_HASH,
 		accesscontrol.MemberType_ALIAS:
-		if blockVersion < versionCompatibilityFlag && sender.MemberType == accesscontrol.MemberType_ALIAS {
+		if blockVersion < version2201 && sender.MemberType == accesscontrol.MemberType_ALIAS {
 			r.Log.Error("handleGetSenderAddress failed, invalid member type")
 			return "", err
 		}
@@ -481,18 +482,34 @@ func (r *RuntimeInstance) getSenderAddressFromCert(blockVersion uint32, certPem 
 		return address, nil
 	}
 
-	if addressType == configPb.AddrType_ETHEREUM && blockVersion < versionCompatibilityFlag {
-		return r.calculateCertAddr(certPem)
+	if blockVersion >= version2220 {
+		if addressType == configPb.AddrType_CHAINMAKER {
+			return r.calculateCertAddr2220(certPem)
+		}
+
+		return "", errors.New("invalid address type")
 	}
 
-	if addressType == configPb.AddrType_CHAINMAKER && blockVersion >= versionCompatibilityFlag {
-		return r.calculateCertAddr(certPem)
+	if blockVersion == version2201 || blockVersion == version2210 {
+		if addressType == configPb.AddrType_CHAINMAKER {
+			return r.calculateCertAddrBefore2220(certPem)
+		}
+
+		return "", errors.New("invalid address type")
+	}
+
+	if blockVersion < version2201 {
+		if addressType == configPb.AddrType_ETHEREUM {
+			return r.calculateCertAddrBefore2220(certPem)
+		}
+
+		return "", errors.New("invalid address type")
 	}
 
 	return "", errors.New("invalid address type")
 }
 
-func (r *RuntimeInstance) calculateCertAddr(certPem []byte) (string, error) {
+func (r *RuntimeInstance) calculateCertAddrBefore2220(certPem []byte) (string, error) {
 	blockCrt, _ := pem.Decode(certPem)
 	crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
 	if err != nil {
@@ -508,6 +525,25 @@ func (r *RuntimeInstance) calculateCertAddr(certPem []byte) (string, error) {
 	return addrInt.String(), nil
 }
 
+func (r *RuntimeInstance) calculateCertAddr2220(certPem []byte) (string, error) {
+	blockCrt, _ := pem.Decode(certPem)
+	crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
+	}
+
+	ski := hex.EncodeToString(crt.SubjectKeyId)
+	addrInt, err := evmutils.MakeAddressFromHex(ski)
+	if err != nil {
+		return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
+	}
+
+	addr := evmutils.BigToAddress(addrInt)
+	addrBytes := addr[:]
+
+	return hex.EncodeToString(addrBytes), nil
+}
+
 func (r *RuntimeInstance) getSenderAddressFromPublicKeyPEM(blockVersion uint32, publicKeyPem []byte,
 	addressType configPb.AddrType, hashType crypto.HashType) (string, error) {
 	if addressType == configPb.AddrType_ZXL {
@@ -518,18 +554,34 @@ func (r *RuntimeInstance) getSenderAddressFromPublicKeyPEM(blockVersion uint32, 
 		return address, err
 	}
 
-	if addressType == configPb.AddrType_ETHEREUM && blockVersion < versionCompatibilityFlag {
-		return r.calculatePubKeyAddr(publicKeyPem, hashType)
+	if blockVersion >= version2220 {
+		if addressType == configPb.AddrType_CHAINMAKER {
+			return r.calculatePubKeyAddr2220(publicKeyPem, hashType)
+		}
+
+		return "", errors.New("invalid address type")
 	}
 
-	if addressType == configPb.AddrType_CHAINMAKER && blockVersion >= versionCompatibilityFlag {
-		return r.calculatePubKeyAddr(publicKeyPem, hashType)
+	if blockVersion == version2201 || blockVersion == version2210 {
+		if addressType == configPb.AddrType_CHAINMAKER {
+			return r.calculatePubKeyAddrBefore2220(publicKeyPem, hashType)
+		}
+
+		return "", errors.New("invalid address type")
+	}
+
+	if blockVersion < version2201 {
+		if addressType == configPb.AddrType_ETHEREUM {
+			return r.calculatePubKeyAddrBefore2220(publicKeyPem, hashType)
+		}
+
+		return "", errors.New("invalid address type")
 	}
 
 	return "", errors.New("invalid address type")
 }
 
-func (r *RuntimeInstance) calculatePubKeyAddr(publicKeyPem []byte, hashType crypto.HashType) (string, error) {
+func (r *RuntimeInstance) calculatePubKeyAddrBefore2220(publicKeyPem []byte, hashType crypto.HashType) (string, error) {
 	publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
 	if err != nil {
 		return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
@@ -545,6 +597,28 @@ func (r *RuntimeInstance) calculatePubKeyAddr(publicKeyPem []byte, hashType cryp
 		return "", fmt.Errorf("make address from cert SKI failed, %s", err)
 	}
 	return addr.String(), nil
+}
+
+func (r *RuntimeInstance) calculatePubKeyAddr2220(publicKeyPem []byte, hashType crypto.HashType) (string, error) {
+	publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
+	if err != nil {
+		return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
+	}
+
+	ski, err := commonCrt.ComputeSKI(hashType, publicKey.ToStandardKey())
+	if err != nil {
+		return "", fmt.Errorf("computeSKI from public key failed, %s", err.Error())
+	}
+
+	addrInt, err := evmutils.MakeAddressFromHex(hex.EncodeToString(ski))
+	if err != nil {
+		return "", fmt.Errorf("make address from public key failed, %s", err)
+	}
+
+	addr := evmutils.BigToAddress(addrInt)
+	addrBytes := addr[:]
+
+	return hex.EncodeToString(addrBytes), nil
 }
 
 func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *protogo.CDMMessage,

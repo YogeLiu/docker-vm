@@ -52,8 +52,9 @@ const (
 MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAESkwkzwN7DHoCfmNLmUpf280PqnGM
 6QU+P3X8uahlUjpgWv+Stfmeco9RqSTU8Y1YGcQvm2Jr327qkRlG7+dELQ==
 -----END PUBLIC KEY-----`
-	zxlPKAddress = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
-	cmPKAddress  = "438537700181274713695763857518314651542142438174"
+	zxlPKAddress    = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
+	cmPKAddress2201 = "438537700181274713695763857518314651542142438174"
+	cmPKAddress2220 = "4cd0b5e8f6d6df38ecdc06c7431a48dd0265cb1e"
 
 	certPEM = `-----BEGIN CERTIFICATE-----
 MIICzjCCAi+gAwIBAgIDCzLUMAoGCCqGSM49BAMCMGoxCzAJBgNVBAYTAkNOMRAw
@@ -73,8 +74,9 @@ hp8YLjSflgw1+uWlMb/WCY60MyxZr/RRsTYpHu7FAkIBSMAVxw5RYySsf4J3bpM0
 CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
 8H8=
 -----END CERTIFICATE-----`
-	zxlCertAddressFromCert = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
-	cmCertAddressFromCert  = "276163396529059566124041165851202392707607138552"
+	zxlCertAddressFromCert    = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
+	cmCertAddressFromCert2201 = "276163396529059566124041165851202392707607138552"
+	cmCertAddressFromCert2220 = "305f98514f3c2f6fcaeb8247ed147bacf99990f8"
 )
 
 var (
@@ -84,8 +86,9 @@ var (
 	//kvGetIndex    int32
 	kvRowCache = make(map[int32]interface{})
 
-	senderCounter      int32
-	chainConfigCounter int32
+	blockVersionCounter int32
+	senderCounter       int32
+	chainConfigCounter  int32
 )
 
 var tmpSimContextMap map[string][]byte
@@ -106,7 +109,6 @@ func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	ctrl := gomock.NewController(t)
 	simContext := mock.NewMockTxSimContext(ctrl)
-	blockchainStore := mock.NewMockBlockchainStore(ctrl)
 
 	tmpSimContextMap = make(map[string][]byte)
 
@@ -125,16 +127,7 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return tx
 		}).AnyTimes()
 
-	simContext.EXPECT().GetBlockVersion().Return(uint32(2300)).AnyTimes()
-	blockchainStore.EXPECT().GetLastChainConfig().Return(&configPb.ChainConfig{
-		AccountConfig: &configPb.GasAccountConfig{
-			DefaultGas: 200000,
-		},
-	}, nil).AnyTimes()
-	simContext.EXPECT().GetBlockchainStore().Return(blockchainStore).AnyTimes()
-
 	return simContext
-
 }
 
 func mockPut(simContext *mock.MockTxSimContext, name string, key, value []byte) {
@@ -574,6 +567,20 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 
 func (iter *mockHistoryKeyIterator) Release() {}
 
+func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetBlockVersion().DoAndReturn(
+		GetBlockVersion,
+	).AnyTimes()
+}
+
+func GetBlockVersion() uint32 {
+	atomic.AddInt32(&blockVersionCounter, 1)
+	if blockVersionCounter <= 8*2 {
+		return 2220
+	}
+	return 2201
+}
+
 // 获取sender公钥
 func mockGetSender(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().GetSender().DoAndReturn(
@@ -636,7 +643,7 @@ func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
 func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	atomic.AddInt32(&chainConfigCounter, 1)
 
-	switch chainConfigCounter % 8 {
+	switch chainConfigCounter % 12 {
 	case 1, 2, 3, 4:
 		zxConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
@@ -652,7 +659,21 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 			return nil, err
 		}
 		return bytes, nil
-	case 5, 6, 7, 0:
+	case 5, 6, 7, 8:
+		ethConfig := configPb.ChainConfig{
+			Vm: &configPb.Vm{
+				AddrType: configPb.AddrType_CHAINMAKER,
+			},
+			Crypto: &configPb.CryptoConfig{
+				Hash: "SHA256",
+			},
+		}
+		bytes, err := ethConfig.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		return bytes, nil
+	case 9, 10, 11, 0:
 		ethConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
 				AddrType: configPb.AddrType_CHAINMAKER,

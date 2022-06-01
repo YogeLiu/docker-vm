@@ -10,7 +10,6 @@ package core
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +17,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
 
 	"go.uber.org/zap"
 
@@ -57,9 +58,9 @@ type ProcessBalancer interface {
 // processName: contractName:contractVersion:index
 // crossProcessName: txId:currentHeight
 type Process struct {
-	txCount        uint64
-	processName    string
-	isCrossProcess bool
+	txCount     uint64
+	processName string
+	//isCrossProcess bool
 
 	contractName    string
 	contractVersion string
@@ -76,6 +77,8 @@ type Process struct {
 	cmdReadyCh   chan bool
 	expireTimer  *time.Timer // process waiting time
 
+	crossResponseCh chan *SDKProtogo.DMSMessage
+
 	Handler         *ProcessHandler
 	processMgr      ProcessMgr
 	processBalancer ProcessBalancer
@@ -91,9 +94,9 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 	processName, contractPath string, processMgr ProcessMgr, processBalancer ProcessBalancer) *Process {
 
 	process := &Process{
-		txCount:        0,
-		processName:    processName,
-		isCrossProcess: false,
+		txCount:     0,
+		processName: processName,
+		//isCrossProcess: false,
 
 		contractName:    txRequest.ContractName,
 		contractVersion: txRequest.ContractVersion,
@@ -110,6 +113,8 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 		Handler:      nil,
 		cmdReadyCh:   make(chan bool, 1),
 
+		crossResponseCh: make(chan *SDKProtogo.DMSMessage),
+
 		processMgr:      processMgr,
 		processBalancer: processBalancer,
 		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
@@ -123,40 +128,40 @@ func NewProcess(user *security.User, txRequest *protogo.TxRequest, scheduler pro
 }
 
 // NewCrossProcess new cross process, process working on called cross process
-func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
-	processName, contractPath string, processMgr ProcessMgr) *Process {
-
-	process := &Process{
-		txCount:        0,
-		processName:    processName,
-		isCrossProcess: true,
-
-		contractName:    txRequest.ContractName,
-		contractVersion: txRequest.ContractVersion,
-		contractPath:    contractPath,
-
-		cGroupPath: filepath.Join(config.CGroupRoot, config.ProcsFile),
-		user:       user,
-
-		ProcessState: protogo.ProcessState_PROCESS_STATE_CREATED,
-		responseCh:   make(chan *protogo.TxResponse),
-		newTxTrigger: nil,
-		exitCh:       nil,
-		expireTimer:  time.NewTimer(processWaitingTime * time.Second),
-		Handler:      nil,
-		cmdReadyCh:   make(chan bool, 1),
-
-		processMgr:      processMgr,
-		processBalancer: nil,
-		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
-
-		ChainId: txRequest.ChainId,
-	}
-
-	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
-	process.Handler = processHandler
-	return process
-}
+//func NewCrossProcess(user *security.User, txRequest *protogo.TxRequest, scheduler protocol.Scheduler,
+//	processName, contractPath string, processMgr ProcessMgr) *Process {
+//
+//	process := &Process{
+//		txCount:        0,
+//		processName:    processName,
+//		isCrossProcess: true,
+//
+//		contractName:    txRequest.ContractName,
+//		contractVersion: txRequest.ContractVersion,
+//		contractPath:    contractPath,
+//
+//		cGroupPath: filepath.Join(config.CGroupRoot, config.ProcsFile),
+//		user:       user,
+//
+//		ProcessState: protogo.ProcessState_PROCESS_STATE_CREATED,
+//		responseCh:   make(chan *protogo.TxResponse),
+//		newTxTrigger: nil,
+//		exitCh:       nil,
+//		expireTimer:  time.NewTimer(processWaitingTime * time.Second),
+//		Handler:      nil,
+//		cmdReadyCh:   make(chan bool, 1),
+//
+//		processMgr:      processMgr,
+//		processBalancer: nil,
+//		logger:          logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir),
+//
+//		ChainId: txRequest.ChainId,
+//	}
+//
+//	processHandler := NewProcessHandler(txRequest, scheduler, processName, process)
+//	process.Handler = processHandler
+//	return process
+//}
 
 func (p *Process) ProcessName() string {
 	return p.processName
@@ -184,12 +189,14 @@ func (p *Process) LaunchProcess() *ExitErr {
 	var stderr bytes.Buffer // used to capture the error message from contract
 
 	var pn string
-	if p.isCrossProcess {
-		pn = utils.ConstructConcatOriginalAndCrossProcessName(p.Handler.TxRequest.TxContext.OriginalProcessName,
-			p.processName)
-	} else {
-		pn = p.processName
-	}
+	//if p.isCrossProcess {
+	//	pn = utils.ConstructConcatOriginalAndCrossProcessName(p.Handler.TxRequest.TxContext.OriginalProcessName,
+	//		p.processName)
+	//} else {
+	//	pn = p.processName
+	//}
+
+	pn = p.processName
 
 	cmd := exec.Cmd{
 		Path:   p.contractPath,
@@ -243,23 +250,28 @@ func (p *Process) LaunchProcess() *ExitErr {
 			p.processName, p.Handler.TxRequest.TxId, err, p.ProcessState)
 	}
 
-	if !p.isCrossProcess {
-		return &ExitErr{
-			err:  err,
-			desc: stderr.String(),
-		}
+	//if !p.isCrossProcess {
+	//	return &ExitErr{
+	//		err:  err,
+	//		desc: stderr.String(),
+	//	}
+	//}
+
+	return &ExitErr{
+		err:  err,
+		desc: stderr.String(),
 	}
 
 	// cross process can only be killed: success finished or original process timeout
-	if p.ProcessState != protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED {
-		p.logger.Errorf("[%s] cross process fail: tx [%s], [%s], [%s]", p.processName,
-			p.Handler.TxRequest.TxId, stderr.String(), err)
-		return &ExitErr{
-			err:  err,
-			desc: "",
-		}
-	}
-	return nil
+	//if p.ProcessState != protogo.ProcessState_PROCESS_STATE_CROSS_FINISHED {
+	//	p.logger.Errorf("[%s] cross process fail: tx [%s], [%s], [%s]", p.processName,
+	//		p.Handler.TxRequest.TxId, stderr.String(), err)
+	//	return &ExitErr{
+	//		err:  err,
+	//		desc: "",
+	//	}
+	//}
+	//return nil
 }
 
 func (p *Process) listenProcess() {
@@ -278,6 +290,34 @@ func (p *Process) listenProcess() {
 			if err != nil {
 				p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
 			}
+		case crossResponse := <-p.crossResponseCh:
+			p.logger.Debugf("process [%s] handle cross contract completed message [%s]", p.processName, crossResponse.TxId)
+
+			p.Handler.stopTimer()
+			p.resetProcessTimer()
+
+			responseChId := crossContractChKey(crossResponse.TxId, crossResponse.CurrentHeight)
+			responseCh := p.Handler.scheduler.GetCrossContractResponseCh(p.Handler.TxRequest.ChainId, responseChId)
+			if responseCh == nil {
+				p.logger.Warnf("process [%s] fail to get response chan and abandon cross response [%s]",
+					p.processName, p.Handler.TxRequest.TxId)
+			} else {
+				responseCh <- crossResponse
+			}
+			p.logger.Debugf("[%s] end handle cross tx in process [%s]", crossResponse.TxId, p.processName)
+
+			// begin handle new tx
+			currentTxId, err := p.handleNewTx()
+			if err != nil {
+				if p.Handler.TxRequest.TxContext.CurrentHeight > 0 {
+					errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+						p.Handler.TxRequest.TxId, p.Handler.TxRequest.TxContext.CurrentHeight)
+					p.Handler.scheduler.ReturnErrorCrossContractResponse(p.Handler.TxRequest, errResponse)
+				} else {
+					p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
+				}
+			}
+
 		case txResponse := <-p.responseCh:
 			if txResponse.TxId != p.Handler.TxRequest.TxId {
 				p.logger.Warnf("[%s] abandon tx response due to different tx id, response tx id [%s], "+
@@ -303,7 +343,13 @@ func (p *Process) listenProcess() {
 			// begin handle new tx
 			currentTxId, err := p.handleNewTx()
 			if err != nil {
-				p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
+				if p.Handler.TxRequest.TxContext.CurrentHeight > 0 {
+					errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+						p.Handler.TxRequest.TxId, p.Handler.TxRequest.TxContext.CurrentHeight)
+					p.Handler.scheduler.ReturnErrorCrossContractResponse(p.Handler.TxRequest, errResponse)
+				} else {
+					p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTxId, err.Error())
+				}
 			}
 		case <-p.Handler.txExpireTimer.C:
 			p.stopProcess(false)
@@ -321,6 +367,7 @@ func (p *Process) listenProcess() {
 func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 
 	currentTx := p.Handler.TxRequest
+	p.logger.Debugf("[%s] handle process exist, current tx is: [%v]", currentTx.TxId, currentTx)
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
@@ -363,20 +410,19 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		<-p.cmdReadyCh
 	}
 
-	var errMsg string
-	processDepth := p.processMgr.GetProcessDepth(currentTx.TxContext.OriginalProcessName)
-	if processDepth == nil {
-		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
-		errMsg = err.Error()
-	} else {
-		errMsg = fmt.Sprintf("cross contract fail: err is:%s, cross processes: %s", err.Error(),
-			processDepth.GetConcatProcessName())
-		p.logger.Error(errMsg)
+	if currentTx.TxContext.CurrentHeight > 0 {
+		p.logger.Warnf("process [%s] [%s] handle cross contract err message [%s]", p.processName,
+			currentTx.TxId, existErr.err.Error())
+
+		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+			currentTx.TxId, currentTx.TxContext.CurrentHeight)
+		p.Handler.scheduler.ReturnErrorCrossContractResponse(currentTx, errResponse)
+		go p.startProcess()
+		return false
 	}
-	p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, errMsg)
 
+	p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, err.Error())
 	go p.startProcess()
-
 	return false
 }
 
@@ -489,6 +535,11 @@ func (p *Process) triggerNewTx() {
 func (p *Process) returnTxResponse(txResponse *protogo.TxResponse) {
 	p.logger.Debugf("[%s] return tx response to process [%s]", txResponse.TxId, p.processName)
 	p.responseCh <- txResponse
+}
+
+func (p *Process) returnCrossResponse(crossResponse *SDKProtogo.DMSMessage) {
+	p.logger.Debugf("[%s] return cross tx response to process [%s]", crossResponse.TxId, p.processName)
+	p.crossResponseCh <- crossResponse
 }
 
 func (p *Process) updateProcessState(state protogo.ProcessState) {

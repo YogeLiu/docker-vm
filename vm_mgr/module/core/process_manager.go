@@ -78,7 +78,9 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 
 	processBalance.AddTx(txRequest)
 
-	if !processBalance.needCreateNewProcess() {
+	needCreateNewProcess := processBalance.needCreateNewProcess()
+	pm.logger.Debugf("[%s] need create new process: %v", txRequest.TxId, needCreateNewProcess)
+	if !needCreateNewProcess {
 		return nil
 	}
 	processName := utils.ConstructProcessName(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion,
@@ -97,6 +99,7 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 		return fmt.Errorf("faild to create process, err is: %s, txId: %s", err, txRequest.TxId)
 	}
 	processBalance.AddProcess(process, processName)
+	pm.logger.Debugf("[%s] update process length: %d", txRequest.TxId, processBalance.Size())
 	go process.ExecProcess()
 
 	return nil
@@ -173,50 +176,50 @@ func (pm *ProcessManager) removeProcessFromProcessBalance(contractKey string, pr
 	}
 }
 
-func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
-	// validate contract deployed or not
-	contractKey := utils.ConstructContractKey(crossContractTx.ChainId, crossContractTx.ContractName, crossContractTx.ContractVersion)
-	contractPath, err := pm.contractManager.GetContract(crossContractTx.ChainId, crossContractTx.TxId, contractKey)
-	if err != nil {
-		pm.logger.Errorf(err.Error())
-		errResponse := constructCallContractErrorResponse(err.Error(), crossContractTx.TxId,
-			crossContractTx.TxContext.CurrentHeight)
-		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
-		return
-	}
-	// new process, process just for one tx
-	user, err := pm.usersManager.GetAvailableUser()
-	if err != nil {
-		errMsg := fmt.Sprintf("fail to get available user: %s", err)
-		pm.logger.Errorf(errMsg)
-		errResponse := constructCallContractErrorResponse(errMsg, crossContractTx.TxId,
-			crossContractTx.TxContext.CurrentHeight)
-		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
-		return
-	}
-
-	processName := utils.ConstructCrossContractProcessName(crossContractTx.ChainId, crossContractTx.TxId,
-		uint64(crossContractTx.TxContext.CurrentHeight))
-
-	newCrossProcess := NewCrossProcess(user, crossContractTx, pm.scheduler, processName, contractPath, pm)
-
-	// register cross process
-	pm.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newCrossProcess)
-
-	// 1. success finished
-	// 2. panic
-	// 3. timeout
-	exitErr := newCrossProcess.LaunchProcess()
-	if exitErr != nil {
-		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
-			crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
-		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
-	}
-
-	txContext := newCrossProcess.Handler.TxRequest.TxContext
-	pm.ReleaseCrossProcess(newCrossProcess.processName, txContext.OriginalProcessName)
-	_ = pm.usersManager.FreeUser(newCrossProcess.user)
-}
+//func (pm *ProcessManager) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
+//	// validate contract deployed or not
+//	contractKey := utils.ConstructContractKey(crossContractTx.ContractName, crossContractTx.ContractVersion)
+//	contractPath, err := pm.contractManager.GetContract(crossContractTx.ChainId, crossContractTx.TxId, contractKey)
+//	if err != nil {
+//		pm.logger.Errorf(err.Error())
+//		errResponse := constructCallContractErrorResponse(err.Error(), crossContractTx.TxId,
+//			crossContractTx.TxContext.CurrentHeight)
+//		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
+//		return
+//	}
+//	// new process, process just for one tx
+//	user, err := pm.usersManager.GetAvailableUser()
+//	if err != nil {
+//		errMsg := fmt.Sprintf("fail to get available user: %s", err)
+//		pm.logger.Errorf(errMsg)
+//		errResponse := constructCallContractErrorResponse(errMsg, crossContractTx.TxId,
+//			crossContractTx.TxContext.CurrentHeight)
+//		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
+//		return
+//	}
+//
+//	processName := utils.ConstructCrossContractProcessName(crossContractTx.ChainId, crossContractTx.TxId,
+//		uint64(crossContractTx.TxContext.CurrentHeight))
+//
+//	newCrossProcess := NewCrossProcess(user, crossContractTx, pm.scheduler, processName, contractPath, pm)
+//
+//	// register cross process
+//	pm.RegisterCrossProcess(crossContractTx.TxContext.OriginalProcessName, newCrossProcess)
+//
+//	// 1. success finished
+//	// 2. panic
+//	// 3. timeout
+//	exitErr := newCrossProcess.LaunchProcess()
+//	if exitErr != nil {
+//		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+//			crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
+//		pm.scheduler.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
+//	}
+//
+//	txContext := newCrossProcess.Handler.TxRequest.TxContext
+//	pm.ReleaseCrossProcess(newCrossProcess.processName, txContext.OriginalProcessName)
+//	_ = pm.usersManager.FreeUser(newCrossProcess.user)
+//}
 
 func (pm *ProcessManager) RegisterCrossProcess(originalProcessName string, crossProcess *Process) {
 	pm.logger.Debugf("register cross process [%s], original process name [%s]",

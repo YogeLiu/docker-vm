@@ -135,7 +135,7 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 		case txRequest := <-s.txReqCh:
 			go s.handleTx(txRequest)
 		case crossContractMsg := <-s.crossContractsCh:
-			go s.processManager.handleCallCrossContract(crossContractMsg)
+			go s.handleCallCrossContract(crossContractMsg)
 		}
 	}
 }
@@ -152,6 +152,25 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	if err != nil {
 		s.logger.Warnf("add tx warning: err is :%s, txId: %s",
 			err, txRequest.TxId)
+		return
+	}
+}
+
+func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
+	s.logger.Debugf("[%s] docker scheduler handle cross contract tx", crossContractTx.TxId)
+	err := s.processManager.AddTx(crossContractTx)
+	if err == utils.ContractFileError {
+		s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
+			err, crossContractTx.TxId)
+
+		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+			crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
+		s.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
+		return
+	}
+	if err != nil {
+		s.logger.Warnf("add cross contract tx warning: err is :%s, txId: %s",
+			err, crossContractTx.TxId)
 		return
 	}
 }
