@@ -17,7 +17,8 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.7.0
-	github.com/studyzy/sqlparse v0.0.0-20210520090832-d40c792e1576 // indirect
 	go.uber.org/atomic v1.7.0
 	google.golang.org/grpc v1.41.0
 )
+
+replace google.golang.org/grpc => google.golang.org/grpc v1.26.0 // with test error google.golang.org/grpc/naming: module google.golang.org/grpc@latest found (v1.47.0), but does not contain package google.golang.org/grpc/naming
