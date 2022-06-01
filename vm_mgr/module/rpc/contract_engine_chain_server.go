@@ -12,6 +12,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"errors"
 	"fmt"
 	"go.uber.org/zap"
@@ -60,7 +61,10 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 
 	} else {
 
-		absChainRPCUDSPath := filepath.Join(config.DockerMountDir, filepath.Join(ChainRPCDir, ChainRPCSockName))
+		sockDir := filepath.Join(config.DockerMountDir, ChainRPCDir)
+		_ = utils.Mkdir(sockDir)
+
+		absChainRPCUDSPath := filepath.Join(sockDir, ChainRPCSockName)
 
 		log.Infof("new chain rpc server(UDS) %s", absChainRPCUDSPath)
 
