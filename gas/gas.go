@@ -58,11 +58,11 @@ const (
 	initContract    = "init_contract"
 	upgradeContract = "upgrade"
 
-	// upgrade contract base gas used
-	calcBaseGas uint64 = 1000
-
 	// invoke contract base gas used
-	invokeBaseGas uint64 = 10000
+	defaultInvokeBaseGas uint64 = 10000
+
+	// init function gas used
+	initFuncGas uint64 = 1250
 )
 
 func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
@@ -155,12 +155,22 @@ func EmitEventGasUsed(gasUsed uint64, contractEvent *common.ContractEvent) (uint
 	return gasUsed, nil
 }
 
-func InitFuncGasUsed(gasUsed uint64, parameters map[string][]byte, keys ...string) (uint64, error) {
+func InitFuncGasUsed(gasUsed, configDefaultGas uint64) (uint64, error) {
+	gasUsed = getInitFuncGasUsed(gasUsed, configDefaultGas)
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited ")
+	}
+
+	return gasUsed, nil
+
+}
+
+func InitFuncGasUsedOld(gasUsed uint64, parameters map[string][]byte, keys ...string) (uint64, error) {
 	if !checkKeys(parameters, keys...) {
 		return 0, errors.New("check init key exist")
 	}
 
-	gasUsed = getInitFuncGasUsed(gasUsed, parameters)
+	gasUsed = getInitFuncGasUsedOld(gasUsed, parameters)
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
@@ -169,40 +179,18 @@ func InitFuncGasUsed(gasUsed uint64, parameters map[string][]byte, keys ...strin
 
 }
 
-func ContractGasUsed(txSimContext protocol.TxSimContext, gasUsed uint64, method string,
-	contractName string, byteCode []byte) (uint64, error) {
-	if method == initContract {
-		gasUsed += (uint64(len([]byte(contractName+utils.PrefixContractByteCode))) +
-			uint64(len(byteCode))) * PutStateGasPrice
-	}
-
-	blockVersion := txSimContext.GetBlockVersion()
-	if method == upgradeContract {
-		if blockVersion < 220 {
-			oldByteCode, err := txSimContext.Get(contractName, []byte(utils.PrefixContractByteCode))
-			if err != nil {
-				return 0, err
-			}
-			gasUsed += upgradeContractGasUsed(gasUsed, byteCode, oldByteCode)
-		} else {
-			gasUsed += uint64(len(byteCode)) * PutStateGasPrice
-		}
-	}
-
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
-}
-
-func upgradeContractGasUsed(gasUsed uint64, byteCode, oldByteCode []byte) uint64 {
-	diff := len(byteCode) - len(oldByteCode)
-	if diff < 0 {
-		gasUsed += calcBaseGas
-	} else {
-		gasUsed += uint64(diff) * PutStateGasPrice
-	}
-	return gasUsed
+func getInitFuncGasUsedOld(gasUsed uint64, args map[string][]byte) uint64 {
+	return gasUsed +
+		defaultInvokeBaseGas +
+		uint64(len(args[ContractParamCreatorOrgId]))*GetCreatorOrgIdGasPrice +
+		uint64(len(args[ContractParamBlockHeight]))*GetBlockHeightGasPrice +
+		uint64(len(args[ContractParamCreatorPk]))*GetCreatorPkGasPrice +
+		uint64(len(args[ContractParamCreatorRole]))*GetCreatorRoleGasPrice +
+		uint64(len(args[ContractParamSenderOrgId]))*GetSenderOrgIdGasPrice +
+		uint64(len(args[ContractParamTxId]))*GetTxIdGasPrice +
+		uint64(len(args[ContractParamSenderRole]))*GetSenderRoleGasPrice +
+		uint64(len(args[ContractParamSenderPk]))*GetSenderPkGasPrice +
+		uint64(len(args[ContractParamTxTimeStamp]))*GetTimeStampPrice
 }
 
 func checkKeys(args map[string][]byte, keys ...string) bool {
@@ -214,18 +202,29 @@ func checkKeys(args map[string][]byte, keys ...string) bool {
 	return true
 }
 
-func getInitFuncGasUsed(gasUsed uint64, args map[string][]byte) uint64 {
-	return gasUsed +
-		invokeBaseGas +
-		uint64(len(args[ContractParamCreatorOrgId]))*GetCreatorOrgIdGasPrice +
-		uint64(len(args[ContractParamBlockHeight]))*GetBlockHeightGasPrice +
-		uint64(len(args[ContractParamCreatorPk]))*GetCreatorPkGasPrice +
-		uint64(len(args[ContractParamCreatorRole]))*GetCreatorRoleGasPrice +
-		uint64(len(args[ContractParamSenderOrgId]))*GetSenderOrgIdGasPrice +
-		uint64(len(args[ContractParamTxId]))*GetTxIdGasPrice +
-		uint64(len(args[ContractParamSenderRole]))*GetSenderRoleGasPrice +
-		uint64(len(args[ContractParamSenderPk]))*GetSenderPkGasPrice +
-		uint64(len(args[ContractParamTxTimeStamp]))*GetTimeStampPrice
+func ContractGasUsed(gasUsed uint64, method string, contractName string, byteCode []byte) (uint64, error) {
+	if method == initContract {
+		gasUsed += (uint64(len([]byte(contractName+utils.PrefixContractByteCode))) +
+			uint64(len(byteCode))) * PutStateGasPrice
+	}
+
+	if method == upgradeContract {
+		gasUsed += uint64(len(byteCode)) * PutStateGasPrice
+	}
+
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited ")
+	}
+	return gasUsed, nil
+}
+
+func getInitFuncGasUsed(gasUsed, configDefaultGas uint64) uint64 {
+	// if config not set default gas
+	if configDefaultGas == 0 {
+		return gasUsed + defaultInvokeBaseGas + initFuncGas
+	}
+	return gasUsed + configDefaultGas + initFuncGas
+
 }
 
 func CheckGasLimit(gasUsed uint64) bool {

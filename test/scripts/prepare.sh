@@ -1,9 +1,12 @@
+#!/bin/bash
+
 #
 # Copyright (C) BABEC. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-VERSION=v2.2.2_qc
+VERSION=develop
+
 TESTCONTAINERNAME=chaimaker_vm_test
 
 docker_image_name=`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`
