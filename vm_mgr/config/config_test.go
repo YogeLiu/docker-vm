@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"os"
 	"testing"
 	"time"
 )
@@ -187,6 +188,43 @@ func Test_conf_GetReleaseRate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_conf_SetEnv(t *testing.T) {
+
+	os.Setenv("CHAIN_RPC_PORT", "21215")
+	os.Setenv("MAX_CONN_TIMEOUT", "1000")
+	defer os.Unsetenv("CHAIN_RPC_PORT")
+	defer os.Unsetenv("MAX_CONN_TIMEOUT")
+
+	initConfig()
+
+	tests := []struct {
+		name     string
+		fields   *conf
+		wantPort int
+		wantTime time.Duration
+	}{
+		{"good case", DockerVMConfig, 21215, 1000 * time.Second},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &conf{
+				RPC:      tt.fields.RPC,
+				Process:  tt.fields.Process,
+				Log:      tt.fields.Log,
+				Pprof:    tt.fields.Pprof,
+				Contract: tt.fields.Contract,
+			}
+			if c.RPC.ChainRPCPort != tt.wantPort {
+				t.Errorf("c.RPC.ChainRPCPort = %v, want %v", c.RPC.ChainRPCPort, tt.wantPort)
+			}
+			if c.RPC.ConnectionTimeout != tt.wantTime {
+				t.Errorf("c.RPC.ConnectionTimeout = %v, want %v", c.RPC.ConnectionTimeout, tt.wantTime)
+			}
+		})
+	}
+
 }
 
 //func Test_conf_GetServerKeepAliveTime(t *testing.T) {

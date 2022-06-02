@@ -7,6 +7,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -107,6 +109,8 @@ func InitConfig(configFileName string) error {
 		err = fmt.Errorf("%v, failed to unmarshal conf file, %v", err, marsErr)
 	}
 
+	DockerVMConfig.setEnv()
+
 	return err
 }
 
@@ -149,6 +153,29 @@ func (c *conf) setDefaultConfigs() {
 	// set contract default configs
 	const contractPrefix = "contract"
 	viper.SetDefault(contractPrefix+".max_file_size", 20480)
+}
+
+func (c *conf) setEnv() {
+	if chainRPCProtocol, ok := os.LookupEnv("CHAIN_RPC_PROTOCOL"); ok {
+		p, _ := strconv.Atoi(chainRPCProtocol)
+		c.RPC.ChainRPCProtocol = ChainRPCProtocolType(p)
+	}
+	if chainRPCPort, ok := os.LookupEnv("CHAIN_RPC_PORT"); ok {
+		c.RPC.ChainRPCPort, _ = strconv.Atoi(chainRPCPort)
+	}
+	if sandboxRPCPort, ok := os.LookupEnv("SANDBOX_RPC_PORT"); ok {
+		c.RPC.SandboxRPCPort, _ = strconv.Atoi(sandboxRPCPort)
+	}
+	if maxSendMsgSize, ok := os.LookupEnv("MAX_SEND_MSG_SIZE"); ok {
+		c.RPC.MaxSendMsgSize, _ = strconv.Atoi(maxSendMsgSize)
+	}
+	if maxRecvMsgSize, ok := os.LookupEnv("MAX_RECV_MSG_SIZE"); ok {
+		c.RPC.MaxRecvMsgSize, _ = strconv.Atoi(maxRecvMsgSize)
+	}
+	if connectionTimeout, ok := os.LookupEnv("MAX_CONN_TIMEOUT"); ok {
+		timeout, _ := strconv.ParseInt(connectionTimeout, 10, 64)
+		c.RPC.ConnectionTimeout = time.Duration(timeout) * time.Second
+	}
 }
 
 func (c *conf) restrainConfig() {
