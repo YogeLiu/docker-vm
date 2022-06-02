@@ -22,8 +22,8 @@ const (
 	// nolint: varcheck,unused
 	timeFormat = "2006-01-02 15:04:05"
 
-	loopNum   = 100
-	threadNum = 10000
+	loopNum   = 5
+	threadNum = 1000
 )
 
 var (
