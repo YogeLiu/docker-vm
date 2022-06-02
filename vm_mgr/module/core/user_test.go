@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	configFileName = "../../config/vm.yml"
+	configFileName = "../../../test/testdata/config/vm.yml"
 )
 
 func TestNewUser(t *testing.T) {

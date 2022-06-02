@@ -36,8 +36,8 @@ ci:
 ut:
 	./test/scripts/prepare.sh
 	make build-image
-	# docker run -itd --rm --net=host -v $(shell pwd)/data/org1/docker-go:/mount $(shell pwd)/log/org1/dockervm:/log  --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
-	docker run -itd --rm -v $(shell pwd)/data/org1/docker-go:/mount -v $(shell pwd)/log/org1/dockervm:/log --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	# UDS: docker run -itd --rm -v $(shell pwd)/data/org1/docker-go:/mount -v $(shell pwd)/log/org1/dockervm:/log --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	docker run -itd --net=host --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:refactor
 	sh ./ut_cover.sh
 	docker stop chaimaker_vm_test
 

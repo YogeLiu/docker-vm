@@ -114,7 +114,7 @@ func (c *conf) setDefaultConfigs() {
 
 	// set rpc default configs
 	const rpcPrefix = "rpc"
-	viper.SetDefault(rpcPrefix+".chain_rpc_protocol", 0)
+	viper.SetDefault(rpcPrefix+".chain_rpc_protocol", 1)
 	viper.SetDefault(rpcPrefix+".chain_host", "127.0.0.1")
 	viper.SetDefault(rpcPrefix+".chain_rpc_port", 22359)
 	viper.SetDefault(rpcPrefix+".sandbox_rpc_port", 22459)
