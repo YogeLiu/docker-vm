@@ -236,17 +236,19 @@ func validateVMSettings(config *config.DockerVMConfig,
 	if !filepath.IsAbs(config.DockerVMMountPath) {
 		hostMountDir, _ = filepath.Abs(config.DockerVMMountPath)
 		//hostMountDir = filepath.Join(hostMountDir, chainId)
-	} else {
-		//hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
 	}
+	//else {
+	//	//hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
+	//}
 
 	// set host log directory
 	if !filepath.IsAbs(config.DockerVMLogPath) {
 		hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
 		//hostLogDir = filepath.Join(hostLogDir, chainId)
-	} else {
-		//hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
 	}
+	//else {
+	//	//hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
+	//}
 
 	dockerContainerConfig.HostMountDir = hostMountDir
 	dockerContainerConfig.HostLogDir = hostLogDir
