@@ -6,10 +6,11 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	"chainmaker.org/chainmaker/protocol/v2"
 	"fmt"
-	"github.com/spf13/viper"
 	"time"
+
+	"chainmaker.org/chainmaker/protocol/v2"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -113,7 +114,7 @@ func (c *conf) setDefaultConfigs() {
 
 	// set rpc default configs
 	const rpcPrefix = "rpc"
-	viper.SetDefault(rpcPrefix+".chain_rpc_protocol", 1)
+	viper.SetDefault(rpcPrefix+".chain_rpc_protocol", 0)
 	viper.SetDefault(rpcPrefix+".chain_host", "127.0.0.1")
 	viper.SetDefault(rpcPrefix+".chain_rpc_port", 22359)
 	viper.SetDefault(rpcPrefix+".sandbox_rpc_port", 22459)
@@ -135,6 +136,7 @@ func (c *conf) setDefaultConfigs() {
 	// set log default configs
 	const logPrefix = "log"
 	viper.SetDefault(logPrefix+".contract_engine.level", "info")
+	//viper.SetDefault(logPrefix+".contract_engine.level", "debug")
 	viper.SetDefault(logPrefix+".contract_engine.console", true)
 	viper.SetDefault(logPrefix+".sandbox.level", "info")
 	viper.SetDefault(logPrefix+".sandbox.console", true)

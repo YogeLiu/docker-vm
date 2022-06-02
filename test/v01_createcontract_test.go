@@ -62,7 +62,7 @@ func setupTest(t *testing.T) {
 
 	//step5: create new NewRuntimeInstance -- for create user contract
 	fmt.Printf("=== step 5 create new runtime instance ===\n")
-	mockLogger := newMockHoleLogger(nil, testVMLogName)
+	mockLogger := newMockTestLogger(nil, testVMLogName)
 	mockRuntimeInstance, err = mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 		"", nil, nil, mockLogger)
 	if err != nil {

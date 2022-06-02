@@ -9,22 +9,23 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"errors"
+	"fmt"
+	"net"
+	"path/filepath"
+
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
-	"errors"
-	"fmt"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
-	"net"
-	"path/filepath"
 )
 
 const (
-	ChainRPCDir      = "sock"       // /mount/sock
-	ChainRPCSockName = "chain.sock" // /mount/sock/chain.sock
+	ChainRPCDir      = "contract-engine-sock" // /mount/sock
+	ChainRPCSockName = "chain.sock"           // /mount/sock/chain.sock
 )
 
 // ChainRPCServer is server of bidirectional streaming RPC (chain <=> contract engine)

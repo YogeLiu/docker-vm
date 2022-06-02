@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
@@ -39,4 +41,32 @@ func GetMaxConnectionFromConfig(config *config.DockerVMConfig) uint32 {
 // ConstructNotifyMapKey chainId#txId
 func ConstructNotifyMapKey(names ...string) string {
 	return strings.Join(names, "#")
+}
+
+func CreateDir(directory string) error {
+	exist, err := Exists(directory)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		err = os.MkdirAll(directory, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create [%s], err: [%s]", directory, err)
+		}
+	}
+
+	return nil
+}
+
+// exists returns whether the given file or directory exists
+func Exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

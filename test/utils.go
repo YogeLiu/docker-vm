@@ -42,7 +42,7 @@ const (
 	invokeMethod = "invoke_contract"
 
 	//ContractNameTest    = "contract_test05"
-	ContractNameTest    = "contract_test06"
+	ContractNameTest    = "contract_test07"
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"

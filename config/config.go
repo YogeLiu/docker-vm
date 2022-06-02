@@ -9,16 +9,17 @@ import "time"
 
 // DockerVMConfig match vm settings in chain maker yml
 type DockerVMConfig struct {
-	EnableDockerVM        bool   `mapstructure:"enable_dockervm"`
-	DockerVMContainerName string `mapstructure:"dockervm_container_name"`
-	DockerVMMountPath     string `mapstructure:"dockervm_mount_path"`
-	DockerVMLogPath       string `mapstructure:"dockervm_log_path"`
-	LogInConsole          bool   `mapstructure:"log_in_console"`
-	LogLevel              string `mapstructure:"log_level"`
-	DockerVMUDSOpen       bool   `mapstructure:"uds_open"`
-	MaxConnection         uint32 `mapstructure:"max_connection"`
+	EnableDockerVM    bool   `mapstructure:"enable_dockervm"`
+	DockerVMMountPath string `mapstructure:"dockervm_mount_path"`
+	DockerVMLogPath   string `mapstructure:"dockervm_log_path"`
+
+	DockerVMUDSOpen bool `mapstructure:"uds_open"`
+
+	MaxConnection uint32 `mapstructure:"max_connection"`
 	// uds_open true
-	TxTimeLimit         uint32 `mapstructure:"time_limit"`
+	// 可自定义交易执行超时时间，但是tx_scheduler_timeout是否有冲突，保留配置，但不启用
+	TxTimeLimit uint32 `mapstructure:"time_limit"`
+
 	MaxConcurrency      uint32 `mapstructure:"max_concurrency"`
 	MaxSendMsgSize      uint32 `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize      uint32 `mapstructure:"max_recv_msg_size"`
@@ -26,38 +27,26 @@ type DockerVMConfig struct {
 	DockerVMPprofPort   uint32 `mapstructure:"docker_vm_pprof_port"`
 	SandBoxPprofPort    uint32 `mapstructure:"sandbox_pprof_port"`
 	MaxLocalContractNum uint32 `mapstructure:"max_local_contract_num"`
-	// uds_open false
+	// uds_open false， tcp
 	RuntimeServer  RuntimeServerConfig  `mapstructure:"runtime_server"`
 	ContractEngine ContractEngineConfig `mapstructure:"contract_engine"`
 }
 
 type RuntimeServerConfig struct {
-	Host           string    `mapstructure:"host"`
-	Port           int       `mapstructure:"port"`
-	DialTimeout    uint32    `mapstructure:"dial_timeout"`
-	MaxSendMsgSize uint64    `mapstructure:"max_send_msg_size"`
-	MaxRecvMsgSize uint64    `mapstructure:"max_recv_msg_size"`
-	TLSConfig      TLSConfig `mapstructure:"tls"`
+	Host           string `mapstructure:"host"`
+	Port           int    `mapstructure:"port"`
+	DialTimeout    uint32 `mapstructure:"dial_timeout"`
+	MaxSendMsgSize uint64 `mapstructure:"max_send_msg_size"`
+	MaxRecvMsgSize uint64 `mapstructure:"max_recv_msg_size"`
 }
 
 type ContractEngineConfig struct {
-	Host           string    `mapstructure:"host"`
-	Port           int       `mapstructure:"port"`
-	DialTimeout    uint32    `mapstructure:"dial_timeout"`
-	MaxSendMsgSize uint64    `mapstructure:"max_send_msg_size"`
-	MaxRecvMsgSize uint64    `mapstructure:"max_recv_msg_size"`
-	MaxConnection  uint64    `mapstructure:"max_connection"`
-	TLSConfig      TLSConfig `mapstructure:"tls"`
-}
-
-type TLSConfig struct {
-	Enabled        bool     `mapstructure:"enabled"`
-	PrivKeyFile    string   `mapstructure:"priv_key_file"`
-	CertFile       string   `mapstructure:"cert_file"`
-	Key            string   `mapstructure:"key"`
-	Cert           string   `mapstructure:"cert"`
-	TrustRootPaths []string `mapstructure:"trust_root_paths"`
-	TLSHostName    string   `mapstructure:"tls_host_name"`
+	Host           string `mapstructure:"host"`
+	Port           int    `mapstructure:"port"`
+	DialTimeout    uint32 `mapstructure:"dial_timeout"`
+	MaxSendMsgSize uint64 `mapstructure:"max_send_msg_size"`
+	MaxRecvMsgSize uint64 `mapstructure:"max_recv_msg_size"`
+	MaxConnection  uint64 `mapstructure:"max_connection"`
 }
 
 // DockerContainerConfig docker container settings
@@ -91,10 +80,12 @@ const (
 	// ContractsDir dir save executable contract
 	ContractsDir = "contracts"
 	// SockDir dir save domain socket file
-	SockDir = "sock"
+	SockDir = "contract-engine-sock"
 	// SockName domain socket file name
-	SockName        = "cdm.sock"
+	EngineSockName  = "chain.sock"
 	DockerConfigDir = "config"
+	RuntimeSockName = "runtime.sock"
+	RuntimeSockDir  = "runtime-sock"
 
 	TestPort = "22356"
 

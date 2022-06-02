@@ -18,7 +18,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
 	"chainmaker.org/chainmaker/vm-native/v2/common"
-	"github.com/docker/docker/pkg/fileutils"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -166,16 +165,16 @@ func (m *InstancesManager) initMountDirectory() error {
 	m.mgrLogger.Debug("set sock dir: ", sockDir)
 
 	// create config directory
-	configDir := filepath.Join(mountDir, config.DockerConfigDir)
-	err = m.createDir(configDir)
-	if err != nil {
-		return err
-	}
-	m.mgrLogger.Debug("set config dir: ", configDir)
-	_, err = fileutils.CopyFile("../vm_mgr/config/vm.yml", filepath.Join(configDir, "vm.yml"))
-	if err != nil {
-		return err
-	}
+	//configDir := filepath.Join(mountDir, config.DockerConfigDir)
+	//err = m.createDir(configDir)
+	//if err != nil {
+	//	return err
+	//}
+	//m.mgrLogger.Debug("set config dir: ", configDir)
+	//_, err = fileutils.CopyFile("../vm_mgr/config/vm.yml", filepath.Join(configDir, "vm.yml"))
+	//if err != nil {
+	//	return err
+	//}
 
 	// create log directory
 	logDir := m.dockerContainerConfig.HostLogDir
@@ -236,17 +235,17 @@ func validateVMSettings(config *config.DockerVMConfig,
 	// set host mount directory path
 	if !filepath.IsAbs(config.DockerVMMountPath) {
 		hostMountDir, _ = filepath.Abs(config.DockerVMMountPath)
-		hostMountDir = filepath.Join(hostMountDir, chainId)
+		//hostMountDir = filepath.Join(hostMountDir, chainId)
 	} else {
-		hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
+		//hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
 	}
 
 	// set host log directory
 	if !filepath.IsAbs(config.DockerVMLogPath) {
 		hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
-		hostLogDir = filepath.Join(hostLogDir, chainId)
+		//hostLogDir = filepath.Join(hostLogDir, chainId)
 	} else {
-		hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
+		//hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
 	}
 
 	dockerContainerConfig.HostMountDir = hostMountDir

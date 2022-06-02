@@ -1002,9 +1002,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	r.logger.Debugf("full name: %s", contractFullName)
 
 	hostMountPath := r.clientMgr.GetVMConfig().DockerVMMountPath
-	hostMountPath = filepath.Join(hostMountPath, r.chainId)
-
 	contractDir := filepath.Join(hostMountPath, mountContractDir)
+
 	contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
 	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
 	contractPathWithVersion := filepath.Join(contractDir, contractFullName)

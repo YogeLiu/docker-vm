@@ -8,15 +8,12 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"path/filepath"
 	"sync"
 
-	"chainmaker.org/chainmaker/common/v2/ca"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
@@ -219,55 +216,6 @@ func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 				grpc.MaxCallSendMsgSize(int(c.config.ContractEngine.MaxSendMsgSize)*1024*1024),
 			),
 		}
-		if !c.config.ContractEngine.TLSConfig.Enabled {
-			return grpc.Dial(url, dialOpts...)
-		}
-
-		var caCert string
-		if c.config.ContractEngine.TLSConfig.Cert != "" {
-			caCert = c.config.ContractEngine.TLSConfig.Cert
-
-		} else if c.config.ContractEngine.TLSConfig.CertFile != "" {
-			certStr, err := ioutil.ReadFile(c.config.ContractEngine.TLSConfig.CertFile)
-			if err != nil {
-				return nil, err
-			}
-			caCert = string(certStr)
-
-		} else {
-			return nil, errors.New("new client connection failed, invalid tls config")
-		}
-
-		var key string
-		if c.config.ContractEngine.TLSConfig.Key != "" {
-			key = c.config.ContractEngine.TLSConfig.Key
-
-		} else if c.config.ContractEngine.TLSConfig.PrivKeyFile != "" {
-			keyStr, err := ioutil.ReadFile(c.config.ContractEngine.TLSConfig.PrivKeyFile)
-			if err != nil {
-				return nil, err
-			}
-			key = string(keyStr)
-
-		} else {
-			return nil, errors.New("new client connection failed, invalid tls config")
-		}
-
-		tlsRPCClient := ca.CAClient{
-			ServerName: c.config.ContractEngine.TLSConfig.TLSHostName,
-			CaPaths:    c.config.ContractEngine.TLSConfig.TrustRootPaths,
-			CertBytes:  []byte(caCert),
-			KeyBytes:   []byte(key),
-			Logger:     c.logger,
-		}
-
-		cred, err := tlsRPCClient.GetCredentialsByCA()
-		if err != nil {
-			c.logger.Errorf("new gRPC failed, GetTLSCredentialsByCA err: %v", err)
-			return nil, err
-		}
-
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(*cred))
 		return grpc.Dial(url, dialOpts...)
 	}
 
@@ -285,7 +233,7 @@ func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 		return conn, err
 	}))
 
-	sockAddress := filepath.Join(c.config.DockerVMMountPath, c.chainId, config.SockDir, config.SockName)
+	sockAddress := filepath.Join(c.config.DockerVMMountPath, config.SockDir, config.EngineSockName)
 
 	return grpc.DialContext(context.Background(), sockAddress, udsDialOpts...)
 

@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
@@ -125,7 +127,13 @@ func (s *RuntimeServer) StopRuntimeServer() {
 
 func createListener(chainId string, vmConfig *config.DockerVMConfig) (net.Listener, error) {
 	if vmConfig.DockerVMUDSOpen {
-		runtimeServerSockPath := filepath.Join(vmConfig.DockerVMMountPath, chainId)
+		sockDir := filepath.Join(vmConfig.DockerVMMountPath, config.RuntimeSockDir)
+		runtimeServerSockPath := filepath.Join(sockDir, config.RuntimeSockName)
+		err := utils.CreateDir(sockDir)
+		if err != nil {
+			return nil, err
+		}
+
 		return createUnixListener(runtimeServerSockPath)
 	}
 
@@ -136,7 +144,7 @@ func createListener(chainId string, vmConfig *config.DockerVMConfig) (net.Listen
 func createUnixListener(sockPath string) (*net.UnixListener, error) {
 	listenAddress, err := net.ResolveUnixAddr("unix", sockPath)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to listen: %v", err)
+		return nil, fmt.Errorf("failed to listen: %v", err)
 	}
 
 start:
