@@ -17,7 +17,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
-	"chainmaker.org/chainmaker/vm-native/v2/common"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -80,7 +79,7 @@ func NewInstancesManager(chainId string, logger protocol.Logger, vmConfig map[st
 }
 
 func (m *InstancesManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method,
-	codePath string, contract *common.Contract,
+	codePath string, contract *commonPb.Contract,
 	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
 
 	return &RuntimeInstance{
