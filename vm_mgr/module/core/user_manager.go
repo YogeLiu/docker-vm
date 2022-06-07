@@ -87,32 +87,30 @@ func (u *UsersManager) CreateNewUsers() error {
 
 func (u *UsersManager) generateNewUser(newUserId int) error {
 
-	_, err := user.LookupId(strconv.Itoa(newUserId))
-	if err == nil {
-		return nil
-	}
-
-	if !errors.Is(err, user.UnknownUserIdError(newUserId)) {
-		return err
-	}
-
-	const addUserFormat = "useradd -u %d %s"
-
 	newUser := u.constructNewUser(newUserId)
-	addUserCommand := fmt.Sprintf(addUserFormat, newUserId, newUser.UserName)
-
-	createSuccess := false
-
-	// it may fail to create user in centos, so add retry until it success
-	for !createSuccess {
-		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Warnf("attemp to create user fail: [%+v], err: [%s] and begin to retry", newUser, err)
-			continue
+	_, err := user.LookupId(strconv.Itoa(newUserId))
+	if err != nil {
+		if !errors.Is(err, user.UnknownUserIdError(newUserId)) {
+			return err
 		}
 
-		createSuccess = true
+		const addUserFormat = "useradd -u %d %s"
+		addUserCommand := fmt.Sprintf(addUserFormat, newUserId, newUser.UserName)
+
+		createSuccess := false
+
+		// it may fail to create user in centos, so add retry until it success
+		for !createSuccess {
+			if err := utils.RunCmd(addUserCommand); err != nil {
+				u.logger.Warnf("attemp to create user fail: [%+v], err: [%s] and begin to retry", newUser, err)
+				continue
+			}
+
+			createSuccess = true
+		}
+		u.logger.Debugf("success create user: %+v", newUser)
+
 	}
-	u.logger.Debugf("success create user: %+v", newUser)
 
 	// add created user to queue
 	err = u.userQueue.Enqueue(newUser)
