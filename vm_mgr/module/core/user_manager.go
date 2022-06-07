@@ -8,8 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -85,6 +87,15 @@ func (u *UsersManager) CreateNewUsers() error {
 
 func (u *UsersManager) generateNewUser(newUserId int) error {
 
+	_, err := user.LookupId(strconv.Itoa(newUserId))
+	if err == nil {
+		return nil
+	}
+
+	if !errors.Is(err, user.UnknownUserIdError(newUserId)) {
+		return err
+	}
+
 	const addUserFormat = "useradd -u %d %s"
 
 	newUser := u.constructNewUser(newUserId)
@@ -104,7 +115,7 @@ func (u *UsersManager) generateNewUser(newUserId int) error {
 	u.logger.Debugf("success create user: %+v", newUser)
 
 	// add created user to queue
-	err := u.userQueue.Enqueue(newUser)
+	err = u.userQueue.Enqueue(newUser)
 	if err != nil {
 		u.logger.Errorf("fail to add created user to queue, newUser : [%v]", newUser)
 		return err

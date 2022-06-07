@@ -6,7 +6,7 @@ require (
 	chainmaker.org/chainmaker/common/v2 v2.2.1
 	chainmaker.org/chainmaker/localconf/v2 v2.2.1
 	chainmaker.org/chainmaker/logger/v2 v2.2.1
-	chainmaker.org/chainmaker/pb-go/v2 v2.2.1
+	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220517160602-9f5dea196d78
 	chainmaker.org/chainmaker/protocol/v2 v2.2.2
 	chainmaker.org/chainmaker/utils/v2 v2.2.2
 	github.com/docker/distribution v2.7.1+incompatible
