@@ -93,11 +93,11 @@ func (s *TxContextMockTest) CallContract(contract *commonPb.Contract, method str
 	panic("implement me")
 }
 
-func (s *TxContextMockTest) SetIter(index int32, iter interface{}) {
+func (s *TxContextMockTest) SetIterHandle(index int32, iter interface{}) {
 	panic("implement me")
 }
 
-func (s *TxContextMockTest) GetIter(index int32) (interface{}, bool) {
+func (s *TxContextMockTest) GetIterHandle(index int32) (interface{}, bool) {
 	panic("implement me")
 }
 

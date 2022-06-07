@@ -3,9 +3,9 @@ module chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr
 go 1.16
 
 require (
-	chainmaker.org/chainmaker/common/v2 v2.2.1-0.20220408064030-5a787221fb78
-	chainmaker.org/chainmaker/pb-go/v2 v2.2.1-0.20220325091111-7b6ff1727aa8
-	chainmaker.org/chainmaker/protocol/v2 v2.2.2-0.20220428040525-fa4dd7540f8a
+	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220607063940-ded004f7fce5
+	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220607063430-b037daa0847d
+	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220607065007-b25caf2d737e
 	github.com/emirpasic/gods v1.12.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0

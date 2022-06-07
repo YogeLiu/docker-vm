@@ -31,7 +31,7 @@ func TestDockerGoKvIterator(t *testing.T) {
 	startKey1 := protocol.GetKeyStr("key2", "")
 	limit1 := protocol.GetKeyStr("key4", "")
 	mockSelect(mockTxContext, ContractNameTest, startKey1, limit1)
-	mockTxContext.EXPECT().SetIter(gomock.Any(), gomock.Any()).DoAndReturn(
+	mockTxContext.EXPECT().SetIterHandle(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(iteratorIndex int32, iterator protocol.StateIterator) {
 			kvRowCache[atomic.AddInt32(&kvSetIndex, int32(1))] = iterator
 		},

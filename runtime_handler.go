@@ -360,7 +360,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	}
 
 	index := atomic.AddInt32(&r.rowIndex, 1)
-	txSimContext.SetIter(index, iter)
+	txSimContext.SetIterHandle(index, iter)
 
 	r.logger.Debug("create kv iterator: ", index)
 	createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
@@ -394,7 +394,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 		return consumeKvIteratorResponse, gasUsed
 	}
 
-	iter, ok := txSimContext.GetIter(kvIteratorIndex)
+	iter, ok := txSimContext.GetIterHandle(kvIteratorIndex)
 	if !ok {
 		r.logger.Errorf("[kv iterator consume] can not found iterator index [%d]", kvIteratorIndex)
 		consumeKvIteratorResponse.SysCallMessage.Message = fmt.Sprintf(
@@ -509,7 +509,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 	}
 
 	index := atomic.AddInt32(&r.rowIndex, 1)
-	txSimContext.SetIter(index, iter)
+	txSimContext.SetIterHandle(index, iter)
 
 	r.logger.Debug("create key history iterator: ", index)
 
@@ -550,7 +550,7 @@ func (r *RuntimeInstance) handleConsumeKeyHistoryIterator(txId string, recvMsg *
 		return consumeKeyHistoryIterResponse, currentGasUsed
 	}
 
-	iter, ok := txSimContext.GetIter(keyHistoryIterIndex)
+	iter, ok := txSimContext.GetIterHandle(keyHistoryIterIndex)
 	if !ok {
 		errMsg := fmt.Sprintf("[key history iterator consume] can not found iterator index [%d]", keyHistoryIterIndex)
 		r.logger.Error(errMsg)

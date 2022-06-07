@@ -21,7 +21,7 @@ func TestDockerGoKeyHistoryKvIterator(t *testing.T) {
 
 	key := protocol.GetKeyStr("key1", "field1")
 	mockGetHistoryIterForKey(mockTxContext, ContractNameTest, key)
-	mockTxContext.EXPECT().SetIter(gomock.Any(), gomock.Any()).DoAndReturn(
+	mockTxContext.EXPECT().SetIterHandle(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(iteratorIndex int32, iterator protocol.KeyHistoryIterator) {
 			kvRowCache[atomic.AddInt32(&kvSetIndex, int32(1))] = iterator
 		},

@@ -476,7 +476,7 @@ func constructKey(contractName string, key []byte) string {
 }
 
 func mockGetStateKvHandle(simContext *mock.MockTxSimContext, iteratorIndex int32) {
-	simContext.EXPECT().GetIter(gomock.Eq(iteratorIndex)).DoAndReturn(
+	simContext.EXPECT().GetIterHandle(gomock.Eq(iteratorIndex)).DoAndReturn(
 		func(iteratorIndex int32) (protocol.StateIterator, bool) {
 			iterator, ok := kvRowCache[iteratorIndex]
 			if !ok {
@@ -493,7 +493,7 @@ func mockGetStateKvHandle(simContext *mock.MockTxSimContext, iteratorIndex int32
 }
 
 func mockGetKeyHistoryKVHandle(simContext *mock.MockTxSimContext, iteratorIndex int32) {
-	simContext.EXPECT().GetIter(gomock.Eq(iteratorIndex)).DoAndReturn(
+	simContext.EXPECT().GetIterHandle(gomock.Eq(iteratorIndex)).DoAndReturn(
 		func(iteratorIndex int32) (protocol.KeyHistoryIterator, bool) {
 			iterator, ok := kvRowCache[iteratorIndex]
 			if !ok {
