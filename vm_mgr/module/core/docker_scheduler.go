@@ -158,7 +158,18 @@ func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 
 func (s *DockerScheduler) handleCallCrossContract(crossContractTx *protogo.TxRequest) {
 	s.logger.Debugf("[%s] docker scheduler handle cross contract tx", crossContractTx.TxId)
-	err := s.processManager.AddTx(crossContractTx)
+
+	err := s.processManager.ModifyContractName(crossContractTx)
+	if err != nil {
+		s.logger.Warnf("cant get cross contract name: err is :%s, txId: %s",
+			err, crossContractTx.TxId)
+		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
+			crossContractTx.TxId, crossContractTx.TxContext.CurrentHeight)
+		s.ReturnErrorCrossContractResponse(crossContractTx, errResponse)
+		return
+	}
+
+	err = s.processManager.AddTx(crossContractTx)
 	if err == utils.ContractFileError {
 		s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
 			err, crossContractTx.TxId)

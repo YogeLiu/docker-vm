@@ -77,7 +77,7 @@ func (s *SecurityEnv) InitConfig() error {
 	config.SandBoxTimeout = timeLimit
 
 	// set dms directory
-	if err = s.setDMSDir(); err != nil {
+	if err = utils.CreateDir(config.DMSDir); err != nil {
 		s.logger.Errorf("fail to set dms directory, err: [%s]", err)
 		return err
 	}

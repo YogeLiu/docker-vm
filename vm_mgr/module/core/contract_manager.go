@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
@@ -31,18 +32,26 @@ var (
 // 找 链 拿合约执行文件，保存合约map
 
 type ContractManager struct {
-	lock            sync.RWMutex
-	getContractLock singleflight.Group
-	contractsMap    map[string]string
-	logger          *zap.SugaredLogger
-	scheduler       protocol.Scheduler
+	lock                sync.RWMutex
+	getContractLock     singleflight.Group
+	contractsMap        map[string]string
+	contractNameMap     map[ContractNameMapIndex]string // key is a struct
+	contractNameMapLock sync.RWMutex
+	logger              *zap.SugaredLogger
+	scheduler           protocol.Scheduler
+}
+
+type ContractNameMapIndex struct {
+	ChainId      string
+	ContractName string
 }
 
 // NewContractManager new contract manager
 func NewContractManager() *ContractManager {
 	contractManager := &ContractManager{
-		contractsMap: make(map[string]string),
-		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, config.DockerLogDir),
+		contractsMap:    make(map[string]string),
+		contractNameMap: make(map[ContractNameMapIndex]string),
+		logger:          logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER, config.DockerLogDir),
 	}
 
 	mountDir = config.DockerMountDir
@@ -183,4 +192,52 @@ func (cm *ContractManager) checkContractDeployed(contractName string) (string, b
 		return contractPath, true
 	}
 	return "", false
+}
+
+// GetContractName nameOrAddr
+func (cm *ContractManager) GetContractName(chainId, txId, nameOrAddr string) (string, error) {
+
+	var contractName, contractAddr string
+
+	cm.contractNameMapLock.RLock()
+	contractName, ok := cm.contractNameMap[ContractNameMapIndex{chainId, nameOrAddr}]
+	cm.contractNameMapLock.RUnlock()
+	if ok {
+		return contractName, nil
+	}
+
+	getContractMsg := &protogo.CDMMessage{
+		TxId:    txId,
+		Type:    protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME,
+		Payload: []byte(nameOrAddr),
+		ChainId: chainId,
+	}
+
+	responseChan := make(chan *protogo.CDMMessage)
+	cm.scheduler.RegisterResponseCh(chainId, txId, responseChan)
+
+	cm.scheduler.GetByteCodeReqCh() <- getContractMsg
+
+	returnMsg := <-responseChan
+
+	if returnMsg.Payload == nil {
+		return "", errors.New("fail to get contract")
+	}
+
+	res := strings.Split(string(returnMsg.Payload), "#")
+	contractName, contractAddr = res[0], res[1]
+
+	cm.saveContractNameMap(chainId, contractName, contractAddr)
+
+	return contractName, nil
+}
+
+// GetContractName save to contractNameMap
+func (cm *ContractManager) saveContractNameMap(chainId, contractName, contractAddr string) {
+	cm.contractNameMapLock.Lock()
+	defer cm.contractNameMapLock.Unlock()
+
+	cm.contractNameMap[ContractNameMapIndex{chainId, contractName}] = contractName
+	cm.contractNameMap[ContractNameMapIndex{chainId, contractAddr}] = contractName
+	return
 }

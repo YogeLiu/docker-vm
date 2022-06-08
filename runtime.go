@@ -299,6 +299,13 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.ClientManager.PutSysCallResponse(getSenderAddressResp)
 				r.Log.Debugf("tx [%s] finish get sender address [%v]", uniqueTxKey, getSenderAddressResp)
 
+			case protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME:
+				r.Log.Debugf("tx [%s] start get contract name [%v]", uniqueTxKey, recvMsg)
+				var getContractNameResp *protogo.CDMMessage
+				getContractNameResp = r.handleGetContractName(uniqueTxKey, recvMsg, txSimContext)
+				r.ClientManager.PutSysCallResponse(getContractNameResp)
+				r.Log.Debugf("tx [%s] finish get contract name [%v]", uniqueTxKey, getContractNameResp)
+
 			default:
 				contractResult.GasUsed = gasUsed
 				return r.errorResult(
@@ -1212,7 +1219,12 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		if err != nil || len(byteCode) == 0 {
 			r.Log.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
 				contractName)
-			response.Message = err.Error()
+			if err != nil {
+				response.Message = err.Error()
+			} else {
+				response.Message = "contract byte is nil"
+			}
+
 			return response
 		}
 	}
@@ -1286,6 +1298,32 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		response.ResultCode = protocol.ContractSdkSignalResultSuccess
 		response.Payload = []byte(contractNameAndVersion)
 	}
+
+	return response
+}
+
+func (r *RuntimeInstance) handleGetContractName(txId string, recvMsg *protogo.CDMMessage,
+	txSimContext protocol.TxSimContext) *protogo.CDMMessage {
+	var err error
+
+	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME_RESPONSE)
+
+	contractInfo, err := txSimContext.GetContractByName(string(recvMsg.Payload))
+	if err != nil || contractInfo.Name == "" {
+		response.ResultCode = protocol.ContractSdkSignalResultFail
+		if err != nil {
+			response.Message = err.Error()
+		} else {
+			response.Message = fmt.Sprintf("%v contract not exist", recvMsg.Payload)
+		}
+		response.Payload = nil
+		return response
+	}
+
+	contractNameAndAddress := strings.Join([]string{contractInfo.Name, contractInfo.Address}, "#")
+
+	response.Payload = []byte(contractNameAndAddress)
+	response.ResultCode = protocol.ContractSdkSignalResultSuccess
 
 	return response
 }
