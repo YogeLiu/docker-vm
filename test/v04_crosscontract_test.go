@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,6 +23,21 @@ func TestDockerGoCrossCall(t *testing.T) {
 	parameters0["contract_name"] = []byte(ContractNameTest)
 	parameters0["contract_version"] = []byte("v1.0.0")
 	parameters0["contract_method"] = []byte("display")
+
+	contractInfo := commonPb.Contract{
+		Name:        ContractNameTest,
+		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		Address:     ContractNameAddr,
+	}
+
+	invalidContractInfo := commonPb.Contract{
+		Name:        "",
+		RuntimeType: commonPb.RuntimeType_INVALID,
+		Address:     "",
+	}
+
+	mockTxContext.EXPECT().GetContractByName(ContractNameTest).Return(contractInfo, nil).AnyTimes()
+	mockTxContext.EXPECT().GetContractByName("").Return(invalidContractInfo, nil).AnyTimes()
 
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters0, mockTxContext, uint64(123))
