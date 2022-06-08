@@ -36,8 +36,8 @@ func TestDockerGoCrossCall(t *testing.T) {
 		Address:     "",
 	}
 
-	mockTxContext.EXPECT().GetContractByName(ContractNameTest).Return(contractInfo, nil).AnyTimes()
-	mockTxContext.EXPECT().GetContractByName("").Return(invalidContractInfo, nil).AnyTimes()
+	mockTxContext.EXPECT().GetContractByName(ContractNameTest).Return(&contractInfo, nil).AnyTimes()
+	mockTxContext.EXPECT().GetContractByName("").Return(&invalidContractInfo, nil).AnyTimes()
 
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters0, mockTxContext, uint64(123))
