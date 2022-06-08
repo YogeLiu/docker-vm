@@ -99,7 +99,7 @@ func (cdm *CDMApi) receiveMsgRoutine(c *CommunicateConn) {
 				err = cdm.handleTxRequest(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE:
 				err = cdm.handleGetStateResponse(receivedMsg)
-			case protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE:
+			case protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE, protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME_RESPONSE:
 				err = cdm.handleGetByteCodeResponse(receivedMsg)
 			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR_RESPONSE:
 				err = cdm.handleCreateKvIteratorResponse(receivedMsg)

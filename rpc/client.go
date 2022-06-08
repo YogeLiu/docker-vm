@@ -174,7 +174,7 @@ func (c *CDMClient) receiveMsgRoutine() {
 			case protogo.CDMType_CDM_TYPE_GET_STATE, protogo.CDMType_CDM_TYPE_GET_BYTECODE,
 				protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
 				protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
-				protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
+				protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS, protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME:
 				waitCh = c.clientMgr.GetReceiveChan(receivedMsg.ChainId, receivedMsg.TxId)
 				if waitCh == nil {
 					c.logger.Warnf("client[%d] [%s] fail to retrieve response chan, response chan is nil", c.id,

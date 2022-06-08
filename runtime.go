@@ -1219,7 +1219,12 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		if err != nil || len(byteCode) == 0 {
 			r.Log.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
 				contractName)
-			response.Message = err.Error()
+			if err != nil {
+				response.Message = err.Error()
+			} else {
+				response.Message = "contract byte is nil"
+			}
+
 			return response
 		}
 	}
@@ -1304,9 +1309,13 @@ func (r *RuntimeInstance) handleGetContractName(txId string, recvMsg *protogo.CD
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME_RESPONSE)
 
 	contractInfo, err := txSimContext.GetContractByName(string(recvMsg.Payload))
-	if err != nil {
+	if err != nil || contractInfo.RuntimeType == commonPb.RuntimeType_INVALID {
 		response.ResultCode = protocol.ContractSdkSignalResultFail
-		response.Message = err.Error()
+		if err != nil {
+			response.Message = err.Error()
+		} else {
+			response.Message = fmt.Sprintf("%v contract not exist", recvMsg.Payload)
+		}
 		response.Payload = nil
 		return response
 	}
