@@ -38,6 +38,8 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+
+	pb_sdk "chainmaker.org/chainmaker/vm-docker-go/v2/pb_sdk/protogo"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -187,6 +189,21 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 				if pass {
 					gasUsed, err = gas.GetStateGasUsed(gasUsed, getStateResponse.Payload)
+					if err != nil {
+						getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
+						getStateResponse.Payload = nil
+						getStateResponse.Message = err.Error()
+					}
+				}
+				r.ClientManager.PutSysCallResponse(getStateResponse)
+				r.Log.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
+
+			case protogo.CDMType_CDM_TYPE_GET_BATCH_STATE:
+				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
+				getStateResponse, pass := r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext)
+
+				if pass {
+					gasUsed, err = gas.GetBatchStateGasUsed(gasUsed, getStateResponse.Payload)
 					if err != nil {
 						getStateResponse.ResultCode = protocol.ContractSdkSignalResultFail
 						getStateResponse.Payload = nil
@@ -1319,6 +1336,43 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.CD
 	r.Log.Debug("get value: ", string(value))
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
 	response.Payload = value
+	return response, true
+}
+
+func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *protogo.CDMMessage,
+	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, bool) {
+
+	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BATCH_STATE_RESPONSE)
+
+	var err error
+	var payload []byte
+	keys := &pb_sdk.BatchKeys{}
+	if err = keys.Unmarshal(recvMsg.Payload); err != nil {
+		response.Message = err.Error()
+		return response, false
+	}
+
+	batchKeys := make([]*pb_sdk.BatchKey, len(keys.GetKeys()))
+	for _, k := range keys.Keys {
+		var value []byte
+		value, err = txSimContext.Get(k.ContractName, protocol.GetKeyStr(k.Key, k.Field))
+		if err != nil {
+			r.Log.Debugf("fail to get state key[%s] field [%s] from sim context err[%s]", k.Key, k.Field, err.Error())
+		} else {
+			k.Value = value
+			batchKeys = append(batchKeys, k)
+		}
+	}
+
+	r.Log.Debugf("get batch keys values: %v", batchKeys)
+	resp := pb_sdk.BatchKeys{Keys: batchKeys}
+	payload, err = resp.Marshal()
+	if err != nil {
+		response.Message = err.Error()
+		return response, false
+	}
+	response.ResultCode = protocol.ContractSdkSignalResultSuccess
+	response.Payload = payload
 	return response, true
 }
 

@@ -19,6 +19,7 @@ const (
 	// function list gas price
 	GetArgsGasPrice               uint64 = 1
 	GetStateGasPrice              uint64 = 1
+	GetBatchStateGasPrice         uint64 = 1
 	PutStateGasPrice              uint64 = 10
 	DelStateGasPrice              uint64 = 10
 	GetCreatorOrgIdGasPrice       uint64 = 1
@@ -120,6 +121,14 @@ func ConsumeKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
 
 func GetStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
 	gasUsed += uint64(len(value)) * GetStateGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited ")
+	}
+	return gasUsed, nil
+}
+
+func GetBatchStateGasUsed(gasUsed uint64, payload []byte) (uint64, error) {
+	gasUsed += uint64(len(payload)) * GetBatchStateGasPrice
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}

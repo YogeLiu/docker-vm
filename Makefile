@@ -32,7 +32,7 @@ gen-cdm:
 
 gen-dms:
 	cd vm_mgr/pb_sdk/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dms_message.proto
-
+	cd pb_sdk/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dms_message.proto
 clean-test:
 	cd test/scripts && ./dockerclean.sh
 
