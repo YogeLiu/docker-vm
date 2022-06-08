@@ -261,6 +261,7 @@ func (pm *ProcessManager) ModifyContractName(txRequest *protogo.TxRequest) error
 	if err != nil {
 		return err
 	}
+	pm.logger.Debugf("replace txrequest contract name from %s to %s", txRequest.ContractName, contractName)
 	txRequest.ContractName = contractName
 	return nil
 }

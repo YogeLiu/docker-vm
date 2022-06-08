@@ -42,8 +42,8 @@ type ContractManager struct {
 }
 
 type ContractNameMapIndex struct {
-	ChainId  string
-	Contract string
+	ChainId      string
+	ContractName string
 }
 
 // NewContractManager new contract manager

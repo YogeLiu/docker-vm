@@ -1309,7 +1309,7 @@ func (r *RuntimeInstance) handleGetContractName(txId string, recvMsg *protogo.CD
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME_RESPONSE)
 
 	contractInfo, err := txSimContext.GetContractByName(string(recvMsg.Payload))
-	if err != nil || contractInfo.RuntimeType == commonPb.RuntimeType_INVALID {
+	if err != nil || contractInfo.Name == "" {
 		response.ResultCode = protocol.ContractSdkSignalResultFail
 		if err != nil {
 			response.Message = err.Error()
