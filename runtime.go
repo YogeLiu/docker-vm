@@ -1353,7 +1353,7 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 		return response, false
 	}
 
-	getKeys, err = txSimContext.GetKeys(keys.Keys[0].GetContractName(), keys.Keys)
+	getKeys, err = txSimContext.GetKeys(keys.Keys)
 	if err != nil {
 		response.Message = err.Error()
 		return response, false
