@@ -1341,36 +1341,32 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.CD
 
 func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *protogo.CDMMessage,
 	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, bool) {
+	var err error
+	var payload []byte
+	var getKeys []*pb_sdk.BatchKey
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BATCH_STATE_RESPONSE)
 
-	var err error
-	var payload []byte
 	keys := &pb_sdk.BatchKeys{}
 	if err = keys.Unmarshal(recvMsg.Payload); err != nil {
 		response.Message = err.Error()
 		return response, false
 	}
 
-	batchKeys := make([]*pb_sdk.BatchKey, len(keys.GetKeys()))
-	for _, k := range keys.Keys {
-		var value []byte
-		value, err = txSimContext.Get(k.ContractName, protocol.GetKeyStr(k.Key, k.Field))
-		if err != nil {
-			r.Log.Debugf("fail to get state key[%s] field [%s] from sim context err[%s]", k.Key, k.Field, err.Error())
-		} else {
-			k.Value = value
-			batchKeys = append(batchKeys, k)
-		}
+	getKeys, err = txSimContext.GetKeys(keys.Keys[0].GetContractName(), keys.Keys)
+	if err != nil {
+		response.Message = err.Error()
+		return response, false
 	}
 
-	r.Log.Debugf("get batch keys values: %v", batchKeys)
-	resp := pb_sdk.BatchKeys{Keys: batchKeys}
+	r.Log.Debugf("get batch keys values: %v", getKeys)
+	resp := pb_sdk.BatchKeys{Keys: getKeys}
 	payload, err = resp.Marshal()
 	if err != nil {
 		response.Message = err.Error()
 		return response, false
 	}
+
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
 	response.Payload = payload
 	return response, true
