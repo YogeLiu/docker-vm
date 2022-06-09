@@ -26,6 +26,7 @@ const (
 	retryConnectDuration = 2 * time.Second
 )
 
+// ContractEngineClientManager manager all contract engine clients
 type ContractEngineClientManager struct {
 	chainId        string
 	startOnce      sync.Once
@@ -43,6 +44,7 @@ type ContractEngineClientManager struct {
 	stop           bool
 }
 
+// NewClientManager returns new client manager
 func NewClientManager(
 	chainId string,
 	logger protocol.Logger,
@@ -70,6 +72,7 @@ func NewClientManager(
 	return mgrInstance
 }
 
+// Start establish connections
 func (cm *ContractEngineClientManager) Start() error {
 	cm.logger.Infof("start client manager")
 	cm.logger.Infof("before start: alive conn %d", len(cm.aliveClientMap))
@@ -91,6 +94,7 @@ func (cm *ContractEngineClientManager) Start() error {
 	return err
 }
 
+// Stop all connectiosn
 func (cm *ContractEngineClientManager) Stop() error {
 	cm.closeAllConnections()
 	return nil
@@ -105,6 +109,7 @@ func (cm *ContractEngineClientManager) closeAllConnections() {
 
 // === ForRuntimeInstance ===
 
+// PutTxRequestWithNotify put tx request with notify into tx send channel
 func (cm *ContractEngineClientManager) PutTxRequestWithNotify(
 	txRequest *protogo.DockerVMMessage,
 	chainId string,
@@ -120,6 +125,7 @@ func (cm *ContractEngineClientManager) PutTxRequestWithNotify(
 	return nil
 }
 
+// PutByteCodeResp put butecode resp into bytecode resp channel
 func (cm *ContractEngineClientManager) PutByteCodeResp(getByteCodeResp *protogo.DockerVMMessage) {
 	cm.byteCodeRespCh <- getByteCodeResp
 }
@@ -144,6 +150,7 @@ func (cm *ContractEngineClientManager) registerNotify(
 	return nil
 }
 
+// DeleteNotify delete notify
 func (cm *ContractEngineClientManager) DeleteNotify(chainId, txId string) bool {
 	cm.notifyLock.Lock()
 	defer cm.notifyLock.Unlock()
@@ -159,6 +166,7 @@ func (cm *ContractEngineClientManager) DeleteNotify(chainId, txId string) bool {
 	return false
 }
 
+// GetUniqueTxKey returns unique tx key
 func (cm *ContractEngineClientManager) GetUniqueTxKey(txId string) string {
 	var sb strings.Builder
 	nextCount := cm.count.Add(1)
@@ -168,40 +176,49 @@ func (cm *ContractEngineClientManager) GetUniqueTxKey(txId string) string {
 	return sb.String()
 }
 
+// NeedSendContractByteCode judge whether need to send contract bytecode
 func (cm *ContractEngineClientManager) NeedSendContractByteCode() bool {
 	return !cm.config.DockerVMUDSOpen
 }
 
+// HasActiveConnections returns the alive client map length
 func (cm *ContractEngineClientManager) HasActiveConnections() bool {
 	return len(cm.aliveClientMap) > 0
 }
 
+// GetVMConfig returns vm config
 func (cm *ContractEngineClientManager) GetVMConfig() *config.DockerVMConfig {
 	return cm.config
 }
 
+// GetTxSendChLen returns tx send chan length
 func (cm *ContractEngineClientManager) GetTxSendChLen() int {
 	return len(cm.txSendCh)
 }
 
+// GetByteCodeRespChLen returns bytecode resp chan length
 func (cm *ContractEngineClientManager) GetByteCodeRespChLen() int {
 	return len(cm.byteCodeRespCh)
 }
 
 // === forClient ===
 
+// GetTxSendCh returns tx send channel
 func (cm *ContractEngineClientManager) GetTxSendCh() chan *protogo.DockerVMMessage {
 	return cm.txSendCh
 }
 
+// PutEvent put event into event channel
 func (cm *ContractEngineClientManager) PutEvent(event *interfaces.Event) {
 	cm.eventCh <- event
 }
 
+// GetByteCodeRespSendCh returns bytecode resp send ch
 func (cm *ContractEngineClientManager) GetByteCodeRespSendCh() chan *protogo.DockerVMMessage {
 	return cm.byteCodeRespCh
 }
 
+// GetReceiveNotify returns receive notify
 func (cm *ContractEngineClientManager) GetReceiveNotify(chainId, txId string) func(msg *protogo.DockerVMMessage) {
 	cm.notifyLock.RLock()
 	defer cm.notifyLock.RUnlock()

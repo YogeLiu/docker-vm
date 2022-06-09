@@ -25,6 +25,7 @@ var (
 	//runtimeServerStartOnce sync.Once
 )
 
+// RuntimeServer server for sandbox
 type RuntimeServer struct {
 	listener  net.Listener
 	rpcServer *grpc.Server
@@ -116,6 +117,7 @@ func (s *RuntimeServer) StartRuntimeServer(runtimeService *RuntimeService) error
 	return startErr
 }
 
+// StopRuntimeServer stops runtime server
 func (s *RuntimeServer) StopRuntimeServer() {
 	s.stopOnce.Do(func() {
 		s.logger.Info("stop runtime server")

@@ -5,17 +5,21 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 )
 
+//  EventType is the event type
 type EventType int
 
+// Event is the contract event
 type Event struct {
 	Id        uint64
 	EventType EventType
 }
 
 const (
+	// EventType_ConnectionStopped is connection stopped event type
 	EventType_ConnectionStopped EventType = iota
 )
 
+// ContractEngineClientMgr is the contract engine client manager
 type ContractEngineClientMgr interface {
 	forClient
 	forRuntimeInstance

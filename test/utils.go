@@ -1,8 +1,10 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package test
 
 import (
@@ -41,8 +43,10 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	//ContractNameTest    = "contract_test05"
-	ContractNameTest    = "contract_test08"
+	// ContractNameTest is test contract name
+	ContractNameTest = "contract_test08"
+
+	// ContractVersionTest is test contract version
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"
@@ -331,6 +335,7 @@ func makeStringKeyMap() (map[string]*common.TxWrite, []*store.KV) {
 	return stringKeyMap, kvs
 }
 
+// TxIds is a list of tx ids
 var TxIds = []string{
 	uuid.Generate().String(),
 	uuid.Generate().String(),
@@ -803,86 +808,107 @@ func callContract(
 	return runtimeContractResult, specialTxType, code
 }
 
-// ===============
-//GoLogger is a golang system log implementation of protocol.Logger, it's for unit test
+// GoLogger is a golang system log implementation of protocol.Logger, it's for unit test
 type GoLogger struct{}
 
+// Debug is the debug log
 func (GoLogger) Debug(args ...interface{}) {
 	log.Printf("DEBUG: %v", args)
 }
 
+// Debugf is the debugf log
 func (GoLogger) Debugf(format string, args ...interface{}) {
 	log.Printf("DEBUG: "+format, args...)
 }
 
+// Debugw is the debugw log
 func (GoLogger) Debugw(msg string, keysAndValues ...interface{}) {
 	log.Printf("DEBUG: "+msg+" %v", keysAndValues...)
 }
 
+// Error is the error log
 func (GoLogger) Error(args ...interface{}) {
 	log.Printf("ERROR: %v", args)
 }
 
+// Errorf is the errorf log
 func (GoLogger) Errorf(format string, args ...interface{}) {
 	str := fmt.Sprintf(format, args...)
 	log.Printf("ERROR: " + str + "")
 }
 
+// Errorw is the errorw log
 func (GoLogger) Errorw(msg string, keysAndValues ...interface{}) {
 	log.Printf("ERROR: "+msg+" %v", keysAndValues...)
 }
 
+// Fatal is the fatal log
 func (GoLogger) Fatal(args ...interface{}) {
 	log.Fatal(args...)
 }
 
+// Fatalf is the fatalf log
 func (GoLogger) Fatalf(format string, args ...interface{}) {
 	//log.Fatalf(format, args...)
 }
 
+// Fatalw is the fatalw log
 func (GoLogger) Fatalw(msg string, keysAndValues ...interface{}) {
 	//log.Fatalf(msg+" %v", keysAndValues...)
 }
 
+// Info is the info log
 func (GoLogger) Info(args ...interface{}) {
 	//log.Printf("INFO: %v", args)
 }
 
+// Infof is the infof log
 func (GoLogger) Infof(format string, args ...interface{}) {
 	//log.Printf("INFO: "+format, args...)
 }
 
+// Infow is the infow log
 func (GoLogger) Infow(msg string, keysAndValues ...interface{}) {
 	//log.Printf("INFO: "+msg+" %v", keysAndValues...)
 }
 
+// Panic is the panic log
 func (GoLogger) Panic(args ...interface{}) {
 	log.Panic(args...)
 }
 
+// Panicf is the panicf log
 func (GoLogger) Panicf(format string, args ...interface{}) {
 	log.Panicf(format, args...)
 }
 
+// Panicw is the panicw log
 func (GoLogger) Panicw(msg string, keysAndValues ...interface{}) {
 	log.Panicf(msg+" %v", keysAndValues...)
 }
 
+// Warn is the warn log
 func (GoLogger) Warn(args ...interface{}) {
 	log.Printf("WARN: %v", args)
 }
 
+// Warnf is the warnf log
 func (GoLogger) Warnf(format string, args ...interface{}) {
 	str := fmt.Sprintf(format, args...)
 	log.Printf("WARN: " + str + "")
 }
 
+// Warnw is the warn log
 func (GoLogger) Warnw(msg string, keysAndValues ...interface{}) {
 	log.Printf("WARN: "+msg+" %v", keysAndValues...)
 }
+
+// DebugDynamic is the dynamic debug log
 func (GoLogger) DebugDynamic(l func() string) {
 	log.Print("DEBUG:", l())
 }
+
+// InfoDynamic is the dynamic info log
 func (GoLogger) InfoDynamic(l func() string) {
 	log.Print("INFO:", l())
 }

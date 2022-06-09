@@ -20,6 +20,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+// InstancesManager manager all sandbox instances
 type InstancesManager struct {
 	chainId               string
 	mgrLogger             protocol.Logger
@@ -78,6 +79,7 @@ func NewInstancesManager(chainId string, logger protocol.Logger, vmConfig map[st
 	return newDockerManager
 }
 
+// NewRuntimeInstance returns new runtime instance
 func (m *InstancesManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method,
 	codePath string, contract *commonPb.Contract,
 	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {

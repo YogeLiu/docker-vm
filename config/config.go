@@ -1,37 +1,41 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package config
 
 import "time"
 
 // DockerVMConfig match vm settings in chain maker yml
 type DockerVMConfig struct {
-	EnableDockerVM    bool   `mapstructure:"enable_dockervm"`
-	DockerVMMountPath string `mapstructure:"dockervm_mount_path"`
-	DockerVMLogPath   string `mapstructure:"dockervm_log_path"`
+	EnableDockerVM    bool   `mapstructure:"enable_dockervm"`     // enable docker go virtual machine
+	DockerVMMountPath string `mapstructure:"dockervm_mount_path"` // mount point in chainmaker
+	DockerVMLogPath   string `mapstructure:"dockervm_log_path"`   // log point in chainmaker
 
+	// unix domain socket open, used for chainmaker and docker manager communication
 	DockerVMUDSOpen bool `mapstructure:"uds_open"`
 
-	MaxConnection uint32 `mapstructure:"max_connection"`
+	MaxConnection uint32 `mapstructure:"max_connection"` // max client connection
 	// uds_open true
 	// 可自定义交易执行超时时间，但是tx_scheduler_timeout是否有冲突，保留配置，但不启用
 	TxTimeLimit uint32 `mapstructure:"time_limit"`
 
-	MaxConcurrency      uint32 `mapstructure:"max_concurrency"`
-	MaxSendMsgSize      uint32 `mapstructure:"max_send_msg_size"`
-	MaxRecvMsgSize      uint32 `mapstructure:"max_recv_msg_size"`
-	EnablePprof         bool   `mapstructure:"enable_pprof"`
-	DockerVMPprofPort   uint32 `mapstructure:"docker_vm_pprof_port"`
-	SandBoxPprofPort    uint32 `mapstructure:"sandbox_pprof_port"`
-	MaxLocalContractNum uint32 `mapstructure:"max_local_contract_num"`
+	MaxConcurrency      uint32 `mapstructure:"max_concurrency"`        // max process num
+	MaxSendMsgSize      uint32 `mapstructure:"max_send_msg_size"`      // grpc max send message size, Unit: MB
+	MaxRecvMsgSize      uint32 `mapstructure:"max_recv_msg_size"`      // grpc max recv message size, Unit: MB
+	EnablePprof         bool   `mapstructure:"enable_pprof"`           // enable pprof
+	DockerVMPprofPort   uint32 `mapstructure:"docker_vm_pprof_port"`   // contract engine pprof
+	SandBoxPprofPort    uint32 `mapstructure:"sandbox_pprof_port"`     // sandbox pprof port
+	MaxLocalContractNum uint32 `mapstructure:"max_local_contract_num"` // max local contract num
 	// uds_open false， tcp
-	RuntimeServer  RuntimeServerConfig  `mapstructure:"runtime_server"`
-	ContractEngine ContractEngineConfig `mapstructure:"contract_engine"`
+	RuntimeServer  RuntimeServerConfig  `mapstructure:"runtime_server"`  // runtime server
+	ContractEngine ContractEngineConfig `mapstructure:"contract_engine"` // contract engine
 }
 
+// RuntimeServerConfig is the runtime server config
 type RuntimeServerConfig struct {
 	Host           string `mapstructure:"host"`
 	Port           int    `mapstructure:"port"`
@@ -40,6 +44,7 @@ type RuntimeServerConfig struct {
 	MaxRecvMsgSize uint64 `mapstructure:"max_recv_msg_size"`
 }
 
+// ContractEngineConfig is the contract engine config
 type ContractEngineConfig struct {
 	Host           string `mapstructure:"host"`
 	Port           int    `mapstructure:"port"`
@@ -55,54 +60,68 @@ type DockerContainerConfig struct {
 	HostLogDir   string
 }
 
+// Bool is the int32 type of bool
 type Bool int32
 
 const (
-	ENV_ENABLE_UDS             = "ENV_ENABLE_UDS"
-	ENV_USER_NUM               = "ENV_USER_NUM"
-	ENV_TX_TIME_LIMIT          = "ENV_TX_TIME_LIMIT"
-	ENV_LOG_LEVEL              = "ENV_LOG_LEVEL"
-	ENV_LOG_IN_CONSOLE         = "ENV_LOG_IN_CONSOLE"
-	ENV_MAX_CONCURRENCY        = "ENV_MAX_CONCURRENCY"
-	ENV_ENABLE_PPROF           = "ENV_ENABLE_PPROF"
-	ENV_PPROF_PORT             = "ENV_PPROF_PORT"
-	ENV_MAX_SEND_MSG_SIZE      = "ENV_MAX_SEND_MSG_SIZE"
-	ENV_MAX_RECV_MSG_SIZE      = "ENV_MAX_RECV_MSG_SIZE"
-	ENV_MAX_LOCAL_CONTRACT_NUM = "ENV_MAX_LOCAL_CONTRACT_NUM"
+	//ENV_ENABLE_UDS             = "ENV_ENABLE_UDS"
+	//ENV_USER_NUM               = "ENV_USER_NUM"
+	//ENV_TX_TIME_LIMIT          = "ENV_TX_TIME_LIMIT"
+	//ENV_LOG_LEVEL              = "ENV_LOG_LEVEL"
+	//ENV_LOG_IN_CONSOLE         = "ENV_LOG_IN_CONSOLE"
+	//ENV_MAX_CONCURRENCY        = "ENV_MAX_CONCURRENCY"
+	//ENV_ENABLE_PPROF           = "ENV_ENABLE_PPROF"
+	//ENV_PPROF_PORT             = "ENV_PPROF_PORT"
+	//ENV_MAX_SEND_MSG_SIZE      = "ENV_MAX_SEND_MSG_SIZE"
+	//ENV_MAX_RECV_MSG_SIZE      = "ENV_MAX_RECV_MSG_SIZE"
+	//ENV_MAX_LOCAL_CONTRACT_NUM = "ENV_MAX_LOCAL_CONTRACT_NUM"
 
-	// Default configs
-	DefaultMaxSendSize         = 4
-	DefaultMaxRecvSize         = 4
-	DefaultTxTimeLimit         = 5
-	DefaultMaxConcurrency      = 50
-	DefaultMaxLocalContractNum = 1024
+	// DefaultMaxSendSize is the default max send size
+	DefaultMaxSendSize = 4
+	// DefaultMaxRecvSize is the default max recv size
+	DefaultMaxRecvSize = 4
+	//DefaultTxTimeLimit         = 5
+	//DefaultMaxConcurrency      = 50
+	//DefaultMaxLocalContractNum = 1024
 
 	// ContractsDir dir save executable contract
 	ContractsDir = "contracts"
 	// SockDir dir save domain socket file
 	SockDir = "contract-engine-sock"
-	// SockName domain socket file name
-	EngineSockName  = "chain.sock"
-	DockerConfigDir = "config"
-	RuntimeSockName = "runtime.sock"
-	RuntimeSockDir  = "runtime-sock"
+	// EngineSockName domain socket file name
+	EngineSockName = "chain.sock"
 
+	//DockerConfigDir = "config"
+
+	// RuntimeSockName is the runtime sock name
+	RuntimeSockName = "runtime.sock"
+	// RuntimeSockDir is the runtime sock dir
+	RuntimeSockDir = "runtime-sock"
+
+	// TestPort for contract engine
 	TestPort = "22356"
 
-	// stateKvIterator method
-	FuncKvIteratorCreate    = "createKvIterator"
+	// FuncKvIteratorCreate create kv iter
+	FuncKvIteratorCreate = "createKvIterator"
+	// FuncKvPreIteratorCreate create pre kv iter
 	FuncKvPreIteratorCreate = "createKvPreIterator"
-	FuncKvIteratorHasNext   = "kvIteratorHasNext"
-	FuncKvIteratorNext      = "kvIteratorNext"
-	FuncKvIteratorClose     = "kvIteratorClose"
+	// FuncKvIteratorHasNext judge kv iter has next
+	FuncKvIteratorHasNext = "kvIteratorHasNext"
+	// FuncKvIteratorNext get kv iter next
+	FuncKvIteratorNext = "kvIteratorNext"
+	// FuncKvIteratorClose close kv iter
+	FuncKvIteratorClose = "kvIteratorClose"
 
-	// keyHistoryKvIterator method
+	// FuncKeyHistoryIterHasNext judge history kv iter has next
 	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
-	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
-	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
+	// FuncKeyHistoryIterNext get history kv iter next
+	FuncKeyHistoryIterNext = "keyHistoryIterNext"
+	// FuncKeyHistoryIterClose close kv iter
+	FuncKeyHistoryIterClose = "keyHistoryIterClose"
 
-	// int32 representation of bool
-	BoolTrue  Bool = 1
+	// BoolTrue is the int32 representation of true
+	BoolTrue Bool = 1
+	// BoolFalse is the int32 representation of false
 	BoolFalse Bool = 0
 
 	// ServerMinInterval server min interval
@@ -112,35 +131,59 @@ const (
 )
 
 const (
+	// KeyContractFullName is the key contract full name
 	KeyContractFullName = "KEY_CONTRACT_FULL_NAME"
-	KeySenderAddr       = "KEY_SENDER_ADDR"
+	// KeySenderAddr is the key sender addr
+	KeySenderAddr = "KEY_SENDER_ADDR"
 
+	// KeyCallContractResp is the key call contract resp
 	KeyCallContractResp = "KEY_CALL_CONTRACT_RESPONSE"
-	KeyCallContractReq  = "KEY_CALL_CONTRACT_REQUEST"
+	// KeyCallContractReq is the key call contract req
+	KeyCallContractReq = "KEY_CALL_CONTRACT_REQUEST"
 
-	KeyStateKey   = "KEY_STATE_KEY"
-	KeyUserKey    = "KEY_USER_KEY"
-	KeyUserField  = "KEY_USER_FIELD"
+	// KeyStateKey is the key state key
+	KeyStateKey = "KEY_STATE_KEY"
+	// KeyUserKey is the key user key
+	KeyUserKey = "KEY_USER_KEY"
+	// KeyUserField is the key user field
+	KeyUserField = "KEY_USER_FIELD"
+	// KeyStateValue is the key state value
 	KeyStateValue = "KEY_STATE_VALUE"
 
+	// KeyKVIterKey is the KV iter key
 	KeyKVIterKey = "KEY_KV_ITERATOR_KEY"
+	// KeyIterIndex is the key iter index
 	KeyIterIndex = "KEY_KV_ITERATOR_INDEX"
 
-	KeyHistoryIterKey   = "KEY_HISTORY_ITERATOR_KEY"
+	// KeyHistoryIterKey is the key history iter key
+	KeyHistoryIterKey = "KEY_HISTORY_ITERATOR_KEY"
+	// KeyHistoryIterField is the key history iter field
 	KeyHistoryIterField = "KEY_HISTORY_ITERATOR_FIELD"
 	//KeyHistoryIterIndex = "KEY_HISTORY_ITERATOR_INDEX"
 
-	KeyContractName     = "KEY_CONTRACT_NAME"
+	// KeyContractName is the key contract name
+	KeyContractName = "KEY_CONTRACT_NAME"
+	// KeyIteratorFuncName is the key iter func name
 	KeyIteratorFuncName = "KEY_ITERATOR_FUNC_NAME"
-	KeyIterStartKey     = "KEY_ITERATOR_START_KEY"
-	KeyIterStartField   = "KEY_ITERATOR_START_FIELD"
-	KeyIterLimitKey     = "KEY_ITERATOR_LIMIT_KEY"
-	KeyIterLimitField   = "KEY_ITERATOR_LIMIT_FIELD"
-	KeyWriteMap         = "KEY_WRITE_MAP"
-	KeyIteratorHasNext  = "KEY_ITERATOR_HAS_NEXT"
+	// KeyIterStartKey is the key iter start key
+	KeyIterStartKey = "KEY_ITERATOR_START_KEY"
+	// KeyIterStartField is the key iter start field
+	KeyIterStartField = "KEY_ITERATOR_START_FIELD"
+	// KeyIterLimitKey is the key iter limit key
+	KeyIterLimitKey = "KEY_ITERATOR_LIMIT_KEY"
+	// KeyIterLimitField is the key limit field
+	KeyIterLimitField = "KEY_ITERATOR_LIMIT_FIELD"
+	// KeyWriteMap is the key write map
+	KeyWriteMap = "KEY_WRITE_MAP"
+	// KeyIteratorHasNext is the key iter has next
+	KeyIteratorHasNext = "KEY_ITERATOR_HAS_NEXT"
 
-	KeyTxId        = "KEY_TX_ID"
+	// KeyTxId is key tx id
+	KeyTxId = "KEY_TX_ID"
+	// KeyBlockHeight is key block height
 	KeyBlockHeight = "KEY_BLOCK_HEIGHT"
-	KeyIsDelete    = "KEY_IS_DELETE"
-	KeyTimestamp   = "KEY_TIMESTAMP"
+	// KeyIsDelete judge key deleted
+	KeyIsDelete = "KEY_IS_DELETE"
+	// KeyTimestamp is key timestamp
+	KeyTimestamp = "KEY_TIMESTAMP"
 )

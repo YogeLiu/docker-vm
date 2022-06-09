@@ -18,6 +18,7 @@ var (
 	runtimeServiceInstance *RuntimeService
 )
 
+// RuntimeService is the sandbox - chainmaker service
 type RuntimeService struct {
 	streamCounter atomic.Uint64
 	chainId       string
@@ -29,6 +30,7 @@ type RuntimeService struct {
 	responseChanMap sync.Map
 }
 
+// NewRuntimeService returns runtime service
 func NewRuntimeService(chainId string, logger protocol.Logger) *RuntimeService {
 	runtimeServiceOnce.Do(func() {
 		runtimeServiceInstance = &RuntimeService{
@@ -95,6 +97,7 @@ func (ss *serviceStream) putResp(msg *protogo.DockerVMMessage) {
 	ss.sendResponseCh <- msg
 }
 
+// DockerVMCommunicate is the runtime docker vm communicate stream
 func (s *RuntimeService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	ss := &serviceStream{
 		logger:         s.logger,
@@ -192,6 +195,7 @@ func (s *RuntimeService) sendRoutine(ss *serviceStream) {
 	}
 }
 
+// RegisterSandboxMsgNotify register sandbox msg notify
 func (s *RuntimeService) RegisterSandboxMsgNotify(chainId, txKey string,
 	respNotify func(msg *protogo.DockerVMMessage, sendF func(*protogo.DockerVMMessage))) error {
 	s.lock.Lock()
@@ -218,6 +222,7 @@ func (s *RuntimeService) getNotify(
 	return s.sandboxMsgNotify[notifyKey]
 }
 
+// DeleteSandboxMsgNotify delete sandbox msg notify
 func (s *RuntimeService) DeleteSandboxMsgNotify(chainId, txId string) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
