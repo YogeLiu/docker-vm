@@ -176,6 +176,12 @@ func (c *conf) setEnv() {
 		timeout, _ := strconv.ParseInt(connectionTimeout, 10, 64)
 		c.RPC.ConnectionTimeout = time.Duration(timeout) * time.Second
 	}
+	if contractEngineLogLevel, ok := os.LookupEnv("DOCKERVM_CONTRACT_ENGINE_LOG_LEVEL"); ok {
+		c.Log.ContractEngineLog.Level = contractEngineLogLevel
+	}
+	if sandboxLogLevel, ok := os.LookupEnv("DOCKERVM_SANDBOX_LOG_LEVEL"); ok {
+		c.Log.SandboxLog.Level = sandboxLogLevel
+	}
 }
 
 func (c *conf) restrainConfig() {
