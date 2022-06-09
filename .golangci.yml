@@ -1,21 +1,16 @@
-
 run:
   timeout: 10m
   tests: true
   # default is true. Enables skipping of directories:
   #   vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
   skip-dirs-use-default: true
-  skip-files:
-    - _mock.go
-#  skip-dirs:
-#    - p2p #from libp2p
+  #  skip-files:
+  skip-dirs:
+#    - test
 #    - mock #from gomock
 #    - protogo #from pb generate
 #    - sqldbprovider #will remove
 #    - eventsqldb
-#    - evm-go
-#    - gasm-go
-#    - wasmer-go
 linters:
   disable-all: true
   enable:
@@ -47,6 +42,10 @@ linters-settings:
     min-occurrences: 2
   gocyclo:
     min-complexity: 20
+  goimports:
+  #local-prefixes: git.code.oa.com
+  golint:
+  #min-confidence: 0
   govet:
     check-shadowing: true
   gosimple:
@@ -95,12 +94,11 @@ linters-settings:
 issues:
   exclude-use-default: true
   include:
+    - EXC0002 # golint (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
+    - EXC0003 # golint func name will be used as test\.Test.* by other packages, and that stutters; consider calling this
     - EXC0004 # govet (possible misuse of unsafe.Pointer|should have signature)
     - EXC0005 # staticcheck ineffective break statement. Did you mean to break out of the outer loop
-    - EXC0012 # revive exported (method|function|type|const) (.+) should have comment or be unexported
-    - EXC0013 # revive package comment should be of the form "(.+)...
-    - EXC0014 # revive comment on exported (.+) should be of the form "(.+)..."
-    - EXC0015 # revive should have a package comment, unless it's in another file for this package
+    - EXC0011 # stylecheck (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
 
   exclude-rules:
     - path: .*_test.go
@@ -120,12 +118,6 @@ issues:
     - linters:
         - errcheck
       text: "json.Unmarshal"
-    - linters:
-        - staticcheck
-      text: "github.com/golang/protobuf/proto"
-    - linters:
-        - gosec
-      text: "G108|G204|G501|G401"
   max-same-issues: 0
   new: false
   max-issues-per-linter: 0

@@ -1,5 +1,4 @@
 // nolint:unused, structcheck
-
 package test
 
 import (
