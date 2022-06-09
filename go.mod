@@ -3,12 +3,13 @@ module chainmaker.org/chainmaker/vm-docker-go/v2
 go 1.16
 
 require (
-	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220607063940-ded004f7fce5
-	chainmaker.org/chainmaker/localconf/v2 v2.2.2-0.20220607072324-27d0d63f7b41
-	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220607063430-b037daa0847d
-	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220607065007-b25caf2d737e
-	chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220607065108-d755d04a537f
-	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220607094042-3ca5fa0b052d
+	chainmaker.org/chainmaker/chainconf/v2 v2.2.3-0.20220607072052-653ff1f72ed5 // indirect
+	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220608022037-9f3c18096b4c
+	chainmaker.org/chainmaker/localconf/v2 v2.2.2-0.20220607115425-03689a750027
+	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220608020957-f7bc44fe4a25
+	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220609092114-902f3e0e4172
+	chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220609072455-9955e07a6793
+	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220609102818-1ddd0b870804
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
@@ -20,3 +21,5 @@ require (
 	go.uber.org/atomic v1.7.0
 	google.golang.org/grpc v1.41.0
 )
+
+replace github.com/linvon/cuckoo-filter => chainmaker.org/third_party/cuckoo-filter v0.0.0-20220601084543-8591df469f8f
