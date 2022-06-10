@@ -531,8 +531,12 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
 
+		var txId string
+		if p.Tx != nil {
+			txId = p.Tx.TxId
+		}
 		// return error resp to chainmaker
-		p.returnTxErrorResp(p.Tx.TxId, existErr.err.Error())
+		p.returnTxErrorResp(txId, existErr.err.Error())
 
 		// notify process manager to remove process cache
 		p.logger.Debugf("start to release process")
