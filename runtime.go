@@ -39,7 +39,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 
-	pb "chainmaker.org/chainmaker/pb-go/v2/vm"
+	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -1343,11 +1343,11 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, bool) {
 	var err error
 	var payload []byte
-	var getKeys []*pb.BatchKey
+	var getKeys []*vmPb.BatchKey
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BATCH_STATE_RESPONSE)
 
-	keys := &pb.BatchKeys{}
+	keys := &vmPb.BatchKeys{}
 	if err = keys.Unmarshal(recvMsg.Payload); err != nil {
 		response.Message = err.Error()
 		return response, false
@@ -1360,7 +1360,7 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 	}
 
 	r.Log.Debugf("get batch keys values: %v", getKeys)
-	resp := pb.BatchKeys{Keys: getKeys}
+	resp := vmPb.BatchKeys{Keys: getKeys}
 	payload, err = resp.Marshal()
 	if err != nil {
 		response.Message = err.Error()

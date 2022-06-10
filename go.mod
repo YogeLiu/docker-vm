@@ -6,8 +6,8 @@ require (
 	chainmaker.org/chainmaker/common/v2 v2.2.1
 	chainmaker.org/chainmaker/localconf/v2 v2.2.1
 	chainmaker.org/chainmaker/logger/v2 v2.2.1
-	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220610071700-48769fb5638b
-	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220610083457-32c093508ba0
+	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220610095114-b0b5651e2cf2
+	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220610100315-a9a82c93e919
 	chainmaker.org/chainmaker/utils/v2 v2.2.2
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
