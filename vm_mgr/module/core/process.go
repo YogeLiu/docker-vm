@@ -686,7 +686,7 @@ func (p *Process) returnTxErrorResp(txId string, errMsg string) {
 			Message: errMsg,
 		},
 	}
-	p.logger.Errorf("return back error result for tx [%s]", p.Tx.TxId)
+	p.logger.Errorf("return back error result for tx [%s]", txId)
 	_ = p.requestScheduler.PutMsg(errResp)
 }
 
@@ -754,7 +754,11 @@ func (p *Process) popTimer() {
 
 // stopTimer stop timer
 func (p *Process) stopTimer() {
-	p.logger.Debugf("stop tx timer for tx [%s]", p.Tx.TxId)
+	var txId string
+	if p.Tx != nil {
+		txId = p.Tx.TxId
+	}
+	p.logger.Debugf("stop tx timer for tx [%s]", txId)
 	if !p.timer.Stop() && len(p.timer.C) > 0 {
 		<-p.timer.C
 	}
