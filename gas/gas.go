@@ -16,43 +16,42 @@ import (
 )
 
 const (
-	// function list gas price
-	GetArgsGasPrice               uint64 = 1
-	GetStateGasPrice              uint64 = 1
-	PutStateGasPrice              uint64 = 10
-	DelStateGasPrice              uint64 = 10
-	GetCreatorOrgIdGasPrice       uint64 = 1
-	GetCreatorRoleGasPrice        uint64 = 1
-	GetCreatorPkGasPrice          uint64 = 1
-	GetSenderOrgIdGasPrice        uint64 = 1
-	GetSenderRoleGasPrice         uint64 = 1
-	GetSenderPkGasPrice           uint64 = 1
-	GetBlockHeightGasPrice        uint64 = 1
-	GetTxIdGasPrice               uint64 = 1
-	GetTimeStampPrice             uint64 = 1
-	EmitEventGasPrice             uint64 = 5
-	LogGasPrice                   uint64 = 5
-	KvIteratorCreateGasPrice      uint64 = 1
-	KvPreIteratorCreateGasPrice   uint64 = 1
-	KvIteratorHasNextGasPrice     uint64 = 1
-	KvIteratorNextGasPrice        uint64 = 1
-	KvIteratorCloseGasPrice       uint64 = 1
-	KeyHistoryIterCreateGasPrice  uint64 = 1
-	KeyHistoryIterHasNextGasPrice uint64 = 1
-	KeyHistoryIterNextGasPrice    uint64 = 1
-	KeyHistoryIterCloseGasPrice   uint64 = 1
-	GetSenderAddressGasPrice      uint64 = 1
+	GetArgsGasPrice               uint64 = 1  // GetArgsGasPrice
+	GetStateGasPrice              uint64 = 1  // GetStateGasPrice
+	PutStateGasPrice              uint64 = 10 // PutStateGasPrice
+	DelStateGasPrice              uint64 = 10 // DelStateGasPrice
+	GetCreatorOrgIdGasPrice       uint64 = 1  // GetCreatorOrgIdGasPrice
+	GetCreatorRoleGasPrice        uint64 = 1  // GetCreatorRoleGasPrice
+	GetCreatorPkGasPrice          uint64 = 1  // GetCreatorPkGasPrice
+	GetSenderOrgIdGasPrice        uint64 = 1  //GetSenderOrgIdGasPrice
+	GetSenderRoleGasPrice         uint64 = 1  //GetSenderRoleGasPrice
+	GetSenderPkGasPrice           uint64 = 1  //GetSenderPkGasPrice
+	GetBlockHeightGasPrice        uint64 = 1  //GetBlockHeightGasPrice
+	GetTxIdGasPrice               uint64 = 1  //GetTxIdGasPrice
+	GetTimeStampPrice             uint64 = 1  //GetTimeStampPrice
+	EmitEventGasPrice             uint64 = 5  //EmitEventGasPrice
+	LogGasPrice                   uint64 = 5  //LogGasPrice
+	KvIteratorCreateGasPrice      uint64 = 1  //KvIteratorCreateGasPrice
+	KvPreIteratorCreateGasPrice   uint64 = 1  //KvPreIteratorCreateGasPrice
+	KvIteratorHasNextGasPrice     uint64 = 1  //KvIteratorHasNextGasPrice
+	KvIteratorNextGasPrice        uint64 = 1  //KvIteratorNextGasPrice
+	KvIteratorCloseGasPrice       uint64 = 1  //KvIteratorCloseGasPrice
+	KeyHistoryIterCreateGasPrice  uint64 = 1  //KeyHistoryIterCreateGasPrice
+	KeyHistoryIterHasNextGasPrice uint64 = 1  //KeyHistoryIterHasNextGasPrice
+	KeyHistoryIterNextGasPrice    uint64 = 1  //KeyHistoryIterNextGasPrice
+	KeyHistoryIterCloseGasPrice   uint64 = 1  //KeyHistoryIterCloseGasPrice
+	GetSenderAddressGasPrice      uint64 = 1  //GetSenderAddressGasPrice
 
 	// special parameters passed to contract
-	ContractParamCreatorOrgId = "__creator_org_id__"
-	ContractParamCreatorRole  = "__creator_role__"
-	ContractParamCreatorPk    = "__creator_pk__"
-	ContractParamSenderOrgId  = "__sender_org_id__"
-	ContractParamSenderRole   = "__sender_role__"
-	ContractParamSenderPk     = "__sender_pk__"
-	ContractParamBlockHeight  = "__block_height__"
-	ContractParamTxId         = "__tx_id__"
-	ContractParamTxTimeStamp  = "__tx_time_stamp__"
+	ContractParamCreatorOrgId = "__creator_org_id__" //ContractParamCreatorOrgId
+	ContractParamCreatorRole  = "__creator_role__"   //ContractParamCreatorRole
+	ContractParamCreatorPk    = "__creator_pk__"     //ContractParamCreatorPk
+	ContractParamSenderOrgId  = "__sender_org_id__"  //ContractParamSenderOrgId
+	ContractParamSenderRole   = "__sender_role__"    //ContractParamSenderRole
+	ContractParamSenderPk     = "__sender_pk__"      //ContractParamSenderPk
+	ContractParamBlockHeight  = "__block_height__"   //ContractParamBlockHeight
+	ContractParamTxId         = "__tx_id__"          //ContractParamTxId
+	ContractParamTxTimeStamp  = "__tx_time_stamp__"  //ContractParamTxTimeStamp
 
 	// method
 	initContract    = "init_contract"
@@ -65,6 +64,7 @@ const (
 	initFuncGas uint64 = 1250
 )
 
+// GetArgsGasUsed returns get args gas used
 func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
 	argsBytes, err := json.Marshal(args)
 	if err != nil {
@@ -77,6 +77,7 @@ func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
 	return gasUsed, nil
 }
 
+// GetSenderAddressGasUsed returns get sender address gas used
 func GetSenderAddressGasUsed(gasUsed uint64) (uint64, error) {
 	gasUsed += 10 * GetSenderAddressGasPrice
 	if CheckGasLimit(gasUsed) {
@@ -85,6 +86,7 @@ func GetSenderAddressGasUsed(gasUsed uint64) (uint64, error) {
 	return gasUsed, nil
 }
 
+// CreateKeyHistoryIterGasUsed returns create key history iter gas used
 func CreateKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
 	gasUsed += 10 * KeyHistoryIterCreateGasPrice
 	if CheckGasLimit(gasUsed) {
@@ -93,6 +95,7 @@ func CreateKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
 	return gasUsed, nil
 }
 
+// ConsumeKeyHistoryIterGasUsed returns consume key history iter gas used
 func ConsumeKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
 	gasUsed += 10 * KeyHistoryIterHasNextGasPrice
 	if CheckGasLimit(gasUsed) {
@@ -101,6 +104,7 @@ func ConsumeKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
 	return gasUsed, nil
 }
 
+// CreateKvIteratorGasUsed create kv iter gas used
 func CreateKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
 	gasUsed += 10 * KvIteratorCreateGasPrice
 	if CheckGasLimit(gasUsed) {
@@ -109,6 +113,7 @@ func CreateKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
 	return gasUsed, nil
 }
 
+// ConsumeKvIteratorGasUsed returns kv iter gas used
 func ConsumeKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
 	gasUsed += 10 * KvIteratorNextGasPrice
 	if CheckGasLimit(gasUsed) {
@@ -118,6 +123,7 @@ func ConsumeKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
 	return gasUsed, nil
 }
 
+// GetStateGasUsed returns get state gas used
 func GetStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
 	gasUsed += uint64(len(value)) * GetStateGasPrice
 	if CheckGasLimit(gasUsed) {
@@ -126,6 +132,7 @@ func GetStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
 	return gasUsed, nil
 }
 
+// PutStateGasUsed returns put state gas used
 func PutStateGasUsed(gasUsed uint64, contractName, key, field string, value []byte) (uint64, error) {
 	gasUsed += (uint64(len(value)) + uint64(len([]byte(contractName+key+field)))) * PutStateGasPrice
 	if CheckGasLimit(gasUsed) {
@@ -134,6 +141,7 @@ func PutStateGasUsed(gasUsed uint64, contractName, key, field string, value []by
 	return gasUsed, nil
 }
 
+// DelStateGasUsed returns del state gas used
 func DelStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
 	gasUsed += uint64(len(value)) * DelStateGasPrice
 	if CheckGasLimit(gasUsed) {
@@ -142,6 +150,7 @@ func DelStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
 	return gasUsed, nil
 }
 
+// EmitEventGasUsed returns emit event gas used
 func EmitEventGasUsed(gasUsed uint64, contractEvent *common.ContractEvent) (uint64, error) {
 	contractEventBytes, err := json.Marshal(contractEvent)
 	if err != nil {
@@ -155,6 +164,7 @@ func EmitEventGasUsed(gasUsed uint64, contractEvent *common.ContractEvent) (uint
 	return gasUsed, nil
 }
 
+// InitFuncGasUsed returns init func gas used
 func InitFuncGasUsed(gasUsed, configDefaultGas uint64) (uint64, error) {
 	gasUsed = getInitFuncGasUsed(gasUsed, configDefaultGas)
 	if CheckGasLimit(gasUsed) {
@@ -165,6 +175,7 @@ func InitFuncGasUsed(gasUsed, configDefaultGas uint64) (uint64, error) {
 
 }
 
+// InitFuncGasUsedOld returns old init func gas used
 func InitFuncGasUsedOld(gasUsed uint64, parameters map[string][]byte, keys ...string) (uint64, error) {
 	if !checkKeys(parameters, keys...) {
 		return 0, errors.New("check init key exist")
@@ -202,6 +213,7 @@ func checkKeys(args map[string][]byte, keys ...string) bool {
 	return true
 }
 
+// ContractGasUsed returns contract gas used
 func ContractGasUsed(gasUsed uint64, method string, contractName string, byteCode []byte) (uint64, error) {
 	if method == initContract {
 		gasUsed += (uint64(len([]byte(contractName+utils.PrefixContractByteCode))) +
@@ -227,6 +239,7 @@ func getInitFuncGasUsed(gasUsed, configDefaultGas uint64) uint64 {
 
 }
 
+// CheckGasLimit judge gas limit enough
 func CheckGasLimit(gasUsed uint64) bool {
 	return gasUsed > protocol.GasLimit
 }

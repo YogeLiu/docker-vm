@@ -9,7 +9,10 @@ package utils
 import "errors"
 
 var (
-	ErrDuplicateTxId    = errors.New("duplicate txId")
-	ErrMissingByteCode  = errors.New("missing bytecode")
+	// ErrDuplicateTxId is the duplicate tx id err
+	ErrDuplicateTxId = errors.New("duplicate txId")
+	// ErrMissingByteCode is the missing bytecode err
+	ErrMissingByteCode = errors.New("missing bytecode")
+	// ErrClientReachLimit is the client limit err
 	ErrClientReachLimit = errors.New("clients reach limit")
 )

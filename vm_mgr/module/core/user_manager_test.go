@@ -8,163 +8,135 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"reflect"
-	"strconv"
-	"testing"
-
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
+	"reflect"
+	"testing"
 )
 
 func TestNewUsersManager(t *testing.T) {
-	userNumConfig := os.Getenv(config.ENV_USER_NUM)
-	userNum, err := strconv.Atoi(userNumConfig)
-	if err != nil {
-		userNum = 50
-	}
 
-	log := logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, config.DockerLogDir)
-	userQueue := utils.NewFixedFIFO(userNum)
-	usersManager := &UsersManager{
-		userQueue: userQueue,
-		logger:    log,
-		userNum:   userNum,
-	}
+	SetConfig()
 
 	tests := []struct {
 		name string
-		want *UsersManager
 	}{
 		{
-			name: "testNewUsersManager",
-			want: usersManager,
+			name: "TestNewUsersManager",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewUsersManager()
-			got.logger = log
-			got.userQueue = userQueue
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewUsersManager() = %v, want %v", got, tt.want)
-			}
+			_ = NewUsersManager()
 		})
 	}
 }
 
-func TestUsersManager_CreateNewUsers(t *testing.T) {
-	currentPath, _ := os.Getwd()
+func TestUserManager_BatchCreateUsers(t *testing.T) {
+
+	SetConfig()
+
+	config.DockerVMConfig.Process.MaxOriginalProcessNum = 1
+
+	mgr := NewUsersManager()
+
 	type fields struct {
-		userQueue *utils.FixedFIFO
-		logger    *zap.SugaredLogger
-		userNum   int
+		userManger *UserManager
 	}
-
-	userNumConfig := os.Getenv(config.ENV_USER_NUM)
-	userNum, err := strconv.Atoi(userNumConfig)
-	if err != nil {
-		userNum = 50
-	}
-
-	log := logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, currentPath)
-	userQueue := utils.NewFixedFIFO(userNum)
 	tests := []struct {
 		name    string
 		fields  fields
 		wantErr bool
 	}{
 		{
-			name: "testCreateNewUsers",
-			fields: fields{
-				userQueue: userQueue,
-				logger:    log,
-				userNum:   userNum,
-			},
+			name:    "TestUserManager_BatchCreateUsers",
+			fields:  fields{userManger: mgr},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &UsersManager{
-				userQueue: tt.fields.userQueue,
-				logger:    tt.fields.logger,
-				userNum:   tt.fields.userNum,
-			}
-			if err := u.CreateNewUsers(); (err != nil) != tt.wantErr {
-				t.Errorf("CreateNewUsers() error = %v, wantErr %v", err, tt.wantErr)
+			u := mgr
+			if err := u.BatchCreateUsers(); (err != nil) != tt.wantErr {
+				t.Errorf("BatchCreateUsers() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestUsersManager_FreeUser(t *testing.T) {
-	currentPath, _ := os.Getwd()
+func TestUserManager_FreeUser(t *testing.T) {
 
-	userNumConfig := os.Getenv(config.ENV_USER_NUM)
-	userNum, err := strconv.Atoi(userNumConfig)
-	if err != nil {
-		userNum = 50
-	}
+	SetConfig()
 
-	log := logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, currentPath)
-	userQueue := utils.NewFixedFIFO(userNum)
+	user := NewUser(10000)
 
 	type fields struct {
 		userQueue *utils.FixedFIFO
 		logger    *zap.SugaredLogger
 		userNum   int
 	}
-
-	type args struct {
-		user *security.User
-	}
 	tests := []struct {
 		name    string
 		fields  fields
-		args    args
+		want    interfaces.User
 		wantErr bool
 	}{
 		{
-			name: "testFreeUser",
+			name: "TestUserManager_FreeUser",
 			fields: fields{
-				userQueue: userQueue,
-				logger:    log,
-				userNum:   userNum,
+				userQueue: utils.NewFixedFIFO(config.DockerVMConfig.GetMaxUserNum()),
+				logger:    logger.NewTestDockerLogger(),
+				userNum:   config.DockerVMConfig.GetMaxUserNum(),
 			},
+			want:    user,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &UsersManager{
+			u := &UserManager{
 				userQueue: tt.fields.userQueue,
 				logger:    tt.fields.logger,
 				userNum:   tt.fields.userNum,
 			}
-			if err := u.FreeUser(tt.args.user); (err != nil) != tt.wantErr {
+			err := u.FreeUser(user)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("FreeUser() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			got, err := u.GetAvailableUser()
+			if err != nil {
+				t.Errorf(err.Error())
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FreeUser() got = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestUsersManager_GetAvailableUser(t *testing.T) {
+func TestUserManager_GetAvailableUser(t *testing.T) {
 
-	currentPath, _ := os.Getwd()
+	SetConfig()
 
-	userNumConfig := os.Getenv(config.ENV_USER_NUM)
-	userNum, err := strconv.Atoi(userNumConfig)
+	user1 := NewUser(10000)
+	user2 := NewUser(10001)
+
+	userQueue := utils.NewFixedFIFO(config.DockerVMConfig.GetMaxUserNum())
+	err := userQueue.Enqueue(user1)
 	if err != nil {
-		userNum = 50
+		t.Error(err.Error())
+		return
 	}
-
-	log := logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, currentPath)
-	userQueue := utils.NewFixedFIFO(userNum)
+	err = userQueue.Enqueue(user2)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
 
 	type fields struct {
 		userQueue *utils.FixedFIFO
@@ -174,158 +146,76 @@ func TestUsersManager_GetAvailableUser(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		want    *security.User
+		want    interfaces.User
 		wantErr bool
 	}{
 		{
-			name: "testGetAvailableUser",
+			name: "TestUserManager_GetAvailableUser1",
 			fields: fields{
 				userQueue: userQueue,
-				logger:    log,
-				userNum:   userNum,
+				logger:    logger.NewTestDockerLogger(),
+				userNum:   config.DockerVMConfig.GetMaxUserNum(),
 			},
-			want: &security.User{
-				Uid: userNum,
-				Gid: 0,
+			want:    user1,
+			wantErr: false,
+		},
+		{
+			name: "TestUserManager_GetAvailableUser2",
+			fields: fields{
+				userQueue: userQueue,
+				logger:    logger.NewTestDockerLogger(),
+				userNum:   config.DockerVMConfig.GetMaxUserNum(),
 			},
+			want:    user2,
+			wantErr: false,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &UsersManager{
+			u := &UserManager{
 				userQueue: tt.fields.userQueue,
 				logger:    tt.fields.logger,
 				userNum:   tt.fields.userNum,
 			}
-
-			go func() {
-				for {
-					_ = u.userQueue.Enqueue(&security.User{
-						Uid: userNum,
-					})
-				}
-			}()
-
 			got, err := u.GetAvailableUser()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetAvailableUser() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetAvailableUser() got = %v, want %v", got, tt.want)
+				t.Errorf("GetAvailableUser() got = %v, wantNum %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestUsersManager_constructNewUser(t *testing.T) {
-	userId := 666
-	userName := fmt.Sprintf("u-%d", userId)
-	sockPath := filepath.Join(config.DMSDir, config.DMSSockPath)
+func TestUserManager_ReleaseUsers(t *testing.T) {
 
-	currentPath, _ := os.Getwd()
-	userNumConfig := os.Getenv(config.ENV_USER_NUM)
-	userNum, err := strconv.Atoi(userNumConfig)
-	if err != nil {
-		userNum = 50
-	}
-	log := logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, currentPath)
-	userQueue := utils.NewFixedFIFO(userNum)
+	SetConfig()
+
+	config.DockerVMConfig.Process.MaxOriginalProcessNum = 1
+
+	mgr := NewUsersManager()
 
 	type fields struct {
-		userQueue *utils.FixedFIFO
-		logger    *zap.SugaredLogger
-		userNum   int
+		userManger *UserManager
 	}
-	type args struct {
-		userId int
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   *security.User
-	}{
-		{
-			name: "testconstructNewUser",
-			fields: fields{
-				userQueue: userQueue,
-				logger:    log,
-				userNum:   userNum,
-			},
-			args: args{userId: userId},
-			want: &security.User{
-				Uid:      userId,
-				Gid:      userId,
-				UserName: userName,
-				SockPath: sockPath,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			u := &UsersManager{
-				userQueue: tt.fields.userQueue,
-				logger:    tt.fields.logger,
-				userNum:   tt.fields.userNum,
-			}
-			if got := u.constructNewUser(tt.args.userId); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("constructNewUser() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestUsersManager_generateNewUser(t *testing.T) {
-	userId := 666
-	currentPath, _ := os.Getwd()
-	userNumConfig := os.Getenv(config.ENV_USER_NUM)
-	userNum, err := strconv.Atoi(userNumConfig)
-	if err != nil {
-		userNum = 50
-	}
-	log := logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, currentPath)
-	userQueue := utils.NewFixedFIFO(userNum)
-
-	type fields struct {
-		userQueue *utils.FixedFIFO
-		logger    *zap.SugaredLogger
-		userNum   int
-	}
-
-	type args struct {
-		newUserId int
-	}
-
 	tests := []struct {
 		name    string
 		fields  fields
-		args    args
 		wantErr bool
 	}{
 		{
-			name: "testGenerateNewUserBad",
-			fields: fields{
-				userQueue: userQueue,
-				logger:    log,
-				userNum:   userNum,
-			},
-			args:    args{newUserId: userId},
-			wantErr: true,
+			name:    "TestUserManager_ReleaseUsers",
+			fields:  fields{userManger: mgr},
+			wantErr: false,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &UsersManager{
-				userQueue: tt.fields.userQueue,
-				logger:    tt.fields.logger,
-				userNum:   tt.fields.userNum,
-			}
-
-			if err := u.generateNewUser(tt.args.newUserId); (err != nil) != tt.wantErr {
-				t.Errorf("generateNewUser() error = %v, wantErr %v", err, tt.wantErr)
+			u := tt.fields.userManger
+			if err := u.ReleaseUsers(); (err != nil) != tt.wantErr {
+				t.Errorf("ReleaseUsers() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

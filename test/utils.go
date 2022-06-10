@@ -1,31 +1,36 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package test
 
 import (
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
-
-	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
-	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
-
 	"chainmaker.org/chainmaker/common/v2/sortedmap"
 	"chainmaker.org/chainmaker/localconf/v2"
+	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
+	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/protocol/v2/mock"
+	"chainmaker.org/chainmaker/protocol/v2/test"
+	dockergo "chainmaker.org/chainmaker/vm-docker-go/v2"
+	"chainmaker.org/chainmaker/vm/v2"
 	"github.com/docker/distribution/uuid"
 	"github.com/golang/mock/gomock"
 	"github.com/spf13/cobra"
@@ -33,10 +38,15 @@ import (
 )
 
 const (
+	testVMLogName = "vm"
+
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_test04"
+	// ContractNameTest is test contract name
+	ContractNameTest = "contract_test08"
+
+	// ContractVersionTest is test contract version
 	ContractVersionTest = "v1.0.0"
 
 	constructKeySeparator = "#"
@@ -52,9 +62,8 @@ const (
 MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAESkwkzwN7DHoCfmNLmUpf280PqnGM
 6QU+P3X8uahlUjpgWv+Stfmeco9RqSTU8Y1YGcQvm2Jr327qkRlG7+dELQ==
 -----END PUBLIC KEY-----`
-	zxlPKAddress    = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
-	cmPKAddress2201 = "438537700181274713695763857518314651542142438174"
-	cmPKAddress2220 = "4cd0b5e8f6d6df38ecdc06c7431a48dd0265cb1e"
+	zxlPKAddress = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
+	cmPKAddress  = "438537700181274713695763857518314651542142438174"
 
 	certPEM = `-----BEGIN CERTIFICATE-----
 MIICzjCCAi+gAwIBAgIDCzLUMAoGCCqGSM49BAMCMGoxCzAJBgNVBAYTAkNOMRAw
@@ -74,21 +83,20 @@ hp8YLjSflgw1+uWlMb/WCY60MyxZr/RRsTYpHu7FAkIBSMAVxw5RYySsf4J3bpM0
 CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
 8H8=
 -----END CERTIFICATE-----`
-	zxlCertAddressFromCert    = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
-	cmCertAddressFromCert2201 = "276163396529059566124041165851202392707607138552"
-	cmCertAddressFromCert2220 = "305f98514f3c2f6fcaeb8247ed147bacf99990f8"
+	zxlCertAddressFromCert = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
+	cmCertAddressFromCert  = "276163396529059566124041165851202392707607138552"
 )
 
 var (
-	iteratorWSets  map[string]*common.TxWrite
-	keyHistoryData map[string]*store.KeyModification
-	kvSetIndex     int32
+	mockDockerManager *dockergo.InstancesManager
+	iteratorWSets     map[string]*common.TxWrite
+	keyHistoryData    map[string]*store.KeyModification
+	kvSetIndex        int32
 	//kvGetIndex    int32
 	kvRowCache = make(map[int32]interface{})
 
-	blockVersionCounter int32
-	senderCounter       int32
-	chainConfigCounter  int32
+	senderCounter      int32
+	chainConfigCounter int32
 )
 
 var tmpSimContextMap map[string][]byte
@@ -106,11 +114,21 @@ func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 	}
 }
 
+func newMockHoleLogger(ctrl *gomock.Controller, name string) protocol.Logger {
+	return &test.HoleLogger{}
+}
+
+// nolint: deadcode,unused
+func newMockTestLogger(ctrl *gomock.Controller, name string) protocol.Logger {
+	return &GoLogger{}
+}
+
 func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	ctrl := gomock.NewController(t)
 	simContext := mock.NewMockTxSimContext(ctrl)
 
 	tmpSimContextMap = make(map[string][]byte)
+	txId := uuid.Generate().String()
 
 	simContext.EXPECT().GetTx().DoAndReturn(
 		func() *commonPb.Transaction {
@@ -118,7 +136,7 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 				Payload: &commonPb.Payload{
 					ChainId:        chainId,
 					TxType:         txType,
-					TxId:           uuid.Generate().String(),
+					TxId:           txId,
 					Timestamp:      0,
 					ExpirationTime: 0,
 				},
@@ -128,6 +146,54 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 		}).AnyTimes()
 
 	return simContext
+
+}
+
+var (
+	normalCrossInfoOnce sync.Once
+	normalCrossInfo     = vm.NewCallContractContext(0)
+	crossCallCrossInfo  = vm.NewCallContractContext(0)
+)
+
+func mockNormalGetrossInfo(simContext *mock.MockTxSimContext) {
+	normalCrossInfoOnce.Do(
+		func() {
+			normalCrossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
+		},
+	)
+
+	simContext.EXPECT().GetCrossInfo().DoAndReturn(
+		func() uint64 {
+			return normalCrossInfo.GetCtxBitmap()
+		},
+	).AnyTimes()
+}
+
+func mockCrossCallGetCrossInfo(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetCrossInfo().DoAndReturn(
+		func() uint64 {
+			crossCallCrossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
+			return crossCallCrossInfo.GetCtxBitmap()
+		},
+	).AnyTimes()
+}
+
+func mockNormalGetDepth(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetDepth().DoAndReturn(
+		func() int {
+			return 0
+		},
+	).AnyTimes()
+}
+
+func mockCrossCallGetDepth(simContext *mock.MockTxSimContext) {
+	var depth int
+	simContext.EXPECT().GetDepth().DoAndReturn(
+		func() int {
+			defer func() { depth++ }()
+			return depth
+		},
+	).AnyTimes()
 }
 
 func mockPut(simContext *mock.MockTxSimContext, name string, key, value []byte) {
@@ -269,6 +335,7 @@ func makeStringKeyMap() (map[string]*common.TxWrite, []*store.KV) {
 	return stringKeyMap, kvs
 }
 
+// TxIds is a list of tx ids
 var TxIds = []string{
 	uuid.Generate().String(),
 	uuid.Generate().String(),
@@ -567,20 +634,6 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 
 func (iter *mockHistoryKeyIterator) Release() {}
 
-func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
-	simContext.EXPECT().GetBlockVersion().DoAndReturn(
-		GetBlockVersion,
-	).AnyTimes()
-}
-
-func GetBlockVersion() uint32 {
-	atomic.AddInt32(&blockVersionCounter, 1)
-	if blockVersionCounter <= 8*2 {
-		return 2220
-	}
-	return 2201
-}
-
 // 获取sender公钥
 func mockGetSender(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().GetSender().DoAndReturn(
@@ -590,7 +643,7 @@ func mockGetSender(simContext *mock.MockTxSimContext) {
 
 func mockTxSimContextGetSender() *accesscontrol.Member {
 	atomic.AddInt32(&senderCounter, 1)
-	switch senderCounter % 4 {
+	switch senderCounter % 3 {
 	case 1:
 		return &accesscontrol.Member{
 			OrgId:      chainId,
@@ -603,18 +656,13 @@ func mockTxSimContextGetSender() *accesscontrol.Member {
 			MemberType: accesscontrol.MemberType_CERT_HASH,
 			MemberInfo: nil,
 		}
-	case 3:
+	case 0:
 		return &accesscontrol.Member{
 			OrgId:      chainId,
 			MemberType: accesscontrol.MemberType_PUBLIC_KEY,
 			MemberInfo: []byte(pkPEM),
 		}
-	case 0:
-		return &accesscontrol.Member{
-			OrgId:      chainId,
-			MemberType: accesscontrol.MemberType_ALIAS,
-			MemberInfo: nil,
-		}
+
 	default:
 		return nil
 	}
@@ -630,6 +678,16 @@ func mockQueryCert(name string, nothing interface{}) ([]byte, error) {
 	return []byte(certPEM), nil
 }
 
+//func mockGetDepth(simContext *mock.MockTxSimContext) {
+//	simContext.EXPECT().GetDepth().DoAndReturn(
+//		getDepth,
+//	).AnyTimes()
+//}
+//
+//func getDepth() int {
+//	return 0
+//}
+
 // 获取链配置，读取地址格式
 func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().Get(
@@ -643,8 +701,8 @@ func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
 func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	atomic.AddInt32(&chainConfigCounter, 1)
 
-	switch chainConfigCounter % 12 {
-	case 1, 2, 3, 4:
+	switch chainConfigCounter % 6 {
+	case 1, 2, 3:
 		zxConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
 				AddrType: configPb.AddrType_ZXL,
@@ -659,24 +717,10 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 			return nil, err
 		}
 		return bytes, nil
-	case 5, 6, 7, 8:
+	case 4, 5, 0:
 		ethConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
-				AddrType: configPb.AddrType_CHAINMAKER,
-			},
-			Crypto: &configPb.CryptoConfig{
-				Hash: "SHA256",
-			},
-		}
-		bytes, err := ethConfig.Marshal()
-		if err != nil {
-			return nil, err
-		}
-		return bytes, nil
-	case 9, 10, 11, 0:
-		ethConfig := configPb.ChainConfig{
-			Vm: &configPb.Vm{
-				AddrType: configPb.AddrType_CHAINMAKER,
+				AddrType: configPb.AddrType_ETHEREUM,
 			},
 			Crypto: &configPb.CryptoConfig{
 				Hash: "SHA256",
@@ -690,4 +734,181 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	default:
 		return nil, nil
 	}
+}
+
+func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte) {
+	simContext.EXPECT().CallContract(
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+	).DoAndReturn(
+		func(contract *common.Contract,
+			method string, byteCode []byte,
+			parameter map[string][]byte,
+			gasUsed uint64,
+			refTxType common.TxType) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
+
+			mockLogger := newMockHoleLogger(nil, testVMLogName)
+			callContractRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
+				"", nil, nil, mockLogger)
+
+			param["method"] = param["contract_method"]
+			runtimeContractResult, specialTxType := callContractRuntimeInstance.Invoke(
+				&commonPb.Contract{
+					Name:        ContractNameTest,
+					Version:     ContractVersionTest,
+					RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+				},
+				invokeMethod,
+				nil,
+				param,
+				simContext,
+				uint64(123),
+			)
+			code := commonPb.TxStatusCode_CONTRACT_FAIL
+			if runtimeContractResult.Code == 0 {
+				code = commonPb.TxStatusCode_SUCCESS
+			}
+
+			return runtimeContractResult, specialTxType, code
+		},
+	).AnyTimes()
+}
+
+// nolint: deadcode,unused
+func callContract(
+	simContext *mock.MockTxSimContext,
+	param map[string][]byte,
+) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
+
+	mockLogger := newMockHoleLogger(nil, testVMLogName)
+	callContractRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
+		"", nil, nil, mockLogger)
+
+	runtimeContractResult, specialTxType := callContractRuntimeInstance.Invoke(
+		&commonPb.Contract{
+			Name:        ContractNameTest,
+			Version:     ContractVersionTest,
+			RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		},
+		invokeMethod,
+		nil,
+		param,
+		simContext,
+		uint64(123),
+	)
+	code := commonPb.TxStatusCode_CONTRACT_FAIL
+	if runtimeContractResult.Code == 0 {
+		code = commonPb.TxStatusCode_SUCCESS
+	}
+
+	return runtimeContractResult, specialTxType, code
+}
+
+// GoLogger is a golang system log implementation of protocol.Logger, it's for unit test
+type GoLogger struct{}
+
+// Debug is the debug log
+func (GoLogger) Debug(args ...interface{}) {
+	log.Printf("DEBUG: %v", args)
+}
+
+// Debugf is the debugf log
+func (GoLogger) Debugf(format string, args ...interface{}) {
+	log.Printf("DEBUG: "+format, args...)
+}
+
+// Debugw is the debugw log
+func (GoLogger) Debugw(msg string, keysAndValues ...interface{}) {
+	log.Printf("DEBUG: "+msg+" %v", keysAndValues...)
+}
+
+// Error is the error log
+func (GoLogger) Error(args ...interface{}) {
+	log.Printf("ERROR: %v", args)
+}
+
+// Errorf is the errorf log
+func (GoLogger) Errorf(format string, args ...interface{}) {
+	str := fmt.Sprintf(format, args...)
+	log.Printf("ERROR: " + str + "")
+}
+
+// Errorw is the errorw log
+func (GoLogger) Errorw(msg string, keysAndValues ...interface{}) {
+	log.Printf("ERROR: "+msg+" %v", keysAndValues...)
+}
+
+// Fatal is the fatal log
+func (GoLogger) Fatal(args ...interface{}) {
+	log.Fatal(args...)
+}
+
+// Fatalf is the fatalf log
+func (GoLogger) Fatalf(format string, args ...interface{}) {
+	//log.Fatalf(format, args...)
+}
+
+// Fatalw is the fatalw log
+func (GoLogger) Fatalw(msg string, keysAndValues ...interface{}) {
+	//log.Fatalf(msg+" %v", keysAndValues...)
+}
+
+// Info is the info log
+func (GoLogger) Info(args ...interface{}) {
+	//log.Printf("INFO: %v", args)
+}
+
+// Infof is the infof log
+func (GoLogger) Infof(format string, args ...interface{}) {
+	//log.Printf("INFO: "+format, args...)
+}
+
+// Infow is the infow log
+func (GoLogger) Infow(msg string, keysAndValues ...interface{}) {
+	//log.Printf("INFO: "+msg+" %v", keysAndValues...)
+}
+
+// Panic is the panic log
+func (GoLogger) Panic(args ...interface{}) {
+	log.Panic(args...)
+}
+
+// Panicf is the panicf log
+func (GoLogger) Panicf(format string, args ...interface{}) {
+	log.Panicf(format, args...)
+}
+
+// Panicw is the panicw log
+func (GoLogger) Panicw(msg string, keysAndValues ...interface{}) {
+	log.Panicf(msg+" %v", keysAndValues...)
+}
+
+// Warn is the warn log
+func (GoLogger) Warn(args ...interface{}) {
+	log.Printf("WARN: %v", args)
+}
+
+// Warnf is the warnf log
+func (GoLogger) Warnf(format string, args ...interface{}) {
+	str := fmt.Sprintf(format, args...)
+	log.Printf("WARN: " + str + "")
+}
+
+// Warnw is the warn log
+func (GoLogger) Warnw(msg string, keysAndValues ...interface{}) {
+	log.Printf("WARN: "+msg+" %v", keysAndValues...)
+}
+
+// DebugDynamic is the dynamic debug log
+func (GoLogger) DebugDynamic(l func() string) {
+	log.Print("DEBUG:", l())
+}
+
+// InfoDynamic is the dynamic info log
+func (GoLogger) InfoDynamic(l func() string) {
+	log.Print("INFO:", l())
 }

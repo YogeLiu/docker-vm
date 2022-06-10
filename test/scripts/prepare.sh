@@ -1,12 +1,9 @@
-#!/bin/bash
-
 #
 # Copyright (C) BABEC. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-VERSION=develop
-
+VERSION=v2.3.0
 TESTCONTAINERNAME=chaimaker_vm_test
 
 docker_image_name=`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`
@@ -29,4 +26,3 @@ if [ "${docker_image_name}" ]; then
   rm -fr ../testdata/log
   rm -fr ../default.log*
 fi
-

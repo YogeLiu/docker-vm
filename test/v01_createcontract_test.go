@@ -12,11 +12,9 @@ import (
 	"testing"
 	"time"
 
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
 	"github.com/stretchr/testify/assert"
-
-	"chainmaker.org/chainmaker/logger/v2"
-	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 )
 
 /*
@@ -40,20 +38,21 @@ func setupTest(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewDockerManager(chainId, cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockHoleLogger(nil, testVMLogName), cmConfig)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")
 	dockerContainErr := mockDockerManager.StartVM()
 	if dockerContainErr != nil {
-		log.Fatalf("start docker manager instance failed %v\n", dockerContainErr)
+		log.Fatalf("start docmer manager instance failed %v\n", dockerContainErr)
 	}
 
 	//step4: mock contractId, contractBin
 	fmt.Printf("======step4 mock contractId and txContext=======\n")
 	mockContractId = initContractId(commonPb.RuntimeType_DOCKER_GO)
 	mockTxContext = initMockSimContext(t)
-	mockTxContext.EXPECT().GetBlockVersion().Return(uint32(2220)).AnyTimes()
+	mockNormalGetDepth(mockTxContext)
+	mockNormalGetrossInfo(mockTxContext)
 
 	filePath := fmt.Sprintf("./testdata/%s.7z", ContractNameTest)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
@@ -63,14 +62,12 @@ func setupTest(t *testing.T) {
 
 	//step5: create new NewRuntimeInstance -- for create user contract
 	fmt.Printf("=== step 5 create new runtime instance ===\n")
-	mockLogger := logger.GetLogger(logger.MODULE_VM)
+	mockLogger := newMockTestLogger(nil, testVMLogName)
 	mockRuntimeInstance, err = mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 		"", nil, nil, mockLogger)
 	if err != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", err))
 	}
-
-	time.Sleep(50 * time.Millisecond)
 
 	//step6: invoke user contract --- create user contract
 	fmt.Printf("=== step 6 init user contract ===\n")
@@ -85,7 +82,7 @@ func setupTest(t *testing.T) {
 func tearDownTest() {
 	//err := mockDockerManager.StopVM()
 	//if err != nil {
-	//	log.Fatalf("stop docker manager instance failed %v\n", err)
+	//	log.Fatalf("stop docmer manager instance failed %v\n", err)
 	//}
 	time.Sleep(1000 * time.Millisecond)
 }

@@ -9,144 +9,154 @@ package core
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
 	"go.uber.org/atomic"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
+
+	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
 
-type UsersManager struct {
-	userQueue *utils.FixedFIFO
-	logger    *zap.SugaredLogger
-	userNum   int
+const baseUid = 10000                    // user id start from base uid
+const addUserFormat = "useradd -u %d %s" // add user cmd
+const deleteUserFormat = "userdel -r %s" // add user cmd
+
+// UserManager is linux user manager
+type UserManager struct {
+	userQueue *utils.FixedFIFO   // user queue, always pop oldest queue
+	logger    *zap.SugaredLogger // user manager logger
+	userNum   int                // total user num
 }
 
-// NewUsersManager new user manager
-func NewUsersManager() *UsersManager {
+// NewUsersManager returns user manager
+func NewUsersManager() *UserManager {
 
-	userNumConfig := os.Getenv(config.ENV_USER_NUM)
-	userNum, err := strconv.Atoi(userNumConfig)
-	if err != nil {
-		userNum = config.DefaultUserNum
+	return &UserManager{
+		userQueue: utils.NewFixedFIFO(config.DockerVMConfig.GetMaxUserNum()),
+		logger:    logger.NewDockerLogger(logger.MODULE_USERCONTROLLER),
+		userNum:   config.DockerVMConfig.GetMaxUserNum(),
 	}
-
-	userQueue := utils.NewFixedFIFO(userNum)
-
-	usersManager := &UsersManager{
-		userQueue: userQueue,
-		logger:    logger.NewDockerLogger(logger.MODULE_USERCONTROLLER, config.DockerLogDir),
-		userNum:   userNum,
-	}
-
-	return usersManager
 }
 
-// CreateNewUsers create new users in docker from 10000 as uid
-func (u *UsersManager) CreateNewUsers() error {
+// BatchCreateUsers create new users in docker from 10000 as uid
+func (u *UserManager) BatchCreateUsers() error {
 
 	var err error
+	var wg sync.WaitGroup
+
+	origProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
+	maxDepth := protocol.CallContractDepth + 1                            // user num per thread
+	totalNum := origProcessNum * maxDepth                                 // total user num
 
 	startTime := time.Now()
-	const baseUid = 10000
-
-	var wg sync.WaitGroup
 	createdUserNum := atomic.NewInt64(0)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < totalNum; i++ {
 		wg.Add(1)
 		go func(i int) {
-			for j := 0; j < u.userNum/10; j++ {
-				newUserId := baseUid + i*u.userNum/10 + j
-				err = u.generateNewUser(newUserId)
-				if err != nil {
-					u.logger.Errorf("fail to create user [%d]", newUserId)
-				} else {
-					createdUserNum.Add(1)
-				}
+			id := baseUid + i
+			err = u.generateNewUser(id)
+			if err != nil {
+				u.logger.Errorf("failed to create user [%d]", id)
+			} else {
+				createdUserNum.Add(1)
 			}
 			wg.Done()
 		}(i)
 	}
-
 	wg.Wait()
-	u.logger.Infof("init uids success, time: [%s], total user num: [%s]", time.Since(startTime),
+
+	u.logger.Infof("init uids succeed, time: [%s], total user num: [%s]", time.Since(startTime),
 		createdUserNum.String())
 
 	return nil
 }
 
-func (u *UsersManager) generateNewUser(newUserId int) error {
+// GetAvailableUser pop user from queue header
+func (u *UserManager) GetAvailableUser() (interfaces.User, error) {
 
-	const addUserFormat = "useradd -u %d %s"
-
-	newUser := u.constructNewUser(newUserId)
-	addUserCommand := fmt.Sprintf(addUserFormat, newUserId, newUser.UserName)
-
-	createSuccess := false
-
-	// it may fail to create user in centos, so add retry until it success
-	for !createSuccess {
-		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Warnf("attemp to create user fail: [%+v], err: [%s] and begin to retry", newUser, err)
-			continue
-		}
-
-		createSuccess = true
-	}
-	u.logger.Debugf("success create user: %+v", newUser)
-
-	// add created user to queue
-	err := u.userQueue.Enqueue(newUser)
+	user, err := u.userQueue.DequeueOrWaitForNextElement()
 	if err != nil {
-		u.logger.Errorf("fail to add created user to queue, newUser : [%v]", newUser)
-		return err
+		return nil, fmt.Errorf("failed to call DequeueOrWaitForNextElement, %v", err)
 	}
-	u.logger.Debugf("success add user to user queue: %+v", newUser)
+
+	u.logger.Debugf("get available user: [%v]", user)
+	return user.(interfaces.User), nil
+}
+
+// FreeUser add user to queue tail, user can be dequeue then
+func (u *UserManager) FreeUser(user interfaces.User) error {
+
+	err := u.userQueue.Enqueue(user)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue user: %v", err)
+	}
+	u.logger.Debugf("free user: %v", user)
+	return nil
+}
+
+// ReleaseUsers release all users
+func (u *UserManager) ReleaseUsers() error {
+
+	var err error
+	var wg sync.WaitGroup
+	origProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
+	maxDepth := protocol.CallContractDepth + 1                            // user num per thread
+	totalNum := origProcessNum * maxDepth                                 // total user num
+
+	for i := 0; i < totalNum; i++ {
+		wg.Add(1)
+		go func(i int) {
+			id := baseUid + i
+			err = u.releaseUser(id)
+			if err != nil {
+				u.logger.Warnf("failed to delete user %v", err)
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
 
 	return nil
 }
 
-func (u *UsersManager) constructNewUser(userId int) *security.User {
+//  generateNewUser generate a new user of process
+func (u *UserManager) generateNewUser(uid int) error {
 
-	userName := fmt.Sprintf("u-%d", userId)
-	sockPath := filepath.Join(config.DMSDir, config.DMSSockPath)
+	user := NewUser(uid)
+	addUserCommand := fmt.Sprintf(addUserFormat, uid, user.UserName)
 
-	return &security.User{
-		Uid:      userId,
-		Gid:      userId,
-		UserName: userName,
-		SockPath: sockPath,
-	}
-}
+	createSuccess := false
 
-// GetAvailableUser pop user from queue header
-func (u *UsersManager) GetAvailableUser() (*security.User, error) {
-
-	user, err := u.userQueue.DequeueOrWaitForNextElement()
-	if err != nil {
-		u.logger.Errorf("fail to call DequeueOrWaitForNextElement")
-		return nil, err
+	// it may failed to create user in centos, so add retry until it success
+	for !createSuccess {
+		if err := utils.RunCmd(addUserCommand); err != nil {
+			u.logger.Warnf("failed to create user [%+v], err: [%s] and begin to retry", user, err)
+			continue
+		}
+		createSuccess = true
 	}
 
-	u.logger.Debugf("get available user: [%v]", user)
-	return user.(*security.User), nil
-}
-
-// FreeUser add user to queue tail
-func (u *UsersManager) FreeUser(user *security.User) error {
+	// add created user to queue
 	err := u.userQueue.Enqueue(user)
 	if err != nil {
-		u.logger.Errorf("fail to call Enqueue")
-		return err
+		return fmt.Errorf("failed to add created user %+v to queue, %v", user, err)
 	}
-	u.logger.Debugf("free user: [%v]", user)
+	//u.logger.Debugf("success add user to user queue: %+v", user)
+
+	return nil
+}
+
+// releaseUser release user
+func (u *UserManager) releaseUser(id int) error {
+	user := NewUser(id)
+	delUserCommand := fmt.Sprintf(deleteUserFormat, user.UserName)
+	if err := utils.RunCmd(delUserCommand); err != nil {
+		return fmt.Errorf("failed to exec [%s], [%+v], %v", delUserCommand, user, err)
+	}
 	return nil
 }

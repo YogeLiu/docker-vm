@@ -1,64 +1,78 @@
-/*
-Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
-Copyright (C) BABEC. All rights reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
 package utils
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 )
 
 const (
-	DefaultMaxSendSize   = 20
-	DefaultMaxRecvSize   = 20
+	// DefaultMaxConnection is default max connection number
 	DefaultMaxConnection = 1
 )
 
+// SplitContractName split contract name
 func SplitContractName(contractNameAndVersion string) string {
-	contractName := strings.Split(contractNameAndVersion, "#")[1]
+	contractName := strings.Split(contractNameAndVersion, "#")[0]
 	return contractName
 }
 
-func GetMaxSendMsgSizeFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.MaxSendMsgSize < DefaultMaxSendSize {
-		return DefaultMaxSendSize
+// GetMaxSendMsgSizeFromConfig returns max send msg size from config
+func GetMaxSendMsgSizeFromConfig(conf *config.DockerVMConfig) uint32 {
+	if conf.MaxSendMsgSize < config.DefaultMaxSendSize {
+		return config.DefaultMaxSendSize
 	}
-	return config.MaxSendMsgSize
+	return conf.MaxSendMsgSize
 }
 
-func GetMaxRecvMsgSizeFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.MaxRecvMsgSize < DefaultMaxRecvSize {
-		return DefaultMaxRecvSize
+// GetMaxRecvMsgSizeFromConfig returns max recv msg size from config
+func GetMaxRecvMsgSizeFromConfig(conf *config.DockerVMConfig) uint32 {
+	if conf.MaxRecvMsgSize < config.DefaultMaxRecvSize {
+		return config.DefaultMaxRecvSize
 	}
-	return config.MaxRecvMsgSize
+	return conf.MaxRecvMsgSize
 }
 
-func GetURLFromConfig(config *config.DockerVMConfig) string {
-	ip := config.DockerVMHost
-	port := config.DockerVMPort
-	if ip == "" {
-		ip = "127.0.0.1"
-	}
-	if port == 0 {
-		port = 22359
-	}
-	url := fmt.Sprintf("%s:%d", ip, port)
-	return url
-}
-
+// GetMaxConnectionFromConfig returns max connections from config
 func GetMaxConnectionFromConfig(config *config.DockerVMConfig) uint32 {
-	if config.MaxConnection == 0 {
+	if config.ContractEngine.MaxConnection == 0 {
 		return DefaultMaxConnection
 	}
-	return config.MaxConnection
+	return uint32(config.ContractEngine.MaxConnection)
 }
 
-// ConstructReceiveChannelMapKey contractName#txId
-func ConstructReceiveMapKey(names ...string) string {
+// ConstructNotifyMapKey chainId#txId
+func ConstructNotifyMapKey(names ...string) string {
 	return strings.Join(names, "#")
+}
+
+// CreateDir create dir
+func CreateDir(directory string) error {
+	exist, err := Exists(directory)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		err = os.MkdirAll(directory, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create [%s], err: [%s]", directory, err)
+		}
+	}
+
+	return nil
+}
+
+// Exists returns whether the given file or directory exists
+func Exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

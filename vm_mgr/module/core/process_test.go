@@ -1,608 +1,930 @@
-/*
-Copyright (C) BABEC. All rights reserved.
-Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
-
-//
 package core
 
-//
-//import (
-//	"io"
-//	"os"
-//	"os/exec"
-//	"path/filepath"
-//	"reflect"
-//	"sync"
-//	"testing"
-//	"time"
-//
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/config"
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/logger"
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/module/security"
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo"
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/protocol"
-//	"chainmaker.org/chainmaker/vm-docker-go/vm_mgr/utils"
-//	"github.com/golang/mock/gomock"
-//	"go.uber.org/zap"
-//)
-//
-//func TestNewCrossProcess(t *testing.T) {
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
-//	timeTimer := time.NewTimer(processWaitingTime * time.Second)
-//	type args struct {
-//		user         *security.User
-//		txRequest    *protogo.TxRequest
-//		scheduler    protocol.Scheduler
-//		processName  string
-//		contractPath string
-//		processPool  ProcessPoolInterface
-//	}
-//	tests := []struct {
-//		name string
-//		args args
-//		want *Process
-//	}{
-//		{
-//			name: "testNewCrossProces",
-//			args: args{
-//				user: nil,
-//				txRequest: &protogo.TxRequest{
-//					TxId:            "",
-//					ContractName:    "txRequest.ContractName",
-//					ContractVersion: "txRequest.ContractVersion",
-//					Method:          "",
-//					Parameters:      nil,
-//					TxContext:       nil,
-//				},
-//				scheduler:    nil,
-//				processName:  processName,
-//				contractPath: "contractPath",
-//				processPool:  nil,
-//			},
-//			want: &Process{
-//				isCrossProcess:  true,
-//				processName:     processName,
-//				contractName:    "txRequest.ContractName",
-//				contractVersion: "txRequest.ContractVersion",
-//				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-//				TxWaitingQueue:  nil,
-//				nextTxTrigger:       nil,
-//				expireTimer:     timeTimer,
-//				logger:          log,
-//
-//				Handler:              nil,
-//				user:                 nil,
-//				contractPath:         "contractPath",
-//				cGroupPath:           filepath.Join(config.CGroupRoot, config.ProcsFile),
-//				processPoolInterface: nil,
-//			},
-//		},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			tt.want.Handler = NewProcessHandler(tt.args.txRequest, tt.args.scheduler, tt.want)
-//
-//			got := NewCrossProcess(tt.args.user, tt.args.txRequest, tt.args.scheduler, tt.args.processName, tt.args.contractPath, tt.args.processPool)
-//			got.Handler = tt.want.Handler
-//			got.logger = log
-//			got.expireTimer = timeTimer
-//			if !reflect.DeepEqual(got, tt.want) {
-//				t.Errorf("NewCrossProcess() = %v, want %v", got, tt.want)
-//			}
-//		})
-//	}
-//}
-//
-//func TestNewProcess(t *testing.T) {
-//	type args struct {
-//		user         *security.User
-//		txRequest    *protogo.TxRequest
-//		scheduler    protocol.Scheduler
-//		processName  string
-//		contractPath string
-//		processPool  ProcessPoolInterface
-//	}
-//	tests := []struct {
-//		name string
-//		args args
-//		want *Process
-//	}{
-//		{
-//			name: "testNewProcess",
-//			args: args{
-//				user: nil,
-//				txRequest: &protogo.TxRequest{
-//					TxId:            "",
-//					ContractName:    "txRequest.ContractName",
-//					ContractVersion: "txRequest.ContractVersion",
-//					Method:          "",
-//					Parameters:      nil,
-//					TxContext:       nil,
-//				},
-//				scheduler:    nil,
-//				processName:  processName,
-//				contractPath: "contractPath",
-//				processPool:  nil,
-//			},
-//
-//			want: &Process{
-//				isCrossProcess:  false,
-//				processName:     processName,
-//				contractName:    "txRequest.ContractName",
-//				contractVersion: "txRequest.ContractVersion",
-//				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-//				TxWaitingQueue:  nil,
-//				nextTxTrigger:       nil,
-//				expireTimer:     nil,
-//				logger:          nil,
-//
-//				Handler:              nil,
-//				user:                 nil,
-//				contractPath:         "contractPath",
-//				cGroupPath:           filepath.Join(config.CGroupRoot, config.ProcsFile),
-//				processPoolInterface: nil,
-//			},
-//		},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			got := NewProcess(tt.args.user, tt.args.txRequest, tt.args.scheduler, tt.args.processName, tt.args.contractPath, tt.args.processPool)
-//			tt.want.expireTimer = got.expireTimer
-//			tt.want.logger = got.logger
-//			tt.want.TxWaitingQueue = got.TxWaitingQueue
-//			tt.want.nextTxTrigger = got.nextTxTrigger
-//			tt.want.Handler = got.Handler
-//			if !reflect.DeepEqual(got, tt.want) {
-//				t.Errorf("NewProcess() = %v, want %v", got, tt.want)
-//			}
-//		})
-//	}
-//}
-//
-//func TestProcess_AddTxWaitingQueue(t *testing.T) {
-//	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+import (
+	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"testing"
+)
+
+const (
+	testContractName    = "testContractName"
+	testContractVersion = "v1.0.0"
+	testUid             = 20001
+)
+
+var (
+	groupKey        = utils.ConstructContractKey(testContractName, testContractVersion)
+	testProcessName = utils.ConstructProcessName(testContractName, testContractVersion, 1, 1, true)
+)
+
+func TestNewProcess(t *testing.T) {
+
+	SetConfig()
+
+	type args struct {
+		isOrig bool
+	}
+	tests := []struct {
+		name                string
+		args                args
+		wantProcessName     string
+		wantContractName    string
+		wantContractVersion string
+		wantUid             int
+	}{
+		{
+			name:                "TestNewProcess_Orig",
+			args:                args{isOrig: true},
+			wantProcessName:     testProcessName,
+			wantContractName:    testContractName,
+			wantContractVersion: testContractVersion,
+			wantUid:             testUid,
+		},
+		{
+			name:                "TestNewProcess_Cross",
+			args:                args{isOrig: false},
+			wantProcessName:     testProcessName,
+			wantContractName:    testContractName,
+			wantContractVersion: testContractVersion,
+			wantUid:             testUid,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			process := newTestProcess(tt.args.isOrig)
+			process.SetStream(nil)
+			if process.GetProcessName() != tt.wantProcessName {
+				t.Errorf("TestNewProcess() process name = %v, want %v", process.GetProcessName(), tt.wantProcessName)
+			}
+			if process.GetContractName() != tt.wantContractName {
+				t.Errorf("TestNewProcess() contract name = %v, want %v", process.GetContractName(), tt.wantContractName)
+			}
+			if process.GetContractVersion() != tt.wantContractVersion {
+				t.Errorf("TestNewProcess() contract version = %v, want %v", process.GetContractVersion(), tt.wantContractVersion)
+			}
+			if process.GetUser().GetUid() != tt.wantUid {
+				t.Errorf("TestNewProcess() user id = %v, want %v", process.GetUser().GetUid(), tt.wantUid)
+			}
+			tearDown()
+		})
+	}
+}
+
+func TestChangeSandbox(t *testing.T) {
+
+	SetConfig()
+
+	type args struct {
+		isOrig             bool
+		newContractName    string
+		newContractVersion string
+		newProcessName     string
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		currState processState
+		wantErr   bool
+	}{
+		{
+			name: "TestNewProcess_Orig",
+			args: args{
+				isOrig:             true,
+				newContractName:    "newContractName",
+				newContractVersion: "newContractVersion",
+				newProcessName:     "newProcessName",
+			},
+			currState: idle,
+			wantErr:   true,
+		},
+		{
+			name: "TestNewProcess_Cross",
+			args: args{
+				isOrig:             true,
+				newContractName:    "newContractName",
+				newContractVersion: "newContractVersion",
+				newProcessName:     "newProcessName",
+			}, currState: busy,
+			wantErr:      true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			process := newTestProcess(tt.args.isOrig)
+			process.SetStream(nil)
+			process.updateProcessState(tt.currState)
+			if err := process.ChangeSandbox(tt.args.newContractName, tt.args.newContractVersion, tt.args.newProcessName); (err != nil) != tt.wantErr {
+				t.Errorf("PutMsg() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			tearDown()
+		})
+	}
+}
+
+//func TestProcess_PutMsg(t *testing.T) {
 //	type fields struct {
-//		processName          string
-//		contractName         string
-//		contractVersion      string
-//		contractPath         string
-//		cGroupPath           string
-//		ProcessState         protogo.ProcessState
-//		TxWaitingQueue       chan *protogo.TxRequest
-//		nextTxTrigger            chan bool
-//		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
-//		Handler              *ProcessHandler
-//		user                 *security.User
-//		cmd                  *exec.Cmd
-//		processPoolInterface ProcessPoolInterface
-//		isCrossProcess       bool
-//		done                 uint32
-//		balanceRWMutex                sync.Mutex
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
 //	}
 //	type args struct {
-//		tx *protogo.TxRequest
+//		msg interface{}
+//	}
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		args    args
+//		wantErr bool
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			if err := p.PutMsg(tt.args.msg); (err != nil) != tt.wantErr {
+//				t.Errorf("PutMsg() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//}
+//
+//func TestProcess_SetStream(t *testing.T) {
+//
+//	SetConfig()
+//
+//	process := newTestProcess(true)
+//	defer tearDown()
+//
+//	type fields struct {
+//		process *Process
+//	}
+//
+//	tests := []struct {
+//		name   string
+//		fields fields
+//		want   ProcessState
+//	}{
+//		{
+//
+//			name:   "TestProcess_SetStream",
+//			fields: fields{process: process},
+//			want:   ready,
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := tt.fields.process
+//			p.SetStream(nil)
+//			if p.processState != tt.want {
+//				t.Errorf("SetStream() state = %v, want %v", p.processState, tt.want)
+//			}
+//		})
+//	}
+//}
+
+//func TestProcess_Start(t *testing.T) {
+//
+//	SetConfig()
+//
+//	process := newTestProcess(true)
+//	defer tearDown()
+//
+//	type fields struct {
+//		process *Process
+//	}
+//
+//	tests := []struct {
+//		name   string
+//		fields fields
+//	}{
+//		{
+//
+//			name:   "TestProcess_Start",
+//			fields: fields{process: process},
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := tt.fields.process
+//			p.Start()
+//		})
+//	}
+//}
+
+//
+//func TestProcess_constructErrorResponse(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	type args struct {
+//		txId   string
+//		errMsg string
 //	}
 //	tests := []struct {
 //		name   string
 //		fields fields
 //		args   args
+//		want   *protogo.DockerVMMessage
 //	}{
-//		{
-//			name: "testAddTxWaitingQueue",
-//			fields: fields{
-//				processName:          processName,
-//				contractName:         "",
-//				contractVersion:      "",
-//				contractPath:         "",
-//				cGroupPath:           "",
-//				ProcessState:         protogo.ProcessState_PROCESS_STATE_CREATED,
-//				TxWaitingQueue:       make(chan *protogo.TxRequest),
-//				nextTxTrigger:            nil,
-//				expireTimer:          nil,
-//				logger:               log,
-//				Handler:              nil,
-//				user:                 nil,
-//				cmd:                  nil,
-//				processPoolInterface: nil,
-//				isCrossProcess:       false,
-//				done:                 0,
-//				balanceRWMutex:                sync.Mutex{},
-//			},
-//		},
+//		// TODO: Add test cases.
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
-//				processName:          tt.fields.processName,
-//				contractName:         tt.fields.contractName,
-//				contractVersion:      tt.fields.contractVersion,
-//				contractPath:         tt.fields.contractPath,
-//				cGroupPath:           tt.fields.cGroupPath,
-//				ProcessState:         tt.fields.ProcessState,
-//				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-//				nextTxTrigger:            tt.fields.nextTxTrigger,
-//				expireTimer:          tt.fields.expireTimer,
-//				logger:               tt.fields.logger,
-//				Handler:              tt.fields.Handler,
-//				user:                 tt.fields.user,
-//				cmd:                  tt.fields.cmd,
-//				processPoolInterface: tt.fields.processPoolInterface,
-//				isCrossProcess:       tt.fields.isCrossProcess,
-//				done:                 tt.fields.done,
-//				balanceRWMutex:                tt.fields.balanceRWMutex,
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
 //			}
-//
-//			go func() {
-//				for {
-//					<-p.TxWaitingQueue
-//				}
-//			}()
-//
-//			p.AddTxWaitingQueue(&protogo.TxRequest{
-//				TxId:            "",
-//				ContractName:    "",
-//				ContractVersion: "",
-//				Method:          "",
-//				Parameters:      nil,
-//				TxContext: &protogo.TxContext{
-//					CurrentHeight:       0,
-//					WriteMap:            nil,
-//					ReadMap:             nil,
-//					OriginalProcessName: "",
-//				},
-//			})
+//			if got := p.constructErrorResp(tt.args.txId, tt.args.errMsg); !reflect.DeepEqual(got, tt.want) {
+//				t.Errorf("constructErrorResp() = %v, want %v", got, tt.want)
+//			}
 //		})
 //	}
 //}
 //
-//func TestProcess_InvokeProcess(t *testing.T) {
-//	log := utils.GetLogHandler()
+//func TestProcess_handleChangeSandboxReq(t *testing.T) {
 //	type fields struct {
-//		processName          string
-//		contractName         string
-//		contractVersion      string
-//		contractPath         string
-//		cGroupPath           string
-//		ProcessState         protogo.ProcessState
-//		TxWaitingQueue       chan *protogo.TxRequest
-//		nextTxTrigger            chan bool
-//		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
-//		Handler              *ProcessHandler
-//		user                 *security.User
-//		cmd                  *exec.Cmd
-//		processPoolInterface ProcessPoolInterface
-//		isCrossProcess       bool
-//		done                 uint32
-//		balanceRWMutex                sync.Mutex
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
 //	}
-//
-//	requests := make(chan *protogo.TxRequest, 10)
-//	go func() {
-//		for {
-//			requests <- &protogo.TxRequest{
-//				TxId:            "0x8f0f3877af159da09bdbf3354e675495e29ee0193612e378bb43dabaa96c1cb8",
-//				ContractName:    contractName,
-//				ContractVersion: contractVersion,
-//				Method:          "",
-//				Parameters:      nil,
-//				TxContext:       nil,
-//			}
-//		}
-//	}()
-//
+//	type args struct {
+//		msg *messages.ChangeSandboxReqMsg
+//	}
 //	tests := []struct {
-//		name   string
-//		fields fields
+//		name    string
+//		fields  fields
+//		args    args
+//		wantErr bool
 //	}{
-//		{
-//			name: "testInvokeProcessQueueEmpty",
-//			fields: fields{
-//				processName:     "",
-//				contractName:    "",
-//				contractVersion: "",
-//				contractPath:    "",
-//				cGroupPath:      "",
-//				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-//				TxWaitingQueue:  make(chan *protogo.TxRequest),
-//				nextTxTrigger:       nil,
-//				expireTimer:     nil,
-//				logger:          log,
-//				Handler: &ProcessHandler{
-//					state:         "",
-//					logger:        nil,
-//					TxRequest:     nil,
-//					stream:        nil,
-//					scheduler:     nil,
-//					process:       nil,
-//					txExpireTimer: nil,
-//				},
-//				user:                 nil,
-//				cmd:                  nil,
-//				processPoolInterface: nil,
-//				isCrossProcess:       false,
-//				done:                 0,
-//				balanceRWMutex:                sync.Mutex{},
-//			},
-//		},
-//		{
-//			name: "testInvokeProcess",
-//			fields: fields{
-//				processName:     "",
-//				contractName:    "",
-//				contractVersion: "",
-//				contractPath:    "",
-//				cGroupPath:      "",
-//				ProcessState:    protogo.ProcessState_PROCESS_STATE_CREATED,
-//				TxWaitingQueue:  requests,
-//				nextTxTrigger:       nil,
-//				expireTimer:     nil,
-//				logger:          log,
-//				Handler: &ProcessHandler{
-//					state:         "",
-//					logger:        nil,
-//					TxRequest:     nil,
-//					stream:        nil,
-//					scheduler:     nil,
-//					process:       nil,
-//					txExpireTimer: time.NewTimer(time.Second),
-//				},
-//				user:                 nil,
-//				cmd:                  nil,
-//				processPoolInterface: nil,
-//				isCrossProcess:       false,
-//				done:                 0,
-//				balanceRWMutex:                sync.Mutex{},
-//			},
-//		},
+//		// TODO: Add test cases.
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
-//				processName:          tt.fields.processName,
-//				contractName:         tt.fields.contractName,
-//				contractVersion:      tt.fields.contractVersion,
-//				contractPath:         tt.fields.contractPath,
-//				cGroupPath:           tt.fields.cGroupPath,
-//				ProcessState:         tt.fields.ProcessState,
-//				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-//				nextTxTrigger:            tt.fields.nextTxTrigger,
-//				expireTimer:          tt.fields.expireTimer,
-//				logger:               tt.fields.logger,
-//				Handler:              tt.fields.Handler,
-//				user:                 tt.fields.user,
-//				cmd:                  tt.fields.cmd,
-//				processPoolInterface: tt.fields.processPoolInterface,
-//				isCrossProcess:       tt.fields.isCrossProcess,
-//				done:                 tt.fields.done,
-//				balanceRWMutex:                tt.fields.balanceRWMutex,
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
 //			}
-//
-//			p.handleNewTx()
+//			if err := p.handleChangeSandboxReq(tt.args.msg); (err != nil) != tt.wantErr {
+//				t.Errorf("handleChangeSandboxReq() error = %v, wantErr %v", err, tt.wantErr)
+//			}
 //		})
 //	}
 //}
 //
-//func TestProcess_LaunchProcess(t *testing.T) {
-//	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+//func TestProcess_handleCloseSandboxReq(t *testing.T) {
 //	type fields struct {
-//		processName          string
-//		contractName         string
-//		contractVersion      string
-//		contractPath         string
-//		cGroupPath           string
-//		ProcessState         protogo.ProcessState
-//		TxWaitingQueue       chan *protogo.TxRequest
-//		nextTxTrigger            chan bool
-//		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
-//		Handler              *ProcessHandler
-//		user                 *security.User
-//		cmd                  *exec.Cmd
-//		processPoolInterface ProcessPoolInterface
-//		isCrossProcess       bool
-//		done                 uint32
-//		balanceRWMutex                sync.Mutex
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
 //	}
 //	tests := []struct {
 //		name    string
 //		fields  fields
 //		wantErr bool
 //	}{
-//		{
-//			name: "testLaunchProcessBad", //todo cmd
-//			fields: fields{
-//				processName:     "",
-//				contractName:    "",
-//				contractVersion: "",
-//				contractPath:    "",
-//				cGroupPath:      "",
-//				ProcessState:    0,
-//				TxWaitingQueue:  nil,
-//				nextTxTrigger:       nil,
-//				expireTimer:     nil,
-//				logger:          log,
-//				Handler:         nil,
-//				user: &security.User{
-//					Uid:      0,
-//					Gid:      0,
-//					UserName: "",
-//					SockPath: "",
-//				},
-//				cmd:                  nil,
-//				processPoolInterface: nil,
-//				isCrossProcess:       false,
-//				done:                 0,
-//				balanceRWMutex:                sync.Mutex{},
-//			},
-//			wantErr: true,
-//		},
+//		// TODO: Add test cases.
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
-//				processName:          tt.fields.processName,
-//				contractName:         tt.fields.contractName,
-//				contractVersion:      tt.fields.contractVersion,
-//				contractPath:         tt.fields.contractPath,
-//				cGroupPath:           tt.fields.cGroupPath,
-//				ProcessState:         tt.fields.ProcessState,
-//				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-//				nextTxTrigger:            tt.fields.nextTxTrigger,
-//				expireTimer:          tt.fields.expireTimer,
-//				logger:               tt.fields.logger,
-//				Handler:              tt.fields.Handler,
-//				user:                 tt.fields.user,
-//				cmd:                  tt.fields.cmd,
-//				processPoolInterface: tt.fields.processPoolInterface,
-//				isCrossProcess:       tt.fields.isCrossProcess,
-//				done:                 tt.fields.done,
-//				balanceRWMutex:                tt.fields.balanceRWMutex,
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
 //			}
-//			if err := p.LaunchProcess(); (err != nil) != tt.wantErr {
-//				t.Errorf("LaunchProcess() error = %v, wantErr %v", err, tt.wantErr)
+//			if err := p.handleCloseSandboxReq(); (err != nil) != tt.wantErr {
+//				t.Errorf("handleCloseSandboxReq() error = %v, wantErr %v", err, tt.wantErr)
 //			}
 //		})
 //	}
 //}
 //
-//func TestProcess_StopProcess(t *testing.T) {
-//	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
-//	poolInterface := NewMockProcessPoolInterface(gomock.NewController(t))
-//	poolInterface.EXPECT().RetrieveProcessContext(processName).Return(&ProcessContext{
-//		processList: [6]*Process{
-//			{
-//				processName: processName,
-//				cmd: &exec.Cmd{
-//					Process: &os.Process{},
-//				},
-//			},
-//		},
-//		size: 0,
-//	}).AnyTimes()
-//
+//func TestProcess_handleProcessExit(t *testing.T) {
 //	type fields struct {
-//		processName          string
-//		contractName         string
-//		contractVersion      string
-//		contractPath         string
-//		cGroupPath           string
-//		ProcessState         protogo.ProcessState
-//		TxWaitingQueue       chan *protogo.TxRequest
-//		nextTxTrigger            chan bool
-//		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
-//		Handler              *ProcessHandler
-//		user                 *security.User
-//		cmd                  *exec.Cmd
-//		processPoolInterface ProcessPoolInterface
-//		isCrossProcess       bool
-//		done                 uint32
-//		balanceRWMutex                sync.Mutex
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
 //	}
 //	type args struct {
-//		processTimeout bool
+//		existErr *exitErr
 //	}
 //	tests := []struct {
 //		name   string
 //		fields fields
 //		args   args
+//		want   bool
 //	}{
-//		{
-//			name: "testStopProcess",
-//			fields: fields{
-//				processName:          processName,
-//				logger:               log,
-//				processPoolInterface: poolInterface,
-//			},
-//			args: args{processTimeout: true},
-//		},
-//		{
-//			name: "testStopProcess",
-//			fields: fields{
-//				processName:          processName,
-//				logger:               log,
-//				processPoolInterface: poolInterface,
-//			},
-//			args: args{processTimeout: false},
-//		},
+//		// TODO: Add test cases.
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
-//				processName:          tt.fields.processName,
-//				processPoolInterface: tt.fields.processPoolInterface,
-//				logger:               tt.fields.logger,
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
 //			}
-//			p.stopProcess(tt.args.processTimeout)
+//			if got := p.handleProcessExit(tt.args.existErr); got != tt.want {
+//				t.Errorf("handleProcessExit() = %v, want %v", got, tt.want)
+//			}
 //		})
 //	}
 //}
 //
-//func TestProcess_killCrossProcess(t *testing.T) {
-//	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
+//func TestProcess_handleTimeout(t *testing.T) {
 //	type fields struct {
-//		logger *zap.SugaredLogger
-//		cmd    *exec.Cmd
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		wantErr bool
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			if err := p.handleTimeout(); (err != nil) != tt.wantErr {
+//				t.Errorf("handleTimeout() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//}
+//
+//func TestProcess_handleTxRequest(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	type args struct {
+//		tx *protogo.DockerVMMessage
+//	}
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		args    args
+//		wantErr bool
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			if err := p.handleTxRequest(tt.args.tx); (err != nil) != tt.wantErr {
+//				t.Errorf("handleTxRequest() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//}
+//
+//func TestProcess_handleTxResp(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	type args struct {
+//		msg *protogo.DockerVMMessage
+//	}
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		args    args
+//		wantErr bool
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			if err := p.handleTxResp(tt.args.msg); (err != nil) != tt.wantErr {
+//				t.Errorf("handleTxResp() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//}
+//
+//func TestProcess_killProcess(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
 //	}
 //	tests := []struct {
 //		name   string
 //		fields fields
 //	}{
-//		{
-//			name: "testKillCrossProcess",
-//			fields: fields{
-//				logger: log,
-//				cmd: &exec.Cmd{
-//					Process: &os.Process{},
-//				},
-//			},
-//		},
+//		// TODO: Add test cases.
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
-//				logger: tt.fields.logger,
-//				cmd:    tt.fields.cmd,
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
 //			}
-//			p.killCrossProcess()
+//			p.killProcess()
+//		})
+//	}
+//}
+//
+//func TestProcess_launchProcess(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//		want   *exitErr
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			if got := p.launchProcess(); !reflect.DeepEqual(got, tt.want) {
+//				t.Errorf("launchProcess() = %v, want %v", got, tt.want)
+//			}
+//		})
+//	}
+//}
+//
+//func TestProcess_listenProcess(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			p.listenProcess()
 //		})
 //	}
 //}
 //
 //func TestProcess_printContractLog(t *testing.T) {
-//	cmd := exec.Cmd{
-//		Path: contractPath,
-//		Args: []string{sockPath, processName, contractName, contractVersion, config.SandBoxLogLevel},
-//	}
-//
-//	contractOut, _ := cmd.StdoutPipe()
 //	type fields struct {
-//		processName          string
-//		contractName         string
-//		contractVersion      string
-//		contractPath         string
-//		cGroupPath           string
-//		ProcessState         protogo.ProcessState
-//		TxWaitingQueue       chan *protogo.TxRequest
-//		nextTxTrigger            chan bool
-//		expireTimer          *time.Timer
-//		logger               *zap.SugaredLogger
-//		Handler              *ProcessHandler
-//		user                 *security.User
-//		cmd                  *exec.Cmd
-//		processPoolInterface ProcessPoolInterface
-//		isCrossProcess       bool
-//		done                 uint32
-//		balanceRWMutex                sync.Mutex
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
 //	}
 //	type args struct {
 //		contractPipe io.ReadCloser
@@ -612,163 +934,583 @@ package core
 //		fields fields
 //		args   args
 //	}{
-//		{
-//			name: "printContractLog",
-//			fields: fields{
-//				processName:          "",
-//				contractName:         "",
-//				contractVersion:      "",
-//				contractPath:         "",
-//				cGroupPath:           "",
-//				ProcessState:         0,
-//				TxWaitingQueue:       nil,
-//				nextTxTrigger:            nil,
-//				expireTimer:          nil,
-//				logger:               nil,
-//				Handler:              nil,
-//				user:                 nil,
-//				cmd:                  nil,
-//				processPoolInterface: nil,
-//				isCrossProcess:       false,
-//				done:                 0,
-//				balanceRWMutex:                sync.Mutex{},
-//			},
-//			args: args{contractPipe: contractOut},
-//		},
+//		// TODO: Add test cases.
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
-//				processName:          tt.fields.processName,
-//				contractName:         tt.fields.contractName,
-//				contractVersion:      tt.fields.contractVersion,
-//				contractPath:         tt.fields.contractPath,
-//				cGroupPath:           tt.fields.cGroupPath,
-//				ProcessState:         tt.fields.ProcessState,
-//				TxWaitingQueue:       tt.fields.TxWaitingQueue,
-//				nextTxTrigger:            tt.fields.nextTxTrigger,
-//				expireTimer:          tt.fields.expireTimer,
-//				logger:               tt.fields.logger,
-//				Handler:              tt.fields.Handler,
-//				user:                 tt.fields.user,
-//				cmd:                  tt.fields.cmd,
-//				processPoolInterface: tt.fields.processPoolInterface,
-//				isCrossProcess:       tt.fields.isCrossProcess,
-//				done:                 tt.fields.done,
-//				balanceRWMutex:                tt.fields.balanceRWMutex,
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
 //			}
-//
-//			go p.printContractLog(contractOut)
+//			p.printContractLog(tt.args.contractPipe)
 //		})
 //	}
 //}
 //
-//func TestProcess_resetProcessTimer(t *testing.T) {
+//func TestProcess_resetContext(t *testing.T) {
 //	type fields struct {
-//		expireTimer *time.Timer
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
 //	}
-//	tests := []struct {
-//		name   string
-//		fields fields
-//	}{
-//		{
-//			name: "testTesetProcessTimer",
-//			fields: fields{
-//				expireTimer: time.NewTimer(time.Second),
-//			},
-//		},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			p := &Process{
-//				expireTimer: tt.fields.expireTimer,
-//			}
-//
-//			go func() {
-//				times := make(chan time.Time, 2)
-//				for {
-//					times <- time.Now()
-//					p.expireTimer.C = times
-//				}
-//
-//			}()
-//
-//			p.resetProcessTimer()
-//		})
-//	}
-//}
-//
-//func TestProcess_triggerProcessState(t *testing.T) {
-//	basePath, _ := os.Getwd()
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, basePath+testPath)
-//	type fields struct {
-//		ProcessState protogo.ProcessState
-//		nextTxTrigger    chan bool
-//		logger       *zap.SugaredLogger
-//	}
-//	tests := []struct {
-//		name   string
-//		fields fields
-//	}{
-//		{
-//			name: "testTriggerProcessState",
-//			fields: fields{
-//				ProcessState: protogo.ProcessState_PROCESS_STATE_CREATED,
-//				logger:       log,
-//				nextTxTrigger:    make(chan bool, 0),
-//			},
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			p := &Process{
-//				ProcessState: tt.fields.ProcessState,
-//				nextTxTrigger:    tt.fields.nextTxTrigger,
-//				logger:       tt.fields.logger,
-//			}
-//			go func() {
-//				for {
-//					<-p.nextTxTrigger
-//				}
-//			}()
-//			p.triggerNextTx()
-//		})
-//	}
-//}
-//
-//func TestProcess_updateProcessState(t *testing.T) {
-//	log := logger.NewDockerLogger(logger.MODULE_PROCESS, config.DockerLogDir)
-//	type fields struct {
-//		ProcessState protogo.ProcessState
-//		logger       *zap.SugaredLogger
-//	}
-//
 //	type args struct {
-//		state protogo.ProcessState
+//		msg *messages.ChangeSandboxReqMsg
 //	}
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		args    args
+//		wantErr bool
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			if err := p.resetContext(tt.args.msg); (err != nil) != tt.wantErr {
+//				t.Errorf("resetContext() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//}
 //
+//func TestProcess_returnErrorResponse(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	type args struct {
+//		txId   string
+//		errMsg string
+//	}
 //	tests := []struct {
 //		name   string
 //		fields fields
 //		args   args
 //	}{
-//		{
-//			name: "testUpdateProcessState",
-//			fields: fields{
-//				ProcessState: 0,
-//				logger:       log,
-//			},
-//		},
+//		// TODO: Add test cases.
 //	}
-//
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
 //			p := &Process{
-//				ProcessState: tt.fields.ProcessState,
-//				logger:       tt.fields.logger,
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
 //			}
-//			p.updateProcessState(protogo.ProcessState_PROCESS_STATE_CREATED)
+//			p.returnTxErrorResp(tt.args.txId, tt.args.errMsg)
 //		})
 //	}
 //}
+//
+//func TestProcess_sendMsg(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	type args struct {
+//		msg *protogo.DockerVMMessage
+//	}
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		args    args
+//		wantErr bool
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			if err := p.sendMsg(tt.args.msg); (err != nil) != tt.wantErr {
+//				t.Errorf("sendMsg() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//}
+//
+//func TestProcess_startBusyTimer(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			p.startBusyTimer()
+//		})
+//	}
+//}
+//
+//func TestProcess_startProcess(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			p.startProcess()
+//		})
+//	}
+//}
+//
+//func TestProcess_startReadyTimer(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			p.startReadyTimer()
+//		})
+//	}
+//}
+//
+//func TestProcess_stopTimer(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			p.stopTimer()
+//		})
+//	}
+//}
+//
+//func TestProcess_updateProcessState(t *testing.T) {
+//	type fields struct {
+//		processName      string
+//		contractName     string
+//		contractVersion  string
+//		cGroupPath       string
+//		user             interfaces.User
+//		cmd              *exec.Cmd
+//		ProcessState     ProcessState
+//		isOrigProcess   bool
+//		eventCh          chan interface{}
+//		cmdReadyCh       chan bool
+//		exitCh           chan *exitErr
+//		txCh             chan *protogo.DockerVMMessage
+//		respCh           chan *protogo.DockerVMMessage
+//		timer            *time.Timer
+//		Tx               *protogo.DockerVMMessage
+//		logger           *zap.SugaredLogger
+//		stream           protogo.DockerVMRpc_DockerVMCommunicateServer
+//		processManager   interfaces.ProcessManager
+//		requestGroup     interfaces.RequestGroup
+//		requestScheduler interfaces.RequestScheduler
+//		lock             sync.RWMutex
+//	}
+//	type args struct {
+//		state ProcessState
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//		args   args
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			p := &Process{
+//				processName:      tt.fields.processName,
+//				contractName:     tt.fields.contractName,
+//				contractVersion:  tt.fields.contractVersion,
+//				cGroupPath:       tt.fields.cGroupPath,
+//				user:             tt.fields.user,
+//				cmd:              tt.fields.cmd,
+//				ProcessState:     tt.fields.ProcessState,
+//				isOrigProcess:   tt.fields.isOrigProcess,
+//				eventCh:          tt.fields.eventCh,
+//				cmdReadyCh:       tt.fields.cmdReadyCh,
+//				exitCh:           tt.fields.exitCh,
+//				txCh:             tt.fields.txCh,
+//				respCh:           tt.fields.respCh,
+//				timer:            tt.fields.timer,
+//				Tx:               tt.fields.Tx,
+//				logger:           tt.fields.logger,
+//				stream:           tt.fields.stream,
+//				processManager:   tt.fields.processManager,
+//				requestGroup:     tt.fields.requestGroup,
+//				requestScheduler: tt.fields.requestScheduler,
+//				lock:             tt.fields.lock,
+//			}
+//			p.updateProcessState(tt.args.state)
+//		})
+//	}
+//}
+
+func newTestProcess(isOrig bool) *Process {
+	// new user controller
+	usersManager := NewUsersManager()
+	usersManager.generateNewUser(testUid)
+	user := NewUser(testUid)
+
+	// new original process manager
+	maxOriginalProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum
+	maxCrossProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum * protocol.CallContractDepth
+	releaseRate := config.DockerVMConfig.GetReleaseRate()
+
+	origProcessManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, usersManager)
+	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
+
+	// start chain rpc server
+	chainRPCService := rpc.NewChainRPCService()
+
+	// new scheduler
+	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager,
+		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)})
+	scheduler.requestGroups[groupKey] = &RequestGroup{
+		origTxController: &txController{
+			txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+			processMgr: origProcessManager,
+		},
+		crossTxController: &txController{
+			txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+			processMgr: crossProcessManager,
+		},
+	}
+	origProcessManager.SetScheduler(scheduler)
+	crossProcessManager.SetScheduler(scheduler)
+	chainRPCService.SetScheduler(scheduler)
+
+	if isOrig {
+		return NewProcess(user, testContractName, testContractVersion, testProcessName, origProcessManager, scheduler, false)
+	}
+	return NewProcess(user, testContractName, testContractVersion, testProcessName, crossProcessManager, scheduler, true)
+
+}
+
+func tearDown() {
+	usersManager := NewUsersManager()
+	usersManager.releaseUser(testUid)
+}

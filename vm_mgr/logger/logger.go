@@ -1,5 +1,6 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -9,7 +10,7 @@ package logger
 import (
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 	"time"
 
 	rotatelogs "chainmaker.org/chainmaker/common/v2/log/file-rotatelogs"
@@ -20,20 +21,27 @@ import (
 )
 
 const (
-	// docker module for logging
+	DockerLogDir = "/log"          // mount directory for log
+	LogFileName  = "docker-go.log" // log file name
+)
 
-	MODULE_MANAGER          = "[Docker MANAGER]"
-	MODULE_SCHEDULER        = "[Docker Scheduler]"
-	MODULE_USERCONTROLLER   = "[Docker User Controller]"
-	MODULE_PROCESS_MANAGER  = "[Docker Process Manager]"
-	MODULE_PROCESS          = "[Docker Process]"
-	MODULE_DMS_HANDLER      = "[Docker DMS Handler]"
-	MODULE_DMS_SERVER       = "[Docker DMS Server]"
-	MODULE_CDM_SERVER       = "[Docker CDM Server]"
-	MODULE_CDM_API          = "[Docker CDM Api]"
-	MODULE_SECURITY_ENV     = "[Docker Security Env]"
-	MODULE_CONTRACT_MANAGER = "[Docker Contract Manager]"
-	MODULE_CONTRACT         = "[Docker Contract]"
+const (
+	// docker module for logging
+	MODULE_MANAGER             = "[Manager]"
+	MODULE_CONFIG              = "[Config]"
+	MODULE_REQUEST_SCHEDULER   = "[Request Scheduler]"
+	MODULE_REQUEST_GROUP       = "[Request Group]"
+	MODULE_USERCONTROLLER      = "[User Controller]"
+	MODULE_PROCESS_MANAGER     = "[Process Manager]"
+	MODULE_PROCESS             = "[Process]"
+	MODULE_SANDBOX_RPC_SERVER  = "[Sandbox RPC Server]"
+	MODULE_SANDBOX_RPC_SERVICE = "[Sandbox RPC Service]"
+	MODULE_CHAIN_RPC_SERVER    = "[Chain RPC Server]"
+	MODULE_CHAIN_RPC_SERVICE   = "[Chain RPC Service]"
+	MODULE_SECURITY_ENV        = "[Security Env]"
+	MODULE_CONTRACT_MANAGER    = "[Contract Manager]"
+	MODULE_CONTRACT            = "[Contract]"
+	MODULE_TEST                = "[Test]"
 )
 
 const (
@@ -54,29 +62,26 @@ func InitialConfig(logPath string) {
 	showLineFromConfig = true
 
 	// init display in console config
-	b2, err := strconv.ParseBool(os.Getenv(config.ENV_LOG_IN_CONSOLE))
-	if err != nil {
-		displayInConsoleFromConfig = config.DefaultLogInConsole
-	}
-	if b2 {
-		displayInConsoleFromConfig = true
-	} else {
-		displayInConsoleFromConfig = false
-	}
+	displayInConsoleFromConfig = config.DockerVMConfig.Log.ContractEngineLog.Console
 
-	logName := config.LogFileName
+	logName := LogFileName
 	logPathFromConfig = filepath.Join(logPath, logName)
 
-	logLevelFromConfig = os.Getenv(config.ENV_LOG_LEVEL)
-	if logLevelFromConfig == "" {
-		logLevelFromConfig = config.DefaultLogLevel
-	}
-	config.SandBoxLogLevel = logLevelFromConfig
+	logLevelFromConfig = config.DockerVMConfig.Log.ContractEngineLog.Level
 }
 
-func NewDockerLogger(name, logPath string) *zap.SugaredLogger {
+func NewDockerLogger(name string) *zap.SugaredLogger {
+	return newDockerLogger(name, DockerLogDir)
+}
 
-	InitialConfig(logPath)
+func NewTestDockerLogger() *zap.SugaredLogger {
+	basePath, _ := os.Getwd()
+	return newDockerLogger(MODULE_TEST, basePath+"/")
+}
+
+func newDockerLogger(name, path string) *zap.SugaredLogger {
+
+	InitialConfig(path)
 
 	var encoder zapcore.Encoder
 	if name == MODULE_CONTRACT {
@@ -88,9 +93,9 @@ func NewDockerLogger(name, logPath string) *zap.SugaredLogger {
 	writeSyncer := getLogWriter()
 
 	// default log level is info
-	logLevel := zapcore.InfoLevel
-	if logLevelFromConfig == "DEBUG" {
-		logLevel = zapcore.DebugLevel
+	logLevel := new(zapcore.Level)
+	if err := logLevel.UnmarshalText([]byte(logLevelFromConfig)); err != nil {
+		panic("unknown log level, logLevelFromConfig: " + logLevelFromConfig + "," + err.Error())
 	}
 
 	core := zapcore.NewCore(
@@ -173,4 +178,20 @@ func CustomLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) 
 
 func CustomTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
+}
+
+func GenerateProcessLoggerName(name string) string {
+	var sb strings.Builder
+	sb.WriteString("[Process ")
+	sb.WriteString(name)
+	sb.WriteString("]")
+	return sb.String()
+}
+
+func GenerateRequestGroupLoggerName(name string) string {
+	var sb strings.Builder
+	sb.WriteString("[Request Group ")
+	sb.WriteString(name)
+	sb.WriteString("]")
+	return sb.String()
 }

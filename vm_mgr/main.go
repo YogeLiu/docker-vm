@@ -1,25 +1,17 @@
-/*
-Copyright (C) BABEC. All rights reserved.
-Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
-
 package main
 
 import (
 	"fmt"
 	"net/http"
-	_ "net/http/pprof"
-	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+
+	_ "net/http/pprof"
+
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 )
 
@@ -27,23 +19,27 @@ var managerLogger *zap.SugaredLogger
 
 func main() {
 
-	// init docker container logger
-	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER, config.DockerLogDir)
+	// set config
+	err := config.InitConfig(filepath.Join(config.DockerMountDir, config.ConfigFileName))
 
+	// init docker container logger
+	managerLogger = logger.NewDockerLogger(logger.MODULE_MANAGER)
+	if err != nil {
+		managerLogger.Warnf("failed to init config, %v, use default config", err)
+	}
+
+	//err = initSockPath(managerLogger)
+	//if err != nil {
+	//	managerLogger.Errorf("failed to init sock path, %v", err)
+	//	return
+	//}
 	// start pprof
 	startPProf(managerLogger)
-
-	// init files paths
-	err := initFilesPath(managerLogger)
-	if err != nil {
-		managerLogger.Errorf("fail to init paths, err: [%s]", err)
-		return
-	}
 
 	// new docker manager
 	manager, err := module.NewManager(managerLogger)
 	if err != nil {
-		managerLogger.Errorf("Err in creating docker manager: %s", err)
+		managerLogger.Errorf("failed to create docker manager: %s", err)
 		return
 	}
 
@@ -52,7 +48,7 @@ func main() {
 	// init docker manager
 	go manager.InitContainer()
 
-	managerLogger.Debugf("docker manager init...")
+	managerLogger.Debugf("docker manager initialized")
 
 	// infinite loop, finished when call stopVM outside
 	for i := 0; ; i++ {
@@ -63,40 +59,29 @@ func main() {
 // start pprof when open enable pprof switch
 func startPProf(managerLogger *zap.SugaredLogger) {
 
-	envEnablePProf := os.Getenv(config.EnvEnablePprof)
+	enablePProf := config.DockerVMConfig.Pprof.ContractEnginePprof.Enable
 
-	if len(envEnablePProf) != 0 {
-		enablePProf, _ := strconv.ParseBool(envEnablePProf)
-		if enablePProf {
-			managerLogger.Infof("start pprof")
-			go func() {
-				pprofPort, _ := strconv.Atoi(os.Getenv(config.EnvPprofPort))
-				addr := fmt.Sprintf(":%d", pprofPort)
-				err := http.ListenAndServe(addr, nil)
-				if err != nil {
-					fmt.Println(err)
-				}
-			}()
-		}
+	if enablePProf {
+		managerLogger.Infof("start pprof")
+		go func() {
+			pprofPort := config.DockerVMConfig.Pprof.ContractEnginePprof.Port
+			addr := fmt.Sprintf(":%d", pprofPort)
+			err := http.ListenAndServe(addr, nil)
+			if err != nil {
+				managerLogger.Errorf("failed to start pprof, %v", err)
+			}
+		}()
 	}
 }
 
-func initFilesPath(logger *zap.SugaredLogger) error {
-	var err error
-	// mkdir paths
-	contractDir := filepath.Join(config.DockerMountDir, config.ContractsDir)
-	err = utils.CreateDir(contractDir)
-	if err != nil {
-		return err
-	}
-	logger.Debug("set contract dir: ", contractDir)
-
-	sockDir := filepath.Join(config.DockerMountDir, config.SockDir)
-	err = utils.CreateDir(sockDir)
-	if err != nil {
-		return err
-	}
-	logger.Debug("set sock dir: ", sockDir)
-
-	return nil
-}
+//func initSockPath(managerLogger *zap.SugaredLogger) error {
+//	// mkdir paths
+//	sockDir := filepath.Join(config.DockerMountDir, config.SandboxRPCDir)
+//	err := utils.CreateDir(sockDir)
+//	if err != nil {
+//		return err
+//	}
+//	managerLogger.Debug("set sock dir: ", sockDir)
+//
+//	return nil
+//}
