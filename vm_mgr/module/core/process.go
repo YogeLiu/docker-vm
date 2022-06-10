@@ -693,8 +693,8 @@ func (p *Process) returnTxErrorResp(txId string, errMsg string) {
 // returnTxErrorResp return error to request scheduler
 func (p *Process) returnSandboxExitResp(err error) {
 	errResp := &messages.SandboxExitMsg{
-		ContractName:    p.Tx.Request.ContractName,
-		ContractVersion: p.Tx.Request.ContractVersion,
+		ContractName:    p.contractName,
+		ContractVersion: p.contractVersion,
 		ProcessName:     p.processName,
 		Err:             err,
 	}
