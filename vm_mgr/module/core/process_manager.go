@@ -255,3 +255,13 @@ func (pm *ProcessManager) GetProcessDepth(originalProcessName string) *ProcessDe
 	defer pm.crossRWMutex.RUnlock()
 	return pm.crossTable[originalProcessName]
 }
+
+func (pm *ProcessManager) ModifyContractName(txRequest *protogo.TxRequest) error {
+	contractName, err := pm.contractManager.GetContractName(txRequest.ChainId, txRequest.TxId, txRequest.ContractName)
+	if err != nil {
+		return err
+	}
+	pm.logger.Debugf("replace txrequest contract name from %s to %s", txRequest.ContractName, contractName)
+	txRequest.ContractName = contractName
+	return nil
+}
