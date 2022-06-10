@@ -155,6 +155,8 @@ func (h *ProcessHandler) handleReady(readyMsg *SDKProtogo.DMSMessage) error {
 	switch readyMsg.Type {
 	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE_REQUEST:
 		return h.handleGetState(readyMsg)
+	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_BATCH_STATE_REQUEST:
+		return h.handleGetBatchState(readyMsg)
 	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_CALL_CONTRACT_REQUEST:
 		return h.handleCallContract(readyMsg)
 	case SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
@@ -246,6 +248,37 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 	responseMsg := &SDKProtogo.DMSMessage{
 		TxId:          getStateMsg.TxId,
 		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE_RESPONSE,
+		CurrentHeight: getStateMsg.CurrentHeight,
+		ResultCode:    getStateResponse.ResultCode,
+		Payload:       getStateResponse.Payload,
+		Message:       getStateResponse.Message,
+	}
+
+	return h.sendMessage(responseMsg)
+}
+
+func (h *ProcessHandler) handleGetBatchState(getStateMsg *SDKProtogo.DMSMessage) error {
+	// get data from chain maker
+	key := getStateMsg.Payload
+
+	getStateReqMsg := &protogo.CDMMessage{
+		TxId:    getStateMsg.TxId,
+		Type:    protogo.CDMType_CDM_TYPE_GET_BATCH_STATE,
+		Payload: key,
+		ChainId: h.TxRequest.ChainId,
+	}
+	getStateResponseCh := make(chan *protogo.CDMMessage)
+
+	h.scheduler.RegisterResponseCh(h.TxRequest.ChainId, h.TxRequest.TxId, getStateResponseCh)
+
+	// wait to get state response
+	h.scheduler.GetGetStateReqCh() <- getStateReqMsg
+
+	getStateResponse := <-getStateResponseCh
+
+	responseMsg := &SDKProtogo.DMSMessage{
+		TxId:          getStateMsg.TxId,
+		Type:          SDKProtogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_BATCH_STATE_RESPONSE,
 		CurrentHeight: getStateMsg.CurrentHeight,
 		ResultCode:    getStateResponse.ResultCode,
 		Payload:       getStateResponse.Payload,

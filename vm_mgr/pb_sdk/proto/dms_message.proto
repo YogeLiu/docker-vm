@@ -76,6 +76,10 @@ enum DMSMessageType {
     DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_REQUEST = 21;
 
     DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_RESPONSE = 22;
+
+    DMS_MESSAGE_TYPE_GET_BATCH_STATE_REQUEST = 23;
+
+    DMS_MESSAGE_TYPE_GET_BATCH_STATE_RESPONSE = 24;
 }
 
 // --------------------  request message ---------------------
