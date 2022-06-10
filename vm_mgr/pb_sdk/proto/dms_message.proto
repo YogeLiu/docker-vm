@@ -136,20 +136,6 @@ message Event {
     repeated string data = 4;
 }
 
-message BatchKey {
-    string key = 1;
-    string field = 2;
-    bytes  value = 3;
-    string contract_name = 4;
-}
-
-message BatchKeys {
-    repeated BatchKey Keys = 1;
-}
-
-message Keys {
-    repeated string key = 1;
-}
 
 
 
