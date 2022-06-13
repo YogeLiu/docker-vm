@@ -10,6 +10,7 @@ package core
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -642,6 +643,9 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 func (p *Process) killProcess() error {
 	<-p.cmdReadyCh
 	p.logger.Debugf("start to kill process")
+	if p.cmd == nil {
+		return errors.New("process cmd is nil")
+	}
 	if err := p.cmd.Process.Kill(); err != nil {
 		return fmt.Errorf("failed to kill process, %v", err)
 	}

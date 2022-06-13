@@ -33,6 +33,9 @@ ci:
 #	make build-test
 #	make clean
 
+gomod:
+	cd scripts && sh gomod_update.sh
+
 ut:
 	./test/scripts/prepare.sh
 	make build-image
@@ -41,5 +44,5 @@ ut:
 	sh ./ut_cover.sh
 	docker stop chaimaker_vm_test
 
-gomod:
-	cd scripts && sh gomod_update.sh
+version:
+	docker inspect chainmakerofficial/chainmaker-vm-docker-go:${VERSION} | jq '.[].ContainerConfig.Labels'
