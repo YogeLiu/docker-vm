@@ -991,7 +991,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		TxId: txId,
 		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 		Response: &protogo.TxResponse{
-			Result: make([]byte, 1),
+			ChainId: r.chainId,
+			Result:  make([]byte, 1),
 		},
 	}
 

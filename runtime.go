@@ -110,6 +110,7 @@ func (r *RuntimeInstance) Invoke(
 
 	// construct DockerVMMessage
 	txRequest := &protogo.TxRequest{
+		ChainId:         r.chainId,
 		ContractName:    contract.Name,
 		ContractVersion: contract.Version,
 		Method:          method,
