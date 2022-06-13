@@ -13,7 +13,7 @@ import (
 type RequestScheduler interface {
 	Start()
 	PutMsg(msg interface{}) error
-	GetRequestGroup(contractName, contractVersion string) (RequestGroup, bool)
+	GetRequestGroup(chainID, contractName, contractVersion string) (RequestGroup, bool)
 }
 
 type RequestGroup interface {
@@ -28,7 +28,7 @@ type ProcessManager interface {
 	SetScheduler(RequestScheduler)
 	PutMsg(msg interface{}) error
 	GetProcessByName(processName string) (Process, bool)
-	GetProcessNumByContractKey(contractName, contractVersion string) int
+	GetProcessNumByContractKey(chainID, contractName, contractVersion string) int
 	ChangeProcessState(processName string, toBusy bool) error
 }
 
@@ -36,11 +36,12 @@ type Process interface {
 	PutMsg(msg *protogo.DockerVMMessage)
 	Start()
 	GetProcessName() string
+	GetChainID() string
 	GetContractName() string
 	GetContractVersion() string
 	GetUser() User
 	SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer)
-	ChangeSandbox(contractName, contractVersion, processName string) error
+	ChangeSandbox(chainID, contractName, contractVersion, processName string) error
 	CloseSandbox() error
 }
 

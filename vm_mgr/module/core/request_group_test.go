@@ -34,7 +34,7 @@ func TestNewRequestGroup(t *testing.T) {
 	origTxCh := make(chan *protogo.DockerVMMessage, _origTxChSize)
 	crossTxCh := make(chan *protogo.DockerVMMessage, _crossTxChSize)
 
-	requestGroup := NewRequestGroup(testContractName, testContractVersion, nil, nil, nil, nil)
+	requestGroup := NewRequestGroup(testChainID, testContractName, testContractVersion, nil, nil, nil, nil)
 	requestGroup.eventCh = eventCh
 	requestGroup.stopCh = stopCh
 	requestGroup.txCh = txCh
@@ -67,6 +67,7 @@ func TestNewRequestGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewRequestGroup(
+				testChainID,
 				tt.args.contractName,
 				tt.args.contractVersion,
 				tt.args.oriPMgr,
@@ -98,7 +99,7 @@ func TestRequestGroup_GetContractPath(t *testing.T) {
 	cMgr := &ContractManager{
 		mountDir: filepath.Join(config.DockerMountDir, ContractsDir),
 	}
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, cMgr, nil)
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil, nil, cMgr, nil)
 	requestGroup.logger = log
 
 	type fields struct {
@@ -114,7 +115,7 @@ func TestRequestGroup_GetContractPath(t *testing.T) {
 			fields: fields{
 				group: requestGroup,
 			},
-			want: "/mount/contracts/testContractName#1.0.0",
+			want: "/mount/contracts/chain1#testContractName#1.0.0",
 		},
 	}
 	for _, tt := range tests {
@@ -134,7 +135,7 @@ func TestRequestGroup_GetTxCh(t *testing.T) {
 	log := logger.NewTestDockerLogger()
 	testOrigTxCh := make(chan *protogo.DockerVMMessage, _origTxChSize)
 	testCrossTxCh := make(chan *protogo.DockerVMMessage, _crossTxChSize)
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, nil, nil)
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil, nil, nil, nil)
 	requestGroup.logger = log
 
 	requestGroup.origTxController.txCh = testOrigTxCh
@@ -184,7 +185,7 @@ func TestRequestGroup_PutMsg(t *testing.T) {
 	SetConfig()
 
 	log := logger.NewTestDockerLogger()
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, nil, nil)
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil, nil, nil, nil)
 	requestGroup.logger = log
 	// new original process manager
 	maxOriginalProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum
@@ -284,7 +285,7 @@ func TestRequestGroup_Start(t *testing.T) {
 	SetConfig()
 
 	log := logger.NewTestDockerLogger()
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, nil, nil)
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil, nil, nil, nil)
 	requestGroup.logger = log
 
 	type fields struct {
@@ -313,7 +314,7 @@ func TestRequestGroup_getProcesses(t *testing.T) {
 	SetConfig()
 
 	log := logger.NewTestDockerLogger()
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, nil, nil)
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil, nil, nil, nil)
 	requestGroup.logger = log
 
 	// new original process manager
@@ -410,7 +411,7 @@ func TestRequestGroup_handleContractReadyResp(t *testing.T) {
 	SetConfig()
 
 	log := logger.NewTestDockerLogger()
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, nil, nil)
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil, nil, nil, nil)
 	requestGroup.logger = log
 
 	// new original process manager
@@ -462,7 +463,7 @@ func TestRequestGroup_handleProcessReadyResp(t *testing.T) {
 	SetConfig()
 
 	log := logger.NewTestDockerLogger()
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, nil, nil)
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil, nil, nil, nil)
 	requestGroup.logger = log
 
 	// new original process manager
@@ -558,7 +559,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 	cMgr := &ContractManager{
 		mountDir: filepath.Join(config.DockerMountDir, ContractsDir),
 	}
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil,
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil,
 		nil, cMgr, &RequestScheduler{
 			lock:    sync.RWMutex{},
 			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
@@ -593,6 +594,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						CurrentDepth: 0,
 					},
 					Request: &protogo.TxRequest{
+						ChainId:         testChainID,
 						ContractName:    "testContractName",
 						ContractVersion: "1.0.0",
 					},
@@ -612,6 +614,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						CurrentDepth: 0,
 					},
 					Request: &protogo.TxRequest{
+						ChainId:         testChainID,
 						ContractName:    "testContractName",
 						ContractVersion: "1.0.0",
 					},
@@ -631,6 +634,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						CurrentDepth: 0,
 					},
 					Request: &protogo.TxRequest{
+						ChainId:         testChainID,
 						ContractName:    "testContractName",
 						ContractVersion: "1.0.0",
 					},
@@ -650,6 +654,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						CurrentDepth: 4,
 					},
 					Request: &protogo.TxRequest{
+						ChainId:         testChainID,
 						ContractName:    "testContractName",
 						ContractVersion: "1.0.0",
 					},
@@ -669,6 +674,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						CurrentDepth: 6,
 					},
 					Request: &protogo.TxRequest{
+						ChainId:         testChainID,
 						ContractName:    "testContractName",
 						ContractVersion: "1.0.0",
 					},
@@ -694,7 +700,7 @@ func TestRequestGroup_putTxReqToCh(t *testing.T) {
 	SetConfig()
 
 	log := logger.NewTestDockerLogger()
-	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil,
+	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil,
 		nil, nil, &RequestScheduler{
 			lock:    sync.RWMutex{},
 			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
@@ -727,6 +733,7 @@ func TestRequestGroup_putTxReqToCh(t *testing.T) {
 						CurrentDepth: 0,
 					},
 					Request: &protogo.TxRequest{
+						ChainId:         testChainID,
 						ContractName:    "testContractName",
 						ContractVersion: "1.0.0",
 					},
@@ -745,6 +752,7 @@ func TestRequestGroup_putTxReqToCh(t *testing.T) {
 						CurrentDepth: 6,
 					},
 					Request: &protogo.TxRequest{
+						ChainId:         testChainID,
 						ContractName:    "testContractName",
 						ContractVersion: "1.0.0",
 					},

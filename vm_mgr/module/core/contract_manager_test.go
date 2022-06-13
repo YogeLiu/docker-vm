@@ -220,13 +220,13 @@ func TestContractManager_handleGetContractReq(t *testing.T) {
 		scheduler: &RequestScheduler{
 			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
 			eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
-			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
+			requestGroups: map[string]interfaces.RequestGroup{"chain1#testContractName#1.0.0": &RequestGroup{
 				txCh:    make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
 				eventCh: make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
 			}},
 		},
 	}
-	cMgr.contractsLRU.Add("testContractName#1.0.0", "/mount/contracts/testContractName#1.0.0")
+	cMgr.contractsLRU.Add("chain1#testContractName#1.0.0", "/mount/contracts/chain1#testContractName#1.0.0")
 
 	type fields struct {
 		cMgr *ContractManager
@@ -247,6 +247,7 @@ func TestContractManager_handleGetContractReq(t *testing.T) {
 				TxId: "testTxId",
 				Type: protogo.DockerVMType_TX_REQUEST,
 				Request: &protogo.TxRequest{
+					ChainId:         "chain1",
 					ContractName:    "testContractName",
 					ContractVersion: "1.0.0",
 				},
@@ -260,6 +261,7 @@ func TestContractManager_handleGetContractReq(t *testing.T) {
 				TxId: "testTxId",
 				Type: protogo.DockerVMType_TX_REQUEST,
 				Request: &protogo.TxRequest{
+					ChainId:         "chain1",
 					ContractName:    "testContractName2",
 					ContractVersion: "1.0.0",
 				},
@@ -289,7 +291,7 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 		scheduler: &RequestScheduler{
 			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
 			eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
-			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
+			requestGroups: map[string]interfaces.RequestGroup{"chain1#testContractName#1.0.0": &RequestGroup{
 				txCh:    make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
 				eventCh: make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
 			}},
@@ -316,6 +318,7 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 				TxId: "testTxId",
 				Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 				Response: &protogo.TxResponse{
+					ChainId:         "chain1",
 					ContractName:    "testContractName",
 					ContractVersion: "1.0.0",
 					Code:            protogo.DockerVMCode_FAIL,
@@ -331,6 +334,7 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 				TxId: "testTxId",
 				Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 				Response: &protogo.TxResponse{
+					ChainId:         "chain1",
 					ContractName:    "testContractName",
 					ContractVersion: "1.0.0",
 				},
@@ -350,6 +354,7 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 				TxId: "testTxId",
 				Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 				Response: &protogo.TxResponse{
+					ChainId:         "chain1",
 					ContractName:    "testContractName",
 					ContractVersion: "1.0.0",
 				},
@@ -364,7 +369,9 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 			if err := cm.handleGetContractResp(tt.args.resp); (err != nil) != tt.wantErr {
 				t.Errorf("handleGetContractResp() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			groupKey := utils.ConstructContractKey(tt.args.resp.Response.ContractName,
+			groupKey := utils.ConstructContractKey(
+				tt.args.resp.Response.ChainId,
+				tt.args.resp.Response.ContractName,
 				tt.args.resp.Response.ContractVersion)
 			_, exist := cm.contractsLRU.Get(groupKey)
 			if exist != tt.wantExist {
@@ -386,7 +393,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 		scheduler: &RequestScheduler{
 			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
 			eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
-			requestGroups: map[string]interfaces.RequestGroup{"testContractName#1.0.0": &RequestGroup{
+			requestGroups: map[string]interfaces.RequestGroup{"chain1#testContractName#1.0.0": &RequestGroup{
 				txCh:    make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
 				eventCh: make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
 			}},
@@ -398,6 +405,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 	}
 
 	type args struct {
+		chainID         string
 		contractName    string
 		contractVersion string
 	}
@@ -411,6 +419,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 			name:   "TestContractManager_sendContractReadySignal",
 			fields: fields{cMgr: cMgr},
 			args: args{
+				chainID:         "chain1",
 				contractName:    "testContractName",
 				contractVersion: "1.0.0",
 			},
@@ -420,6 +429,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 			name:   "TestContractManager_sendContractReadySignal",
 			fields: fields{cMgr: cMgr},
 			args: args{
+				chainID:         "chain1",
 				contractName:    "testContractName",
 				contractVersion: "1.0.1",
 			},
@@ -434,6 +444,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 				mountDir:     cMgr.mountDir,
 			}},
 			args: args{
+				chainID:         "chain1",
 				contractName:    "testContractName",
 				contractVersion: "1.0.0",
 			},
@@ -443,7 +454,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cm := tt.fields.cMgr
-			if err := cm.sendContractReadySignal(tt.args.contractName, tt.args.contractVersion); (err != nil) != tt.wantErr {
+			if err := cm.sendContractReadySignal(tt.args.chainID, tt.args.contractName, tt.args.contractVersion); (err != nil) != tt.wantErr {
 				t.Errorf("sendContractReadySignal() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

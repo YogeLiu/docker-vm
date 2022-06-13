@@ -25,6 +25,8 @@ message DockerVMMessage {
 
     // if not used, set to nil
     TxResponse response = 6;
+
+    string chain_id = 7;
 }
 
 message SysCallMessage {
@@ -124,6 +126,8 @@ message TxRequest {
 
     // cross contract in use
     TxContext tx_context = 5;
+
+    string chain_id = 6;
 }
 
 message TxContext {
@@ -150,6 +154,8 @@ message TxResponse {
     string contract_name = 7;
 
     string contract_version = 8;
+
+    string chain_id = 9;
 }
 
 message DockerContractEvent {

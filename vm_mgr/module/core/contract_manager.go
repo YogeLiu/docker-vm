@@ -148,13 +148,13 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 		return fmt.Errorf("empty request payload")
 	}
 
-	contractKey := utils.ConstructContractKey(req.Request.ContractName, req.Request.ContractVersion)
+	contractKey := utils.ConstructContractKey(req.Request.ChainId, req.Request.ContractName, req.Request.ContractVersion)
 
 	// contract path found in lru
 	if contractPath, ok := cm.contractsLRU.Get(contractKey); ok {
 		path := contractPath.(string)
 		cm.logger.Debugf("get contract [%s] from memory, path: [%s]", contractKey, path)
-		if err := cm.sendContractReadySignal(req.Request.ContractName, req.Request.ContractVersion); err != nil {
+		if err := cm.sendContractReadySignal(req.Request.ChainId, req.Request.ContractName, req.Request.ContractVersion); err != nil {
 			return fmt.Errorf("failed to handle get bytecode request, %v", err)
 		}
 		return nil
@@ -163,8 +163,8 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 	// request contract from chain
 	cm.requestContractFromChain(req)
 
-	cm.logger.Debugf("send get bytecode request to chain, contract name: [%s], "+
-		"contract version: [%s], txId [%s] ", req.Request.ContractName, req.Request.ContractVersion, req.TxId)
+	cm.logger.Debugf("send get bytecode request to chain [%s], contract name: [%s], contract version: [%s], "+
+		"txId [%s] ", req.Request.ChainId, req.Request.ContractName, req.Request.ContractVersion, req.TxId)
 
 	return nil
 }
@@ -201,7 +201,7 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	}
 
 	// save contract in lru (contract file already saved in disk by chain)
-	groupKey := utils.ConstructContractKey(resp.Response.ContractName, resp.Response.ContractVersion)
+	groupKey := utils.ConstructContractKey(resp.Response.ChainId, resp.Response.ContractName, resp.Response.ContractVersion)
 
 	path := filepath.Join(cm.mountDir, groupKey)
 	cm.contractsLRU.Add(groupKey, path)
@@ -220,7 +220,7 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	cm.logger.Infof("contract [%s] saved in lru and dir [%s]", groupKey, path)
 
 	// send contract _ready signal to request group
-	if err := cm.sendContractReadySignal(resp.Response.ContractName,
+	if err := cm.sendContractReadySignal(resp.Response.ChainId, resp.Response.ContractName,
 		resp.Response.ContractVersion); err != nil {
 		return fmt.Errorf("failed to send contract _ready signal, %v", err)
 	}
@@ -234,7 +234,7 @@ func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage
 }
 
 // sendContractReadySignal send contract _ready signal to request group, request group can request process now.
-func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion string) error {
+func (cm *ContractManager) sendContractReadySignal(chainID, contractName, contractVersion string) error {
 
 	// check whether scheduler was initialized
 	if cm.scheduler == nil {
@@ -243,7 +243,7 @@ func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion
 
 	// get request group
 	// GetRequestGroup is safe because it's a new request group, no process exist trigger
-	requestGroup, ok := cm.scheduler.GetRequestGroup(contractName, contractVersion)
+	requestGroup, ok := cm.scheduler.GetRequestGroup(chainID, contractName, contractVersion)
 	if !ok {
 		return fmt.Errorf("failed to get request group")
 	}

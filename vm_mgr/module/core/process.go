@@ -71,6 +71,7 @@ type exitErr struct {
 type Process struct {
 	processName string
 
+	chainID         string
 	contractName    string
 	contractVersion string
 
@@ -105,12 +106,13 @@ type Process struct {
 var _ interfaces.Process = (*Process)(nil)
 
 // NewProcess new process, process working on main contract which is not called cross contract
-func NewProcess(user interfaces.User, contractName, contractVersion, processName string,
+func NewProcess(user interfaces.User, chainID, contractName, contractVersion, processName string,
 	manager interfaces.ProcessManager, scheduler interfaces.RequestScheduler, isOrigProcess bool) *Process {
 
 	process := &Process{
 		processName: processName,
 
+		chainID:         chainID,
 		contractName:    contractName,
 		contractVersion: contractVersion,
 
@@ -135,7 +137,7 @@ func NewProcess(user interfaces.User, contractName, contractVersion, processName
 	}
 
 	// GetRequestGroup is safe here, process has added to process manager, not nil
-	process.requestGroup, _ = scheduler.GetRequestGroup(contractName, contractVersion)
+	process.requestGroup, _ = scheduler.GetRequestGroup(chainID, contractName, contractVersion)
 
 	process.txCh = process.requestGroup.GetTxCh(isOrigProcess)
 
@@ -334,6 +336,12 @@ func (p *Process) GetProcessName() string {
 	return p.processName
 }
 
+// GetChainID returns chain id
+func (p *Process) GetChainID() string {
+
+	return p.chainID
+}
+
 // GetContractName returns contract name
 func (p *Process) GetContractName() string {
 
@@ -362,7 +370,7 @@ func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer
 }
 
 // ChangeSandbox changes sandbox of process
-func (p *Process) ChangeSandbox(contractName, contractVersion, processName string) error {
+func (p *Process) ChangeSandbox(chainID, contractName, contractVersion, processName string) error {
 
 	p.logger.Debugf("process [%s] is _changing to [%s]...", p.processName, processName)
 
@@ -377,7 +385,7 @@ func (p *Process) ChangeSandbox(contractName, contractVersion, processName strin
 		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, _idle)
 	}
 
-	if err := p.resetContext(contractName, contractVersion, processName); err != nil {
+	if err := p.resetContext(chainID, contractName, contractVersion, processName); err != nil {
 		return fmt.Errorf("failed to reset context, %v", err)
 	}
 
@@ -606,16 +614,17 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 }
 
 // resetContext reset sandbox context to new request group
-func (p *Process) resetContext(contractName, contractVersion, processName string) error {
+func (p *Process) resetContext(chainID, contractName, contractVersion, processName string) error {
 
 	// reset request group
 	var ok bool
 	// GetRequestGroup is safe because waiting group exists -> request group exists
-	if p.requestGroup, ok = p.requestScheduler.GetRequestGroup(contractName, contractVersion); !ok {
+	if p.requestGroup, ok = p.requestScheduler.GetRequestGroup(p.chainID, contractName, contractVersion); !ok {
 		return fmt.Errorf("failed to get request group")
 	}
 
 	// reset process info
+	p.chainID = chainID
 	p.processName = processName
 	p.contractName = contractName
 	p.contractVersion = contractVersion
@@ -700,6 +709,7 @@ func (p *Process) returnTxErrorResp(txId string, errMsg string) {
 // returnTxErrorResp return error to request scheduler
 func (p *Process) returnSandboxExitResp(err error) {
 	errResp := &messages.SandboxExitMsg{
+		ChainID:         p.chainID,
 		ContractName:    p.contractName,
 		ContractVersion: p.contractVersion,
 		ProcessName:     p.processName,

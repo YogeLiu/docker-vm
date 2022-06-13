@@ -69,6 +69,7 @@ type txController struct {
 type RequestGroup struct {
 	logger *zap.SugaredLogger // request group logger
 
+	chainID         string
 	contractName    string // contract name
 	contractVersion string // contract version
 
@@ -88,17 +89,14 @@ type RequestGroup struct {
 var _ interfaces.RequestGroup = (*RequestGroup)(nil)
 
 // NewRequestGroup returns new request group
-func NewRequestGroup(
-	contractName string,
-	contractVersion string,
-	oriPMgr interfaces.ProcessManager,
-	crossPMgr interfaces.ProcessManager,
-	cMgr interfaces.ContractManager,
-	scheduler interfaces.RequestScheduler) *RequestGroup {
+func NewRequestGroup(chainID, contractName, contractVersion string, oriPMgr, crossPMgr interfaces.ProcessManager,
+	cMgr interfaces.ContractManager, scheduler interfaces.RequestScheduler) *RequestGroup {
 	return &RequestGroup{
 
-		logger: logger.NewDockerLogger(logger.GenerateRequestGroupLoggerName(utils.ConstructContractKey(contractName, contractVersion))),
+		logger: logger.NewDockerLogger(logger.GenerateRequestGroupLoggerName(
+			utils.ConstructContractKey(chainID, contractName, contractVersion))),
 
+		chainID:         chainID,
 		contractName:    contractName,
 		contractVersion: contractVersion,
 
@@ -175,7 +173,7 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 // GetContractPath returns contract path
 func (r *RequestGroup) GetContractPath() string {
 
-	contractKey := utils.ConstructContractKey(r.contractName, r.contractVersion)
+	contractKey := utils.ConstructContractKey(r.chainID, r.contractName, r.contractVersion)
 	return filepath.Join(r.contractManager.GetContractMountDir(), contractKey)
 }
 
@@ -207,6 +205,7 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 			TxId: req.TxId,
 			Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
 			Request: &protogo.TxRequest{
+				ChainId:         r.chainID,
 				ContractName:    r.contractName,
 				ContractVersion: r.contractVersion,
 			},
@@ -252,9 +251,11 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 			TxId: req.TxId,
 			Type: protogo.DockerVMType_ERROR,
 			Response: &protogo.TxResponse{
-				Code:         protogo.DockerVMCode_FAIL,
-				Message:      msg,
-				ContractName: req.Request.ContractName,
+				Code:            protogo.DockerVMCode_FAIL,
+				Message:         msg,
+				ChainId:         r.chainID,
+				ContractName:    req.Request.ContractName,
+				ContractVersion: req.Request.ContractVersion,
 			},
 		})
 		if err != nil {
@@ -298,7 +299,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	//
 	//needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
 
-	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
+	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
 	needProcessNum := len(controller.txCh) - currProcessNum
 	r.logger.Debugf("tx chan size: [%d], process num: [%d], need process num: [%d]",
 		len(controller.txCh), currProcessNum, needProcessNum)
@@ -311,6 +312,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		}
 		r.logger.Debugf("try to get %d process(es)", needProcessNum)
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
+			ChainID:         r.chainID,
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
 			ProcessNum:      needProcessNum,
@@ -327,6 +329,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		}
 		r.logger.Debugf("stop waiting for processes")
 		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
+			ChainID:         r.chainID,
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
 			ProcessNum:      0, // 0 for no need

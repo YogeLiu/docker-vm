@@ -272,17 +272,18 @@ func TestProcessManager_GetProcessNumByContractKey(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 
-	processManager.processGroups["testContractName#1.0.0"] = make(map[string]bool)
-	processManager.processGroups["testContractName#1.0.0"]["process1"] = true
-	processManager.processGroups["testContractName#1.0.0"]["process2"] = true
+	processManager.processGroups["chain1#testContractName#1.0.0"] = make(map[string]bool)
+	processManager.processGroups["chain1#testContractName#1.0.0"]["process1"] = true
+	processManager.processGroups["chain1#testContractName#1.0.0"]["process2"] = true
 
-	processManager.processGroups["testContractName#1.0.1"] = make(map[string]bool)
-	processManager.processGroups["testContractName#1.0.1"]["process1"] = true
+	processManager.processGroups["chain1#testContractName#1.0.1"] = make(map[string]bool)
+	processManager.processGroups["chain1#testContractName#1.0.1"]["process1"] = true
 
-	processManager.processGroups["testContractName2#1.0.0"] = make(map[string]bool)
-	processManager.processGroups["testContractName2#1.0.0"]["process1"] = true
+	processManager.processGroups["chain1#testContractName2#1.0.0"] = make(map[string]bool)
+	processManager.processGroups["chain1#testContractName2#1.0.0"]["process1"] = true
 
 	type args struct {
+		chainID         string
 		contractName    string
 		contractVersion string
 	}
@@ -300,32 +301,33 @@ func TestProcessManager_GetProcessNumByContractKey(t *testing.T) {
 		{
 			name:   "TestProcessManager_GetProcessNumByContractKey1",
 			fields: fields{processManager: processManager},
-			args:   args{contractName: "testContractName", contractVersion: "1.0.0"},
+			args:   args{chainID: "chain1", contractName: "testContractName", contractVersion: "1.0.0"},
 			want:   2,
 		},
 		{
 			name:   "TestProcessManager_GetProcessNumByContractKey2",
 			fields: fields{processManager: processManager},
-			args:   args{contractName: "testContractName", contractVersion: "1.0.1"},
+			args:   args{chainID: "chain1", contractName: "testContractName", contractVersion: "1.0.1"},
 			want:   1,
 		},
 		{
 			name:   "TestProcessManager_GetProcessNumByContractKey3",
 			fields: fields{processManager: processManager},
-			args:   args{contractName: "testContractName2", contractVersion: "1.0.0"},
+			args:   args{chainID: "chain1", contractName: "testContractName2", contractVersion: "1.0.0"},
 			want:   1,
 		},
 		{
 			name:   "TestProcessManager_GetProcessNumByContractKey4",
 			fields: fields{processManager: processManager},
-			args:   args{contractName: "testContractName2", contractVersion: "1.0.1"},
+			args:   args{chainID: "chain1", contractName: "testContractName2", contractVersion: "1.0.1"},
 			want:   0,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := processManager
-			if got := pm.GetProcessNumByContractKey(tt.args.contractName, tt.args.contractVersion); got != tt.want {
+			if got := pm.GetProcessNumByContractKey(
+				tt.args.chainID, tt.args.contractName, tt.args.contractVersion); got != tt.want {
 				t.Errorf("GetProcessNumByContractKey() = %v, wantInCache %v", got, tt.want)
 			}
 		})
@@ -482,6 +484,7 @@ func TestProcessManager_addProcessToCache(t *testing.T) {
 	}
 
 	type args struct {
+		chainID         string
 		contractName    string
 		contractVersion string
 		processName     string
@@ -501,6 +504,7 @@ func TestProcessManager_addProcessToCache(t *testing.T) {
 			name:   "TestProcessManager_addProcessToCache_Idle",
 			fields: fields{processManager: processManager},
 			args: args{
+				chainID:         "chain1",
 				contractName:    "testContractName1",
 				contractVersion: "1.0.0",
 				processName:     "testProcessName1",
@@ -516,6 +520,7 @@ func TestProcessManager_addProcessToCache(t *testing.T) {
 			name:   "TestProcessManager_addProcessToCache_Busy",
 			fields: fields{processManager: processManager},
 			args: args{
+				chainID:         "chain1",
 				contractName:    "testContractName2",
 				contractVersion: "1.0.0",
 				processName:     "testProcessName2",
@@ -531,14 +536,15 @@ func TestProcessManager_addProcessToCache(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
-			pm.addProcessToCache(tt.args.contractName, tt.args.contractVersion, tt.args.processName, tt.args.process, tt.args.isBusy)
+			pm.addProcessToCache(tt.args.chainID, tt.args.contractName, tt.args.contractVersion,
+				tt.args.processName, tt.args.process, tt.args.isBusy)
 			if _, ok := pm.idleProcesses.Get(tt.args.processName); ok != tt.wantInIdle {
 				t.Errorf("addProcessToCache() inIdle = %v, wantInIdle %v", ok, tt.wantInIdle)
 			}
 			if _, ok := pm.busyProcesses[tt.args.processName]; ok != tt.wantInBusy {
 				t.Errorf("addProcessToCache() inBusy = %v, wantInBusy %v", ok, tt.wantInBusy)
 			}
-			groupKey := utils.ConstructContractKey(tt.args.contractName, tt.args.contractVersion)
+			groupKey := utils.ConstructContractKey(tt.args.chainID, tt.args.contractName, tt.args.contractVersion)
 			_, ok := pm.processGroups[groupKey][tt.args.processName]
 			if ok != tt.wantInCache {
 				t.Errorf("addProcessToCache() inCache = %v, wantInCache %v", ok, tt.wantInBusy)
@@ -567,6 +573,7 @@ func TestProcessManager_addToProcessGroup(t *testing.T) {
 	}
 
 	type args struct {
+		chainID         string
 		contractName    string
 		contractVersion string
 		processName     string
@@ -584,6 +591,7 @@ func TestProcessManager_addToProcessGroup(t *testing.T) {
 			name:   "TestProcessManager_addToProcessGroup",
 			fields: fields{processManager: processManager},
 			args: args{
+				chainID:         "chain1",
 				contractName:    "testContractName1",
 				contractVersion: "1.0.0",
 				processName:     "testProcessName1",
@@ -595,6 +603,7 @@ func TestProcessManager_addToProcessGroup(t *testing.T) {
 			name:   "TestProcessManager_addProcessToCache_Busy",
 			fields: fields{processManager: processManager},
 			args: args{
+				chainID:         "chain1",
 				contractName:    "testContractName2",
 				contractVersion: "1.0.0",
 				processName:     "testProcessName2",
@@ -606,8 +615,8 @@ func TestProcessManager_addToProcessGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
-			pm.addToProcessGroup(tt.args.contractName, tt.args.contractVersion, tt.args.processName)
-			groupKey := utils.ConstructContractKey(tt.args.contractName, tt.args.contractVersion)
+			pm.addToProcessGroup(tt.args.chainID, tt.args.contractName, tt.args.contractVersion, tt.args.processName)
+			groupKey := utils.ConstructContractKey(tt.args.chainID, tt.args.contractName, tt.args.contractVersion)
 			_, ok := pm.processGroups[groupKey][tt.args.processName]
 			if ok != tt.wantInCache {
 				t.Errorf("addProcessToCache() inCache = %v, wantInCache %v", ok, tt.wantInBusy)
@@ -628,11 +637,12 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 	userManager := NewUsersManager()
 	log := logger.NewTestDockerLogger()
 
+	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testContractName2 := "testContractName2"
 	testProcessName1 := "testProcessName1"
 	testContractVersion := "1.0.0"
-	groupKey := utils.ConstructContractKey(testContractName2, testContractVersion)
+	groupKey := utils.ConstructContractKey(testChainID, testContractName2, testContractVersion)
 
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
@@ -645,6 +655,7 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 	}
 
 	processManager.addProcessToCache(
+		testChainID,
 		testContractName1,
 		testContractVersion,
 		testProcessName1,
@@ -657,6 +668,7 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 	)
 
 	group := messages.RequestGroupKey{
+		ChainID:         testChainID,
 		ContractName:    testContractName2,
 		ContractVersion: testContractVersion,
 	}
@@ -708,12 +720,12 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 				t.Errorf("handleAllocateIdleProcesses() _busy process size = %v, "+
 					"wantBusyProcessNum %v", busyProcessNum, tt.wantBusyProcessNum)
 			}
-			origContractProcessNum := len(pm.processGroups["testContractName1#1.0.0"])
+			origContractProcessNum := len(pm.processGroups["chain1#testContractName1#1.0.0"])
 			if origContractProcessNum != tt.wantOrigContractProcessNum {
 				t.Errorf("handleAllocateIdleProcesses() original contract process size = %v, "+
 					"wantOrigContractProcessNum %v", origContractProcessNum, tt.wantOrigContractProcessNum)
 			}
-			newContractProcessNum := len(pm.processGroups["testContractName2#1.0.0"])
+			newContractProcessNum := len(pm.processGroups["chain1#testContractName2#1.0.0"])
 			if newContractProcessNum != tt.wantNewContractProcessNum {
 				t.Errorf("handleAllocateIdleProcesses() new contract process size = %v, "+
 					"wantNewContractProcessNum %v", newContractProcessNum, tt.wantNewContractProcessNum)
@@ -737,6 +749,7 @@ func TestProcessManager_batchPopIdleProcesses(t *testing.T) {
 		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 	}
 
+	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testContractName2 := "testContractName2"
 	testProcessName1 := "testProcessName1"
@@ -744,18 +757,21 @@ func TestProcessManager_batchPopIdleProcesses(t *testing.T) {
 	testContractVersion := "1.0.0"
 
 	process1 := &Process{
+		chainID:         testChainID,
 		contractName:    testContractName1,
 		contractVersion: testContractVersion,
 		processName:     testProcessName1,
 	}
 
 	process2 := &Process{
+		chainID:         testChainID,
 		contractName:    testContractName2,
 		contractVersion: testContractVersion,
 		processName:     testProcessName2,
 	}
 
 	processManager.addProcessToCache(
+		testChainID,
 		testContractName1,
 		testContractVersion,
 		testProcessName1,
@@ -763,6 +779,7 @@ func TestProcessManager_batchPopIdleProcesses(t *testing.T) {
 		false,
 	)
 	processManager.addProcessToCache(
+		testChainID,
 		testContractName2,
 		testContractVersion,
 		testProcessName2,
@@ -832,17 +849,20 @@ func TestProcessManager_getAvailableProcessNum(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 
+	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testProcessName1 := "testProcessName1"
 	testContractVersion := "1.0.0"
 
 	process1 := &Process{
+		chainID:         testChainID,
 		contractName:    testContractName1,
 		contractVersion: testContractVersion,
 		processName:     testProcessName1,
 	}
 
 	processManager.addProcessToCache(
+		testChainID,
 		testContractName1,
 		testContractVersion,
 		testProcessName1,
@@ -886,17 +906,20 @@ func TestProcessManager_handleCleanIdleProcesses(t *testing.T) {
 	processManager := NewProcessManager(10, releaseRate, false, userManager)
 	processManager.logger = log
 
+	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testProcessName1 := "testProcessName1"
 	testContractVersion := "1.0.0"
 
 	for i := 0; i < maxOriginalProcessNum; i++ {
 		processManager.addProcessToCache(
+			testChainID,
 			testContractName1,
 			testContractVersion,
 			testProcessName1+strconv.Itoa(i),
 			&Process{
 				logger:          logger.NewTestDockerLogger(),
+				chainID:         testChainID,
 				contractName:    testContractName1,
 				contractVersion: testContractVersion,
 				processName:     testProcessName1 + strconv.Itoa(i),
@@ -943,14 +966,15 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 
+	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testProcessName1 := "testProcessName1"
 	testContractVersion := "1.0.0"
 
 	testContractName2 := "testContractName2"
 
-	contractKey1 := utils.ConstructContractKey(testContractName1, testContractVersion)
-	contractKey2 := utils.ConstructContractKey(testContractName2, testContractVersion)
+	contractKey1 := utils.ConstructContractKey(testChainID, testContractName1, testContractVersion)
+	contractKey2 := utils.ConstructContractKey(testChainID, testContractName2, testContractVersion)
 
 	processManager.SetScheduler(&RequestScheduler{
 		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
@@ -963,10 +987,12 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 
 	for i := 0; i < maxOriginalProcessNum; i++ {
 		processManager.addProcessToCache(
+			testChainID,
 			testContractName1,
 			testContractVersion,
 			testProcessName1+strconv.Itoa(i),
 			&mocks.MockProcess{
+				ChainID:         testChainID,
 				ContractName:    testContractName1,
 				ContractVersion: testContractVersion,
 				ProcessName:     testProcessName1 + strconv.Itoa(i),
@@ -996,6 +1022,7 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 			name:   "TestProcessManager_handleGetProcessReq",
 			fields: fields{processManager: processManager},
 			args: args{msg: &messages.GetProcessReqMsg{
+				ChainID:         testChainID,
 				ContractName:    testContractName2,
 				ContractVersion: testContractVersion,
 				ProcessNum:      9,
@@ -1042,17 +1069,20 @@ func TestProcessManager_handleSandboxExitResp(t *testing.T) {
 		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 	}
 
+	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testProcessName1 := "testProcessName1"
 	testContractVersion := "1.0.0"
 
 	process1 := &Process{
+		chainID:         testChainID,
 		contractName:    testContractName1,
 		contractVersion: testContractVersion,
 		processName:     testProcessName1,
 	}
 
 	processManager.addProcessToCache(
+		testChainID,
 		testContractName1,
 		testContractVersion,
 		testProcessName1,
@@ -1082,6 +1112,7 @@ func TestProcessManager_handleSandboxExitResp(t *testing.T) {
 			name:   "TestProcessManager_handleSandboxExitResp",
 			fields: fields{processManager: processManager},
 			args: args{msg: &messages.SandboxExitMsg{
+				ChainID:         testChainID,
 				ContractName:    testContractName1,
 				ContractVersion: testContractVersion,
 				ProcessName:     testProcessName1,
@@ -1116,17 +1147,20 @@ func TestProcessManager_removeFromProcessGroup(t *testing.T) {
 		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 	}
 
+	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testProcessName1 := "testProcessName1"
 	testContractVersion := "1.0.0"
 
 	process1 := &Process{
+		chainID:         testChainID,
 		contractName:    testContractName1,
 		contractVersion: testContractVersion,
 		processName:     testProcessName1,
 	}
 
 	processManager.addProcessToCache(
+		testChainID,
 		testContractName1,
 		testContractVersion,
 		testProcessName1,
@@ -1139,6 +1173,7 @@ func TestProcessManager_removeFromProcessGroup(t *testing.T) {
 	}
 
 	type args struct {
+		chainID         string
 		contractName    string
 		contractVersion string
 		processName     string
@@ -1154,6 +1189,7 @@ func TestProcessManager_removeFromProcessGroup(t *testing.T) {
 			name:   "TestProcessManager_removeFromProcessGroup",
 			fields: fields{processManager: processManager},
 			args: args{
+				chainID:         testChainID,
 				contractName:    testContractName1,
 				contractVersion: testContractVersion,
 				processName:     testProcessName1,
@@ -1164,8 +1200,8 @@ func TestProcessManager_removeFromProcessGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
-			pm.removeFromProcessGroup(tt.args.contractName, tt.args.contractVersion, tt.args.processName)
-			groupKey := utils.ConstructContractKey(tt.args.contractName, tt.args.contractVersion)
+			pm.removeFromProcessGroup(tt.args.chainID, tt.args.contractName, tt.args.contractVersion, tt.args.processName)
+			groupKey := utils.ConstructContractKey(tt.args.chainID, tt.args.contractName, tt.args.contractVersion)
 			if len(pm.processGroups[groupKey]) != tt.wantProcessNum {
 				t.Errorf("TestProcessManager_removeFromProcessGroup() process num= %v, want %v", pm.idleProcesses.Size(), tt.wantProcessNum)
 			}
@@ -1188,17 +1224,20 @@ func TestProcessManager_removeProcessFromCache(t *testing.T) {
 		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 	}
 
+	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testProcessName1 := "testProcessName1"
 	testContractVersion := "1.0.0"
 
 	process1 := &Process{
+		chainID:         testChainID,
 		contractName:    testContractName1,
 		contractVersion: testContractVersion,
 		processName:     testProcessName1,
 	}
 
 	processManager.addProcessToCache(
+		testChainID,
 		testContractName1,
 		testContractVersion,
 		testProcessName1,
@@ -1211,6 +1250,7 @@ func TestProcessManager_removeProcessFromCache(t *testing.T) {
 	}
 
 	type args struct {
+		chainID         string
 		contractName    string
 		contractVersion string
 		processName     string
@@ -1225,6 +1265,7 @@ func TestProcessManager_removeProcessFromCache(t *testing.T) {
 			name:   "TestProcessManager_removeProcessFromCache",
 			fields: fields{processManager: processManager},
 			args: args{
+				chainID:         testChainID,
 				contractName:    testContractName1,
 				contractVersion: testContractVersion,
 				processName:     testProcessName1,
@@ -1235,7 +1276,7 @@ func TestProcessManager_removeProcessFromCache(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
-			pm.removeProcessFromCache(tt.args.contractName, tt.args.contractVersion, tt.args.processName)
+			pm.removeProcessFromCache(tt.args.chainID, tt.args.contractName, tt.args.contractVersion, tt.args.processName)
 			if pm.idleProcesses.Size() != tt.wantProcessNum {
 				t.Errorf("TestProcessManager_removeProcessFromCache() process num= %v, want %v", pm.idleProcesses.Size(), tt.wantProcessNum)
 			}

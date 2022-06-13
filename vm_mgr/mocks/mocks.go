@@ -7,6 +7,8 @@ import (
 
 type MockProcessManager struct{}
 
+var _ interfaces.ProcessManager = (*MockProcessManager)(nil)
+
 func (pm *MockProcessManager) Start() {
 	panic("implement me")
 }
@@ -26,7 +28,7 @@ func (pm *MockProcessManager) GetProcessByName(processName string) (interfaces.P
 	return &MockProcess{}, true
 }
 
-func (pm *MockProcessManager) GetProcessNumByContractKey(contractName, contractVersion string) int {
+func (pm *MockProcessManager) GetProcessNumByContractKey(chainID, contractName, contractVersion string) int {
 	panic("implement me")
 }
 
@@ -35,16 +37,22 @@ func (pm *MockProcessManager) ChangeProcessState(processName string, toBusy bool
 }
 
 type MockProcess struct {
+	ChainID         string
 	ProcessName     string
 	ContractName    string
 	ContractVersion string
 }
 
-func (p *MockProcess) PutMsg(msg *protogo.DockerVMMessage) {
-}
+var _ interfaces.Process = (*MockProcess)(nil)
+
+func (p *MockProcess) PutMsg(msg *protogo.DockerVMMessage) {}
 
 func (p *MockProcess) Start() {
 	panic("implement me")
+}
+
+func (p *MockProcess) GetChainID() string {
+	return p.ChainID
 }
 
 func (p *MockProcess) GetProcessName() string {
@@ -65,7 +73,7 @@ func (p *MockProcess) GetUser() interfaces.User {
 
 func (p *MockProcess) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) {}
 
-func (p *MockProcess) ChangeSandbox(contractName, contractVersion, processName string) error {
+func (p *MockProcess) ChangeSandbox(chainID, contractName, contractVersion, processName string) error {
 	return nil
 }
 
@@ -74,6 +82,8 @@ func (p *MockProcess) CloseSandbox() error {
 }
 
 type MockRequestScheduler struct{}
+
+var _ interfaces.RequestScheduler = (*MockRequestScheduler)(nil)
 
 func (rs *MockRequestScheduler) Start() {
 	//TODO implement me
@@ -84,12 +94,14 @@ func (rs *MockRequestScheduler) PutMsg(msg interface{}) error {
 	return nil
 }
 
-func (rs *MockRequestScheduler) GetRequestGroup(contractName, contractVersion string) (interfaces.RequestGroup, bool) {
+func (rs *MockRequestScheduler) GetRequestGroup(chainID, contractName, contractVersion string) (interfaces.RequestGroup, bool) {
 	//TODO implement me
 	panic("implement me")
 }
 
 type MockRequestGroup struct{}
+
+var _ interfaces.RequestGroup = (*MockRequestGroup)(nil)
 
 func (rg *MockRequestGroup) Start() {
 	//TODO implement me
