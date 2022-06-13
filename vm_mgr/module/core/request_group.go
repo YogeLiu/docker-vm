@@ -85,7 +85,7 @@ type RequestGroup struct {
 }
 
 // check interface implement
-var _ interfaces.RequestGroup = (*RequestGroup)()
+var _ interfaces.RequestGroup = (*RequestGroup)(nil)
 
 // NewRequestGroup returns new request group
 func NewRequestGroup(

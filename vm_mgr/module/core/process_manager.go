@@ -54,7 +54,7 @@ type ProcessManager struct {
 }
 
 // check interface implement
-var _ interfaces.ProcessManager = (*ProcessManager)()
+var _ interfaces.ProcessManager = (*ProcessManager)(nil)
 
 // NewProcessManager returns new process manager
 func NewProcessManager(maxProcessNum int, rate float64, isOrigManager bool, userManager interfaces.UserManager) *ProcessManager {

@@ -102,7 +102,7 @@ type Process struct {
 }
 
 // check interface implement
-var _ interfaces.Process = (*Process)()
+var _ interfaces.Process = (*Process)(nil)
 
 // NewProcess new process, process working on main contract which is not called cross contract
 func NewProcess(user interfaces.User, contractName, contractVersion, processName string,

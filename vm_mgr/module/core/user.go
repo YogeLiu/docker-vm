@@ -23,7 +23,7 @@ type User struct {
 }
 
 // check interface implement
-var _ interfaces.User = (*User)()
+var _ interfaces.User = (*User)(nil)
 
 // NewUser returns new user
 func NewUser(id int) *User {

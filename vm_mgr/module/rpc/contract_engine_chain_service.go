@@ -33,7 +33,7 @@ type ChainRPCService struct {
 }
 
 // check interface implement
-var _ interfaces.ChainRPCService = (*ChainRPCService)()
+var _ interfaces.ChainRPCService = (*ChainRPCService)(nil)
 
 // communicateConn is the communication connection info
 type communicateConn struct {

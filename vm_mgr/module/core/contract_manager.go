@@ -37,7 +37,7 @@ type ContractManager struct {
 }
 
 // check interface implement
-var _ interfaces.ContractManager = (*ContractManager)()
+var _ interfaces.ContractManager = (*ContractManager)(nil)
 
 // NewContractManager returns new contract manager
 func NewContractManager() (*ContractManager, error) {

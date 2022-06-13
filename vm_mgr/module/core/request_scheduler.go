@@ -49,7 +49,7 @@ type RequestScheduler struct {
 }
 
 // check interface implement
-var _ interfaces.RequestScheduler = (*RequestScheduler)()
+var _ interfaces.RequestScheduler = (*RequestScheduler)(nil)
 
 // NewRequestScheduler new a request scheduler
 func NewRequestScheduler(

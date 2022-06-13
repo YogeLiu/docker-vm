@@ -37,7 +37,7 @@ type UserManager struct {
 }
 
 // check interface implement
-var _ interfaces.UserManager = (*UserManager)()
+var _ interfaces.UserManager = (*UserManager)(nil)
 
 // NewUsersManager returns user manager
 func NewUsersManager() *UserManager {
