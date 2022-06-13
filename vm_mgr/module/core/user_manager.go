@@ -25,9 +25,11 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
 
-const baseUid = 10000                    // user id start from base uid
-const addUserFormat = "useradd -u %d %s" // add user cmd
-const deleteUserFormat = "userdel -r %s" // add user cmd
+const (
+	_baseUid          = 10000              // user id start from base uid
+	_addUserFormat    = "useradd -u %d %s" // add user cmd
+	_deleteUserFormat = "userdel -r %s"    // add user cmd
+)
 
 // UserManager is linux user manager
 type UserManager struct {
@@ -64,7 +66,7 @@ func (u *UserManager) BatchCreateUsers() error {
 	for i := 0; i < totalNum; i++ {
 		wg.Add(1)
 		go func(i int) {
-			id := baseUid + i
+			id := _baseUid + i
 			err = u.generateNewUser(id)
 			if err != nil {
 				u.logger.Errorf("failed to create user [%d]", id)
@@ -117,7 +119,7 @@ func (u *UserManager) ReleaseUsers() error {
 	for i := 0; i < totalNum; i++ {
 		wg.Add(1)
 		go func(i int) {
-			id := baseUid + i
+			id := _baseUid + i
 			err = u.releaseUser(id)
 			if err != nil {
 				u.logger.Warnf("failed to delete user %v", err)
@@ -143,7 +145,7 @@ func (u *UserManager) generateNewUser(uid int) error {
 		return err
 	}
 
-	addUserCommand := fmt.Sprintf(addUserFormat, uid, newUser.UserName)
+	addUserCommand := fmt.Sprintf(_addUserFormat, uid, newUser.UserName)
 
 	createSuccess := false
 
@@ -156,10 +158,10 @@ func (u *UserManager) generateNewUser(uid int) error {
 		createSuccess = true
 	}
 
-	// add created newUser to queue
+	// add _created newUser to queue
 	err = u.userQueue.Enqueue(newUser)
 	if err != nil {
-		return fmt.Errorf("failed to add created user %+v to queue, %v", newUser, err)
+		return fmt.Errorf("failed to add _created user %+v to queue, %v", newUser, err)
 	}
 	//u.logger.Debugf("success add newUser to newUser queue: %+v", newUser)
 
@@ -169,7 +171,7 @@ func (u *UserManager) generateNewUser(uid int) error {
 // releaseUser release user
 func (u *UserManager) releaseUser(id int) error {
 	newUser := NewUser(id)
-	delUserCommand := fmt.Sprintf(deleteUserFormat, newUser.UserName)
+	delUserCommand := fmt.Sprintf(_deleteUserFormat, newUser.UserName)
 	if err := utils.RunCmd(delUserCommand); err != nil {
 		return fmt.Errorf("failed to exec [%s], [%+v], %v", delUserCommand, newUser, err)
 	}

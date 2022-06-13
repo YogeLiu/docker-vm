@@ -28,11 +28,11 @@ func TestNewRequestGroup(t *testing.T) {
 
 	testContractName := "testContractName"
 	testContractVersion := "1.0.0"
-	eventCh := make(chan *messages.GetProcessRespMsg, requestGroupEventChSize)
-	txCh := make(chan *protogo.DockerVMMessage, requestGroupEventChSize)
+	eventCh := make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize)
+	txCh := make(chan *protogo.DockerVMMessage, _requestGroupEventChSize)
 	stopCh := make(chan struct{})
-	origTxCh := make(chan *protogo.DockerVMMessage, origTxChSize)
-	crossTxCh := make(chan *protogo.DockerVMMessage, crossTxChSize)
+	origTxCh := make(chan *protogo.DockerVMMessage, _origTxChSize)
+	crossTxCh := make(chan *protogo.DockerVMMessage, _crossTxChSize)
 
 	requestGroup := NewRequestGroup(testContractName, testContractVersion, nil, nil, nil, nil)
 	requestGroup.eventCh = eventCh
@@ -132,8 +132,8 @@ func TestRequestGroup_GetTxCh(t *testing.T) {
 	SetConfig()
 
 	log := logger.NewTestDockerLogger()
-	testOrigTxCh := make(chan *protogo.DockerVMMessage, origTxChSize)
-	testCrossTxCh := make(chan *protogo.DockerVMMessage, crossTxChSize)
+	testOrigTxCh := make(chan *protogo.DockerVMMessage, _origTxChSize)
+	testCrossTxCh := make(chan *protogo.DockerVMMessage, _crossTxChSize)
 	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil, nil, nil, nil)
 	requestGroup.logger = log
 
@@ -196,11 +196,11 @@ func TestRequestGroup_PutMsg(t *testing.T) {
 	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
 	requestGroup.origTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+		txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
 		processMgr: origProcessManager,
 	}
 	requestGroup.crossTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+		txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
 		processMgr: crossProcessManager,
 	}
 
@@ -326,11 +326,11 @@ func TestRequestGroup_getProcesses(t *testing.T) {
 	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
 	requestGroup.origTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+		txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
 		processMgr: origProcessManager,
 	}
 	requestGroup.crossTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+		txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
 		processMgr: crossProcessManager,
 	}
 	requestGroup.origTxController.txCh <- &protogo.DockerVMMessage{}
@@ -423,11 +423,11 @@ func TestRequestGroup_handleContractReadyResp(t *testing.T) {
 	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
 	requestGroup.origTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+		txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
 		processMgr: origProcessManager,
 	}
 	requestGroup.crossTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+		txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
 		processMgr: crossProcessManager,
 	}
 
@@ -443,7 +443,7 @@ func TestRequestGroup_handleContractReadyResp(t *testing.T) {
 		{
 			name:   "TestRequestGroup_handleContractReadyResp",
 			fields: fields{group: requestGroup},
-			want:   contractReady,
+			want:   _contractReady,
 		},
 	}
 	for _, tt := range tests {
@@ -475,11 +475,11 @@ func TestRequestGroup_handleProcessReadyResp(t *testing.T) {
 	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
 	requestGroup.origTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+		txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
 		processMgr: origProcessManager,
 	}
 	requestGroup.crossTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+		txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
 		processMgr: crossProcessManager,
 	}
 	requestGroup.origTxController.txCh <- &protogo.DockerVMMessage{}
@@ -561,8 +561,8 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil,
 		nil, cMgr, &RequestScheduler{
 			lock:    sync.RWMutex{},
-			txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
-			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
+			eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
 		})
 	log := logger.NewTestDockerLogger()
 	requestGroup.logger = log
@@ -597,7 +597,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						ContractVersion: "1.0.0",
 					},
 				},
-				state: contractEmpty,
+				state: _contractEmpty,
 			},
 			wantErr: false,
 		},
@@ -616,7 +616,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						ContractVersion: "1.0.0",
 					},
 				},
-				state: contractWaiting,
+				state: _contractWaiting,
 			},
 			wantErr: false,
 		},
@@ -635,7 +635,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						ContractVersion: "1.0.0",
 					},
 				},
-				state: contractReady,
+				state: _contractReady,
 			},
 			wantErr: false,
 		},
@@ -654,7 +654,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						ContractVersion: "1.0.0",
 					},
 				},
-				state: contractReady,
+				state: _contractReady,
 			},
 			wantErr: false,
 		},
@@ -673,7 +673,7 @@ func TestRequestGroup_handleTxReq(t *testing.T) {
 						ContractVersion: "1.0.0",
 					},
 				},
-				state: contractReady,
+				state: _contractReady,
 			},
 			wantErr: true,
 		},
@@ -697,8 +697,8 @@ func TestRequestGroup_putTxReqToCh(t *testing.T) {
 	requestGroup := NewRequestGroup("testContractName", "1.0.0", nil,
 		nil, nil, &RequestScheduler{
 			lock:    sync.RWMutex{},
-			txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
-			eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
+			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
+			eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
 		})
 	requestGroup.logger = log
 

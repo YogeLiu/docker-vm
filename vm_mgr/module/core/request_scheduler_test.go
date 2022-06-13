@@ -423,7 +423,7 @@ func TestRequestScheduler_handleTxReq(t *testing.T) {
 	scheduler := newTestRequestScheduler(t)
 	log := logger.NewTestDockerLogger()
 	scheduler.logger = log
-	scheduler.contractManager = &ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)}
+	scheduler.contractManager = &ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)}
 	type fields struct {
 		scheduler *RequestScheduler
 	}
@@ -483,7 +483,7 @@ func newTestRequestScheduler(t *testing.T) *RequestScheduler {
 
 	// new scheduler
 	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager,
-		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)})
+		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)})
 	origProcessManager.SetScheduler(scheduler)
 	crossProcessManager.SetScheduler(scheduler)
 	chainRPCService.SetScheduler(scheduler)

@@ -637,10 +637,10 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 	processManager.requestScheduler = &RequestScheduler{
-		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 		requestGroups: map[string]interfaces.RequestGroup{groupKey: &RequestGroup{
-			txCh:    make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
-			eventCh: make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
+			txCh:    make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
+			eventCh: make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
 		}},
 	}
 
@@ -700,12 +700,12 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 			}
 			idleProcessNum := pm.idleProcesses.Size()
 			if idleProcessNum != tt.wantIdleProcessNum {
-				t.Errorf("handleAllocateIdleProcesses() idle process size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() _idle process size = %v, "+
 					"wantIdleProcessNum %v", idleProcessNum, tt.wantIdleProcessNum)
 			}
 			busyProcessNum := len(pm.busyProcesses)
 			if busyProcessNum != tt.wantBusyProcessNum {
-				t.Errorf("handleAllocateIdleProcesses() busy process size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() _busy process size = %v, "+
 					"wantBusyProcessNum %v", busyProcessNum, tt.wantBusyProcessNum)
 			}
 			origContractProcessNum := len(pm.processGroups["testContractName1#1.0.0"])
@@ -734,7 +734,7 @@ func TestProcessManager_batchPopIdleProcesses(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 	processManager.requestScheduler = &RequestScheduler{
-		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 	}
 
 	testContractName1 := "testContractName1"
@@ -925,7 +925,7 @@ func TestProcessManager_handleCleanIdleProcesses(t *testing.T) {
 			pm := tt.fields.processManager
 			pm.handleCleanIdleProcesses()
 			if tt.wantIdleProcessNum != pm.idleProcesses.Size() {
-				t.Errorf("handleCleanIdleProcesses() idle process num= %v, want %v", pm.idleProcesses.Size(), tt.wantIdleProcessNum)
+				t.Errorf("handleCleanIdleProcesses() _idle process num= %v, want %v", pm.idleProcesses.Size(), tt.wantIdleProcessNum)
 			}
 		})
 	}
@@ -953,10 +953,10 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 	contractKey2 := utils.ConstructContractKey(testContractName2, testContractVersion)
 
 	processManager.SetScheduler(&RequestScheduler{
-		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 		requestGroups: map[string]interfaces.RequestGroup{contractKey1: &RequestGroup{
-			txCh:             make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
-			eventCh:          make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
+			txCh:             make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
+			eventCh:          make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
 			origTxController: &txController{}},
 		},
 	})
@@ -1012,10 +1012,10 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 			pm := tt.fields.processManager
 			pm.handleGetProcessReq(tt.args.msg)
 			if tt.wantBusyProcessNum != len(pm.busyProcesses) {
-				t.Errorf("TestProcessManager_handleGetProcessReq() busy process num= %v, want %v", len(pm.busyProcesses), tt.wantBusyProcessNum)
+				t.Errorf("TestProcessManager_handleGetProcessReq() _busy process num= %v, want %v", len(pm.busyProcesses), tt.wantBusyProcessNum)
 			}
 			if tt.wantIdleProcessNum != pm.idleProcesses.Size() {
-				t.Errorf("TestProcessManager_handleGetProcessReq() idle process num= %v, want %v", pm.idleProcesses.Size(), tt.wantIdleProcessNum)
+				t.Errorf("TestProcessManager_handleGetProcessReq() _idle process num= %v, want %v", pm.idleProcesses.Size(), tt.wantIdleProcessNum)
 			}
 			if tt.wantContract1ProcessNum != len(pm.processGroups[contractKey1]) {
 				t.Errorf("TestProcessManager_handleGetProcessReq() contract1 process num= %v, want %v", len(pm.processGroups[contractKey1]), tt.wantContract1ProcessNum)
@@ -1039,7 +1039,7 @@ func TestProcessManager_handleSandboxExitResp(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 	processManager.requestScheduler = &RequestScheduler{
-		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 	}
 
 	testContractName1 := "testContractName1"
@@ -1113,7 +1113,7 @@ func TestProcessManager_removeFromProcessGroup(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 	processManager.requestScheduler = &RequestScheduler{
-		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 	}
 
 	testContractName1 := "testContractName1"
@@ -1185,7 +1185,7 @@ func TestProcessManager_removeProcessFromCache(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 	processManager.requestScheduler = &RequestScheduler{
-		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 	}
 
 	testContractName1 := "testContractName1"

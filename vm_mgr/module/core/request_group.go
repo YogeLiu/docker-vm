@@ -22,17 +22,17 @@ import (
 
 const (
 
-	// requestGroupTxChSize is request scheduler event chan size
-	requestGroupTxChSize = 30000
+	// _requestGroupTxChSize is request scheduler event chan size
+	_requestGroupTxChSize = 30000
 
-	// requestGroupEventChSize is request scheduler event chan size
-	requestGroupEventChSize = 100
+	// _requestGroupEventChSize is request scheduler event chan size
+	_requestGroupEventChSize = 100
 
-	// origTxChSize is orig tx chan size
-	origTxChSize = 30000
+	// _origTxChSize is orig tx chan size
+	_origTxChSize = 30000
 
-	// crossTxChSize is cross tx chan size
-	crossTxChSize = 10000
+	// _crossTxChSize is cross tx chan size
+	_crossTxChSize = 10000
 
 	// reqNumPerOrigProcess is the request num for one process can handle
 	reqNumPerOrigProcess = 1
@@ -45,9 +45,9 @@ const (
 type contractState int
 
 const (
-	contractEmpty   contractState = iota // contract is not ready
-	contractWaiting                      // waiting for contract manager to load contract
-	contractReady                        // contract is ready
+	_contractEmpty   contractState = iota // contract is not _ready
+	_contractWaiting                      // waiting for contract manager to load contract
+	_contractReady                        // contract is _ready
 )
 
 //// TxType is the type of tx request
@@ -72,7 +72,7 @@ type RequestGroup struct {
 	contractName    string // contract name
 	contractVersion string // contract version
 
-	contractManager interfaces.ContractManager // contract manager, request contract / receive contract ready signal
+	contractManager interfaces.ContractManager // contract manager, request contract / receive contract _ready signal
 	contractState   contractState              // handle tx with different contract state
 
 	requestScheduler interfaces.RequestScheduler      // used for return err req to chain
@@ -103,19 +103,19 @@ func NewRequestGroup(
 		contractVersion: contractVersion,
 
 		contractManager: cMgr,
-		contractState:   contractEmpty,
+		contractState:   _contractEmpty,
 
 		requestScheduler: scheduler,
-		eventCh:          make(chan *messages.GetProcessRespMsg, requestGroupEventChSize),
-		txCh:             make(chan *protogo.DockerVMMessage, requestGroupTxChSize),
+		eventCh:          make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
+		txCh:             make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
 		stopCh:           make(chan struct{}),
 
 		origTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+			txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
 			processMgr: oriPMgr,
 		},
 		crossTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+			txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
 			processMgr: crossPMgr,
 		},
 	}
@@ -132,7 +132,7 @@ func (r *RequestGroup) Start() {
 			select {
 			case msg := <-r.eventCh:
 				if err := r.handleProcessReadyResp(msg); err != nil {
-					r.logger.Errorf("failed to handle process ready resp, %v", err)
+					r.logger.Errorf("failed to handle process _ready resp, %v", err)
 				}
 
 			case msg := <-r.txCh:
@@ -202,7 +202,7 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 
 	switch r.contractState {
 	// try to get contract for first tx.
-	case contractEmpty:
+	case _contractEmpty:
 		err = r.contractManager.PutMsg(&protogo.DockerVMMessage{
 			TxId: req.TxId,
 			Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
@@ -215,14 +215,14 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 			return err
 		}
 		// avoid duplicate getting bytecode
-		r.contractState = contractWaiting
+		r.contractState = _contractWaiting
 
 	// only enqueue
-	case contractWaiting:
+	case _contractWaiting:
 		r.logger.Debugf("tx %s enqueue, waiting for contract", req.TxId)
 
 	// see if we should get new processes, if so, try to get
-	case contractReady:
+	case _contractReady:
 		if req.CrossContext.CurrentDepth == 0 || !utils.HasUsed(req.CrossContext.CrossInfo) {
 			_, err = r.getProcesses(true)
 		} else {
@@ -340,12 +340,12 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	return needProcessNum, nil
 }
 
-// handleContractReadyResp set the request group's contract state to contractReady
+// handleContractReadyResp set the request group's contract state to _contractReady
 func (r *RequestGroup) handleContractReadyResp() {
 
-	r.logger.Debugf("handle contract ready resp")
+	r.logger.Debugf("handle contract _ready resp")
 
-	r.contractState = contractReady
+	r.contractState = _contractReady
 	_, err := r.getProcesses(true)
 	if err != nil {
 		r.logger.Errorf("failed to get orig processes, %v", err)
@@ -356,12 +356,12 @@ func (r *RequestGroup) handleContractReadyResp() {
 	}
 }
 
-// handleProcessReadyResp handles process ready response
+// handleProcessReadyResp handles process _ready response
 func (r *RequestGroup) handleProcessReadyResp(msg *messages.GetProcessRespMsg) error {
 
-	r.logger.Debugf("handle process ready resp: %+v", msg)
+	r.logger.Debugf("handle process _ready resp: %+v", msg)
 
-	// restore the state of request group to idle
+	// restore the state of request group to _idle
 	if msg.IsOrig {
 		r.updateControllerState(true, false)
 	} else {
@@ -370,7 +370,7 @@ func (r *RequestGroup) handleProcessReadyResp(msg *messages.GetProcessRespMsg) e
 
 	// try to get processes from process manager
 	if _, err := r.getProcesses(msg.IsOrig); err != nil {
-		return fmt.Errorf("failed to handle contract ready resp, %v", err)
+		return fmt.Errorf("failed to handle contract _ready resp, %v", err)
 	}
 
 	return nil

@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const rpcEventChSize = 10240
+const _rpcEventChSize = 10240
 
 // ChainRPCService handles all messages of chain client (1 to 1)
 // Receive message types: tx request, get bytecode response
@@ -50,7 +50,7 @@ type communicateConn struct {
 func NewChainRPCService() *ChainRPCService {
 	return &ChainRPCService{
 		logger:  logger.NewDockerLogger(logger.MODULE_CHAIN_RPC_SERVICE),
-		eventCh: make(chan *protogo.DockerVMMessage, rpcEventChSize),
+		eventCh: make(chan *protogo.DockerVMMessage, _rpcEventChSize),
 	}
 }
 

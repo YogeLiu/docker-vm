@@ -49,7 +49,7 @@ func TestChainRPCService_DockerVMCommunicate_Recv(t *testing.T) {
 			fields: fields{
 				logger:    logger.NewTestDockerLogger(),
 				scheduler: &mocks.MockRequestScheduler{},
-				eventCh:   make(chan *protogo.DockerVMMessage, rpcEventChSize),
+				eventCh:   make(chan *protogo.DockerVMMessage, _rpcEventChSize),
 			},
 			args:    args{stream: stream},
 			wantErr: false,
@@ -105,7 +105,7 @@ func TestChainRPCService_DockerVMCommunicate_Recv(t *testing.T) {
 //			fields: fields{
 //				logger:    logger.NewTestDockerLogger(),
 //				scheduler: &mocks.MockRequestScheduler{},
-//				eventCh:   make(chan *protogo.DockerVMMessage, rpcEventChSize),
+//				eventCh:   make(chan *protogo.DockerVMMessage, _rpcEventChSize),
 //			},
 //			args:    args{stream: stream},
 //			wantErr: false,
@@ -157,7 +157,7 @@ func TestChainRPCService_PutMsg(t *testing.T) {
 			fields: fields{
 				logger:    logger.NewTestDockerLogger(),
 				scheduler: &mocks.MockRequestScheduler{},
-				eventCh:   make(chan *protogo.DockerVMMessage, rpcEventChSize),
+				eventCh:   make(chan *protogo.DockerVMMessage, _rpcEventChSize),
 			},
 			args:    args{msg: &protogo.DockerVMMessage{}},
 			wantErr: false,
@@ -167,7 +167,7 @@ func TestChainRPCService_PutMsg(t *testing.T) {
 			fields: fields{
 				logger:    logger.NewTestDockerLogger(),
 				scheduler: &mocks.MockRequestScheduler{},
-				eventCh:   make(chan *protogo.DockerVMMessage, rpcEventChSize),
+				eventCh:   make(chan *protogo.DockerVMMessage, _rpcEventChSize),
 			},
 			args:    args{msg: "string"},
 			wantErr: true,
@@ -217,7 +217,7 @@ func TestChainRPCService_PutMsg(t *testing.T) {
 //			name: "TestChainRPCService_sendMsgRoutine",
 //			fields: fields{
 //				logger:     logger.NewTestDockerLogger(),
-//				eventCh:    make(chan *protogo.DockerVMMessage, rpcEventChSize),
+//				eventCh:    make(chan *protogo.DockerVMMessage, _rpcEventChSize),
 //			},
 //			args:    args{scheduler: nil},
 //			wantErr: false,

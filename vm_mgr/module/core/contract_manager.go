@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	ContractsDir               = "contracts" // ContractsDir dir save executable contract
-	contractManagerEventChSize = 64
-	sizePerContract            = 15 // MiB
+	ContractsDir                = "contracts" // ContractsDir dir save executable contract
+	_contractManagerEventChSize = 64
+	_sizePerContract            = 15 // MiB
 )
 
 // ContractManager manage all contracts with LRU cache
@@ -42,9 +42,9 @@ var _ interfaces.ContractManager = (*ContractManager)(nil)
 // NewContractManager returns new contract manager
 func NewContractManager() (*ContractManager, error) {
 	contractManager := &ContractManager{
-		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize / sizePerContract),
+		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize / _sizePerContract),
 		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER),
-		eventCh:      make(chan *protogo.DockerVMMessage, contractManagerEventChSize),
+		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 	}
 	if err := contractManager.initContractLRU(); err != nil {
@@ -219,10 +219,10 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 
 	cm.logger.Infof("contract [%s] saved in lru and dir [%s]", groupKey, path)
 
-	// send contract ready signal to request group
+	// send contract _ready signal to request group
 	if err := cm.sendContractReadySignal(resp.Response.ContractName,
 		resp.Response.ContractVersion); err != nil {
-		return fmt.Errorf("failed to send contract ready signal, %v", err)
+		return fmt.Errorf("failed to send contract _ready signal, %v", err)
 	}
 	return nil
 }
@@ -233,7 +233,7 @@ func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage
 	_ = cm.scheduler.PutMsg(msg)
 }
 
-// sendContractReadySignal send contract ready signal to request group, request group can request process now.
+// sendContractReadySignal send contract _ready signal to request group, request group can request process now.
 func (cm *ContractManager) sendContractReadySignal(contractName, contractVersion string) error {
 
 	// check whether scheduler was initialized

@@ -19,12 +19,12 @@ import (
 )
 
 const (
-	// requestSchedulerTxChSize is request scheduler event chan size
-	requestSchedulerTxChSize = 30000
-	// requestSchedulerEventChSize is request scheduler event chan size
-	requestSchedulerEventChSize = 100
-	// closeChSize is close request group chan size
-	closeChSize = 8
+	// _requestSchedulerTxChSize is request scheduler event chan size
+	_requestSchedulerTxChSize = 30000
+	// _requestSchedulerEventChSize is request scheduler event chan size
+	_requestSchedulerEventChSize = 100
+	// _closeChSize is close request group chan size
+	_closeChSize = 8
 )
 
 // RequestScheduler schedule all requests and responses between chain and contract engine, includes:
@@ -62,9 +62,9 @@ func NewRequestScheduler(
 		logger: logger.NewDockerLogger(logger.MODULE_REQUEST_SCHEDULER),
 		lock:   sync.RWMutex{},
 
-		eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
-		txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
-		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+		eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
+		txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
+		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 
 		requestGroups:       make(map[string]interfaces.RequestGroup),
 		chainRPCService:     service,

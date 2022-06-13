@@ -98,7 +98,7 @@ func TestChangeSandbox(t *testing.T) {
 				newContractVersion: "newContractVersion",
 				newProcessName:     "newProcessName",
 			},
-			currState: idle,
+			currState: _idle,
 			wantErr:   true,
 		},
 		{
@@ -108,8 +108,8 @@ func TestChangeSandbox(t *testing.T) {
 				newContractName:    "newContractName",
 				newContractVersion: "newContractVersion",
 				newProcessName:     "newProcessName",
-			}, currState: busy,
-			wantErr:      true,
+			}, currState: _busy,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -213,7 +213,7 @@ func TestChangeSandbox(t *testing.T) {
 //
 //			name:   "TestProcess_SetStream",
 //			fields: fields{process: process},
-//			want:   ready,
+//			want:   _ready,
 //		},
 //	}
 //	for _, tt := range tests {
@@ -1488,14 +1488,14 @@ func newTestProcess(isOrig bool) *Process {
 
 	// new scheduler
 	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager,
-		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)})
+		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)})
 	scheduler.requestGroups[groupKey] = &RequestGroup{
 		origTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+			txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
 			processMgr: origProcessManager,
 		},
 		crossTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+			txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
 			processMgr: crossProcessManager,
 		},
 	}
