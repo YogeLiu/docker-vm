@@ -637,7 +637,6 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 	userManager := NewUsersManager()
 	log := logger.NewTestDockerLogger()
 
-	testChainID := "chain1"
 	testContractName1 := "testContractName1"
 	testContractName2 := "testContractName2"
 	testProcessName1 := "testProcessName1"
@@ -660,6 +659,7 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 		testContractVersion,
 		testProcessName1,
 		&mocks.MockProcess{
+			ChainID:         testChainID,
 			ContractName:    testContractName1,
 			ContractVersion: testContractVersion,
 			ProcessName:     testProcessName1,

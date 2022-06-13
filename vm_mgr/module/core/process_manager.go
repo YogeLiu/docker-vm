@@ -260,12 +260,6 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 			return fmt.Errorf("failed to peek _idle processes, %v", err)
 		}
 
-		var processlist string
-		for _, v := range idleProcesses {
-			processlist += v.GetProcessName() + " "
-		}
-		pm.logger.Debugf("allocate _idle process list, %s", processlist)
-
 		// change processes context concurrently
 		var wg sync.WaitGroup
 		lock := sync.Mutex{}
@@ -428,11 +422,6 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 
 	// _idle processes to remove
 	idleProcesses, err := pm.peekIdleProcesses(allocateNum)
-	var processlist string
-	for _, v := range idleProcesses {
-		processlist += v.GetProcessName() + " "
-	}
-	pm.logger.Debugf("allocate _idle process list, %s", processlist)
 	if err != nil {
 		pm.logger.Errorf("failed to peek _idle processes, %v", err)
 	}
@@ -453,7 +442,7 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 			defer wg.Done()
 
 			// generate new process name
-			oldChianID := process.GetChainID()
+			oldChainID := process.GetChainID()
 			oldContractName := process.GetContractName()
 			oldContractVersion := process.GetContractVersion()
 			oldProcessName := process.GetProcessName()
@@ -495,7 +484,7 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 			defer lock.Unlock()
 
 			pm.removeFromWaitingGroup(group.ChainID, group.ContractName, group.ContractVersion)
-			pm.removeProcessFromCache(oldChianID, oldContractName, oldContractVersion, oldProcessName)
+			pm.removeProcessFromCache(oldChainID, oldContractName, oldContractVersion, oldProcessName)
 			pm.addProcessToCache(group.ChainID, group.ContractName, group.ContractVersion, newProcessName, process, true)
 		}()
 	}

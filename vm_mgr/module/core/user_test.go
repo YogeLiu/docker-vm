@@ -9,7 +9,6 @@ package core
 
 import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"fmt"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -257,8 +256,5 @@ func TestUser_GetUserName(t *testing.T) {
 }
 
 func SetConfig() {
-	err := config.InitConfig(configFileName)
-	if err != nil {
-		fmt.Println(err)
-	}
+	_ = config.InitConfig(configFileName)
 }
