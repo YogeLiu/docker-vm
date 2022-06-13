@@ -32,6 +32,9 @@ type ChainRPCService struct {
 	eventCh   chan *protogo.DockerVMMessage // invoking handler
 }
 
+// check interface implement
+var _ interfaces.ChainRPCService = (*ChainRPCService)()
+
 // communicateConn is the communication connection info
 type communicateConn struct {
 	stream     protogo.DockerVMRpc_DockerVMCommunicateServer // rpc stream

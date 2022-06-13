@@ -36,6 +36,9 @@ type UserManager struct {
 	userNum   int                // total user num
 }
 
+// check interface implement
+var _ interfaces.UserManager = (*UserManager)()
+
 // NewUsersManager returns user manager
 func NewUsersManager() *UserManager {
 

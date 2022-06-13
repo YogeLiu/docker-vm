@@ -36,6 +36,9 @@ type ContractManager struct {
 	mountDir     string                        // contract mount Dir
 }
 
+// check interface implement
+var _ interfaces.ContractManager = (*ContractManager)()
+
 // NewContractManager returns new contract manager
 func NewContractManager() (*ContractManager, error) {
 	contractManager := &ContractManager{

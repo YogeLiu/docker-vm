@@ -48,6 +48,9 @@ type RequestScheduler struct {
 	crossProcessManager interfaces.ProcessManager          // manager for cross process
 }
 
+// check interface implement
+var _ interfaces.RequestScheduler = (*RequestScheduler)()
+
 // NewRequestScheduler new a request scheduler
 func NewRequestScheduler(
 	service interfaces.ChainRPCService,

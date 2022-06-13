@@ -101,6 +101,9 @@ type Process struct {
 	lock sync.RWMutex
 }
 
+// check interface implement
+var _ interfaces.Process = (*Process)()
+
 // NewProcess new process, process working on main contract which is not called cross contract
 func NewProcess(user interfaces.User, contractName, contractVersion, processName string,
 	manager interfaces.ProcessManager, scheduler interfaces.RequestScheduler, isOrigProcess bool) *Process {

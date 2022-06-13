@@ -9,6 +9,7 @@ package core
 
 import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
 	"fmt"
 	"path/filepath"
 )
@@ -20,6 +21,9 @@ type User struct {
 	UserName string // username
 	SockPath string // sandbox rpc sock path
 }
+
+// check interface implement
+var _ interfaces.User = (*User)()
 
 // NewUser returns new user
 func NewUser(id int) *User {
@@ -53,5 +57,3 @@ func (u *User) GetSockPath() string {
 func (u *User) GetUserName() string {
 	return u.UserName
 }
-
-

@@ -84,6 +84,9 @@ type RequestGroup struct {
 	crossTxController *txController // cross contract tx controller
 }
 
+// check interface implement
+var _ interfaces.RequestGroup = (*RequestGroup)()
+
 // NewRequestGroup returns new request group
 func NewRequestGroup(
 	contractName string,
