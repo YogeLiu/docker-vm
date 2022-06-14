@@ -21,7 +21,6 @@ import (
 	"chainmaker.org/chainmaker/common/v2/sortedmap"
 	"chainmaker.org/chainmaker/localconf/v2"
 	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
-	"chainmaker.org/chainmaker/pb-go/v2/common"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
@@ -62,8 +61,9 @@ const (
 MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAESkwkzwN7DHoCfmNLmUpf280PqnGM
 6QU+P3X8uahlUjpgWv+Stfmeco9RqSTU8Y1YGcQvm2Jr327qkRlG7+dELQ==
 -----END PUBLIC KEY-----`
-	zxlPKAddress = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
-	cmPKAddress  = "438537700181274713695763857518314651542142438174"
+	zxlPKAddress    = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
+	cmPKAddress2201 = "438537700181274713695763857518314651542142438174"
+	cmPKAddress2220 = "4cd0b5e8f6d6df38ecdc06c7431a48dd0265cb1e"
 
 	certPEM = `-----BEGIN CERTIFICATE-----
 MIICzjCCAi+gAwIBAgIDCzLUMAoGCCqGSM49BAMCMGoxCzAJBgNVBAYTAkNOMRAw
@@ -83,20 +83,22 @@ hp8YLjSflgw1+uWlMb/WCY60MyxZr/RRsTYpHu7FAkIBSMAVxw5RYySsf4J3bpM0
 CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
 8H8=
 -----END CERTIFICATE-----`
-	zxlCertAddressFromCert = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
-	cmCertAddressFromCert  = "276163396529059566124041165851202392707607138552"
+	zxlCertAddressFromCert    = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
+	cmCertAddressFromCert2201 = "276163396529059566124041165851202392707607138552"
+	cmCertAddressFromCert2220 = "305f98514f3c2f6fcaeb8247ed147bacf99990f8"
 )
 
 var (
 	mockDockerManager *dockergo.InstancesManager
-	iteratorWSets     map[string]*common.TxWrite
+	iteratorWSets     map[string]*commonPb.TxWrite
 	keyHistoryData    map[string]*store.KeyModification
 	kvSetIndex        int32
 	//kvGetIndex    int32
 	kvRowCache = make(map[int32]interface{})
 
-	senderCounter      int32
-	chainConfigCounter int32
+	blockVersionCounter int32
+	senderCounter       int32
+	chainConfigCounter  int32
 )
 
 var tmpSimContextMap map[string][]byte
@@ -280,8 +282,8 @@ func getMockedCMConfig() (map[string]interface{}, error) {
 	| key33 | field2  | val   |
 	| key4  | field3  | val   |
 */
-func makeStringKeyMap() (map[string]*common.TxWrite, []*store.KV) {
-	stringKeyMap := make(map[string]*common.TxWrite)
+func makeStringKeyMap() (map[string]*commonPb.TxWrite, []*store.KV) {
+	stringKeyMap := make(map[string]*commonPb.TxWrite)
 	kvs := []*store.KV{
 		{
 			ContractName: ContractNameTest,
@@ -326,7 +328,7 @@ func makeStringKeyMap() (map[string]*common.TxWrite, []*store.KV) {
 	}
 
 	for _, kv := range kvs {
-		stringKeyMap[constructKey(kv.ContractName, kv.Key)] = &common.TxWrite{
+		stringKeyMap[constructKey(kv.ContractName, kv.Key)] = &commonPb.TxWrite{
 			Key:          kv.Key,
 			Value:        kv.Value,
 			ContractName: kv.ContractName,
@@ -634,6 +636,21 @@ func (iter *mockHistoryKeyIterator) Value() (*store.KeyModification, error) {
 
 func (iter *mockHistoryKeyIterator) Release() {}
 
+func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetBlockVersion().DoAndReturn(
+		GetBlockVersion,
+	).AnyTimes()
+}
+
+func GetBlockVersion() uint32 {
+	atomic.AddInt32(&blockVersionCounter, 1)
+	if blockVersionCounter <= 8 {
+		return 2220
+	}
+	return 2201
+	//return uint32(blockVersionCounter)
+}
+
 // 获取sender公钥
 func mockGetSender(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().GetSender().DoAndReturn(
@@ -643,7 +660,7 @@ func mockGetSender(simContext *mock.MockTxSimContext) {
 
 func mockTxSimContextGetSender() *accesscontrol.Member {
 	atomic.AddInt32(&senderCounter, 1)
-	switch senderCounter % 3 {
+	switch senderCounter % 4 {
 	case 1:
 		return &accesscontrol.Member{
 			OrgId:      chainId,
@@ -656,13 +673,18 @@ func mockTxSimContextGetSender() *accesscontrol.Member {
 			MemberType: accesscontrol.MemberType_CERT_HASH,
 			MemberInfo: nil,
 		}
-	case 0:
+	case 3:
 		return &accesscontrol.Member{
 			OrgId:      chainId,
 			MemberType: accesscontrol.MemberType_PUBLIC_KEY,
 			MemberInfo: []byte(pkPEM),
 		}
-
+	case 0:
+		return &accesscontrol.Member{
+			OrgId:      chainId,
+			MemberType: accesscontrol.MemberType_ALIAS,
+			MemberInfo: nil,
+		}
 	default:
 		return nil
 	}
@@ -701,8 +723,8 @@ func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
 func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	atomic.AddInt32(&chainConfigCounter, 1)
 
-	switch chainConfigCounter % 6 {
-	case 1, 2, 3:
+	switch chainConfigCounter % 12 {
+	case 1, 2, 3, 4:
 		zxConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
 				AddrType: configPb.AddrType_ZXL,
@@ -717,10 +739,24 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 			return nil, err
 		}
 		return bytes, nil
-	case 4, 5, 0:
+	case 5, 6, 7, 8:
 		ethConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
-				AddrType: configPb.AddrType_ETHEREUM,
+				AddrType: configPb.AddrType_CHAINMAKER,
+			},
+			Crypto: &configPb.CryptoConfig{
+				Hash: "SHA256",
+			},
+		}
+		bytes, err := ethConfig.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		return bytes, nil
+	case 9, 10, 11, 0:
+		ethConfig := configPb.ChainConfig{
+			Vm: &configPb.Vm{
+				AddrType: configPb.AddrType_CHAINMAKER,
 			},
 			Crypto: &configPb.CryptoConfig{
 				Hash: "SHA256",
@@ -745,11 +781,11 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(
-		func(contract *common.Contract,
+		func(contract *commonPb.Contract,
 			method string, byteCode []byte,
 			parameter map[string][]byte,
 			gasUsed uint64,
-			refTxType common.TxType) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
+			refTxType commonPb.TxType) (*commonPb.ContractResult, protocol.ExecOrderTxType, commonPb.TxStatusCode) {
 
 			mockLogger := newMockHoleLogger(nil, testVMLogName)
 			callContractRuntimeInstance, _ := mockDockerManager.NewRuntimeInstance(nil, chainId, "",
