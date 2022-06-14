@@ -43,7 +43,7 @@ const (
 	invokeMethod = "invoke_contract"
 
 	// ContractNameTest is test contract name
-	ContractNameTest = "contract_test08"
+	ContractNameTest = "contract_test09"
 
 	// ContractVersionTest is test contract version
 	ContractVersionTest = "v1.0.0"
@@ -147,6 +147,8 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return tx
 		}).AnyTimes()
 
+	mockPutIntoReadSet(simContext)
+
 	return simContext
 
 }
@@ -204,6 +206,16 @@ func mockPut(simContext *mock.MockTxSimContext, name string, key, value []byte) 
 			final := name + "::" + string(key)
 			tmpSimContextMap[final] = value
 			return nil
+		},
+	).AnyTimes()
+}
+
+//func mockPutIntoReadSet(simContext *mock.MockTxSimContext, name string, key, value []byte) {
+func mockPutIntoReadSet(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().PutIntoReadSet(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(name string, key, value []byte) {
+			final := name + "::" + string(key)
+			tmpSimContextMap[final] = value
 		},
 	).AnyTimes()
 }

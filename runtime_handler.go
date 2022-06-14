@@ -55,8 +55,9 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	contractResult.Message = txResponse.Message
 
 	// merge read map to sim context
+	r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap())
 
-	// merge the
+	// merge write map to sim context
 	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 	if err != nil {
 		contractResult.GasUsed = gasUsed
@@ -91,6 +92,24 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	contractResult.ContractEvent = r.event
 
 	return contractResult, txType
+}
+
+func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimContext,
+	readMap map[string][]byte) {
+
+	for key, value := range readMap {
+		var contractName string
+		var contractKey string
+		var contractField string
+		keyList := strings.Split(key, "#")
+		contractName = keyList[0]
+		contractKey = keyList[1]
+		if len(keyList) == 3 {
+			contractField = keyList[2]
+		}
+
+		txSimContext.PutIntoReadSet(contractName, protocol.GetKeyStr(contractKey, contractField), value)
+	}
 }
 
 func (r *RuntimeInstance) handlerCallContract(
@@ -731,7 +750,6 @@ func (r *RuntimeInstance) getCertFromChain(memberInfo []byte, txSimContext proto
 
 func (r *RuntimeInstance) getSenderAddressFromCert(blockVersion uint32, certPem []byte,
 	addressType configPb.AddrType) (string, error) {
-	r.logger.Debugf("=== version: %d", blockVersion)
 	if addressType == configPb.AddrType_ZXL {
 		address, err := evmutils.ZXAddressFromCertificatePEM(certPem)
 		if err != nil {
@@ -1128,7 +1146,14 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		},
 	}
 
-	contractFullName := recvMsg.Request.ContractName + "#" + recvMsg.Request.ContractVersion // contract1#1.0.0
+	//contractFullName := recvMsg.Request.ContractName + "#" + recvMsg.Request.ContractVersion // contract1#1.0.0
+
+	contractFullName := constructContractKey(
+		recvMsg.Request.ChainId,
+		recvMsg.Request.ContractName,
+		recvMsg.Request.ContractVersion,
+	)
+
 	contractName := recvMsg.Request.ContractName
 	contractVersion := recvMsg.Request.ContractVersion
 	r.logger.Debugf("name: %s", contractName)
@@ -1139,7 +1164,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 
 	contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
 	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
-	contractPathWithVersion := filepath.Join(contractDir, contractFullName)
+	contractFullNamePath := filepath.Join(contractDir, contractFullName)
 
 	// save bytecode to disk
 	err := r.saveBytesToDisk(byteCode, contractZipPath)
@@ -1170,7 +1195,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	}
 
 	// replace contract name to contractName:version
-	err = os.Rename(contractPathWithoutVersion, contractPathWithVersion)
+	err = os.Rename(contractPathWithoutVersion, contractFullNamePath)
 	if err != nil {
 		r.logger.Errorf("fail to rename original file name: %s, "+
 			"please make sure contract name should be same as zipped file", err)
@@ -1184,7 +1209,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	response.Response.ContractVersion = contractVersion
 
 	if r.clientMgr.NeedSendContractByteCode() {
-		contractByteCode, err := ioutil.ReadFile(contractPathWithVersion)
+		contractByteCode, err := ioutil.ReadFile(contractFullNamePath)
 		if err != nil {
 			r.logger.Errorf("fail to load contract executable file: %s, ", err)
 			response.Response.Code = protogo.DockerVMCode_FAIL
@@ -1192,11 +1217,28 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 			return response
 		}
 
+		// remove contract file
+		err = os.Remove(contractFullNamePath)
+		if err != nil {
+			r.logger.Errorf("fail to remove zipped file: %s", err)
+		}
+
 		response.Response.Code = protogo.DockerVMCode_OK
 		response.Response.Result = contractByteCode
 	}
 
 	return response
+}
+
+// constructContractKey chainId#contractName#contractVersion
+func constructContractKey(chainID, contractName, contractVersion string) string {
+	var sb strings.Builder
+	sb.WriteString(chainID)
+	sb.WriteString("#")
+	sb.WriteString(contractName)
+	sb.WriteString("#")
+	sb.WriteString(contractVersion)
+	return sb.String()
 }
 
 func (r *RuntimeInstance) errorResult(
