@@ -54,7 +54,9 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	contractResult.Result = txResponse.Result
 	contractResult.Message = txResponse.Message
 
-	// merge the sim context write map
+	// merge read map to sim context
+
+	// merge the
 	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 	if err != nil {
 		contractResult.GasUsed = gasUsed
@@ -1112,62 +1114,6 @@ func keyHistoryIterClose(iter protocol.KeyHistoryIterator, gasUsed uint64,
 	response.SysCallMessage.Payload = nil
 
 	return response, gasUsed
-}
-
-func getSenderAddressFromCert(certPem []byte, addressType configPb.AddrType) (string, error) {
-	if addressType == configPb.AddrType_ZXL {
-		address, err := evmutils.ZXAddressFromCertificatePEM(certPem)
-		if err != nil {
-			return "", fmt.Errorf("ParseCertificate failed, %s", err.Error())
-		}
-
-		return address, nil
-	} else if addressType == configPb.AddrType_ETHEREUM {
-		blockCrt, _ := pem.Decode(certPem)
-		crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
-		if err != nil {
-			return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
-		}
-
-		ski := hex.EncodeToString(crt.SubjectKeyId)
-		addrInt, err := evmutils.MakeAddressFromHex(ski)
-		if err != nil {
-			return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
-		}
-
-		return addrInt.String(), nil
-	} else {
-		return "", errors.New("invalid address type")
-	}
-}
-
-func getSenderAddressFromPublicKeyPEM(publicKeyPem []byte, addressType configPb.AddrType,
-	hashType crypto.HashType) (string, error) {
-	if addressType == configPb.AddrType_ZXL {
-		address, err := evmutils.ZXAddressFromPublicKeyPEM(publicKeyPem)
-		if err != nil {
-			return "", fmt.Errorf("ZXAddressFromPublicKeyPEM, failed, %s", err.Error())
-		}
-		return address, nil
-	} else if addressType == configPb.AddrType_ETHEREUM {
-		publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
-		if err != nil {
-			return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
-		}
-
-		ski, err := commonCrt.ComputeSKI(hashType, publicKey.ToStandardKey())
-		if err != nil {
-			return "", fmt.Errorf("computeSKI from public key failed, %s", err.Error())
-		}
-
-		addr, err := evmutils.MakeAddressFromHex(hex.EncodeToString(ski))
-		if err != nil {
-			return "", fmt.Errorf("make address from cert SKI failed, %s", err)
-		}
-		return addr.String(), nil
-	} else {
-		return "", errors.New("invalid address type")
-	}
 }
 
 func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo.DockerVMMessage,
