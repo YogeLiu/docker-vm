@@ -120,8 +120,8 @@ func (c *conf) setDefaultConfigs() {
 	const rpcPrefix = "rpc"
 	viper.SetDefault(rpcPrefix+".chain_rpc_protocol", 1)
 	viper.SetDefault(rpcPrefix+".chain_host", "127.0.0.1")
-	viper.SetDefault(rpcPrefix+".chain_rpc_port", 22359)
-	viper.SetDefault(rpcPrefix+".sandbox_rpc_port", 22459)
+	viper.SetDefault(rpcPrefix+".chain_rpc_port", 22351)
+	viper.SetDefault(rpcPrefix+".sandbox_rpc_port", 32351)
 	viper.SetDefault(rpcPrefix+".max_send_msg_size", 20)
 	viper.SetDefault(rpcPrefix+".max_recv_msg_size", 20)
 	viper.SetDefault(rpcPrefix+".server_min_interval", 60*time.Second)

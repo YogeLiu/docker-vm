@@ -19,12 +19,12 @@ import (
 )
 
 const (
-	// requestSchedulerTxChSize is request scheduler event chan size
-	requestSchedulerTxChSize = 30000
-	// requestSchedulerEventChSize is request scheduler event chan size
-	requestSchedulerEventChSize = 100
-	// closeChSize is close request group chan size
-	closeChSize = 8
+	// _requestSchedulerTxChSize is request scheduler event chan size
+	_requestSchedulerTxChSize = 30000
+	// _requestSchedulerEventChSize is request scheduler event chan size
+	_requestSchedulerEventChSize = 100
+	// _closeChSize is close request group chan size
+	_closeChSize = 8
 )
 
 // RequestScheduler schedule all requests and responses between chain and contract engine, includes:
@@ -41,12 +41,15 @@ type RequestScheduler struct {
 	txCh    chan *protogo.DockerVMMessage  // request scheduler event handler chan
 	closeCh chan *messages.RequestGroupKey // close request group chan
 
-	requestGroups       map[string]interfaces.RequestGroup // contractName#contractVersion
+	requestGroups       map[string]interfaces.RequestGroup // chainID#contractName#contractVersion
 	chainRPCService     interfaces.ChainRPCService         // chain rpc service
 	contractManager     interfaces.ContractManager         // contract manager
 	origProcessManager  interfaces.ProcessManager          // manager for original process
 	crossProcessManager interfaces.ProcessManager          // manager for cross process
 }
+
+// check interface implement
+var _ interfaces.RequestScheduler = (*RequestScheduler)(nil)
 
 // NewRequestScheduler new a request scheduler
 func NewRequestScheduler(
@@ -59,9 +62,9 @@ func NewRequestScheduler(
 		logger: logger.NewDockerLogger(logger.MODULE_REQUEST_SCHEDULER),
 		lock:   sync.RWMutex{},
 
-		eventCh: make(chan *protogo.DockerVMMessage, requestSchedulerEventChSize),
-		txCh:    make(chan *protogo.DockerVMMessage, requestSchedulerTxChSize),
-		closeCh: make(chan *messages.RequestGroupKey, closeChSize),
+		eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
+		txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
+		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 
 		requestGroups:       make(map[string]interfaces.RequestGroup),
 		chainRPCService:     service,
@@ -127,12 +130,12 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 }
 
 // GetRequestGroup returns request group
-func (s *RequestScheduler) GetRequestGroup(contractName, contractVersion string) (interfaces.RequestGroup, bool) {
+func (s *RequestScheduler) GetRequestGroup(chainID, contractName, contractVersion string) (interfaces.RequestGroup, bool) {
 
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	groupKey := utils.ConstructContractKey(contractName, contractVersion)
+	groupKey := utils.ConstructContractKey(chainID, contractName, contractVersion)
 	group, ok := s.requestGroups[groupKey]
 	return group, ok
 }
@@ -166,15 +169,16 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 	}
 
 	// construct request group key from request
+	chainID := req.Request.ChainId
 	contractName := req.Request.ContractName
 	contractVersion := req.Request.ContractVersion
-	groupKey := utils.ConstructContractKey(contractName, contractVersion)
+	groupKey := utils.ConstructContractKey(chainID, contractName, contractVersion)
 
 	// try to get request group, if not, add it
 	group, ok := s.requestGroups[groupKey]
 	if !ok {
 		s.logger.Debugf("create new request group %s", groupKey)
-		group = NewRequestGroup(contractName, contractVersion,
+		group = NewRequestGroup(chainID, contractName, contractVersion,
 			s.origProcessManager, s.crossProcessManager, s.contractManager, s)
 		group.Start()
 		s.requestGroups[groupKey] = group
@@ -196,16 +200,16 @@ func (s *RequestScheduler) handleErrResp(resp *protogo.DockerVMMessage) {
 // handleCloseReq handles close request group request
 func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 
-	s.logger.Debugf("handle close request group request, contract name: [%s], contract version: [%s]",
-		msg.ContractName, msg.ContractVersion)
+	s.logger.Debugf("handle close request group request, chainID: [%s], "+
+		"contract name: [%s], contract version: [%s]", msg.ChainID, msg.ContractName, msg.ContractVersion)
 
-	if s.origProcessManager.GetProcessNumByContractKey(msg.ContractName, msg.ContractVersion) != 0 ||
-		s.crossProcessManager.GetProcessNumByContractKey(msg.ContractName, msg.ContractVersion) != 0 {
+	if s.origProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 ||
+		s.crossProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 {
 		s.logger.Debugf("process exists, stop to close request group")
 		return nil
 	}
 
-	groupKey := utils.ConstructContractKey(msg.ContractName, msg.ContractVersion)
+	groupKey := utils.ConstructContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion)
 
 	s.lock.Lock()
 	defer s.lock.Unlock()

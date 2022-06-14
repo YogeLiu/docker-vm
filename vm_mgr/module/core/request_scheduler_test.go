@@ -79,7 +79,7 @@ func TestRequestScheduler_GetRequestGroup(t *testing.T) {
 	scheduler.logger = log
 
 	requestGroup := &RequestGroup{}
-	groupKey := utils.ConstructContractKey("testContractName1", "1.0.0")
+	groupKey := utils.ConstructContractKey(testChainID, "testContractName1", "1.0.0")
 	scheduler.requestGroups[groupKey] = requestGroup
 
 	type fields struct {
@@ -122,7 +122,7 @@ func TestRequestScheduler_GetRequestGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := tt.fields.scheduler
-			got, got1 := s.GetRequestGroup(tt.args.contractName, tt.args.contractVersion)
+			got, got1 := s.GetRequestGroup(testChainID, tt.args.contractName, tt.args.contractVersion)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetRequestGroup() got = %v, wantNum %v", got, tt.want)
 			}
@@ -248,6 +248,7 @@ func TestRequestScheduler_Start(t *testing.T) {
 			name:   "TestRequestScheduler_Start",
 			fields: fields{scheduler: scheduler},
 			args: args{msg: &messages.RequestGroupKey{
+				ChainID:         testChainID,
 				ContractName:    "testContractName",
 				ContractVersion: "v1.0.0",
 			}},
@@ -270,7 +271,7 @@ func TestRequestScheduler_handleCloseReq(t *testing.T) {
 	scheduler.logger = log
 
 	requestGroup := &RequestGroup{stopCh: make(chan struct{}, 1)}
-	groupKey := utils.ConstructContractKey("testContractName1", "1.0.0")
+	groupKey := utils.ConstructContractKey(testChainID, "testContractName1", "1.0.0")
 	scheduler.requestGroups[groupKey] = requestGroup
 
 	type fields struct {
@@ -291,6 +292,7 @@ func TestRequestScheduler_handleCloseReq(t *testing.T) {
 			fields: fields{scheduler: scheduler},
 			args: args{
 				requestGroupKey: &messages.RequestGroupKey{
+					ChainID:         testChainID,
 					ContractName:    "testContractName1",
 					ContractVersion: "1.0.0",
 				},
@@ -302,6 +304,7 @@ func TestRequestScheduler_handleCloseReq(t *testing.T) {
 			fields: fields{scheduler: scheduler},
 			args: args{
 				requestGroupKey: &messages.RequestGroupKey{
+					ChainID:         testChainID,
 					ContractName:    "testContractName2",
 					ContractVersion: "1.0.0",
 				},
@@ -313,6 +316,7 @@ func TestRequestScheduler_handleCloseReq(t *testing.T) {
 			fields: fields{scheduler: scheduler},
 			args: args{
 				requestGroupKey: &messages.RequestGroupKey{
+					ChainID:         testChainID,
 					ContractName:    "testContractName1",
 					ContractVersion: "1.0.1",
 				},
@@ -423,7 +427,7 @@ func TestRequestScheduler_handleTxReq(t *testing.T) {
 	scheduler := newTestRequestScheduler(t)
 	log := logger.NewTestDockerLogger()
 	scheduler.logger = log
-	scheduler.contractManager = &ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)}
+	scheduler.contractManager = &ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)}
 	type fields struct {
 		scheduler *RequestScheduler
 	}
@@ -444,6 +448,7 @@ func TestRequestScheduler_handleTxReq(t *testing.T) {
 				req: &protogo.DockerVMMessage{
 					Type: protogo.DockerVMType_TX_REQUEST,
 					Request: &protogo.TxRequest{
+						ChainId:         testChainID,
 						ContractName:    "testContractName1",
 						ContractVersion: "1.0.0",
 					},
@@ -483,7 +488,7 @@ func newTestRequestScheduler(t *testing.T) *RequestScheduler {
 
 	// new scheduler
 	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager,
-		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)})
+		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)})
 	origProcessManager.SetScheduler(scheduler)
 	crossProcessManager.SetScheduler(scheduler)
 	chainRPCService.SetScheduler(scheduler)

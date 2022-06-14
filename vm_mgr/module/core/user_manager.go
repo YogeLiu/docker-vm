@@ -8,7 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"errors"
 	"fmt"
+	"os/user"
+	"strconv"
 	"sync"
 	"time"
 
@@ -22,9 +25,11 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
 
-const baseUid = 10000                    // user id start from base uid
-const addUserFormat = "useradd -u %d %s" // add user cmd
-const deleteUserFormat = "userdel -r %s" // add user cmd
+const (
+	_baseUid          = 10000              // user id start from base uid
+	_addUserFormat    = "useradd -u %d %s" // add user cmd
+	_deleteUserFormat = "userdel -r %s"    // add user cmd
+)
 
 // UserManager is linux user manager
 type UserManager struct {
@@ -32,6 +37,9 @@ type UserManager struct {
 	logger    *zap.SugaredLogger // user manager logger
 	userNum   int                // total user num
 }
+
+// check interface implement
+var _ interfaces.UserManager = (*UserManager)(nil)
 
 // NewUsersManager returns user manager
 func NewUsersManager() *UserManager {
@@ -58,7 +66,7 @@ func (u *UserManager) BatchCreateUsers() error {
 	for i := 0; i < totalNum; i++ {
 		wg.Add(1)
 		go func(i int) {
-			id := baseUid + i
+			id := _baseUid + i
 			err = u.generateNewUser(id)
 			if err != nil {
 				u.logger.Errorf("failed to create user [%d]", id)
@@ -79,13 +87,13 @@ func (u *UserManager) BatchCreateUsers() error {
 // GetAvailableUser pop user from queue header
 func (u *UserManager) GetAvailableUser() (interfaces.User, error) {
 
-	user, err := u.userQueue.DequeueOrWaitForNextElement()
+	newUser, err := u.userQueue.DequeueOrWaitForNextElement()
 	if err != nil {
 		return nil, fmt.Errorf("failed to call DequeueOrWaitForNextElement, %v", err)
 	}
 
-	u.logger.Debugf("get available user: [%v]", user)
-	return user.(interfaces.User), nil
+	u.logger.Debugf("get available newUser: [%v]", newUser)
+	return newUser.(interfaces.User), nil
 }
 
 // FreeUser add user to queue tail, user can be dequeue then
@@ -111,7 +119,7 @@ func (u *UserManager) ReleaseUsers() error {
 	for i := 0; i < totalNum; i++ {
 		wg.Add(1)
 		go func(i int) {
-			id := baseUid + i
+			id := _baseUid + i
 			err = u.releaseUser(id)
 			if err != nil {
 				u.logger.Warnf("failed to delete user %v", err)
@@ -127,36 +135,45 @@ func (u *UserManager) ReleaseUsers() error {
 //  generateNewUser generate a new user of process
 func (u *UserManager) generateNewUser(uid int) error {
 
-	user := NewUser(uid)
-	addUserCommand := fmt.Sprintf(addUserFormat, uid, user.UserName)
+	newUser := NewUser(uid)
+	_, err := user.LookupId(strconv.Itoa(uid))
+	if err == nil {
+		return nil
+	}
+
+	if !errors.Is(err, user.UnknownUserIdError(uid)) {
+		return err
+	}
+
+	addUserCommand := fmt.Sprintf(_addUserFormat, uid, newUser.UserName)
 
 	createSuccess := false
 
-	// it may failed to create user in centos, so add retry until it success
+	// it may failed to create newUser in centos, so add retry until it success
 	for !createSuccess {
 		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Warnf("failed to create user [%+v], err: [%s] and begin to retry", user, err)
+			u.logger.Warnf("failed to create user [%+v], err: [%s] and begin to retry", newUser, err)
 			continue
 		}
 		createSuccess = true
 	}
 
-	// add created user to queue
-	err := u.userQueue.Enqueue(user)
+	// add _created newUser to queue
+	err = u.userQueue.Enqueue(newUser)
 	if err != nil {
-		return fmt.Errorf("failed to add created user %+v to queue, %v", user, err)
+		return fmt.Errorf("failed to add _created user %+v to queue, %v", newUser, err)
 	}
-	//u.logger.Debugf("success add user to user queue: %+v", user)
+	//u.logger.Debugf("success add newUser to newUser queue: %+v", newUser)
 
 	return nil
 }
 
 // releaseUser release user
 func (u *UserManager) releaseUser(id int) error {
-	user := NewUser(id)
-	delUserCommand := fmt.Sprintf(deleteUserFormat, user.UserName)
+	newUser := NewUser(id)
+	delUserCommand := fmt.Sprintf(_deleteUserFormat, newUser.UserName)
 	if err := utils.RunCmd(delUserCommand); err != nil {
-		return fmt.Errorf("failed to exec [%s], [%+v], %v", delUserCommand, user, err)
+		return fmt.Errorf("failed to exec [%s], [%+v], %v", delUserCommand, newUser, err)
 	}
 	return nil
 }

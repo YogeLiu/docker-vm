@@ -22,9 +22,12 @@ import (
 )
 
 const (
-	mountContractDir = "contracts"
-	msgIterIsNil     = "iterator is nil"
-	timeout          = 10000 // tx execution timeout(milliseconds)
+	mountContractDir        = "contracts"
+	msgIterIsNil            = "iterator is nil"
+	timeout                 = 10000 // tx execution timeout(milliseconds)
+	version2201      uint32 = 2201
+	version2210      uint32 = 2210
+	version2220      uint32 = 2220
 )
 
 var (
@@ -110,6 +113,7 @@ func (r *RuntimeInstance) Invoke(
 
 	// construct DockerVMMessage
 	txRequest := &protogo.TxRequest{
+		ChainId:         r.chainId,
 		ContractName:    contract.Name,
 		ContractVersion: contract.Version,
 		Method:          method,

@@ -72,8 +72,10 @@ func RunCmd(command string) error {
 }
 
 // ConstructContractKey contractName#contractVersion
-func ConstructContractKey(contractName, contractVersion string) string {
+func ConstructContractKey(chainID, contractName, contractVersion string) string {
 	var sb strings.Builder
+	sb.WriteString(chainID)
+	sb.WriteString("#")
 	sb.WriteString(contractName)
 	sb.WriteString("#")
 	sb.WriteString(contractVersion)
@@ -81,12 +83,15 @@ func ConstructContractKey(contractName, contractVersion string) string {
 }
 
 // ConstructProcessName contractName#contractVersion#timestamp:index
-func ConstructProcessName(contractName, contractVersion string, localIndex int, overallIndex uint64, isOrig bool) string {
+func ConstructProcessName(chainID, contractName, contractVersion string,
+	localIndex int, overallIndex uint64, isOrig bool) string {
 	var sb strings.Builder
 	typeStr := "o"
 	if !isOrig {
 		typeStr = "c"
 	}
+	sb.WriteString(chainID)
+	sb.WriteString("#")
 	sb.WriteString(typeStr)
 	sb.WriteString("#")
 	sb.WriteString(contractName)

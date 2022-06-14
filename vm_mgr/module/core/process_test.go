@@ -10,14 +10,15 @@ import (
 )
 
 const (
+	testChainID         = "chain1"
 	testContractName    = "testContractName"
 	testContractVersion = "v1.0.0"
 	testUid             = 20001
 )
 
 var (
-	groupKey        = utils.ConstructContractKey(testContractName, testContractVersion)
-	testProcessName = utils.ConstructProcessName(testContractName, testContractVersion, 1, 1, true)
+	groupKey        = utils.ConstructContractKey(testChainID, testContractName, testContractVersion)
+	testProcessName = utils.ConstructProcessName(testChainID, testContractName, testContractVersion, 1, 1, true)
 )
 
 func TestNewProcess(t *testing.T) {
@@ -31,6 +32,7 @@ func TestNewProcess(t *testing.T) {
 		name                string
 		args                args
 		wantProcessName     string
+		wantChainID         string
 		wantContractName    string
 		wantContractVersion string
 		wantUid             int
@@ -39,6 +41,7 @@ func TestNewProcess(t *testing.T) {
 			name:                "TestNewProcess_Orig",
 			args:                args{isOrig: true},
 			wantProcessName:     testProcessName,
+			wantChainID:         testChainID,
 			wantContractName:    testContractName,
 			wantContractVersion: testContractVersion,
 			wantUid:             testUid,
@@ -47,6 +50,7 @@ func TestNewProcess(t *testing.T) {
 			name:                "TestNewProcess_Cross",
 			args:                args{isOrig: false},
 			wantProcessName:     testProcessName,
+			wantChainID:         testChainID,
 			wantContractName:    testContractName,
 			wantContractVersion: testContractVersion,
 			wantUid:             testUid,
@@ -61,6 +65,9 @@ func TestNewProcess(t *testing.T) {
 			}
 			if process.GetContractName() != tt.wantContractName {
 				t.Errorf("TestNewProcess() contract name = %v, want %v", process.GetContractName(), tt.wantContractName)
+			}
+			if process.GetChainID() != tt.wantChainID {
+				t.Errorf("TestNewProcess() chainID = %v, want %v", process.GetChainID(), tt.wantChainID)
 			}
 			if process.GetContractVersion() != tt.wantContractVersion {
 				t.Errorf("TestNewProcess() contract version = %v, want %v", process.GetContractVersion(), tt.wantContractVersion)
@@ -79,6 +86,7 @@ func TestChangeSandbox(t *testing.T) {
 
 	type args struct {
 		isOrig             bool
+		newChainID         string
 		newContractName    string
 		newContractVersion string
 		newProcessName     string
@@ -94,21 +102,23 @@ func TestChangeSandbox(t *testing.T) {
 			name: "TestNewProcess_Orig",
 			args: args{
 				isOrig:             true,
+				newChainID:         testChainID,
 				newContractName:    "newContractName",
 				newContractVersion: "newContractVersion",
 				newProcessName:     "newProcessName",
 			},
-			currState: idle,
+			currState: _idle,
 			wantErr:   true,
 		},
 		{
 			name: "TestNewProcess_Cross",
 			args: args{
 				isOrig:             true,
+				newChainID:         testChainID,
 				newContractName:    "newContractName",
 				newContractVersion: "newContractVersion",
 				newProcessName:     "newProcessName",
-			}, currState: busy,
+			}, currState: _busy,
 			wantErr:      true,
 		},
 	}
@@ -117,7 +127,8 @@ func TestChangeSandbox(t *testing.T) {
 			process := newTestProcess(tt.args.isOrig)
 			process.SetStream(nil)
 			process.updateProcessState(tt.currState)
-			if err := process.ChangeSandbox(tt.args.newContractName, tt.args.newContractVersion, tt.args.newProcessName); (err != nil) != tt.wantErr {
+			if err := process.ChangeSandbox(testChainID, tt.args.newContractName, tt.args.newContractVersion,
+				tt.args.newProcessName); (err != nil) != tt.wantErr {
 				t.Errorf("PutMsg() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -213,7 +224,7 @@ func TestChangeSandbox(t *testing.T) {
 //
 //			name:   "TestProcess_SetStream",
 //			fields: fields{process: process},
-//			want:   ready,
+//			want:   _ready,
 //		},
 //	}
 //	for _, tt := range tests {
@@ -1488,14 +1499,14 @@ func newTestProcess(isOrig bool) *Process {
 
 	// new scheduler
 	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager,
-		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, contractManagerEventChSize)})
+		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)})
 	scheduler.requestGroups[groupKey] = &RequestGroup{
 		origTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, origTxChSize),
+			txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
 			processMgr: origProcessManager,
 		},
 		crossTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, crossTxChSize),
+			txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
 			processMgr: crossProcessManager,
 		},
 	}
@@ -1504,9 +1515,11 @@ func newTestProcess(isOrig bool) *Process {
 	chainRPCService.SetScheduler(scheduler)
 
 	if isOrig {
-		return NewProcess(user, testContractName, testContractVersion, testProcessName, origProcessManager, scheduler, false)
+		return NewProcess(user, testChainID, testContractName, testContractVersion,
+			testProcessName, origProcessManager, scheduler, false)
 	}
-	return NewProcess(user, testContractName, testContractVersion, testProcessName, crossProcessManager, scheduler, true)
+	return NewProcess(user, testChainID, testContractName, testContractVersion,
+		testProcessName, crossProcessManager, scheduler, true)
 
 }
 

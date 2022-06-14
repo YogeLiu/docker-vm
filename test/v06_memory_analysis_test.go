@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	contractName = "contract_fact_cut01"
+	contractName = "contract_fact_cut02"
 )
 
 func TestDockerGoMemory(t *testing.T) {
