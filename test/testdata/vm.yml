@@ -2,8 +2,8 @@
 rpc:
   chain_rpc_protocol: 1 # chain rpc protocol, 0 for unix domain socket, 1 for tcp
   chain_host: 127.0.0.1 # chain tcp host
-  chain_rpc_port: 22359 # chain rpc port, valid when protocol is tcp
-  sandbox_rpc_port: 22459 # sandbox rpc port, valid when protocol is tcp
+  chain_rpc_port: 22351 # chain rpc port, valid when protocol is tcp
+  sandbox_rpc_port: 32351 # sandbox rpc port, valid when protocol is tcp
   max_send_msg_size: 20 # max send msg size(MiB)
   max_recv_msg_size: 20 # max recv msg size(MiB)
   server_min_interval: 60s # server min interval
