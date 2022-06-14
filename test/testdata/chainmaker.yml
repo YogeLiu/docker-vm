@@ -127,14 +127,14 @@ vm:
   #max_connection: 1
   #dockervm_config_path: #
   runtime_server:
-    port: 22459
+    port: 32351
     dial_timeout: 10
     max_send_msg_size: 20
     max_recv_msg_size: 20
   contract_engine:
     #host: 127.0.0.1
     host: 0.0.0.0
-    port: 22359
+    port: 22351
     dial_timeout: 10
     max_send_msg_size: 20
     max_recv_msg_size: 20
