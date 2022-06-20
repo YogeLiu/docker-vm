@@ -760,7 +760,7 @@ func (p *Process) startIdleTimer() {
 	}
 	p.logger.Debugf("start _idle tx timer for tx [%s]", txId)
 	p.popTimer()
-	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime / _readyToIdleTimeoutRatio)
+	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime/_readyToIdleTimeoutRatio + 1)
 }
 
 func (p *Process) popTimer() {
