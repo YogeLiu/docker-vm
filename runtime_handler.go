@@ -55,14 +55,20 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	contractResult.Message = txResponse.Message
 
 	// merge read map to sim context
-	r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap())
+	if err = r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap()); err != nil {
+		r.logger.Errorf("fail to merge tx[%s] sim context read map, %v", txId, err)
+		return r.errorResult(contractResult, err, "fail to put in sim context")
+	}
+	r.logger.Debugf("merge tx[%s] sim context read map succeed", txId)
 
 	// merge write map to sim context
 	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
 	if err != nil {
+		r.logger.Errorf("fail to merge tx[%s] sim context write map, %v", txId, err)
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, "fail to put in sim context")
 	}
+	r.logger.Debugf("merge tx[%s] sim context write map succeed", txId)
 
 	// merge events
 	if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
@@ -95,21 +101,26 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 }
 
 func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimContext,
-	readMap map[string][]byte) {
+	readMap map[string][]byte) error {
 
 	for key, value := range readMap {
 		var contractName string
 		var contractKey string
 		var contractField string
 		keyList := strings.Split(key, "#")
+		keyLen := len(keyList)
+		if keyLen < 2 {
+			return fmt.Errorf("%s's key list length == %d, needs to be >= 2", key, keyLen)
+		}
 		contractName = keyList[0]
 		contractKey = keyList[1]
-		if len(keyList) == 3 {
+		if keyLen == 3 {
 			contractField = keyList[2]
 		}
 
 		txSimContext.PutIntoReadSet(contractName, protocol.GetKeyStr(contractKey, contractField), value)
 	}
+	return nil
 }
 
 func (r *RuntimeInstance) handlerCallContract(
@@ -946,9 +957,13 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 		var contractKey string
 		var contractField string
 		keyList := strings.Split(key, "#")
+		keyLen := len(keyList)
+		if keyLen < 2 {
+			return gasUsed, fmt.Errorf("key list length == %d, needs to be >= 2", keyLen)
+		}
 		contractName = keyList[0]
 		contractKey = keyList[1]
-		if len(keyList) == 3 {
+		if keyLen == 3 {
 			contractField = keyList[2]
 		}
 		// put state gas used calc and check gas limit

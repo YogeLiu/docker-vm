@@ -207,9 +207,11 @@ func (r *RuntimeInstance) Invoke(
 
 				r.sendSysResponse(getStateResponse)
 				r.logger.Debugf("tx [%s] finish get state", uniqueTxKey)
+
 			case protogo.DockerVMType_TX_RESPONSE:
-				r.logger.Debugf(" finish handle tx [%s]", originalTxId)
-				return r.handleTxResponse(recvMsg.TxId, recvMsg, txSimContext, gasUsed, specialTxType)
+				result, txType := r.handleTxResponse(recvMsg.TxId, recvMsg, txSimContext, gasUsed, specialTxType)
+				r.logger.Debugf("tx [%s] finish handle response", originalTxId)
+				return result, txType
 
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
 				r.logger.Debugf("tx [%s] start call contract", uniqueTxKey)

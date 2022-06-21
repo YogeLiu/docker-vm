@@ -4,8 +4,8 @@ rpc:
   chain_host: 127.0.0.1 # chain tcp host
   chain_rpc_port: 22351 # chain rpc port, valid when protocol is tcp
   sandbox_rpc_port: 32351 # sandbox rpc port, valid when protocol is tcp
-  max_send_msg_size: 20 # max send msg size(MiB)
-  max_recv_msg_size: 20 # max recv msg size(MiB)
+  max_send_msg_size: 100 # max send msg size(MiB)
+  max_recv_msg_size: 100 # max recv msg size(MiB)
   server_min_interval: 60s # server min interval
   connection_timeout: 5s # connection timeout time
   server_keep_alive_time: 60s # idle duration before server ping

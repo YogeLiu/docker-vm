@@ -156,8 +156,7 @@ func (cm *ContractEngineClientManager) DeleteNotify(chainId, txId string) bool {
 	defer cm.notifyLock.Unlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
 	cm.logger.Debugf("[%s] delete notify", notifyKey)
-	_, ok := cm.notify[notifyKey]
-	if ok {
+	if _, ok := cm.notify[notifyKey]; ok {
 		delete(cm.notify, notifyKey)
 		return true
 	}
