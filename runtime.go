@@ -209,7 +209,7 @@ func (r *RuntimeInstance) Invoke(
 				r.logger.Debugf("tx [%s] finish get state", uniqueTxKey)
 
 			case protogo.DockerVMType_TX_RESPONSE:
-				result, txType := r.handleTxResponse(recvMsg.TxId, recvMsg, txSimContext, gasUsed, specialTxType)
+				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext, gasUsed, specialTxType)
 				r.logger.Debugf("tx [%s] finish handle response", originalTxId)
 				return result, txType
 
