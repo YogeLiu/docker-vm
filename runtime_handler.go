@@ -1162,8 +1162,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		},
 	}
 
-	//contractFullName := recvMsg.Request.ContractName + "#" + recvMsg.Request.ContractVersion // contract1#1.0.0
-
+	// ChainId#ContractName#ContractVersion
+	// chain1#contract1#1.0.0
 	contractFullName := constructContractKey(
 		recvMsg.Request.ChainId,
 		recvMsg.Request.ContractName,
@@ -1299,11 +1299,12 @@ func (r *RuntimeInstance) runCmd(command string) error {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("%v, %v", err, stderr.String())
+		return err
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("%v, %v", err, stderr.String())
+		r.logger.Errorf("failed to run cmd %s, %v, %v", command, err, stderr.String())
+		return err
 	}
 	return nil
 }
