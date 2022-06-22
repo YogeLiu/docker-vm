@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
@@ -29,7 +30,7 @@ var (
 	mountDir string
 )
 
-// 找 链 拿合约执行文件，保存合约map
+const getByteCodeTimeout = 3 * time.Second
 
 type ContractManager struct {
 	lock                sync.RWMutex
@@ -119,30 +120,39 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractKey strin
 			Payload: []byte(contractKey),
 			ChainId: chainId,
 		}
-		// send request to chain maker
+		sysCallStart := time.Now()
+		defer func() {
+			// add time statistics
+			spend := time.Since(sysCallStart).Nanoseconds()
+			sysCallElapsedTime := NewSysCallElapsedTime(getByteCodeMsg.Type, sysCallStart.UnixNano(), spend, 0)
+			cm.scheduler.AddTxSysCallElapsedTime(getByteCodeMsg.TxId, sysCallElapsedTime)
+		}()
+
+		// send request to chainmaker
 		responseChan := make(chan *protogo.CDMMessage)
 		cm.scheduler.RegisterResponseCh(chainId, txId, responseChan)
-
 		cm.scheduler.GetByteCodeReqCh() <- getByteCodeMsg
 
-		returnMsg := <-responseChan
-
-		if returnMsg.Payload == nil {
-			return "", errors.New("fail to get bytecode")
-		}
-
-		if !enableUnixDomainSocket {
-			content := returnMsg.Payload
-			err := ioutil.WriteFile(contractPath, content, 0755)
+		select {
+		case returnMsg := <-responseChan:
+			if returnMsg.Payload == nil {
+				return "", errors.New("fail to get bytecode")
+			}
+			if !enableUnixDomainSocket {
+				content := returnMsg.Payload
+				err := ioutil.WriteFile(contractPath, content, 0755)
+				if err != nil {
+					return "", err
+				}
+			}
+			err = cm.setFileMod(contractPath)
 			if err != nil {
 				return "", err
 			}
+		case <-time.After(getByteCodeTimeout):
+			return "", errors.New("fail to get bytecode, timeout")
 		}
 
-		err = cm.setFileMod(contractPath)
-		if err != nil {
-			return "", err
-		}
 	}
 
 	// save contract file path to map

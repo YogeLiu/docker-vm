@@ -158,15 +158,15 @@ func (mr *MockSchedulerMockRecorder) RegisterCrossContractResponseCh(responseId,
 }
 
 // RegisterResponseCh mocks base method.
-func (m *MockScheduler) RegisterResponseCh(txId string, responseCh chan *protogo0.CDMMessage) {
+func (m *MockScheduler) RegisterResponseCh(chainId, txId string, responseCh chan *protogo0.CDMMessage) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RegisterResponseCh", txId, responseCh)
+	m.ctrl.Call(m, "RegisterResponseCh", chainId, txId, responseCh)
 }
 
 // RegisterResponseCh indicates an expected call of RegisterResponseCh.
-func (mr *MockSchedulerMockRecorder) RegisterResponseCh(txId, responseCh interface{}) *gomock.Call {
+func (mr *MockSchedulerMockRecorder) RegisterResponseCh(chainId, txId, responseCh interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterResponseCh", reflect.TypeOf((*MockScheduler)(nil).RegisterResponseCh), txId, responseCh)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterResponseCh", reflect.TypeOf((*MockScheduler)(nil).RegisterResponseCh), chainId, txId, responseCh)
 }
 
 // MockUserController is a mock of UserController interface.
@@ -219,4 +219,24 @@ func (m *MockUserController) GetAvailableUser() (*security.User, error) {
 func (mr *MockUserControllerMockRecorder) GetAvailableUser() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableUser", reflect.TypeOf((*MockUserController)(nil).GetAvailableUser))
+}
+
+func (m *MockScheduler) RegisterTxElapsedTime(txRequest *protogo0.TxRequest, startTime int64) {
+	return
+}
+
+func (m *MockScheduler) AddTxSysCallElapsedTime(txId string, sysCallElapsedTime interface{}) {
+	return
+}
+
+func (m *MockScheduler) AddTxCallContractElapsedTime(txId string, sysCallElapsedTime interface{}) {
+	return
+}
+
+func (m *MockScheduler) RemoveTxElapsedTime(txId string) {
+	return
+}
+
+func (m *MockScheduler) GetTxElapsedTime(txId string) interface{} {
+	return nil
 }

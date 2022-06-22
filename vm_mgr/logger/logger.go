@@ -174,3 +174,12 @@ func CustomLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) 
 func CustomTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
 }
+
+func TransformLogLevel(logLevelConfig string) (zapcore.Level, error) {
+	var logLevel zapcore.Level
+	err := logLevel.Set(logLevelConfig)
+	if err != nil {
+		return zapcore.InfoLevel, err
+	}
+	return logLevel, nil
+}

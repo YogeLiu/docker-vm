@@ -3,12 +3,12 @@ module chainmaker.org/chainmaker/vm-docker-go/v2
 go 1.15
 
 require (
-	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220606153444-cedb486be1ec
+	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220614062456-558cc969cd2a
 	chainmaker.org/chainmaker/localconf/v2 v2.2.1
 	chainmaker.org/chainmaker/logger/v2 v2.2.1
 	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220610130509-c60ae43cb8a5
-	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220610132334-904790e2009e
-	chainmaker.org/chainmaker/utils/v2 v2.2.2
+	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220613073148-14710779f8b8
+	chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220614081000-17efb6e04bcb
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
@@ -17,7 +17,10 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.7.0
+	github.com/studyzy/sqlparse v0.0.0-20210520090832-d40c792e1576 // indirect
 	go.uber.org/atomic v1.7.0
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
 	google.golang.org/grpc v1.41.0
 )
+
+replace chainmaker.org/chainmaker/protocol/v2 => ../protocol

@@ -10,6 +10,7 @@ package core
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
@@ -83,6 +84,7 @@ func (pm *ProcessManager) addTxToProcessBalance(txRequest *protogo.TxRequest, pr
 	if !needCreateNewProcess {
 		return nil
 	}
+	// todo add create process time statistics
 	processName := utils.ConstructProcessName(txRequest.ChainId, txRequest.ContractName, txRequest.ContractVersion,
 		processBalance.GetNextProcessIndex())
 	process, err := pm.createNewProcess(processName, txRequest, processBalance)
@@ -257,6 +259,14 @@ func (pm *ProcessManager) GetProcessDepth(originalProcessName string) *ProcessDe
 }
 
 func (pm *ProcessManager) ModifyContractName(txRequest *protogo.TxRequest) error {
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		sysCallElapsedTime := NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME, sysCallStart.UnixNano(), spend, 0)
+		pm.scheduler.AddTxSysCallElapsedTime(txRequest.TxId, sysCallElapsedTime)
+	}()
+
 	contractName, err := pm.contractManager.GetContractName(txRequest.ChainId, txRequest.TxId, txRequest.ContractName)
 	if err != nil {
 		return err
