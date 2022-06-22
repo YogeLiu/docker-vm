@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package utils
 
 import (
+	"bytes"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"fmt"
 	"io/ioutil"
@@ -55,17 +56,18 @@ func RemoveDir(path string) error {
 
 // RunCmd exec cmd
 func RunCmd(command string) error {
+	var stderr bytes.Buffer
 	commands := strings.Split(command, " ")
 	cmd := exec.Command(commands[0], commands[1:]...)
-
+	cmd.Stderr = &stderr
 	cmd.Stdout = os.Stdout
 
 	if err := cmd.Start(); err != nil {
-		return err
+		return fmt.Errorf("%v, %v", err, stderr.String())
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return err
+		return fmt.Errorf("%v, %v", err, stderr.String())
 	}
 
 	return nil

@@ -211,7 +211,7 @@ func (p *Process) launchProcess() *exitErr {
 	p.cmd = &cmd
 
 	if err = cmd.Start(); err != nil {
-		p.logger.Errorf("failed to start process: %v", err)
+		p.logger.Errorf("failed to start process: %v, %v", err, stderr.String())
 		return &exitErr{
 			err:  utils.ContractExecError,
 			desc: "",
@@ -238,7 +238,7 @@ func (p *Process) launchProcess() *exitErr {
 		if p.Tx != nil {
 			txId = p.Tx.TxId
 		}
-		p.logger.Warnf("process stopped for tx [%s], err is %v", txId, err)
+		p.logger.Warnf("process stopped for tx [%s], %v, %v", txId, err, stderr.String())
 		return &exitErr{
 			err:  err,
 			desc: stderr.String(),

@@ -1,6 +1,7 @@
 package docker_go
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -1161,8 +1162,8 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		},
 	}
 
-	//contractFullName := recvMsg.Request.ContractName + "#" + recvMsg.Request.ContractVersion // contract1#1.0.0
-
+	// ChainId#ContractName#ContractVersion
+	// chain1#contract1#1.0.0
 	contractFullName := constructContractKey(
 		recvMsg.Request.ChainId,
 		recvMsg.Request.ContractName,
@@ -1194,7 +1195,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
 	err = r.runCmd(unzipCommand)
 	if err != nil {
-		r.logger.Errorf("fail to extract contract: %s", err)
+		r.logger.Errorf("fail to extract contract, %v", err)
 		response.Response.Code = protogo.DockerVMCode_FAIL
 		response.Response.Message = err.Error()
 		return response
@@ -1292,14 +1293,21 @@ func (r *RuntimeInstance) saveBytesToDisk(bytes []byte, newFilePath string) erro
 
 // RunCmd exec cmd
 func (r *RuntimeInstance) runCmd(command string) error {
+	var stderr bytes.Buffer
 	commands := strings.Split(command, " ")
 	cmd := exec.Command(commands[0], commands[1:]...) // #nosec
+	cmd.Stderr = &stderr
 
 	if err := cmd.Start(); err != nil {
+		r.logger.Errorf("failed to run cmd %s start, %v, %v", command, err, stderr.String())
 		return err
 	}
 
-	return cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		r.logger.Errorf("failed to run cmd %s wait, %v, %v", command, err, stderr.String())
+		return err
+	}
+	return nil
 }
 
 func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.DockerVMType) *protogo.DockerVMMessage {
