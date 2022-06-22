@@ -1299,11 +1299,12 @@ func (r *RuntimeInstance) runCmd(command string) error {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Start(); err != nil {
+		r.logger.Errorf("failed to run cmd %s start, %v, %v", command, err, stderr.String())
 		return err
 	}
 
 	if err := cmd.Wait(); err != nil {
-		r.logger.Errorf("failed to run cmd %s, %v, %v", command, err, stderr.String())
+		r.logger.Errorf("failed to run cmd %s wait, %v, %v", command, err, stderr.String())
 		return err
 	}
 	return nil
