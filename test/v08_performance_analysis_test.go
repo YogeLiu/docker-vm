@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	performContractName    = "contract_fact_cut03"
+	performContractName    = "contract_fact_cut04"
 	performContractVersion = "1.0.0"
 
 	// nolint: varcheck,unused
