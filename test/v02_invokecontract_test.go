@@ -15,10 +15,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	methodPutState = "PutState"
+	methodGetState = "GetState"
+)
+
 // put state and delete state testing
 func TestDockerGoPutState(t *testing.T) {
 	setupTest(t)
-	method := "PutState"
+	method := methodPutState
 	parameters := generateInitParams()
 	parameters["key"] = []byte("key1")
 	parameters["field"] = []byte("field1")
@@ -74,7 +79,7 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters4["key"] = []byte("")
 	parameters4["field"] = []byte("")
 	parameters4["value"] = []byte("500")
-	method = "PutState"
+	method = methodPutState
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte(""), []byte("")), []byte("500"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil,
@@ -87,7 +92,7 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters5 := generateInitParams()
 	parameters5["key"] = []byte("key1")
 	parameters5["field"] = []byte("field1")
-	method = "PutState"
+	method = methodPutState
 
 	generateValue := func(size int) string {
 		var sb strings.Builder
@@ -113,7 +118,7 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters["key"] = []byte("key1")
 	parameters["field"] = []byte("field1")
 	parameters["value"] = []byte("500")
-	method := "PutState"
+	method := methodPutState
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1")), []byte("500"))
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
@@ -125,7 +130,7 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters6 := generateInitParams()
 	parameters6["key"] = []byte("key1")
 	parameters6["field"] = []byte("field1")
-	method = "GetState"
+	method = methodGetState
 
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1"))).
 		Return([]byte("500"), nil)
@@ -137,7 +142,7 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters7 := generateInitParams()
 	parameters7["key"] = []byte("key11111")
 	parameters7["field"] = []byte("field1")
-	method = "GetState"
+	method = methodGetState
 
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte("key11111"), []byte("field1"))).
 		Return([]byte(""), nil)
@@ -149,7 +154,7 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters8 := generateInitParams()
 	parameters8["key"] = []byte("")
 	parameters8["field"] = []byte("field1")
-	method = "GetState"
+	method = methodGetState
 
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte(""), []byte("field1"))).Return([]byte(""), nil)
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil,
@@ -160,7 +165,7 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters9 := generateInitParams()
 	parameters9["key"] = []byte("key4")
 	parameters9["field"] = []byte("field4")
-	method = "GetState"
+	method = methodGetState
 
 	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte("key4"), []byte("field4"))).
 		Return([]byte(""), errors.New("simContext fail"))

@@ -20,6 +20,7 @@ import (
 
 const (
 	contractName = "contract_fact_cut03"
+	methodSave   = "Save"
 )
 
 func TestDockerGoMemory(t *testing.T) {
@@ -115,7 +116,7 @@ func testMultipleTxs(mockLogger protocol.Logger) {
 				parameters := generateInitParams()
 				parameters["file_key"] = []byte("key")
 				parameters["file_name"] = []byte("name")
-				method := "Save"
+				method := methodSave
 
 				newRuntimeInstance.Invoke(newContractId, method, nil, parameters,
 					mockTxContext, uint64(123))

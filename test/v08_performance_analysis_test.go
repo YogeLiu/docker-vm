@@ -207,7 +207,7 @@ func testCutSave() {
 	parameters := generateInitParams()
 	parameters["file_key"] = []byte("key")
 	parameters["file_name"] = []byte("name")
-	method := "Save"
+	method := methodSave
 
 	newRuntimeInstance.Invoke(newContractId, method, nil, parameters,
 		performTxContext, uint64(123))
