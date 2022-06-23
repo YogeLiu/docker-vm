@@ -153,6 +153,15 @@ func (r *RuntimeInstance) handlerCallContract(
 		return response, gasUsed, specialTxType
 	}
 
+	contractMethod := callContractReq.ContractMethod
+	if len(contractMethod) == 0 {
+		errMsg := "missing contract method"
+		r.logger.Error(errMsg)
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = errMsg
+		return response, gasUsed, specialTxType
+	}
+
 	if recvMsg.CrossContext.CurrentDepth > protocol.CallContractDepth {
 		errMsg := "exceed max depth"
 		r.logger.Error(errMsg)
@@ -162,10 +171,9 @@ func (r *RuntimeInstance) handlerCallContract(
 	}
 
 	// construct new tx
-	invokeContract := "invoke_contract"
 	var result *commonPb.ContractResult
 	var code commonPb.TxStatusCode
-	result, specialTxType, code = txSimContext.CallContract(&commonPb.Contract{Name: contractName}, invokeContract,
+	result, specialTxType, code = txSimContext.CallContract(&commonPb.Contract{Name: contractName}, contractMethod,
 		nil, callContractReq.Args, gasUsed, txSimContext.GetTx().Payload.TxType)
 	r.logger.Debugf("call contract result [%+v]", result)
 

@@ -91,16 +91,18 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 	setupTest(t)
 
 	parameters := generateInitParams()
-	parameters["method"] = []byte("display")
-	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil, parameters,
+	// parameters["method"] = []byte("display")
+	method := "Display"
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil, parameters,
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 
-	parameters["method"] = []byte("not existed method")
-	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil, parameters,
+	// parameters["method"] = []byte("not existed method")
+	method = "not existed method"
+	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil, parameters,
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
-	assert.Equal(t, []byte("unknown method"), result.Result)
+	assert.Equal(t, []byte("unknown contract method"), result.Result)
 	fmt.Println(result)
 
 	tearDownTest()

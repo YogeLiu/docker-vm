@@ -59,10 +59,10 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 	}
 
 	parameters := generateInitParams()
-	parameters["method"] = []byte("get_sender_address")
+	method := "GetSenderAddr"
 
 	for index, data := range testData {
-		result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+		result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
 			parameters, simContext, uint64(123))
 		assert.Equal(t, uint32(0), result.GetCode())
 		assert.Equal(t, data.wantAddr, string(result.GetResult()))

@@ -446,12 +446,8 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 	switch p.Tx.Request.Method {
 	case _initContract, _upgradeContract:
 		msg.Type = protogo.DockerVMType_INIT
-
-	case _invokeContract:
-		msg.Type = protogo.DockerVMType_INVOKE
-
 	default:
-		return fmt.Errorf("invalid method: %s", p.Tx.Request.Method)
+		msg.Type = protogo.DockerVMType_INVOKE
 	}
 
 	// send message to sandbox

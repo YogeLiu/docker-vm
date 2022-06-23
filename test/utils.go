@@ -43,7 +43,8 @@ const (
 	invokeMethod = "invoke_contract"
 
 	// ContractNameTest is test contract name
-	ContractNameTest = "contract_test09"
+	// ContractNameTest = "contract_test09"
+	ContractNameTest = "contract_test10"
 
 	// ContractVersionTest is test contract version
 	ContractVersionTest = "v1.0.0"
@@ -810,7 +811,7 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 					Version:     ContractVersionTest,
 					RuntimeType: commonPb.RuntimeType_DOCKER_GO,
 				},
-				invokeMethod,
+				method,
 				nil,
 				param,
 				simContext,

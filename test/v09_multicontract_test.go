@@ -231,10 +231,10 @@ func testCutSaveVersion(version string) {
 	}
 
 	parameters := generateInitParams()
-	parameters["method"] = []byte("save")
 	parameters["file_key"] = []byte("key")
 	parameters["file_name"] = []byte("name")
+	method := "Save"
 
-	newRuntimeInstance.Invoke(newContractId, invokeMethod, nil, parameters,
+	newRuntimeInstance.Invoke(newContractId, method, nil, parameters,
 		performTxContext, uint64(123))
 }

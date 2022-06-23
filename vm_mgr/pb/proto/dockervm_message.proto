@@ -179,8 +179,9 @@ enum DockerVMCode {
 // --------------------  request message ---------------------
 message CallContractRequest {
     string contract_name = 1;
+    string contract_method = 2;
     // args
-    map<string, bytes> args = 2;
+    map<string, bytes> args = 3;
 }
 
 // --------------------  result message ---------------------
