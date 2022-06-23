@@ -33,12 +33,6 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 )
 
-const (
-	_initContract    = "init_contract"
-	_invokeContract  = "invoke_contract"
-	_upgradeContract = "upgrade"
-)
-
 type processState int
 
 // all process state synchronization
@@ -441,13 +435,6 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 		TxId:         p.Tx.TxId,
 		CrossContext: p.Tx.CrossContext,
 		Request:      p.Tx.Request,
-	}
-
-	switch p.Tx.Request.Method {
-	case _initContract, _upgradeContract:
-		msg.Type = protogo.DockerVMType_INIT
-	default:
-		msg.Type = protogo.DockerVMType_INVOKE
 	}
 
 	// send message to sandbox
