@@ -63,8 +63,8 @@ func TestDockerGoKvIterator(t *testing.T) {
 	mockGetStateKvHandle(mockTxContext, int32(4))
 
 	parameters := generateInitParams()
-	parameters["method"] = []byte("kv_iterator_test")
-	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+	method := "KvIterator"
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
 		parameters, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 

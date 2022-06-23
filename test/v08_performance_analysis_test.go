@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	performContractName    = "contract_fact_cut02"
+	performContractName    = "contract_fact_cut04"
 	performContractVersion = "1.0.0"
 
 	// nolint: varcheck,unused
@@ -205,11 +205,11 @@ func testCutSave() {
 	}
 
 	parameters := generateInitParams()
-	parameters["method"] = []byte("save")
 	parameters["file_key"] = []byte("key")
 	parameters["file_name"] = []byte("name")
+	method := methodSave
 
-	newRuntimeInstance.Invoke(newContractId, invokeMethod, nil, parameters,
+	newRuntimeInstance.Invoke(newContractId, method, nil, parameters,
 		performTxContext, uint64(123))
 }
 
