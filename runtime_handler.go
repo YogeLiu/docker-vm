@@ -1158,7 +1158,10 @@ func keyHistoryIterClose(iter protocol.KeyHistoryIterator, gasUsed uint64,
 	return response, gasUsed
 }
 
-func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo.DockerVMMessage,
+func (r *RuntimeInstance) handleGetByteCodeRequest(
+	txId string,
+	txSimContext protocol.TxSimContext,
+	recvMsg *protogo.DockerVMMessage,
 	byteCode []byte) *protogo.DockerVMMessage {
 
 	response := &protogo.DockerVMMessage{
@@ -1183,6 +1186,20 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	r.logger.Debugf("name: %s", contractName)
 	r.logger.Debugf("full name: %s", contractFullName)
 
+	var err error
+	if len(byteCode) == 0 {
+		r.logger.Warnf("[%s] bytecode is missing", txId)
+		byteCode, err = txSimContext.GetContractBytecode(contractName)
+		if err != nil || len(byteCode) == 0 {
+			r.logger.Errorf(
+				"[%s] fail to get contract bytecode: %s, required contract name is: [%s]",
+				txId, err, contractName,
+			)
+			response.Response.Message = err.Error()
+			return response
+		}
+	}
+
 	hostMountPath := r.clientMgr.GetVMConfig().DockerVMMountPath
 	contractDir := filepath.Join(hostMountPath, mountContractDir)
 
@@ -1191,7 +1208,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	contractFullNamePath := filepath.Join(contractDir, contractFullName)
 
 	// save bytecode to disk
-	err := r.saveBytesToDisk(byteCode, contractZipPath)
+	err = r.saveBytesToDisk(byteCode, contractZipPath)
 	if err != nil {
 		r.logger.Errorf("fail to save bytecode to disk: %s", err)
 		response.Response.Code = protogo.DockerVMCode_FAIL
