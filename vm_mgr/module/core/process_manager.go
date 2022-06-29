@@ -792,13 +792,3 @@ func (pm *ProcessManager) generateProcessName(chainID, contractName, contractVer
 
 	return utils.ConstructProcessName(chainID, contractName, contractVersion, localIndex, pm.processCnt, pm.isOrigManager)
 }
-
-func (pm *ProcessManager) ModifyContractName(txRequest *protogo.TxRequest) error {
-	contractName, err := pm.contractManager.GetContractName(txRequest.ChainId, txRequest.TxId, txRequest.ContractName)
-	if err != nil {
-		return err
-	}
-	pm.logger.Debugf("replace txrequest contract name from %s to %s", txRequest.ContractName, contractName)
-	txRequest.ContractName = contractName
-	return nil
-}
