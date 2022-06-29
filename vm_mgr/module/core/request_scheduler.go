@@ -205,7 +205,7 @@ func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 
 	if s.origProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 ||
 		s.crossProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 {
-		s.logger.Debugf("process exists, stop to close request group")
+		s.logger.Debugf("process exits, stop to close request group")
 		return nil
 	}
 
