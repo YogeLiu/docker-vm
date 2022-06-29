@@ -5,15 +5,16 @@ import (
 	"io/ioutil"
 	"sync"
 
-	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
-	"chainmaker.org/chainmaker/utils/v2"
-	"chainmaker.org/chainmaker/vm/v2"
-	"github.com/docker/distribution/uuid"
-
 	acPb "chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	storePb "chainmaker.org/chainmaker/pb-go/v2/store"
+	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/utils/v2"
+	"chainmaker.org/chainmaker/vm/v2"
+
+	"github.com/docker/distribution/uuid"
 )
 
 var testOrgId = "wx-org1.chainmaker.org"
@@ -114,6 +115,11 @@ func (s *TxContextMockTest) SetIterHandle(index int32, iter interface{}) {
 
 // GetIterHandle returns iter
 func (s *TxContextMockTest) GetIterHandle(index int32) (interface{}, bool) {
+	panic("implement me")
+}
+
+// GetKeys  GetKeys
+func (s *TxContextMockTest) GetKeys(keys []*vmPb.BatchKey) ([]*vmPb.BatchKey, error) {
 	panic("implement me")
 }
 

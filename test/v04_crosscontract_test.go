@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"fmt"
 	"testing"
 
@@ -21,6 +22,21 @@ func TestDockerGoCrossCall(t *testing.T) {
 	parameters0["contract_name"] = []byte(ContractNameTest)
 	parameters0["contract_method"] = []byte("Display")
 	method := "CrossContract"
+
+	contractInfo := commonPb.Contract{
+		Name:        ContractNameTest,
+		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		Address:     ContractNameAddr,
+	}
+
+	invalidContractInfo := commonPb.Contract{
+		Name:        "",
+		RuntimeType: commonPb.RuntimeType_INVALID,
+		Address:     "",
+	}
+
+	mockTxContext.EXPECT().GetContractByName(ContractNameTest).Return(&contractInfo, nil).AnyTimes()
+	mockTxContext.EXPECT().GetContractByName("").Return(&invalidContractInfo, nil).AnyTimes()
 
 	mockTxContext2 := initMockSimContext(t)
 	mockCrossCallGetDepth(mockTxContext2)

@@ -208,6 +208,14 @@ func (r *RuntimeInstance) Invoke(
 				r.sendSysResponse(getStateResponse)
 				r.logger.Debugf("tx [%s] finish get state", uniqueTxKey)
 
+			case protogo.DockerVMType_GET_BATCH_STATE_REQUEST:
+				r.logger.Debugf("tx [%s] start get batch state [%v]", uniqueTxKey)
+				var getStateResponse *protogo.DockerVMMessage
+				getStateResponse, gasUsed = r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext, gasUsed)
+
+				r.sendSysResponse(getStateResponse)
+				r.logger.Debugf("tx [%s] finish get batch state", uniqueTxKey)
+
 			case protogo.DockerVMType_TX_RESPONSE:
 				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext, gasUsed, specialTxType)
 				r.logger.Debugf("tx [%s] finish handle response", originalTxId)

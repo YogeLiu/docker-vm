@@ -26,6 +26,7 @@ import (
 	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
+	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
@@ -294,6 +295,51 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 		config.KeyStateValue: value,
 	}
 	gasUsed, err = gas.GetStateGasUsed(gasUsed, value)
+	if err != nil {
+		r.logger.Errorf("%s", err)
+		response.SysCallMessage.Message = err.Error()
+		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+		return response, gasUsed
+	}
+
+	return response, gasUsed
+}
+
+func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *protogo.DockerVMMessage,
+	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
+
+	response := r.newEmptyResponse(txId, protogo.DockerVMType_GET_BATCH_STATE_RESPONSE)
+
+	var err error
+	var payload []byte
+	var getKeys []*vmPb.BatchKey
+
+	keys := &vmPb.BatchKeys{}
+	if err = keys.Unmarshal(recvMsg.SysCallMessage.Payload[config.KeyStateKey]); err != nil {
+		response.SysCallMessage.Message = err.Error()
+		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+		return response, gasUsed
+	}
+
+	getKeys, err = txSimContext.GetKeys(keys.Keys)
+	if err != nil {
+		response.SysCallMessage.Message = err.Error()
+		return response, gasUsed
+	}
+
+	r.logger.Debugf("get batch keys values: %v", getKeys)
+	resp := vmPb.BatchKeys{Keys: getKeys}
+	payload, err = resp.Marshal()
+	if err != nil {
+		response.SysCallMessage.Message = err.Error()
+		return response, gasUsed
+	}
+
+	response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
+	response.SysCallMessage.Payload = map[string][]byte{
+		config.KeyStateValue: payload,
+	}
+	gasUsed, err = gas.GetBatchStateGasUsed(gasUsed, payload)
 	if err != nil {
 		r.logger.Errorf("%s", err)
 		response.SysCallMessage.Message = err.Error()
@@ -1191,11 +1237,13 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 		r.logger.Warnf("[%s] bytecode is missing", txId)
 		byteCode, err = txSimContext.GetContractBytecode(contractName)
 		if err != nil || len(byteCode) == 0 {
-			r.logger.Errorf(
-				"[%s] fail to get contract bytecode: %s, required contract name is: [%s]",
-				txId, err, contractName,
-			)
-			response.Response.Message = err.Error()
+			r.logger.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
+				contractName)
+			if err != nil {
+				response.Response.Message = err.Error()
+			} else {
+				response.Response.Message = "contract byte is nil"
+			}
 			return response
 		}
 	}
