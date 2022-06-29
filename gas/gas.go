@@ -18,6 +18,7 @@ import (
 const (
 	GetArgsGasPrice               uint64 = 1  // GetArgsGasPrice
 	GetStateGasPrice              uint64 = 1  // GetStateGasPrice
+	GetBatchStateGasPrice         uint64 = 1  // GetBatchStateGasPrice
 	PutStateGasPrice              uint64 = 10 // PutStateGasPrice
 	DelStateGasPrice              uint64 = 10 // DelStateGasPrice
 	GetCreatorOrgIdGasPrice       uint64 = 1  // GetCreatorOrgIdGasPrice
@@ -126,6 +127,15 @@ func ConsumeKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
 // GetStateGasUsed returns get state gas used
 func GetStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
 	gasUsed += uint64(len(value)) * GetStateGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited ")
+	}
+	return gasUsed, nil
+}
+
+// GetBatchStateGasUsed returns get batch state gas used
+func GetBatchStateGasUsed(gasUsed uint64, payload []byte) (uint64, error) {
+	gasUsed += uint64(len(payload)) * GetBatchStateGasPrice
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}

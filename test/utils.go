@@ -44,7 +44,8 @@ const (
 
 	// ContractNameTest is test contract name
 	// ContractNameTest = "contract_test09"
-	ContractNameTest = "contract_test11"
+	ContractNameTest = "contract_test12"
+	ContractNameAddr = "xxxxxxaddressfehis"
 
 	// ContractVersionTest is test contract version
 	ContractVersionTest = "v1.0.0"
