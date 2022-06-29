@@ -35,10 +35,6 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 			| MemberType_CERT_HASH  | AddrType_CHAINMAKER |
 			| MemberType_PUBLIC_KEY | AddrType_CHAINMAKER |
 			| MemberType_ALIAS 		| AddrType_CHAINMAKER |
-			| MemberType_CERT       | AddrType_CHAINMAKER |
-			| MemberType_CERT_HASH  | AddrType_CHAINMAKER |
-			| MemberType_PUBLIC_KEY | AddrType_CHAINMAKER |
-			| MemberType_ALIAS 		| AddrType_CHAINMAKER |
 		*/
 		wantAddr string
 	}{
@@ -47,15 +43,10 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 		{zxlPKAddress},
 		{zxlCertAddressFromCert},
 
-		{cmCertAddressFromCert2220},
-		{cmCertAddressFromCert2220},
-		{cmPKAddress2220},
-		{cmCertAddressFromCert2220},
-
-		{cmCertAddressFromCert2201},
-		{cmCertAddressFromCert2201},
-		{cmPKAddress2201},
-		{cmCertAddressFromCert2201},
+		{cmCertAddressFromCert},
+		{cmCertAddressFromCert},
+		{cmPKAddress},
+		{cmCertAddressFromCert},
 	}
 
 	parameters := generateInitParams()
