@@ -6,10 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
-	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"fmt"
 	"testing"
 
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
