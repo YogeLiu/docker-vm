@@ -174,7 +174,22 @@ func (r *RuntimeInstance) handlerCallContract(
 	// construct new tx
 	var result *commonPb.ContractResult
 	var code commonPb.TxStatusCode
-	result, specialTxType, code = txSimContext.CallContract(&commonPb.Contract{Name: contractName}, contractMethod,
+	var contract *commonPb.Contract
+	contract, err = txSimContext.GetContractByName(contractName)
+	if err != nil {
+		errMsg := fmt.Sprintf(
+			"[call contract] failed to get contract by [%s], err: %s",
+			contractName,
+			err.Error(),
+		)
+		r.logger.Error(errMsg)
+
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = errMsg
+		return response, gasUsed, specialTxType
+	}
+
+	result, specialTxType, code = txSimContext.CallContract(contract, contractMethod,
 		nil, callContractReq.Args, gasUsed, txSimContext.GetTx().Payload.TxType)
 	r.logger.Debugf("call contract result [%+v]", result)
 
