@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	contractName = "contract_fact_cut05"
+	contractName = "contract_fact_cut06"
 	methodSave   = "Save"
 )
 

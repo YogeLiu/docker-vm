@@ -9,7 +9,7 @@ require (
 	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220629075646-a48b109a5aad
 	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220628032755-cebcbb60be67
 	chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220615103110-6849a8ada870
-	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220629083133-95b5793b6908
+	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220630074844-e45e59cf56f3
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
