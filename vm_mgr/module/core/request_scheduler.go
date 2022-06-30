@@ -140,6 +140,12 @@ func (s *RequestScheduler) GetRequestGroup(chainID, contractName, contractVersio
 	return group, ok
 }
 
+// GetContractManager returns contract manager
+func (s *RequestScheduler) GetContractManager() interfaces.ContractManager {
+
+	return s.contractManager
+}
+
 // handleGetContractReq handles get contract bytecode request, transfer to chain rpc service
 func (s *RequestScheduler) handleGetContractReq(req *protogo.DockerVMMessage) {
 
@@ -179,7 +185,7 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 	if !ok {
 		s.logger.Debugf("create new request group %s", groupKey)
 		group = NewRequestGroup(chainID, contractName, contractVersion,
-			s.origProcessManager, s.crossProcessManager, s.contractManager, s)
+			s.origProcessManager, s.crossProcessManager, s)
 		group.Start()
 		s.requestGroups[groupKey] = group
 	}
@@ -203,11 +209,11 @@ func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 	s.logger.Debugf("handle close request group request, chainID: [%s], "+
 		"contract name: [%s], contract version: [%s]", msg.ChainID, msg.ContractName, msg.ContractVersion)
 
-	if s.origProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 ||
-		s.crossProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 {
-		s.logger.Debugf("process exits, stop to close request group")
-		return nil
-	}
+	//if s.origProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 ||
+	//	s.crossProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 {
+	//	s.logger.Debugf("process exists, stop to close request group")
+	//	return nil
+	//}
 
 	groupKey := utils.ConstructContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion)
 

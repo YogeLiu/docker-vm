@@ -73,8 +73,7 @@ type RequestGroup struct {
 	contractName    string // contract name
 	contractVersion string // contract version
 
-	contractManager interfaces.ContractManager // contract manager, request contract / receive contract _ready signal
-	contractState   contractState              // handle tx with different contract state
+	contractState contractState // handle tx with different contract state
 
 	requestScheduler interfaces.RequestScheduler      // used for return err req to chain
 	eventCh          chan *messages.GetProcessRespMsg // request group invoking handler
@@ -90,7 +89,7 @@ var _ interfaces.RequestGroup = (*RequestGroup)(nil)
 
 // NewRequestGroup returns new request group
 func NewRequestGroup(chainID, contractName, contractVersion string, oriPMgr, crossPMgr interfaces.ProcessManager,
-	cMgr interfaces.ContractManager, scheduler interfaces.RequestScheduler) *RequestGroup {
+	scheduler interfaces.RequestScheduler) *RequestGroup {
 	return &RequestGroup{
 
 		logger: logger.NewDockerLogger(logger.GenerateRequestGroupLoggerName(
@@ -100,8 +99,7 @@ func NewRequestGroup(chainID, contractName, contractVersion string, oriPMgr, cro
 		contractName:    contractName,
 		contractVersion: contractVersion,
 
-		contractManager: cMgr,
-		contractState:   _contractEmpty,
+		contractState: _contractEmpty,
 
 		requestScheduler: scheduler,
 		eventCh:          make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
@@ -174,7 +172,7 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 func (r *RequestGroup) GetContractPath() string {
 
 	contractKey := utils.ConstructContractKey(r.chainID, r.contractName, r.contractVersion)
-	return filepath.Join(r.contractManager.GetContractMountDir(), contractKey)
+	return filepath.Join(r.requestScheduler.GetContractManager().GetContractMountDir(), contractKey)
 }
 
 // GetTxCh returns tx chan
@@ -201,7 +199,7 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 	switch r.contractState {
 	// try to get contract for first tx.
 	case _contractEmpty:
-		err = r.contractManager.PutMsg(&protogo.DockerVMMessage{
+		err = r.requestScheduler.GetContractManager().PutMsg(&protogo.DockerVMMessage{
 			TxId: req.TxId,
 			Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
 			Request: &protogo.TxRequest{

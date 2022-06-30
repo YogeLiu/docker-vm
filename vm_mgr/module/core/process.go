@@ -55,6 +55,11 @@ const (
 	_readyToIdleTimeoutRatio = 5
 )
 
+const (
+	initContract    = "init_contract"
+	upgradeContract = "upgrade"
+)
+
 // exitErr is the sandbox exit err
 type exitErr struct {
 	err  error
@@ -457,6 +462,7 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 		p.logger.Warnf("abandon tx response due to different tx id, response tx id [%s], "+
 			"current tx id [%s]", msg.TxId, p.Tx.TxId)
 	}
+
 	// after _timeout, abandon tx response
 	if p.processState != _busy {
 		p.logger.Warnf("abandon tx response due to _busy _timeout, tx id [%s]", msg.TxId)
@@ -464,6 +470,14 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
 	// change state from _busy to _ready
 	p.updateProcessState(_ready)
+
+	// failed for init / upgrade, contract err, exit process & remove contract
+	if msg.Type == protogo.DockerVMType_ERROR &&
+		(p.Tx.Request.Method == initContract || p.Tx.Request.Method == upgradeContract) {
+		if err := p.killProcess(); err != nil {
+			return fmt.Errorf("failed to kill process, %v", err)
+		}
+	}
 
 	return nil
 }
@@ -514,68 +528,91 @@ func (p *Process) handleTimeout() error {
 	return nil
 }
 
-// release process success: true
-// release process fail: false
+// handleProcessExit handle process exit
 func (p *Process) handleProcessExit(existErr *exitErr) bool {
-	//
-	//p.lock.Lock()
-	//defer p.lock.Unlock()
+
 	defer p.popTimer()
 
-	// =========  condition: before cmd.wait
-	// 1. _created fail, ContractExecError -> return err and exit
-	if existErr.err == utils.ContractExecError {
+	var restartSandbox, returnErrResp, exitSandbox, restartAll, removeContract bool
+	errRet := existErr.err.Error()
 
+	defer func() {
+		if restartSandbox {
+			go p.startProcess()
+		}
 		var txId string
 		if p.Tx != nil {
 			txId = p.Tx.TxId
 		}
-		// return error resp to chainmaker
-		p.returnTxErrorResp(txId, existErr.err.Error())
+		if returnErrResp {
+			p.returnTxErrorResp(txId, errRet)
+		}
+		if exitSandbox {
+			p.returnSandboxExitResp(existErr.err)
+		}
+		if restartAll {
+			p.Start()
+		}
+		if removeContract {
+			p.returnBadContractResp()
+		}
+	}()
 
-		// notify process manager to remove process cache
+	// =========  condition: before cmd.wait
+	// 1. created fail, ContractExecError -> return err and exit
+	if existErr.err == utils.ContractExecError {
 		p.logger.Debugf("start to release process")
-		p.returnSandboxExitResp(existErr.err)
-
+		returnErrResp = true
+		exitSandbox = true
+		removeContract = true
 		return true
 	}
 
-	// 2. _created fail, err from cmd.StdoutPipe() -> relaunch
-	// 3. _created fail, writeToFile fail -> relaunch
+	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
+	// 3. created fail, writeToFile fail -> relaunch
 	if p.processState == _created {
 		p.logger.Warnf("failed to launch process: %s", existErr.err)
-		go p.startProcess()
+		restartSandbox = true
 		return false
 	}
 
 	if p.processState == _ready {
-		p.logger.Warnf("process exited when _ready: %s", existErr.err)
-		p.returnSandboxExitResp(existErr.err)
+		p.logger.Warnf("process exited when ready: %s", existErr.err)
+		exitSandbox = true
+		// error after exec init or upgrade
+		if p.Tx.Request.Method == initContract || p.Tx.Request.Method == upgradeContract {
+			removeContract = true
+		}
 		return true
 	}
 
 	if p.processState == _idle {
-		p.logger.Warnf("process exited when _idle: %s", existErr.err)
-		p.returnSandboxExitResp(existErr.err)
+		p.logger.Warnf("process exited when idle: %s", existErr.err)
+		exitSandbox = true
 		return true
 	}
 
-	// 7. process panic, return error response and relaunch
+	// 7. process panic, return error response
 	if p.processState == _busy {
-		p.logger.Warnf("process exited when _busy: %s", existErr.err)
-		p.returnSandboxExitResp(existErr.err)
-		p.returnTxErrorResp(p.Tx.TxId, utils.RuntimePanicError.Error())
+		p.logger.Warnf("process exited when busy: %s", existErr.err)
 		p.updateProcessState(_created)
+		exitSandbox = true
+		returnErrResp = true
+		errRet = utils.RuntimePanicError.Error()
+		// panic while exec init or upgrade
+		if p.Tx.Request.Method == initContract || p.Tx.Request.Method == upgradeContract {
+			removeContract = true
+		}
 		return true
 	}
 
 	//  ========= condition: after cmd.wait
 	// 4. process change context, restart process
 	if p.processState == _changing {
-		p.logger.Debugf("_changing process to [%s]", p.processName)
-		// restart process
+		p.logger.Debugf("changing process to [%s]", p.processName)
 		p.updateProcessState(_created)
-		p.Start()
+		// restart process
+		restartAll = true
 		return true
 	}
 
@@ -586,11 +623,13 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		return true
 	}
 
-	// 6. process killed because of _timeout, return error response and relaunch
+	// 6. process killed because of timeout, return error response and relaunch
 	if p.processState == _timeout {
-		p.returnTxErrorResp(p.Tx.TxId, utils.TxTimeoutPanicError.Error())
+		p.logger.Debugf("killed for timeout")
 		p.updateProcessState(_created)
-		go p.startProcess()
+		returnErrResp = true
+		restartSandbox = true
+		errRet = utils.TxTimeoutPanicError.Error()
 	}
 
 	return false
@@ -699,6 +738,24 @@ func (p *Process) returnSandboxExitResp(err error) {
 		Err:             err,
 	}
 	_ = p.processManager.PutMsg(errResp)
+}
+
+// returnBadContractResp return bad contract resp to contract manager
+func (p *Process) returnBadContractResp() {
+	errResp := &protogo.DockerVMMessage{
+		Type: protogo.DockerVMType_ERROR,
+		Request: &protogo.TxRequest{
+			ContractName:    p.contractName,
+			ContractVersion: p.contractVersion,
+			ChainId:         p.chainID,
+		},
+	}
+	_ = p.requestScheduler.GetContractManager().PutMsg(errResp)
+	_ = p.requestScheduler.PutMsg(&messages.RequestGroupKey{
+		ChainID:         p.chainID,
+		ContractName:    p.contractName,
+		ContractVersion: p.contractVersion,
+	})
 }
 
 // sendMsg sends messages to sandbox
