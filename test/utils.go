@@ -44,7 +44,8 @@ const (
 
 	// ContractNameTest is test contract name
 	// ContractNameTest = "contract_test09"
-	ContractNameTest = "contract_test11"
+	ContractNameTest = "contract_test12"
+	ContractNameAddr = "xxxxxxaddressfehis"
 
 	// ContractVersionTest is test contract version
 	ContractVersionTest = "v1.0.0"
@@ -62,9 +63,8 @@ const (
 MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAESkwkzwN7DHoCfmNLmUpf280PqnGM
 6QU+P3X8uahlUjpgWv+Stfmeco9RqSTU8Y1YGcQvm2Jr327qkRlG7+dELQ==
 -----END PUBLIC KEY-----`
-	zxlPKAddress    = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
-	cmPKAddress2201 = "438537700181274713695763857518314651542142438174"
-	cmPKAddress2220 = "4cd0b5e8f6d6df38ecdc06c7431a48dd0265cb1e"
+	zxlPKAddress = "ZXaaa6f45415493ffb832ca28faa14bef5c357f5f0"
+	cmPKAddress  = "4cd0b5e8f6d6df38ecdc06c7431a48dd0265cb1e"
 
 	certPEM = `-----BEGIN CERTIFICATE-----
 MIICzjCCAi+gAwIBAgIDCzLUMAoGCCqGSM49BAMCMGoxCzAJBgNVBAYTAkNOMRAw
@@ -84,9 +84,8 @@ hp8YLjSflgw1+uWlMb/WCY60MyxZr/RRsTYpHu7FAkIBSMAVxw5RYySsf4J3bpM0
 CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
 8H8=
 -----END CERTIFICATE-----`
-	zxlCertAddressFromCert    = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
-	cmCertAddressFromCert2201 = "276163396529059566124041165851202392707607138552"
-	cmCertAddressFromCert2220 = "305f98514f3c2f6fcaeb8247ed147bacf99990f8"
+	zxlCertAddressFromCert = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
+	cmCertAddressFromCert  = "305f98514f3c2f6fcaeb8247ed147bacf99990f8"
 )
 
 var (
@@ -97,9 +96,9 @@ var (
 	//kvGetIndex    int32
 	kvRowCache = make(map[int32]interface{})
 
-	blockVersionCounter int32
-	senderCounter       int32
-	chainConfigCounter  int32
+	//blockVersionCounter int32
+	senderCounter      int32
+	chainConfigCounter int32
 )
 
 var tmpSimContextMap map[string][]byte
@@ -656,12 +655,7 @@ func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
 }
 
 func GetBlockVersion() uint32 {
-	atomic.AddInt32(&blockVersionCounter, 1)
-	if blockVersionCounter <= 8 {
-		return 2220
-	}
-	return 2201
-	//return uint32(blockVersionCounter)
+	return uint32(2300)
 }
 
 // 获取sender公钥
@@ -736,7 +730,7 @@ func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
 func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	atomic.AddInt32(&chainConfigCounter, 1)
 
-	switch chainConfigCounter % 12 {
+	switch chainConfigCounter % 8 {
 	case 1, 2, 3, 4:
 		zxConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
@@ -752,21 +746,7 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 			return nil, err
 		}
 		return bytes, nil
-	case 5, 6, 7, 8:
-		ethConfig := configPb.ChainConfig{
-			Vm: &configPb.Vm{
-				AddrType: configPb.AddrType_CHAINMAKER,
-			},
-			Crypto: &configPb.CryptoConfig{
-				Hash: "SHA256",
-			},
-		}
-		bytes, err := ethConfig.Marshal()
-		if err != nil {
-			return nil, err
-		}
-		return bytes, nil
-	case 9, 10, 11, 0:
+	case 5, 6, 7, 0:
 		ethConfig := configPb.ChainConfig{
 			Vm: &configPb.Vm{
 				AddrType: configPb.AddrType_CHAINMAKER,

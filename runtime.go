@@ -22,12 +22,9 @@ import (
 )
 
 const (
-	mountContractDir        = "contracts"
-	msgIterIsNil            = "iterator is nil"
-	timeout                 = 10000 // tx execution timeout(milliseconds)
-	version2201      uint32 = 2201
-	version2210      uint32 = 2210
-	version2220      uint32 = 2220
+	mountContractDir = "contracts"
+	msgIterIsNil     = "iterator is nil"
+	timeout          = 10000 // tx execution timeout(milliseconds)
 )
 
 var (
@@ -207,6 +204,14 @@ func (r *RuntimeInstance) Invoke(
 
 				r.sendSysResponse(getStateResponse)
 				r.logger.Debugf("tx [%s] finish get state", uniqueTxKey)
+
+			case protogo.DockerVMType_GET_BATCH_STATE_REQUEST:
+				r.logger.Debugf("tx [%s] start get batch state [%v]", uniqueTxKey)
+				var getStateResponse *protogo.DockerVMMessage
+				getStateResponse, gasUsed = r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext, gasUsed)
+
+				r.sendSysResponse(getStateResponse)
+				r.logger.Debugf("tx [%s] finish get batch state", uniqueTxKey)
 
 			case protogo.DockerVMType_TX_RESPONSE:
 				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext, gasUsed, specialTxType)

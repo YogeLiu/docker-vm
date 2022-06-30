@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"testing"
 
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,12 +23,26 @@ func TestDockerGoCrossCall(t *testing.T) {
 	parameters0["contract_method"] = []byte("Display")
 	method := "CrossContract"
 
+	contractInfo := commonPb.Contract{
+		Name:        ContractNameTest,
+		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		Address:     ContractNameAddr,
+	}
+
+	invalidContractInfo := commonPb.Contract{
+		Name:        "",
+		RuntimeType: commonPb.RuntimeType_INVALID,
+		Address:     "",
+	}
+
 	mockTxContext2 := initMockSimContext(t)
 	mockCrossCallGetDepth(mockTxContext2)
 	mockCrossCallGetCrossInfo(mockTxContext2)
 
 	mockCallContract(mockTxContext2, parameters0)
 	mockTxContext2.EXPECT().GetTxRWMapByContractName(gomock.Any()).Return(nil, nil).AnyTimes()
+	mockTxContext2.EXPECT().GetContractByName(ContractNameTest).Return(&contractInfo, nil).AnyTimes()
+	mockTxContext2.EXPECT().GetContractByName("").Return(&invalidContractInfo, nil).AnyTimes()
 
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
 		parameters0, mockTxContext2, uint64(123))
