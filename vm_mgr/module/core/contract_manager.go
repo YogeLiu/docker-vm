@@ -81,6 +81,13 @@ func (cm *ContractManager) Start() {
 						break
 					}
 
+				case protogo.DockerVMType_ERROR:
+					err := cm.handleRemoveContract(msg)
+					if err != nil {
+						cm.logger.Errorf("failed to handle remove contract, %v", err)
+						break
+					}
+
 				default:
 					cm.logger.Errorf("unknown msg type, msg: %+v", msg)
 				}
@@ -201,10 +208,10 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 	}
 
 	// save contract in lru (contract file already saved in disk by chain)
-	groupKey := utils.ConstructContractKey(resp.Response.ChainId, resp.Response.ContractName, resp.Response.ContractVersion)
+	contractKey := utils.ConstructContractKey(resp.Response.ChainId, resp.Response.ContractName, resp.Response.ContractVersion)
 
-	path := filepath.Join(cm.mountDir, groupKey)
-	cm.contractsLRU.Add(groupKey, path)
+	path := filepath.Join(cm.mountDir, contractKey)
+	cm.contractsLRU.Add(contractKey, path)
 
 	if config.DockerVMConfig.RPC.ChainRPCProtocol == config.TCP {
 		if len(resp.Response.Result) == 0 {
@@ -213,17 +220,39 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 
 		err := ioutil.WriteFile(path, resp.Response.Result, 0755)
 		if err != nil {
-			return fmt.Errorf("failed to write contract file, [%s]", groupKey)
+			return fmt.Errorf("failed to write contract file, [%s]", contractKey)
 		}
 	}
 
-	cm.logger.Infof("contract [%s] saved in lru and dir [%s]", groupKey, path)
+	cm.logger.Infof("contract [%s] saved in lru and dir [%s]", contractKey, path)
 
 	// send contract _ready signal to request group
 	if err := cm.sendContractReadySignal(resp.Response.ChainId, resp.Response.ContractName,
 		resp.Response.ContractVersion); err != nil {
 		return fmt.Errorf("failed to send contract _ready signal, %v", err)
 	}
+	return nil
+}
+
+// handleRemoveContract removes contract from cache and disk
+func (cm *ContractManager) handleRemoveContract(msg *protogo.DockerVMMessage) error {
+
+	cm.logger.Debugf("handle remove contract, txId: [%s]", msg.TxId)
+
+	// construct contract key
+	contractKey := utils.ConstructContractKey(msg.Request.ChainId, msg.Request.ContractName, msg.Request.ContractVersion)
+
+	path, ok := cm.contractsLRU.Get(contractKey)
+	if !ok {
+		return fmt.Errorf("contract %s not exists in lru", contractKey)
+	}
+	if err := utils.RemoveDir(path.(string)); err != nil {
+		return fmt.Errorf("failed to remove file, %v", err)
+	}
+	cm.contractsLRU.Remove(contractKey)
+
+	cm.logger.Debugf("removed contract %s from disk and lru", contractKey)
+
 	return nil
 }
 

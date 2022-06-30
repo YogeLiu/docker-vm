@@ -33,10 +33,10 @@ do
       fi
     fi
 
-    docker run -itd --rm \
+    docker run -itd --net=host \
     -v "$MOUNT_PATH":/mount \
     -v "$LOG_PATH":/log \
-    -p "$EXPOSE_PORT":22351 \
+    -e CHAIN_RPC_PORT="$EXPOSE_PORT" \
     -e SANDBOX_RPC_PORT="$RUNTIME_PORT" \
     --name "$CONTAINER_NAME" \
     --privileged $IMAGE_NAME

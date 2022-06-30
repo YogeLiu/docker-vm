@@ -15,6 +15,7 @@ type (
 		Start()
 		PutMsg(msg interface{}) error
 		GetRequestGroup(chainID, contractName, contractVersion string) (RequestGroup, bool)
+		GetContractManager() ContractManager
 	}
 	RequestGroup interface {
 		Start()
