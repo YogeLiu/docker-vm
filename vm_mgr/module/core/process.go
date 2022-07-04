@@ -36,19 +36,19 @@ import (
 type processState int
 
 // all process state synchronization
-// p(_ready->_idle): p==_ready, invoke ChangeProcessState, process manager->_idle, process->_idle
-// p(_idle->_busy): p==_busy, invoke ChangeProcessState, process manager->_busy, process->_busy
-// pm(_idle->del): invoke ChangeSandbox, p==_idle ? kill, ->_changing, newctx->_created, pm del old , add new->_busy : revert
+// p(ready->idle): p==ready, invoke ChangeProcessState, process manager->idle, process->idle
+// p(idle->busy): p==busy, invoke ChangeProcessState, process manager->busy, process->busy
+// pm(idle->del): invoke ChangeSandbox, p==idle ? kill, ->changing, newctx->created, pm del old , add new->busy : revert
 // p(before started->killed): restart ? nothing : return exit resp
 // p(close signal->killed)
 const (
-	_created  processState = iota // creating process (_busy in process manager)
-	_ready                        // _ready to recv tx (_busy in process manager)
-	_busy                         // running tx (_busy in process manager)
-	_idle                         // idling (_idle in process manager)
-	_changing                     // _changing sandbox (_busy in process manager)
-	_closing                      // _closing sandbox (_idle in process manager)
-	_timeout                      // _busy _timeout (_busy in process manager)
+	created  processState = iota // creating process (busy in process manager)
+	ready                        // ready to recv tx (busy in process manager)
+	busy                         // running tx (busy in process manager)
+	idle                         // idling (idle in process manager)
+	changing                     // changing sandbox (busy in process manager)
+	closing                      // closing sandbox (idle in process manager)
+	timeout                      // busy timeout (busy in process manager)
 )
 
 const (
@@ -118,7 +118,7 @@ func NewProcess(user interfaces.User, chainID, contractName, contractVersion, pr
 		cGroupPath: filepath.Join(security.CGroupRoot, security.ProcsFile),
 		user:       user,
 
-		processState:  _created,
+		processState:  created,
 		isOrigProcess: isOrigProcess,
 
 		cmdReadyCh: make(chan bool, 1),
@@ -251,7 +251,7 @@ func (p *Process) launchProcess() *exitErr {
 func (p *Process) listenProcess() {
 
 	for {
-		if p.processState == _ready {
+		if p.processState == ready {
 			select {
 
 			case tx := <-p.txCh:
@@ -264,7 +264,7 @@ func (p *Process) listenProcess() {
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
-					p.logger.Errorf("failed to handle _ready _timeout timer, %v", err)
+					p.logger.Errorf("failed to handle ready timeout timer, %v", err)
 				}
 				break
 
@@ -275,7 +275,7 @@ func (p *Process) listenProcess() {
 				}
 				break
 			}
-		} else if p.processState == _busy {
+		} else if p.processState == busy {
 			select {
 
 			case resp := <-p.respCh:
@@ -286,7 +286,7 @@ func (p *Process) listenProcess() {
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
-					p.logger.Errorf("failed to handle _busy _timeout timer, %v", err)
+					p.logger.Errorf("failed to handle busy timeout timer, %v", err)
 				}
 				break
 
@@ -297,12 +297,12 @@ func (p *Process) listenProcess() {
 				}
 				break
 			}
-		} else if p.processState == _idle {
+		} else if p.processState == idle {
 			select {
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
-					p.logger.Errorf("failed to handle _idle _timeout timer, %v", err)
+					p.logger.Errorf("failed to handle idle timeout timer, %v", err)
 				}
 				break
 
@@ -364,24 +364,24 @@ func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	p.updateProcessState(_ready)
+	p.updateProcessState(ready)
 	p.stream = stream
 }
 
 // ChangeSandbox changes sandbox of process
 func (p *Process) ChangeSandbox(chainID, contractName, contractVersion, processName string) error {
 
-	p.logger.Debugf("process [%s] is _changing to [%s]...", p.processName, processName)
+	p.logger.Debugf("process [%s] is changing to [%s]...", p.processName, processName)
 
-	if p.processState != _idle {
-		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, _idle)
+	if p.processState != idle {
+		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
 	}
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if p.processState != _idle {
-		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, _idle)
+	if p.processState != idle {
+		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
 	}
 
 	if err := p.resetContext(chainID, contractName, contractVersion, processName); err != nil {
@@ -394,7 +394,7 @@ func (p *Process) ChangeSandbox(chainID, contractName, contractVersion, processN
 	}
 
 	// if sandbox exited here, process while be holding util deleted from process manager
-	p.updateProcessState(_changing)
+	p.updateProcessState(changing)
 
 	return nil
 }
@@ -404,22 +404,22 @@ func (p *Process) CloseSandbox() error {
 
 	p.logger.Debugf("start to close sandbox")
 
-	if p.processState != _idle {
-		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, _idle)
+	if p.processState != idle {
+		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
 	}
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if p.processState != _idle {
-		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, _idle)
+	if p.processState != idle {
+		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
 	}
 
 	if err := p.killProcess(); err != nil {
 		return fmt.Errorf("failed to kill process, %v", err)
 	}
 
-	p.updateProcessState(_closing)
+	p.updateProcessState(closing)
 
 	return nil
 }
@@ -434,7 +434,7 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 
 	p.Tx = tx
 
-	p.updateProcessState(_busy)
+	p.updateProcessState(busy)
 
 	msg := &protogo.DockerVMMessage{
 		TxId:         p.Tx.TxId,
@@ -463,13 +463,13 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 			"current tx id [%s]", msg.TxId, p.Tx.TxId)
 	}
 
-	// after _timeout, abandon tx response
-	if p.processState != _busy {
-		p.logger.Warnf("abandon tx response due to _busy _timeout, tx id [%s]", msg.TxId)
+	// after timeout, abandon tx response
+	if p.processState != busy {
+		p.logger.Warnf("abandon tx response due to busy timeout, tx id [%s]", msg.TxId)
 	}
 
-	// change state from _busy to _ready
-	p.updateProcessState(_ready)
+	// change state from busy to ready
+	p.updateProcessState(ready)
 
 	// failed for init / upgrade, contract err, exit process & remove contract
 	if msg.Type == protogo.DockerVMType_ERROR &&
@@ -482,48 +482,48 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 	return nil
 }
 
-// handleTimeout handle _busy _timeout (sandbox _timeout) and _ready _timeout (tx chan empty)
+// handleTimeout handle busy timeout (sandbox timeout) and ready timeout (tx chan empty)
 func (p *Process) handleTimeout() error {
 
 	switch p.processState {
 
-	// _busy _timeout, restart, process state: _busy -> _timeout -> _created -> _ready, process manager keep _busy
-	case _busy:
+	// busy timeout, restart, process state: busy -> timeout -> created -> ready, process manager keep busy
+	case busy:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Debugf("_busy _timeout, go to _timeout")
-		p.updateProcessState(_timeout)
+		p.logger.Debugf("busy timeout, go to timeout")
+		p.updateProcessState(timeout)
 		if err := p.killProcess(); err != nil {
-			p.logger.Warnf("failed to kill _timeout process, %v", err)
+			p.logger.Warnf("failed to kill timeout process, %v", err)
 		}
 
-	// _ready _timeout, process state: _ready -> _idle, process manager: _busy -> _idle
-	case _ready:
+	// ready timeout, process state: ready -> idle, process manager: busy -> idle
+	case ready:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Debugf("_ready _timeout, go to _idle")
+		p.logger.Debugf("ready timeout, go to idle")
 		if err := p.processManager.ChangeProcessState(p.processName, false); err != nil {
 			return fmt.Errorf("change process state error, %v", err)
 		}
-		p.updateProcessState(_idle)
+		p.updateProcessState(idle)
 
-	case _idle:
+	case idle:
 		if len(p.txCh) > 0 {
-			p.logger.Debugf("_idle _timeout, txCh len > 0, go to _ready")
-			// change state from _idle to _busy
+			p.logger.Debugf("idle timeout, txCh len > 0, go to ready")
+			// change state from idle to busy
 			if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
 				p.logger.Debugf("failed to change state, %v", err)
 				return nil
 			}
 			p.lock.Lock()
 			defer p.lock.Unlock()
-			p.updateProcessState(_ready)
+			p.updateProcessState(ready)
 		} else {
 			p.startIdleTimer()
 		}
 
 	default:
-		p.logger.Debugf("process state should be _busy / _ready / _idle, current state is %v", p.processState)
+		p.logger.Debugf("process state should be busy / ready / idle, current state is %v", p.processState)
 	}
 	return nil
 }
@@ -570,13 +570,13 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
 	// 3. created fail, writeToFile fail -> relaunch
-	if p.processState == _created {
+	if p.processState == created {
 		p.logger.Warnf("failed to launch process: %s", existErr.err)
 		restartSandbox = true
 		return false
 	}
 
-	if p.processState == _ready {
+	if p.processState == ready {
 		p.logger.Warnf("process exited when ready: %s", existErr.err)
 		exitSandbox = true
 		// error after exec init or upgrade
@@ -586,16 +586,16 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		return true
 	}
 
-	if p.processState == _idle {
+	if p.processState == idle {
 		p.logger.Warnf("process exited when idle: %s", existErr.err)
 		exitSandbox = true
 		return true
 	}
 
 	// 7. process panic, return error response
-	if p.processState == _busy {
+	if p.processState == busy {
 		p.logger.Warnf("process exited when busy: %s", existErr.err)
-		p.updateProcessState(_created)
+		p.updateProcessState(created)
 		exitSandbox = true
 		returnErrResp = true
 		errRet = utils.RuntimePanicError.Error()
@@ -608,9 +608,9 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 
 	//  ========= condition: after cmd.wait
 	// 4. process change context, restart process
-	if p.processState == _changing {
+	if p.processState == changing {
 		p.logger.Debugf("changing process to [%s]", p.processName)
-		p.updateProcessState(_created)
+		p.updateProcessState(created)
 		// restart process
 		restartAll = true
 		return true
@@ -618,15 +618,15 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 
 	//  ========= condition: after cmd.wait
 	// 5. process killed because resource release
-	if p.processState == _closing {
+	if p.processState == closing {
 		p.logger.Debugf("killed for periodic process cleaning")
 		return true
 	}
 
 	// 6. process killed because of timeout, return error response and relaunch
-	if p.processState == _timeout {
+	if p.processState == timeout {
 		p.logger.Debugf("killed for timeout")
-		p.updateProcessState(_created)
+		p.updateProcessState(created)
 		returnErrResp = true
 		restartSandbox = true
 		errRet = utils.TxTimeoutPanicError.Error()
@@ -694,21 +694,28 @@ func (p *Process) updateProcessState(state processState) {
 	oldState := p.processState
 	p.processState = state
 
-	if oldState != _ready && oldState != _busy && oldState != _idle && (state == _ready || state == _busy || state == _idle) {
+	if oldState != ready && oldState != busy && oldState != idle && (state == ready || state == busy || state == idle) {
 		p.updateCh <- struct{}{}
 	}
 
 	// jump out from the state that need to be timed
-	//if oldState == _ready || oldState == _busy {
+	//if oldState == ready || oldState == busy {
 	//	p.stopTimer()
 	//}
 
 	// jump in the state that need to be timed
-	if state == _ready {
+	var txId string
+	if p.Tx != nil {
+		txId = p.Tx.TxId
+	}
+	if state == ready {
+		p.logger.Debugf("start ready tx timer for tx [%s]", txId)
 		p.startReadyTimer()
-	} else if state == _busy {
+	} else if state == busy {
+		p.logger.Debugf("start busy tx timer for tx [%s]", txId)
 		p.startBusyTimer()
-	} else if state == _idle {
+	} else if state == idle {
+		p.logger.Debugf("start idle tx timer for tx [%s]", txId)
 		p.startIdleTimer()
 	}
 }
@@ -767,38 +774,23 @@ func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
 	return nil
 }
 
-// startBusyTimer start timer at _busy state
+// startBusyTimer start timer at busy state
 // start when new tx come
 func (p *Process) startBusyTimer() {
-	var txId string
-	if p.Tx != nil {
-		txId = p.Tx.TxId
-	}
-	p.logger.Debugf("start _busy tx timer for tx [%s]", txId)
 	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.ExecTxTimeout)
 }
 
-// startReadyTimer start timer at _ready state
-// start when process _ready, resp come
+// startReadyTimer start timer at ready state
+// start when process ready, resp come
 func (p *Process) startReadyTimer() {
-	var txId string
-	if p.Tx != nil {
-		txId = p.Tx.TxId
-	}
-	p.logger.Debugf("start _ready tx timer for tx [%s]", txId)
 	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime)
 }
 
-// startIdleTimer start timer at _idle state
-// start when process _idle, len(txCh) > 0
+// startIdleTimer start timer at idle state
+// start when process idle, len(txCh) > 0
 func (p *Process) startIdleTimer() {
-	var txId string
-	if p.Tx != nil {
-		txId = p.Tx.TxId
-	}
-	p.logger.Debugf("start _idle tx timer for tx [%s]", txId)
 	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime/_readyToIdleTimeoutRatio + 1)
 }
