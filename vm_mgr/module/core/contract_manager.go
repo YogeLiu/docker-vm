@@ -77,7 +77,17 @@ func (cm *ContractManager) Start() {
 				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
 					err := cm.handleGetContractResp(msg)
 					if err != nil {
-						cm.logger.Errorf("failed to handle get bytecode response, %v", err)
+						errResp := &protogo.DockerVMMessage{
+							Type: protogo.DockerVMType_ERROR,
+							TxId: msg.TxId,
+							Response: &protogo.TxResponse{
+								Code:    protogo.DockerVMCode_FAIL,
+								Result:  nil,
+								Message: err.Error(),
+							},
+						}
+						_ = cm.scheduler.PutMsg(errResp)
+						cm.logger.Errorf("failed to handle [%s] get bytecode response, %v", msg.TxId, err)
 						break
 					}
 
