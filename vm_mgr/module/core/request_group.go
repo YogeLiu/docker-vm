@@ -463,6 +463,9 @@ func (r *RequestGroup) handleGetBytecodeErr() error {
 
 	r.logger.Debugf("handle get bytecode error, pop first tx")
 
+	// reset contract state to empty
+	r.contractState = _contractEmpty
+
 	// pop first tx
 	tx := <-r.bufCh
 
