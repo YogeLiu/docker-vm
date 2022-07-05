@@ -464,7 +464,7 @@ func (r *RequestGroup) handleGetBytecodeErr() error {
 	r.logger.Debugf("handle get bytecode error, pop first tx")
 
 	// pop first tx
-	tx := <-r.txCh
+	tx := <-r.bufCh
 
 	// return tx error response
 	_ = r.requestScheduler.PutMsg(&protogo.DockerVMMessage{
@@ -479,7 +479,7 @@ func (r *RequestGroup) handleGetBytecodeErr() error {
 	r.logger.Errorf("return error result of tx [%s]", tx.TxId)
 
 	// retry next tx for chan size > 0
-	if len(r.txCh) > 0 {
+	if len(r.bufCh) > 0 {
 		r.logger.Debugf("retry to get bytecode for tx")
 		if err := r.sendGetContractReq(tx); err != nil {
 			return fmt.Errorf("failed to send get contract req, %v", err)
