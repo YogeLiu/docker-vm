@@ -76,19 +76,8 @@ func (cm *ContractManager) Start() {
 
 				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
 					err := cm.handleGetContractResp(msg)
-					if err != nil {
-						errResp := &protogo.DockerVMMessage{
-							Type: protogo.DockerVMType_ERROR,
-							TxId: msg.TxId,
-							Response: &protogo.TxResponse{
-								Code:    protogo.DockerVMCode_FAIL,
-								Result:  nil,
-								Message: err.Error(),
-							},
-						}
-						_ = cm.scheduler.PutMsg(errResp)
+					if err = cm.processContractResp(msg, err); err != nil {
 						cm.logger.Errorf("failed to handle [%s] get bytecode response, %v", msg.TxId, err)
-						break
 					}
 
 				case protogo.DockerVMType_ERROR:
@@ -171,7 +160,8 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 	if contractPath, ok := cm.contractsLRU.Get(contractKey); ok {
 		path := contractPath.(string)
 		cm.logger.Debugf("get contract [%s] from memory, path: [%s]", contractKey, path)
-		if err := cm.sendContractReadySignal(req.Request.ChainId, req.Request.ContractName, req.Request.ContractVersion); err != nil {
+		if err := cm.sendContractReadySignal(req.Request.ChainId, req.Request.ContractName,
+			req.Request.ContractVersion, protogo.DockerVMCode_OK); err != nil {
 			return fmt.Errorf("failed to handle get bytecode request, %v", err)
 		}
 		return nil
@@ -236,12 +226,36 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 
 	cm.logger.Infof("contract [%s] saved in lru and dir [%s]", contractKey, path)
 
-	// send contract _ready signal to request group
-	if err := cm.sendContractReadySignal(resp.Response.ChainId, resp.Response.ContractName,
-		resp.Response.ContractVersion); err != nil {
-		return fmt.Errorf("failed to send contract _ready signal, %v", err)
-	}
 	return nil
+}
+
+// handleProcessContractResp process contract resp
+func (cm *ContractManager) processContractResp(msg *protogo.DockerVMMessage, err error) error {
+
+	var succeed protogo.DockerVMCode
+	if err != nil {
+		succeed = protogo.DockerVMCode_FAIL
+	}
+
+	// send contract ready signal to request group
+	if sendErr := cm.sendContractReadySignal(msg.Response.ChainId, msg.Response.ContractName,
+		msg.Response.ContractVersion, succeed); sendErr != nil {
+		err = fmt.Errorf("%v, %v", err, sendErr)
+	}
+
+	if err != nil {
+		errResp := &protogo.DockerVMMessage{
+			Type: protogo.DockerVMType_ERROR,
+			TxId: msg.TxId,
+			Response: &protogo.TxResponse{
+				Code:    protogo.DockerVMCode_FAIL,
+				Result:  nil,
+				Message: err.Error(),
+			},
+		}
+		_ = cm.scheduler.PutMsg(errResp)
+	}
+	return err
 }
 
 // handleRemoveContract removes contract from cache and disk
@@ -273,7 +287,7 @@ func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage
 }
 
 // sendContractReadySignal send contract _ready signal to request group, request group can request process now.
-func (cm *ContractManager) sendContractReadySignal(chainID, contractName, contractVersion string) error {
+func (cm *ContractManager) sendContractReadySignal(chainID, contractName, contractVersion string, status protogo.DockerVMCode) error {
 
 	// check whether scheduler was initialized
 	if cm.scheduler == nil {
@@ -286,8 +300,12 @@ func (cm *ContractManager) sendContractReadySignal(chainID, contractName, contra
 	if !ok {
 		return fmt.Errorf("failed to get request group")
 	}
+
 	_ = requestGroup.PutMsg(&protogo.DockerVMMessage{
 		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
+		Response: &protogo.TxResponse{
+			Code: status,
+		},
 	})
 	return nil
 }

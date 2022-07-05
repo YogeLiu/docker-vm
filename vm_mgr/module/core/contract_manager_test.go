@@ -454,7 +454,7 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cm := tt.fields.cMgr
-			if err := cm.sendContractReadySignal(tt.args.chainID, tt.args.contractName, tt.args.contractVersion); (err != nil) != tt.wantErr {
+			if err := cm.sendContractReadySignal(tt.args.chainID, tt.args.contractName, tt.args.contractVersion, protogo.DockerVMCode_OK); (err != nil) != tt.wantErr {
 				t.Errorf("sendContractReadySignal() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

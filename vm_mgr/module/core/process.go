@@ -731,7 +731,7 @@ func (p *Process) returnTxErrorResp(txId string, errMsg string) {
 			Message: errMsg,
 		},
 	}
-	p.logger.Errorf("return back error result for tx [%s]", txId)
+	p.logger.Errorf("return error result of tx [%s]", txId)
 	_ = p.requestScheduler.PutMsg(errResp)
 }
 
