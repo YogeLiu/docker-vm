@@ -298,7 +298,7 @@ func (cm *ContractManager) sendContractReadySignal(chainID, contractName, contra
 	// GetRequestGroup is safe because it's a new request group, no process exist trigger
 	requestGroup, ok := cm.scheduler.GetRequestGroup(chainID, contractName, contractVersion)
 	if !ok {
-		return fmt.Errorf("failed to get request group")
+		return fmt.Errorf("failed to get request group, %s", utils.ConstructContractKey(chainID, contractName, contractVersion))
 	}
 
 	_ = requestGroup.PutMsg(&protogo.DockerVMMessage{
