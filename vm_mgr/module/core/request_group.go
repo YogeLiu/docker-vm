@@ -75,6 +75,7 @@ type RequestGroup struct {
 	requestScheduler interfaces.RequestScheduler      // used for return err req to chain
 	eventCh          chan *messages.GetProcessRespMsg // request group invoking handler
 	txCh             chan *protogo.DockerVMMessage
+	bufCh            chan *protogo.DockerVMMessage
 	stopCh           chan struct{} // stop request group
 
 	getBytecodeTimer *time.Timer
@@ -103,6 +104,7 @@ func NewRequestGroup(chainID, contractName, contractVersion string, oriPMgr, cro
 		requestScheduler: scheduler,
 		eventCh:          make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
 		txCh:             make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
+		bufCh:            make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
 		stopCh:           make(chan struct{}),
 
 		getBytecodeTimer: time.NewTimer(math.MaxInt32 * time.Second), //initial tx timer, never triggered
@@ -202,12 +204,14 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 	switch r.contractState {
 	// try to get contract for first tx.
 	case _contractEmpty:
+		r.bufCh <- req
 		if err := r.sendGetContractReq(req); err != nil {
 			return fmt.Errorf("failed to send get contract req")
 		}
 
 	// only enqueue
 	case _contractWaiting:
+		r.bufCh <- req
 		r.logger.Debugf("tx %s enqueue, waiting for contract", req.TxId)
 
 	// see if we should get new processes, if so, try to get
@@ -382,7 +386,7 @@ func (r *RequestGroup) handleContractReadyResp(msg *protogo.DockerVMMessage) err
 transferTxs:
 	for {
 		select {
-		case tx := <-r.txCh:
+		case tx := <-r.bufCh:
 			if tx.CrossContext.CurrentDepth == 0 || !utils.HasUsed(tx.CrossContext.CrossInfo) {
 				// original tx, send to original tx chan
 				r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", tx.TxId, len(r.origTxController.txCh))
@@ -391,7 +395,6 @@ transferTxs:
 				// cross contract tx, send to cross contract tx chan
 				r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", tx.TxId, len(r.crossTxController.txCh))
 				r.crossTxController.txCh <- tx
-				return nil
 			}
 		default:
 			break transferTxs
