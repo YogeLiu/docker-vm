@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -29,11 +30,11 @@ const (
 
 // ContractManager manage all contracts with LRU cache
 type ContractManager struct {
-	contractsLRU *utils.Cache                  // contract LRU cache, make sure the contracts doesn't take up too much disk space
-	logger       *zap.SugaredLogger            // contract manager logger
-	scheduler    interfaces.RequestScheduler   // request scheduler
-	eventCh      chan *protogo.DockerVMMessage // contract invoking handler
-	mountDir     string                        // contract mount Dir
+	contractsLRU *utils.Cache                // contract LRU cache, make sure the contracts doesn't take up too much disk space
+	logger       *zap.SugaredLogger          // contract manager logger
+	scheduler    interfaces.RequestScheduler // request scheduler
+	eventCh      chan interface{}            // contract invoking handler
+	mountDir     string                      // contract mount Dir
 }
 
 // check interface implement
@@ -44,7 +45,7 @@ func NewContractManager() (*ContractManager, error) {
 	contractManager := &ContractManager{
 		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize / _sizePerContract),
 		logger:       logger.NewDockerLogger(logger.MODULE_CONTRACT_MANAGER),
-		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
+		eventCh:      make(chan interface{}, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 	}
 	if err := contractManager.initContractLRU(); err != nil {
@@ -67,24 +68,29 @@ func (cm *ContractManager) Start() {
 		for {
 			select {
 			case msg := <-cm.eventCh:
-				switch msg.Type {
+				switch msg.(type) {
+				case *protogo.DockerVMMessage:
+					m := msg.(*protogo.DockerVMMessage)
+					switch m.Type {
+					case protogo.DockerVMType_GET_BYTECODE_REQUEST:
+						if err := cm.handleGetContractReq(m); err != nil {
+							cm.logger.Errorf("failed to handle get bytecode request, %v", err)
+						}
 
-				case protogo.DockerVMType_GET_BYTECODE_REQUEST:
-					if err := cm.handleGetContractReq(msg); err != nil {
-						cm.logger.Errorf("failed to handle get bytecode request, %v", err)
+					case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+						err := cm.handleGetContractResp(m)
+						if err = cm.processContractResp(m, err); err != nil {
+							cm.logger.Errorf("failed to handle [%s] get bytecode response, %v", m.TxId, err)
+						}
+
+					default:
+						cm.logger.Errorf("unknown msg type, msg: %+v", msg)
 					}
 
-				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-					err := cm.handleGetContractResp(msg)
-					if err = cm.processContractResp(msg, err); err != nil {
-						cm.logger.Errorf("failed to handle [%s] get bytecode response, %v", msg.TxId, err)
-					}
-
-				case protogo.DockerVMType_ERROR:
-					err := cm.handleRemoveContract(msg)
+				case *messages.BadContractResp:
+					err := cm.handleRemoveContract(msg.(*messages.BadContractResp))
 					if err != nil {
 						cm.logger.Errorf("failed to handle remove contract, %v", err)
-						break
 					}
 
 				default:
@@ -99,9 +105,8 @@ func (cm *ContractManager) Start() {
 //  @param req types include DockerVMType_GET_BYTECODE_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (cm *ContractManager) PutMsg(msg interface{}) error {
 	switch msg.(type) {
-	case *protogo.DockerVMMessage:
-		m, _ := msg.(*protogo.DockerVMMessage)
-		cm.eventCh <- m
+	case *protogo.DockerVMMessage, *messages.BadContractResp:
+		cm.eventCh <- msg
 	default:
 		return fmt.Errorf("unknown msg type, msg: %+v", msg)
 	}
@@ -168,7 +173,9 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 	}
 
 	// request contract from chain
-	cm.requestContractFromChain(req)
+	if err := cm.requestContractFromChain(req); err != nil {
+		return fmt.Errorf("failed to request contract from chain, %v", err)
+	}
 
 	cm.logger.Debugf("send get bytecode request to chain [%s], contract name: [%s], contract version: [%s], "+
 		"txId [%s] ", req.Request.ChainId, req.Request.ContractName, req.Request.ContractVersion, req.TxId)
@@ -247,12 +254,12 @@ func (cm *ContractManager) processContractResp(msg *protogo.DockerVMMessage, err
 }
 
 // handleRemoveContract removes contract from cache and disk
-func (cm *ContractManager) handleRemoveContract(msg *protogo.DockerVMMessage) error {
+func (cm *ContractManager) handleRemoveContract(msg *messages.BadContractResp) error {
 
-	cm.logger.Debugf("handle remove contract, txId: [%s]", msg.TxId)
+	cm.logger.Debugf("handle remove contract, txId: [%s]", msg.Tx.TxId)
 
 	// construct contract key
-	contractKey := utils.ConstructContractKey(msg.Request.ChainId, msg.Request.ContractName, msg.Request.ContractVersion)
+	contractKey := utils.ConstructContractKey(msg.Tx.Request.ChainId, msg.Tx.Request.ContractName, msg.Tx.Request.ContractVersion)
 
 	path, ok := cm.contractsLRU.Get(contractKey)
 	if !ok {
@@ -269,9 +276,13 @@ func (cm *ContractManager) handleRemoveContract(msg *protogo.DockerVMMessage) er
 }
 
 // requestContractFromChain request contract from chain
-func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage) {
+func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage) error {
 	// send request to request scheduler
-	_ = cm.scheduler.PutMsg(msg)
+	if err := cm.scheduler.PutMsg(msg); err != nil {
+		return fmt.Errorf("failed to invoke scheduler PutMsg, %v", err)
+	}
+
+	return nil
 }
 
 // sendContractReadySignal send contract _ready signal to request group, request group can request process now.
@@ -289,12 +300,15 @@ func (cm *ContractManager) sendContractReadySignal(chainID, contractName, contra
 		return fmt.Errorf("failed to get request group, %s", utils.ConstructContractKey(chainID, contractName, contractVersion))
 	}
 
-	_ = requestGroup.PutMsg(&protogo.DockerVMMessage{
+	if err := requestGroup.PutMsg(&protogo.DockerVMMessage{
 		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 		Response: &protogo.TxResponse{
 			Code: status,
 		},
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to invoke request group PutMsg, %v", err)
+	}
+
 	return nil
 }
 

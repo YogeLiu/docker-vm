@@ -258,7 +258,9 @@ func (p *Process) listenProcess() {
 				// condition: during cmd.wait
 				if err := p.handleTxRequest(tx); err != nil {
 					p.logger.Errorf("failed to handle tx [%s] request, %v", tx.TxId, err)
-					p.returnTxErrorResp(tx.TxId, err.Error())
+					if err := p.returnTxErrorResp(tx.TxId, err.Error()); err != nil {
+						p.logger.Errorf("failed to return tx error response, %v", err)
+					}
 				}
 				break
 
@@ -533,7 +535,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 
 	defer p.popTimer()
 
-	var restartSandbox, returnErrResp, exitSandbox, restartAll, removeContract bool
+	var restartSandbox, returnErrResp, exitSandbox, restartAll, returnBadContractResp bool
 	errRet := existErr.err.Error()
 
 	defer func() {
@@ -545,16 +547,22 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 			txId = p.Tx.TxId
 		}
 		if returnErrResp {
-			p.returnTxErrorResp(txId, errRet)
+			if err := p.returnTxErrorResp(txId, errRet); err != nil {
+				p.logger.Errorf("failed to return tx error response, %v", err)
+			}
 		}
 		if exitSandbox {
-			p.returnSandboxExitResp(existErr.err)
+			if err := p.returnSandboxExitResp(existErr.err); err != nil {
+				p.logger.Errorf("failed to return sandbox exit resp, %v", err)
+			}
 		}
 		if restartAll {
 			p.Start()
 		}
-		if removeContract {
-			p.returnBadContractResp()
+		if returnBadContractResp {
+			if err := p.returnBadContractResp(); err != nil {
+				p.logger.Errorf("failed to return bad contract resp, %v", err)
+			}
 		}
 	}()
 
@@ -563,7 +571,17 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 	if existErr.err == utils.ContractExecError {
 		p.logger.Debugf("start to release process")
 		exitSandbox = true
-		removeContract = true
+		// contract panic when process start, pop oldest tx, retry get bytecode
+		select {
+		case p.Tx = <-p.txCh:
+			p.logger.Debugf("contract exec start failed, remove tx %s", p.Tx.TxId)
+			returnErrResp = true
+			break
+		default:
+			p.logger.Debug("contract exec start failed, no available tx")
+			break
+		}
+		returnBadContractResp = true
 		return true
 	}
 
@@ -580,7 +598,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		exitSandbox = true
 		// error after exec init or upgrade
 		if p.Tx.Request.Method == initContract || p.Tx.Request.Method == upgradeContract {
-			removeContract = true
+			returnBadContractResp = true
 		}
 		return true
 	}
@@ -600,7 +618,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		errRet = utils.RuntimePanicError.Error()
 		// panic while exec init or upgrade
 		if p.Tx.Request.Method == initContract || p.Tx.Request.Method == upgradeContract {
-			removeContract = true
+			returnBadContractResp = true
 		}
 		return true
 	}
@@ -720,7 +738,7 @@ func (p *Process) updateProcessState(state processState) {
 }
 
 // returnTxErrorResp return error to request scheduler
-func (p *Process) returnTxErrorResp(txId string, errMsg string) {
+func (p *Process) returnTxErrorResp(txId string, errMsg string) error {
 	errResp := &protogo.DockerVMMessage{
 		Type: protogo.DockerVMType_ERROR,
 		TxId: txId,
@@ -731,11 +749,14 @@ func (p *Process) returnTxErrorResp(txId string, errMsg string) {
 		},
 	}
 	p.logger.Errorf("return error result of tx [%s]", txId)
-	_ = p.requestScheduler.PutMsg(errResp)
+	if err := p.requestScheduler.PutMsg(errResp); err != nil {
+		return fmt.Errorf("failed to invoke request scheduler PutMsg, %v", err)
+	}
+	return nil
 }
 
 // returnTxErrorResp return error to request scheduler
-func (p *Process) returnSandboxExitResp(err error) {
+func (p *Process) returnSandboxExitResp(err error) error {
 	errResp := &messages.SandboxExitMsg{
 		ChainID:         p.chainID,
 		ContractName:    p.contractName,
@@ -743,26 +764,34 @@ func (p *Process) returnSandboxExitResp(err error) {
 		ProcessName:     p.processName,
 		Err:             err,
 	}
-	_ = p.processManager.PutMsg(errResp)
+	if putMsgErr := p.processManager.PutMsg(errResp); putMsgErr != nil {
+		return fmt.Errorf("failed to invoke process manager PutMsg, %v", err)
+	}
+	return nil
 }
 
 // returnBadContractResp return bad contract resp to contract manager
-func (p *Process) returnBadContractResp() {
-	errResp := &protogo.DockerVMMessage{
-		Type: protogo.DockerVMType_ERROR,
-		Request: &protogo.TxRequest{
-			ContractName:    p.contractName,
-			ContractVersion: p.contractVersion,
-			ChainId:         p.chainID,
-		},
-	}
-	_ = p.requestScheduler.GetContractManager().PutMsg(errResp)
-	_ = p.requestGroup.PutMsg(&messages.ReGetBytecode{
+func (p *Process) returnBadContractResp() error {
+	resp := &messages.BadContractResp{
 		Tx: &protogo.DockerVMMessage{
 			TxId: p.Tx.TxId,
+			Request: &protogo.TxRequest{
+				ContractName:    p.contractName,
+				ContractVersion: p.contractVersion,
+				ChainId:         p.chainID,
+			},
 		},
 		IsOrig: p.isOrigProcess,
-	})
+	}
+	if err := p.requestScheduler.GetContractManager().PutMsg(resp); err != nil {
+		return fmt.Errorf("failed to invoke contract manager PutMsg, %v", err)
+	}
+
+	if err := p.requestGroup.PutMsg(resp); err != nil {
+		return fmt.Errorf("failed to invoke request group PutMsg, %v", err)
+	}
+
+	return nil
 }
 
 // sendMsg sends messages to sandbox

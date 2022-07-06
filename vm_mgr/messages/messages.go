@@ -85,8 +85,8 @@ type CloseMsg struct {
 	Msg string
 }
 
-// ReGetBytecode retry get bytecode
-type ReGetBytecode struct {
+// BadContractResp retry get bytecode
+type BadContractResp struct {
 	Tx     *protogo.DockerVMMessage
 	IsOrig bool
 }

@@ -70,9 +70,13 @@ func (c *ContractEngineClient) Start() error {
 	go func() {
 		select {
 		case <-c.stopReceive:
-			_ = conn.Close()
+			if err = conn.Close(); err != nil {
+				c.logger.Warnf("failed to close connection")
+			}
 		case <-c.stopSend:
-			_ = conn.Close()
+			if err = conn.Close(); err != nil {
+				c.logger.Warnf("failed to close connection")
+			}
 		}
 	}()
 

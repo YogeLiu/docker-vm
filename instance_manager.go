@@ -8,6 +8,7 @@ package docker_go
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -35,7 +36,9 @@ type InstancesManager struct {
 func NewInstancesManager(chainId string, logger protocol.Logger, vmConfig map[string]interface{}) *InstancesManager {
 
 	dockerVMConfig := &config.DockerVMConfig{}
-	_ = mapstructure.Decode(vmConfig, dockerVMConfig)
+	if err := mapstructure.Decode(vmConfig, dockerVMConfig); err != nil {
+		logger.Warnf("failed to decode vm config")
+	}
 
 	// if enable docker vm is false, docker manager is nil
 	startDockerVm := dockerVMConfig.EnableDockerVM
@@ -225,6 +228,7 @@ func validateVMSettings(config *config.DockerVMConfig,
 
 	var hostMountDir string
 	var hostLogDir string
+	var err error
 	if len(config.DockerVMMountPath) == 0 {
 		return errors.New("doesn't set host mount directory path correctly")
 	}
@@ -235,7 +239,10 @@ func validateVMSettings(config *config.DockerVMConfig,
 
 	// set host mount directory path
 	if !filepath.IsAbs(config.DockerVMMountPath) {
-		hostMountDir, _ = filepath.Abs(config.DockerVMMountPath)
+		hostMountDir, err = filepath.Abs(config.DockerVMMountPath)
+		if err != nil {
+			return fmt.Errorf("failed to abs DockerVMMountPath filepath, %s", config.DockerVMMountPath)
+		}
 		//hostMountDir = filepath.Join(hostMountDir, chainId)
 	}
 	//else {
@@ -244,7 +251,10 @@ func validateVMSettings(config *config.DockerVMConfig,
 
 	// set host log directory
 	if !filepath.IsAbs(config.DockerVMLogPath) {
-		hostLogDir, _ = filepath.Abs(config.DockerVMLogPath)
+		hostLogDir, err = filepath.Abs(config.DockerVMLogPath)
+		if err != nil {
+			return fmt.Errorf("failed to abs DockerVMLogPath filepath, %s", config.DockerVMLogPath)
+		}
 		//hostLogDir = filepath.Join(hostLogDir, chainId)
 	}
 	//else {

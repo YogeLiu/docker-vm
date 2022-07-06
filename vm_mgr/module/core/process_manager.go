@@ -101,7 +101,9 @@ func (pm *ProcessManager) Start() {
 
 				case *messages.SandboxExitMsg:
 					m, _ := msg.(*messages.SandboxExitMsg)
-					pm.handleSandboxExitMsg(m)
+					if err := pm.handleSandboxExitMsg(m); err != nil {
+						pm.logger.Errorf("failed to handle sandbox exit msg, %v", err)
+					}
 
 				default:
 					pm.logger.Errorf("unknown msg type, msg: %+v", msg)
@@ -332,17 +334,22 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 }
 
 // handleSandboxExitMsg handle sandbox exit response, release user and remove process from cache
-func (pm *ProcessManager) handleSandboxExitMsg(msg *messages.SandboxExitMsg) {
+func (pm *ProcessManager) handleSandboxExitMsg(msg *messages.SandboxExitMsg) error {
 
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
 	pm.logger.Debugf("handle sandbox exit msg")
 
-	pm.closeSandbox(msg.ChainID, msg.ContractName, msg.ContractVersion, msg.ProcessName)
+	if err := pm.closeSandbox(msg.ChainID, msg.ContractName, msg.ContractVersion, msg.ProcessName); err != nil {
+		return fmt.Errorf("failed to close sandbox, %v", err)
+	}
+
 	pm.logger.Debugf("sandbox exited, %v", msg.Err)
 
 	pm.allocateNewCh <- struct{}{}
+
+	return nil
 }
 
 // handleCleanIdleProcesses handle clean _idle processes
@@ -392,7 +399,10 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 			defer lock.Unlock()
 
 			actualNum++
-			pm.closeSandbox(p.GetChainID(), p.GetContractName(), p.GetContractVersion(), p.GetProcessName())
+			if err = pm.closeSandbox(p.GetChainID(), p.GetContractName(),
+				p.GetContractVersion(), p.GetProcessName()); err != nil {
+				pm.logger.Errorf("failed to close sandbox, %v", err)
+			}
 		}()
 	}
 	wg.Wait()
@@ -573,19 +583,27 @@ func (pm *ProcessManager) createNewProcess(chainID, contractName, contractVersio
 }
 
 // closeSandbox releases user and process
-func (pm *ProcessManager) closeSandbox(chainID, contractName, contractVersion, processName string) {
+func (pm *ProcessManager) closeSandbox(chainID, contractName, contractVersion, processName string) error {
 
-	pm.releaseUser(processName)
+	if err := pm.releaseUser(processName); err != nil {
+		return fmt.Errorf("failed to release user of %s, %v", processName, err)
+	}
 	pm.removeProcessFromCache(chainID, contractName, contractVersion, processName)
+
+	return nil
 }
 
 // releaseUser releases linux user
-func (pm *ProcessManager) releaseUser(processName string) {
+func (pm *ProcessManager) releaseUser(processName string) error {
 
 	pm.logger.Debugf("release process %s", processName)
 
 	process, _ := pm.getProcessByName(processName)
-	_ = pm.userManager.FreeUser(process.GetUser())
+	if err := pm.userManager.FreeUser(process.GetUser()); err != nil {
+		return fmt.Errorf("failed to free user, %v", err)
+	}
+
+	return nil
 }
 
 // getProcessByName returns process by name
