@@ -206,7 +206,7 @@ func (s *RequestScheduler) handleErrResp(resp *protogo.DockerVMMessage) {
 // handleCloseReq handles close request group request
 func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 
-	s.logger.Debugf("handle close request group request, chainID: [%s], "+
+	s.logger.Debugf("handle close request group, chainID: [%s], "+
 		"contract name: [%s], contract version: [%s]", msg.ChainID, msg.ContractName, msg.ContractVersion)
 
 	//if s.origProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 ||
@@ -227,9 +227,3 @@ func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 	delete(s.requestGroups, groupKey)
 	return nil
 }
-
-//pm			rs
-//pm.lock
-//			wait pm.lock
-//			rs.lock
-//wait rs.lock

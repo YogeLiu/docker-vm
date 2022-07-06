@@ -10,6 +10,7 @@ package utils
 import (
 	"bytes"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -106,8 +107,14 @@ func ConstructProcessName(chainID, contractName, contractVersion string,
 	return sb.String()
 }
 
-// HasUsed judge whether a vm has been used
-func HasUsed(ctxBitmap uint64) bool {
+// IsOrig judge whether the tx is original or cross
+func IsOrig(tx *protogo.DockerVMMessage) bool {
+	isOrig := tx.CrossContext.CurrentDepth == 0 || !hasUsed(tx.CrossContext.CrossInfo)
+	return isOrig
+}
+
+// hasUsed judge whether a vm has been used
+func hasUsed(ctxBitmap uint64) bool {
 	typeBit := uint64(1 << (59 - common.RuntimeType_DOCKER_GO))
 	return typeBit&ctxBitmap > 0
 }

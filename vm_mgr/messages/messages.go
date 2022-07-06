@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 package messages
 
+import "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+
 // GetProcessReqMsg is the get process request msg (request group -> process manager)
 type GetProcessReqMsg struct {
 	ChainID         string
@@ -81,4 +83,10 @@ type RequestGroupKey struct {
 // CloseMsg is the universal close msg
 type CloseMsg struct {
 	Msg string
+}
+
+// ReGetBytecode retry get bytecode
+type ReGetBytecode struct {
+	Tx     *protogo.DockerVMMessage
+	IsOrig bool
 }

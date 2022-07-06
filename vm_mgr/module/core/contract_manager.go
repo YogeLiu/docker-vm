@@ -232,29 +232,17 @@ func (cm *ContractManager) handleGetContractResp(resp *protogo.DockerVMMessage) 
 // handleProcessContractResp process contract resp
 func (cm *ContractManager) processContractResp(msg *protogo.DockerVMMessage, err error) error {
 
-	var succeed protogo.DockerVMCode
+	var code protogo.DockerVMCode
 	if err != nil {
-		succeed = protogo.DockerVMCode_FAIL
+		code = protogo.DockerVMCode_FAIL
 	}
 
 	// send contract ready signal to request group
 	if sendErr := cm.sendContractReadySignal(msg.Response.ChainId, msg.Response.ContractName,
-		msg.Response.ContractVersion, succeed); sendErr != nil {
+		msg.Response.ContractVersion, code); sendErr != nil {
 		err = fmt.Errorf("%v, %v", err, sendErr)
 	}
 
-	if err != nil {
-		errResp := &protogo.DockerVMMessage{
-			Type: protogo.DockerVMType_ERROR,
-			TxId: msg.TxId,
-			Response: &protogo.TxResponse{
-				Code:    protogo.DockerVMCode_FAIL,
-				Result:  nil,
-				Message: err.Error(),
-			},
-		}
-		_ = cm.scheduler.PutMsg(errResp)
-	}
 	return err
 }
 

@@ -562,7 +562,6 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
 		p.logger.Debugf("start to release process")
-		returnErrResp = true
 		exitSandbox = true
 		removeContract = true
 		return true
@@ -758,10 +757,11 @@ func (p *Process) returnBadContractResp() {
 		},
 	}
 	_ = p.requestScheduler.GetContractManager().PutMsg(errResp)
-	_ = p.requestScheduler.PutMsg(&messages.RequestGroupKey{
-		ChainID:         p.chainID,
-		ContractName:    p.contractName,
-		ContractVersion: p.contractVersion,
+	_ = p.requestGroup.PutMsg(&messages.ReGetBytecode{
+		Tx: &protogo.DockerVMMessage{
+			TxId: p.Tx.TxId,
+		},
+		IsOrig: p.isOrigProcess,
 	})
 }
 
