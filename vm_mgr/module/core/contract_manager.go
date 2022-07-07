@@ -88,7 +88,7 @@ func (cm *ContractManager) Start() {
 					}
 
 				case *messages.BadContractResp:
-					err := cm.handleRemoveContract(msg.(*messages.BadContractResp))
+					err := cm.handleBadContractResp(msg.(*messages.BadContractResp))
 					if err != nil {
 						cm.logger.Errorf("failed to handle remove contract, %v", err)
 					}
@@ -253,8 +253,8 @@ func (cm *ContractManager) processContractResp(msg *protogo.DockerVMMessage, err
 	return err
 }
 
-// handleRemoveContract removes contract from cache and disk
-func (cm *ContractManager) handleRemoveContract(msg *messages.BadContractResp) error {
+// handleBadContractResp removes contract from cache and disk
+func (cm *ContractManager) handleBadContractResp(msg *messages.BadContractResp) error {
 
 	cm.logger.Debugf("handle remove contract, txId: [%s]", msg.Tx.TxId)
 

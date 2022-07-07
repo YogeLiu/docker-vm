@@ -578,7 +578,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 			returnErrResp = true
 			break
 		default:
-			p.logger.Debug("contract exec start failed, no available tx")
+			p.logger.Warn("contract exec start failed, no available tx")
 			break
 		}
 		returnBadContractResp = true
