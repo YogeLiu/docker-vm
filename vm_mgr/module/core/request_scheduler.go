@@ -86,11 +86,18 @@ func (s *RequestScheduler) Start() {
 			case msg := <-s.eventCh:
 				switch msg.Type {
 				case protogo.DockerVMType_GET_BYTECODE_REQUEST:
-					s.handleGetContractReq(msg)
+					if err := s.handleGetContractReq(msg); err != nil {
+						s.logger.Errorf("failed to handle get contract request, %v", err)
+					}
+
 				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
 					s.handleGetContractResp(msg)
+
 				case protogo.DockerVMType_ERROR:
-					s.handleErrResp(msg)
+					if err := s.handleErrResp(msg); err != nil {
+						s.logger.Errorf("failed to handle error response, %v", err)
+					}
+
 				}
 			case msg := <-s.txCh:
 				if err := s.handleTxReq(msg); err != nil {
@@ -147,19 +154,26 @@ func (s *RequestScheduler) GetContractManager() interfaces.ContractManager {
 }
 
 // handleGetContractReq handles get contract bytecode request, transfer to chain rpc service
-func (s *RequestScheduler) handleGetContractReq(req *protogo.DockerVMMessage) {
+func (s *RequestScheduler) handleGetContractReq(req *protogo.DockerVMMessage) error {
 
 	s.logger.Debugf("handle get contract request, txId: [%s]", req.TxId)
 
-	_ = s.chainRPCService.PutMsg(req)
+	if err := s.chainRPCService.PutMsg(req); err != nil {
+		return fmt.Errorf("failed to invoke chain rpc service PutMsg, %v", err)
+	}
+	return nil
 }
 
 // handleGetContractResp handles get contract bytecode response, transfer to contract manager
-func (s *RequestScheduler) handleGetContractResp(resp *protogo.DockerVMMessage) {
+func (s *RequestScheduler) handleGetContractResp(resp *protogo.DockerVMMessage) error {
 
 	s.logger.Debugf("handle get contract response, txId: [%s]", resp.TxId)
 
-	_ = s.contractManager.PutMsg(resp)
+	if err := s.contractManager.PutMsg(resp); err != nil {
+		return fmt.Errorf("failed to invoke contract manager PutMsg, %v", err)
+	}
+
+	return nil
 }
 
 // handleTxReq handles tx request from chain, transfer to request group
@@ -191,22 +205,29 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 	}
 
 	// put req to such request group
-	_ = group.PutMsg(req)
+	if err := group.PutMsg(req); err != nil {
+		return fmt.Errorf("failed to invoke request group PutMsg, %v", err)
+	}
+
 	return nil
 }
 
 // handleErrResp handles tx failed error
-func (s *RequestScheduler) handleErrResp(resp *protogo.DockerVMMessage) {
+func (s *RequestScheduler) handleErrResp(resp *protogo.DockerVMMessage) error {
 
 	s.logger.Debugf("handle err resp, txId: [%s]", resp.TxId)
 
-	_ = s.chainRPCService.PutMsg(resp)
+	if err := s.chainRPCService.PutMsg(resp); err != nil {
+		return fmt.Errorf("failed to invoke chain rpc service PutMsg, %v", err)
+	}
+
+	return nil
 }
 
 // handleCloseReq handles close request group request
 func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 
-	s.logger.Debugf("handle close request group request, chainID: [%s], "+
+	s.logger.Debugf("handle close request group, chainID: [%s], "+
 		"contract name: [%s], contract version: [%s]", msg.ChainID, msg.ContractName, msg.ContractVersion)
 
 	//if s.origProcessManager.GetProcessNumByContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion) != 0 ||
@@ -223,13 +244,9 @@ func (s *RequestScheduler) handleCloseReq(msg *messages.RequestGroupKey) error {
 	if _, ok := s.requestGroups[groupKey]; !ok {
 		return fmt.Errorf("request group %s not found", groupKey)
 	}
-	_ = s.requestGroups[groupKey].PutMsg(&messages.CloseMsg{})
+	if err := s.requestGroups[groupKey].PutMsg(&messages.CloseMsg{}); err != nil {
+		return fmt.Errorf("failed to invoke request group PutMsg, %v", err)
+	}
 	delete(s.requestGroups, groupKey)
 	return nil
 }
-
-//pm			rs
-//pm.lock
-//			wait pm.lock
-//			rs.lock
-//wait rs.lock

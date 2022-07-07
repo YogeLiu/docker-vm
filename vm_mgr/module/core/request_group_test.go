@@ -28,7 +28,7 @@ func TestNewRequestGroup(t *testing.T) {
 
 	testContractName := "testContractName"
 	testContractVersion := "1.0.0"
-	eventCh := make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize)
+	eventCh := make(chan interface{}, _requestGroupEventChSize)
 	txCh := make(chan *protogo.DockerVMMessage, _requestGroupEventChSize)
 	stopCh := make(chan struct{})
 	origTxCh := make(chan *protogo.DockerVMMessage, _origTxChSize)
@@ -447,7 +447,7 @@ func TestRequestGroup_handleContractReadyResp(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := tt.fields.group
-			r.handleContractReadyResp()
+			r.handleContractReadyResp(&protogo.DockerVMMessage{})
 			if r.contractState != tt.want {
 				t.Errorf("handleContractReadyResp() got = %v, wantNum %v", r.contractState, tt.want)
 			}

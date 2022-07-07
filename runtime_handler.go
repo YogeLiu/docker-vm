@@ -1158,8 +1158,10 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 		TxId: txId,
 		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 		Response: &protogo.TxResponse{
-			ChainId: r.chainId,
-			Result:  make([]byte, 1),
+			ChainId:         r.chainId,
+			Result:          make([]byte, 1),
+			ContractName:    recvMsg.Request.ContractName,
+			ContractVersion: recvMsg.Request.ContractVersion,
 		},
 	}
 
@@ -1172,7 +1174,6 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 	)
 
 	contractName := recvMsg.Request.ContractName
-	contractVersion := recvMsg.Request.ContractVersion
 	r.logger.Debugf("name: %s", contractName)
 	r.logger.Debugf("full name: %s", contractFullName)
 
@@ -1238,8 +1239,6 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 	}
 
 	response.Response.Code = protogo.DockerVMCode_OK
-	response.Response.ContractName = contractName
-	response.Response.ContractVersion = contractVersion
 
 	if r.clientMgr.NeedSendContractByteCode() {
 		contractByteCode, err := ioutil.ReadFile(contractFullNamePath)

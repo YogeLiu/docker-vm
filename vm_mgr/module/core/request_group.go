@@ -16,8 +16,10 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"fmt"
 	"go.uber.org/zap"
+	"math"
 	"path/filepath"
 	"strconv"
+	"time"
 )
 
 const (
@@ -45,18 +47,13 @@ const (
 type contractState int
 
 const (
-	_contractEmpty   contractState = iota // contract is not _ready
+	_contractEmpty   contractState = iota // contract is not ready
 	_contractWaiting                      // waiting for contract manager to load contract
-	_contractReady                        // contract is _ready
+	_contractReady                        // contract is ready
 )
 
-//// TxType is the type of tx request
-//type TxType int
-//
-//const (
-//	origTx  TxType = iota // original tx, send by chain, depth = 0
-//	crossTx               // cross contract tx, send by sandbox, invoked by contract, depth > 0
-//)
+// _getByteCodeTimeout is the timeout(s) of get byte code, request group will clean all txs and exit then.
+const _getByteCodeTimeout = 6
 
 // txController handle the tx request chan and process status
 type txController struct {
@@ -75,10 +72,13 @@ type RequestGroup struct {
 
 	contractState contractState // handle tx with different contract state
 
-	requestScheduler interfaces.RequestScheduler      // used for return err req to chain
-	eventCh          chan *messages.GetProcessRespMsg // request group invoking handler
-	txCh             chan *protogo.DockerVMMessage
-	stopCh           chan struct{} // stop request group
+	requestScheduler interfaces.RequestScheduler   // used for return err req to chain
+	eventCh          chan interface{}              // request group invoking handler
+	txCh             chan *protogo.DockerVMMessage // tx event chan
+	bufCh            chan *protogo.DockerVMMessage // before ready: txCh -> bufCh bufCh, after ready: bufCh -> orig/cross txCh
+	stopCh           chan struct{}                 // stop request group
+
+	getBytecodeTimer *time.Timer
 
 	origTxController  *txController // original tx controller
 	crossTxController *txController // cross contract tx controller
@@ -102,9 +102,12 @@ func NewRequestGroup(chainID, contractName, contractVersion string, oriPMgr, cro
 		contractState: _contractEmpty,
 
 		requestScheduler: scheduler,
-		eventCh:          make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
+		eventCh:          make(chan interface{}, _requestGroupEventChSize),
 		txCh:             make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
+		bufCh:            make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
 		stopCh:           make(chan struct{}),
+
+		getBytecodeTimer: time.NewTimer(math.MaxInt32 * time.Second), //initial tx timer, never triggered
 
 		origTxController: &txController{
 			txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
@@ -127,8 +130,15 @@ func (r *RequestGroup) Start() {
 		for {
 			select {
 			case msg := <-r.eventCh:
-				if err := r.handleProcessReadyResp(msg); err != nil {
-					r.logger.Errorf("failed to handle process _ready resp, %v", err)
+				switch msg.(type) {
+				case *messages.GetProcessRespMsg:
+					if err := r.handleProcessReadyResp(msg.(*messages.GetProcessRespMsg)); err != nil {
+						r.logger.Errorf("failed to handle process ready resp, %v", err)
+					}
+				case *messages.BadContractResp:
+					if err := r.handleBadContractResp(msg.(*messages.BadContractResp)); err != nil {
+						r.logger.Errorf("failed to handle retry to get bytecode, %v", err)
+					}
 				}
 
 			case msg := <-r.txCh:
@@ -139,14 +149,24 @@ func (r *RequestGroup) Start() {
 					}
 
 				case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-					r.handleContractReadyResp()
+					if err := r.handleContractReadyResp(msg); err != nil {
+						r.logger.Errorf("failed to handle contract ready resp, %v", err)
+					}
 
 				default:
 					r.logger.Errorf("unknown msg type, msg: %+v", msg)
 				}
 
 			case <-r.stopCh:
+				if err := r.handleStopRequestGroup(); err != nil {
+					r.logger.Errorf("failed to handle stop request group, %v", err)
+				}
 				return
+
+			case <-r.getBytecodeTimer.C:
+				if err := r.handleGetBytecodeTimeout(); err != nil {
+					r.logger.Errorf("failed to handle get bytecode timeout, %v", err)
+				}
 			}
 		}
 	}()
@@ -156,8 +176,8 @@ func (r *RequestGroup) Start() {
 //  @param req types include DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (r *RequestGroup) PutMsg(msg interface{}) error {
 	switch msg.(type) {
-	case *messages.GetProcessRespMsg:
-		r.eventCh <- msg.(*messages.GetProcessRespMsg)
+	case *messages.GetProcessRespMsg, *messages.BadContractResp:
+		r.eventCh <- msg
 	case *protogo.DockerVMMessage:
 		r.txCh <- msg.(*protogo.DockerVMMessage)
 	case *messages.CloseMsg:
@@ -190,42 +210,27 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 
 	r.logger.Debugf("handle tx request: [%s]", req.TxId)
 
-	// put tx request into chan at first
-	err := r.putTxReqToCh(req)
-	if err != nil {
-		return fmt.Errorf("failed to handle tx req, %v", err)
-	}
-
 	switch r.contractState {
 	// try to get contract for first tx.
 	case _contractEmpty:
-		err = r.requestScheduler.GetContractManager().PutMsg(&protogo.DockerVMMessage{
-			TxId: req.TxId,
-			Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
-			Request: &protogo.TxRequest{
-				ChainId:         r.chainID,
-				ContractName:    r.contractName,
-				ContractVersion: r.contractVersion,
-			},
-		})
-		if err != nil {
-			return err
+		r.bufCh <- req
+		if err := r.sendGetContractReq(req); err != nil {
+			return fmt.Errorf("failed to send get contract req")
 		}
-		// avoid duplicate getting bytecode
-		r.contractState = _contractWaiting
 
 	// only enqueue
 	case _contractWaiting:
+		r.bufCh <- req
 		r.logger.Debugf("tx %s enqueue, waiting for contract", req.TxId)
 
 	// see if we should get new processes, if so, try to get
 	case _contractReady:
-		if req.CrossContext.CurrentDepth == 0 || !utils.HasUsed(req.CrossContext.CrossInfo) {
-			_, err = r.getProcesses(true)
-		} else {
-			_, err = r.getProcesses(false)
-		}
+		// put tx request into chan at first
+		err := r.putTxReqToCh(req)
 		if err != nil {
+			return fmt.Errorf("failed to handle tx request, %v", err)
+		}
+		if _, err = r.getProcesses(utils.IsOrig(req)); err != nil {
 			return fmt.Errorf("failed to get processes, %v", err)
 		}
 	}
@@ -263,7 +268,7 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 	}
 
 	// original tx, send to original tx chan
-	if req.CrossContext.CurrentDepth == 0 || !utils.HasUsed(req.CrossContext.CrossInfo) {
+	if utils.IsOrig(req) {
 		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
 		r.origTxController.txCh <- req
 		return nil
@@ -341,28 +346,107 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	return needProcessNum, nil
 }
 
-// handleContractReadyResp set the request group's contract state to _contractReady
-func (r *RequestGroup) handleContractReadyResp() {
+// sendGetContractReq send get contract req
+func (r *RequestGroup) sendGetContractReq(req *protogo.DockerVMMessage) error {
 
-	r.logger.Debugf("handle contract _ready resp")
+	// info contract manager to get bytecode
+	if err := r.requestScheduler.GetContractManager().PutMsg(&protogo.DockerVMMessage{
+		TxId: req.TxId,
+		Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
+		Request: &protogo.TxRequest{
+			ChainId:         r.chainID,
+			ContractName:    r.contractName,
+			ContractVersion: r.contractVersion,
+		},
+	}); err != nil {
+		return fmt.Errorf("failed to put get bytecode req into contract manager chan, %v", err)
+	}
 
-	r.contractState = _contractReady
-	_, err := r.getProcesses(true)
-	if err != nil {
-		r.logger.Errorf("failed to get orig processes, %v", err)
-	}
-	_, err = r.getProcesses(false)
-	if err != nil {
-		r.logger.Errorf("failed to get cross processes, %v", err)
-	}
+	// reset get bytecode timer
+	r.getBytecodeTimer.Reset(_getByteCodeTimeout * time.Second)
+
+	// avoid duplicate getting bytecode
+	r.contractState = _contractWaiting
+
+	return nil
 }
 
-// handleProcessReadyResp handles process _ready response
+// handleBadContractResp retry to get bytecode
+func (r *RequestGroup) handleBadContractResp(msg *messages.BadContractResp) error {
+
+	r.logger.Debugf("handle retry get bytecode")
+
+	// reset contract state to empty
+	r.contractState = _contractEmpty
+
+	// retry next tx when chan size > 0
+	if len(r.origTxController.txCh) > 0 || len(r.crossTxController.txCh) > 0 {
+		r.logger.Debugf("retry to get bytecode")
+		if err := r.sendGetContractReq(msg.Tx); err != nil {
+			return fmt.Errorf("failed to send get contract req, %v", err)
+		}
+	}
+
+	return nil
+}
+
+// handleContractReadyResp set the request group's contract state to _contractReady
+func (r *RequestGroup) handleContractReadyResp(msg *protogo.DockerVMMessage) error {
+
+	r.logger.Debugf("handle contract ready resp")
+
+	// pop tx timer, use Stop() to ensure old timer stopped to avoid timer reached after length judgement
+	if !r.getBytecodeTimer.Stop() && len(r.getBytecodeTimer.C) > 0 {
+		<-r.getBytecodeTimer.C
+	}
+
+	if msg.Response.Code == protogo.DockerVMCode_FAIL {
+		if err := r.handleGetBytecodeFailed(); err != nil {
+			return fmt.Errorf("failed to handle get bytecode fail, %v", err)
+		}
+		return fmt.Errorf("get bytecode response failed")
+	}
+
+	r.contractState = _contractReady
+
+	// put all tx from group txCh to process txCh
+moveTxs:
+	for {
+		select {
+		case tx := <-r.bufCh:
+			if utils.IsOrig(tx) {
+				// original tx, send to original tx chan
+				r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", tx.TxId, len(r.origTxController.txCh))
+				r.origTxController.txCh <- tx
+			} else {
+				// cross contract tx, send to cross contract tx chan
+				r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", tx.TxId, len(r.crossTxController.txCh))
+				r.crossTxController.txCh <- tx
+			}
+		default:
+			break moveTxs
+		}
+	}
+
+	// try to get original process to handle original txs
+	if _, err := r.getProcesses(true); err != nil {
+		r.logger.Errorf("failed to get orig processes, %v", err)
+	}
+
+	// try to get cross process to handle cross txs
+	if _, err := r.getProcesses(false); err != nil {
+		r.logger.Errorf("failed to get cross processes, %v", err)
+	}
+
+	return nil
+}
+
+// handleProcessReadyResp handles process ready response
 func (r *RequestGroup) handleProcessReadyResp(msg *messages.GetProcessRespMsg) error {
 
-	r.logger.Debugf("handle process _ready resp: %+v", msg)
+	r.logger.Debugf("handle process ready resp: %+v", msg)
 
-	// restore the state of request group to _idle
+	// restore the state of request group to idle
 	if msg.IsOrig {
 		r.updateControllerState(true, false)
 	} else {
@@ -371,7 +455,81 @@ func (r *RequestGroup) handleProcessReadyResp(msg *messages.GetProcessRespMsg) e
 
 	// try to get processes from process manager
 	if _, err := r.getProcesses(msg.IsOrig); err != nil {
-		return fmt.Errorf("failed to handle contract _ready resp, %v", err)
+		return fmt.Errorf("failed to handle contract ready resp, %v", err)
+	}
+
+	return nil
+}
+
+// handleGetBytecodeTimeout handles get bytecode timeout
+func (r *RequestGroup) handleGetBytecodeTimeout() error {
+
+	r.logger.Errorf("handle get bytecode timeout")
+
+	if err := r.handleGetBytecodeErr(); err != nil {
+		return fmt.Errorf("failed to handle get bytecode err, %v", err)
+	}
+
+	return nil
+}
+
+// handleGetBytecodeFailed handles get bytecode failed
+func (r *RequestGroup) handleGetBytecodeFailed() error {
+
+	r.logger.Debugf("handle get bytecode failed")
+
+	if err := r.handleGetBytecodeErr(); err != nil {
+		return fmt.Errorf("failed to handle get bytecode err, %v", err)
+	}
+
+	return nil
+}
+
+// handleGetBytecodeErr handles error get bytecode resposne
+func (r *RequestGroup) handleGetBytecodeErr() error {
+
+	r.logger.Debugf("handle get bytecode error, pop first tx")
+
+	// reset contract state to empty
+	r.contractState = _contractEmpty
+
+	// pop first tx
+	tx := <-r.bufCh
+
+	// return tx error response
+	if err := r.returnTxErrorResp(tx.TxId, "get bytecode error"); err != nil {
+		r.logger.Errorf("failed to return tx error response, %v", err)
+	}
+
+	// retry next tx for chan size > 0
+	if len(r.bufCh) > 0 {
+		r.logger.Debugf("retry to get bytecode for tx")
+		if err := r.sendGetContractReq(tx); err != nil {
+			return fmt.Errorf("failed to send get contract req, %v", err)
+		}
+	}
+
+	return nil
+}
+
+// handleStopRequestGroup handles stop request group
+func (r *RequestGroup) handleStopRequestGroup() error {
+
+	r.logger.Debugf("handle exit request group")
+
+popTx:
+	for {
+		select {
+		case msg := <-r.txCh:
+			switch msg.Type {
+			case protogo.DockerVMType_TX_REQUEST:
+				if err := r.returnTxErrorResp(msg.TxId, "tx error because request group exited"); err != nil {
+					r.logger.Errorf("failed to return tx error response, %v", err)
+				}
+			}
+		default:
+			break popTx
+		}
 	}
 
 	return nil
@@ -394,4 +552,22 @@ func (r *RequestGroup) updateControllerState(isOrig, toWaiting bool) {
 	} else {
 		controller.processWaiting = false
 	}
+}
+
+// returnTxErrorResp return error to request scheduler
+func (r *RequestGroup) returnTxErrorResp(txId string, errMsg string) error {
+	errResp := &protogo.DockerVMMessage{
+		Type: protogo.DockerVMType_ERROR,
+		TxId: txId,
+		Response: &protogo.TxResponse{
+			Code:    protogo.DockerVMCode_FAIL,
+			Result:  nil,
+			Message: errMsg,
+		},
+	}
+	r.logger.Errorf("return error result of tx [%s]", txId)
+	if err := r.requestScheduler.PutMsg(errResp); err != nil {
+		return fmt.Errorf("failed to invoke request scheduler PutMsg, %v", err)
+	}
+	return nil
 }

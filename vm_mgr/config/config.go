@@ -109,7 +109,9 @@ func InitConfig(configFileName string) error {
 		err = fmt.Errorf("%v, failed to unmarshal conf file, %v", err, marsErr)
 	}
 
-	DockerVMConfig.setEnv()
+	if envErr := DockerVMConfig.setEnv(); err != nil {
+		err = fmt.Errorf("%v, failed to set config env, %v", err, envErr)
+	}
 
 	return err
 }
@@ -155,33 +157,59 @@ func (c *conf) setDefaultConfigs() {
 	viper.SetDefault(contractPrefix+".max_file_size", 20480)
 }
 
-func (c *conf) setEnv() {
+func (c *conf) setEnv() error {
+
+	var err error
+
 	if chainRPCProtocol, ok := os.LookupEnv("CHAIN_RPC_PROTOCOL"); ok {
-		p, _ := strconv.Atoi(chainRPCProtocol)
+		p, err := strconv.Atoi(chainRPCProtocol)
+		if err != nil {
+			return fmt.Errorf("failed to Atoi chainRPCProtocol, %v", err)
+		}
 		c.RPC.ChainRPCProtocol = ChainRPCProtocolType(p)
 	}
+
 	if chainRPCPort, ok := os.LookupEnv("CHAIN_RPC_PORT"); ok {
-		c.RPC.ChainRPCPort, _ = strconv.Atoi(chainRPCPort)
+		if c.RPC.ChainRPCPort, err = strconv.Atoi(chainRPCPort); err != nil {
+			return fmt.Errorf("failed to Atoi chainRPCPort, %v", err)
+		}
 	}
+
 	if sandboxRPCPort, ok := os.LookupEnv("SANDBOX_RPC_PORT"); ok {
-		c.RPC.SandboxRPCPort, _ = strconv.Atoi(sandboxRPCPort)
+		if c.RPC.SandboxRPCPort, err = strconv.Atoi(sandboxRPCPort); err != nil {
+			return fmt.Errorf("failed to Atoi sandboxRPCPort, %v", err)
+		}
 	}
+
 	if maxSendMsgSize, ok := os.LookupEnv("MAX_SEND_MSG_SIZE"); ok {
-		c.RPC.MaxSendMsgSize, _ = strconv.Atoi(maxSendMsgSize)
+		if c.RPC.MaxSendMsgSize, err = strconv.Atoi(maxSendMsgSize); err != nil {
+			return fmt.Errorf("failed to Atoi maxSendMsgSize, %v", err)
+		}
 	}
+
 	if maxRecvMsgSize, ok := os.LookupEnv("MAX_RECV_MSG_SIZE"); ok {
-		c.RPC.MaxRecvMsgSize, _ = strconv.Atoi(maxRecvMsgSize)
+		if c.RPC.MaxRecvMsgSize, err = strconv.Atoi(maxRecvMsgSize); err != nil {
+			return fmt.Errorf("failed to Atoi maxRecvMsgSize, %v", err)
+		}
 	}
+
 	if connectionTimeout, ok := os.LookupEnv("MAX_CONN_TIMEOUT"); ok {
-		timeout, _ := strconv.ParseInt(connectionTimeout, 10, 64)
+		timeout, err := strconv.ParseInt(connectionTimeout, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to ParseInt connectionTimeout, %v", err)
+		}
 		c.RPC.ConnectionTimeout = time.Duration(timeout) * time.Second
 	}
+
 	if contractEngineLogLevel, ok := os.LookupEnv("DOCKERVM_CONTRACT_ENGINE_LOG_LEVEL"); ok {
 		c.Log.ContractEngineLog.Level = contractEngineLogLevel
 	}
+
 	if sandboxLogLevel, ok := os.LookupEnv("DOCKERVM_SANDBOX_LOG_LEVEL"); ok {
 		c.Log.SandboxLog.Level = sandboxLogLevel
 	}
+
+	return nil
 }
 
 func (c *conf) restrainConfig() {
