@@ -53,7 +53,7 @@ const (
 )
 
 // _getByteCodeTimeout is the timeout(s) of get byte code, request group will clean all txs and exit then.
-const _getByteCodeTimeout = 30
+const _getByteCodeTimeout = 6
 
 // txController handle the tx request chan and process status
 type txController struct {
