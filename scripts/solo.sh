@@ -14,4 +14,4 @@ docker run -td --rm \
 	-v ${LOG_PATH}:/log \
 	--privileged \
 	--name chainmaker_vm_solo \
-	chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	chainmakerofficial/chainmaker-vm-engine:${VERSION}

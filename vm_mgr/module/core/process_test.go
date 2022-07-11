@@ -2,10 +2,10 @@ package core
 
 import (
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/module/rpc"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 	"testing"
 )
 
@@ -107,7 +107,7 @@ func TestChangeSandbox(t *testing.T) {
 				newContractVersion: "newContractVersion",
 				newProcessName:     "newProcessName",
 			},
-			currState: _idle,
+			currState: idle,
 			wantErr:   true,
 		},
 		{
@@ -118,8 +118,8 @@ func TestChangeSandbox(t *testing.T) {
 				newContractName:    "newContractName",
 				newContractVersion: "newContractVersion",
 				newProcessName:     "newProcessName",
-			}, currState: _busy,
-			wantErr:      true,
+			}, currState: busy,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -1499,7 +1499,7 @@ func newTestProcess(isOrig bool) *Process {
 
 	// new scheduler
 	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager,
-		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)})
+		&ContractManager{eventCh: make(chan interface{}, _contractManagerEventChSize)})
 	scheduler.requestGroups[groupKey] = &RequestGroup{
 		origTxController: &txController{
 			txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),

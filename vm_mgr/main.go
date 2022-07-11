@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 
 	_ "net/http/pprof"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/module"
 	"go.uber.org/zap"
 )
 

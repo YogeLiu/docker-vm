@@ -1,10 +1,10 @@
 package rpc
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/mocks"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/mocks"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"fmt"
 	"go.uber.org/zap"
 	"reflect"
@@ -70,9 +70,9 @@ func TestSandboxRPCService_DockerVMCommunicate(t *testing.T) {
 		crossProcessMgr interfaces.ProcessManager
 	}
 	type args struct {
-		stream protogo.DockerVMRpc_DockerVMCommunicateServer
+		stream  protogo.DockerVMRpc_DockerVMCommunicateServer
 		payload *protogo.DockerVMMessage
-		err error
+		err     error
 	}
 	tests := []struct {
 		name    string
@@ -88,9 +88,9 @@ func TestSandboxRPCService_DockerVMCommunicate(t *testing.T) {
 				crossProcessMgr: crossProcessMgr,
 			},
 			args: args{
-				stream: stream,
+				stream:  stream,
 				payload: nil,
-				err: fmt.Errorf("test error"),
+				err:     fmt.Errorf("test error"),
 			},
 			wantErr: true,
 		},
@@ -102,9 +102,9 @@ func TestSandboxRPCService_DockerVMCommunicate(t *testing.T) {
 				crossProcessMgr: crossProcessMgr,
 			},
 			args: args{
-				stream: stream,
+				stream:  stream,
 				payload: nil,
-				err: nil,
+				err:     nil,
 			},
 			wantErr: true,
 		},

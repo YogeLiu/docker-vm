@@ -13,7 +13,7 @@ import (
 	"time"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
+	docker_go "chainmaker.org/chainmaker/vm-engine/v2"
 	"github.com/stretchr/testify/assert"
 )
 

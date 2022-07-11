@@ -1,4 +1,4 @@
-module chainmaker.org/chainmaker/vm-docker-go/v2
+module chainmaker.org/chainmaker/vm-engine/v2
 
 go 1.16
 

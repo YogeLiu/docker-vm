@@ -15,7 +15,7 @@ do
     EXPOSE_PORT=$((22351+$i-1))
     RUNTIME_PORT=$((32351+$i-1))
     CONTAINER_NAME=chainmaker-docker-vm-$i
-    IMAGE_NAME="chainmakerofficial/chainmaker-vm-docker-go:v2.3.0"
+    IMAGE_NAME="chainmakerofficial/chainmaker-vm-engine:v2.3.0"
     
     if  [ ! -d "$MOUNT_PATH" ];then
     mkdir -p "$MOUNT_PATH"

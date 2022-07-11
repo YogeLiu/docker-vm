@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	protogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	protogo "chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	gomock "github.com/golang/mock/gomock"
 	grpc "google.golang.org/grpc"
 	metadata "google.golang.org/grpc/metadata"

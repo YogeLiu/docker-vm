@@ -5,10 +5,10 @@
 
 VERSION=v2.3.0
 
-docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-docker-go"`)
+docker_image_name=(`docker images | grep "chainmakerofficial/chainmaker-vm-engine"`)
 
 if [ ${docker_image_name} ]; then
-  docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+  docker image rm chainmakerofficial/chainmaker-vm-engine:${VERSION}
 fi
 
 rm -rf default.log*

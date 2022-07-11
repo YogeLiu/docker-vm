@@ -16,9 +16,9 @@ import (
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/gas"
+	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 )
 
 const (

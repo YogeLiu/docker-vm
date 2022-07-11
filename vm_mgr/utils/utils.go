@@ -10,7 +10,7 @@ package utils
 import (
 	"bytes"
 	"chainmaker.org/chainmaker/pb-go/v2/common"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"fmt"
 	"io/ioutil"
 	"os"

@@ -8,11 +8,11 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 	"fmt"
 	"go.uber.org/zap"
 	"sync"

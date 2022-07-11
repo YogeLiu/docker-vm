@@ -8,15 +8,14 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
 	"path/filepath"
 	"testing"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 )
 
 func TestContractManager_GetContractMountDir(t *testing.T) {
@@ -26,7 +25,7 @@ func TestContractManager_GetContractMountDir(t *testing.T) {
 	cMgr := &ContractManager{
 		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
-		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
+		eventCh:      make(chan interface{}, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 	}
 
@@ -63,7 +62,7 @@ func TestContractManager_PutMsg(t *testing.T) {
 	cMgr := &ContractManager{
 		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
-		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
+		eventCh:      make(chan interface{}, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 	}
 
@@ -121,7 +120,7 @@ func TestContractManager_SetScheduler(t *testing.T) {
 	cMgr := &ContractManager{
 		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
-		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
+		eventCh:      make(chan interface{}, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 	}
 
@@ -160,7 +159,7 @@ func TestContractManager_Start(t *testing.T) {
 	cMgr := &ContractManager{
 		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
-		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
+		eventCh:      make(chan interface{}, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 	}
 	cMgr.Start()
@@ -215,14 +214,14 @@ func TestContractManager_handleGetContractReq(t *testing.T) {
 	cMgr := &ContractManager{
 		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
-		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
+		eventCh:      make(chan interface{}, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
 			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
 			eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"chain1#testContractName#1.0.0": &RequestGroup{
 				txCh:    make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
-				eventCh: make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
+				eventCh: make(chan interface{}, _requestGroupEventChSize),
 			}},
 		},
 	}
@@ -286,14 +285,14 @@ func TestContractManager_handleGetContractResp(t *testing.T) {
 	cMgr := &ContractManager{
 		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
-		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
+		eventCh:      make(chan interface{}, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
 			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
 			eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"chain1#testContractName#1.0.0": &RequestGroup{
 				txCh:    make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
-				eventCh: make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
+				eventCh: make(chan interface{}, _requestGroupEventChSize),
 			}},
 		},
 	}
@@ -388,14 +387,14 @@ func TestContractManager_sendContractReadySignal(t *testing.T) {
 	cMgr := &ContractManager{
 		contractsLRU: utils.NewCache(config.DockerVMConfig.Contract.MaxFileSize),
 		logger:       logger.NewTestDockerLogger(),
-		eventCh:      make(chan *protogo.DockerVMMessage, _contractManagerEventChSize),
+		eventCh:      make(chan interface{}, _contractManagerEventChSize),
 		mountDir:     filepath.Join(config.DockerMountDir, ContractsDir),
 		scheduler: &RequestScheduler{
 			txCh:    make(chan *protogo.DockerVMMessage, _requestSchedulerTxChSize),
 			eventCh: make(chan *protogo.DockerVMMessage, _requestSchedulerEventChSize),
 			requestGroups: map[string]interfaces.RequestGroup{"chain1#testContractName#1.0.0": &RequestGroup{
 				txCh:    make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
-				eventCh: make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
+				eventCh: make(chan interface{}, _requestGroupEventChSize),
 			}},
 		},
 	}

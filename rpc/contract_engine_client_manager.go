@@ -8,10 +8,10 @@ import (
 
 	"chainmaker.org/chainmaker/protocol/v2"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"go.uber.org/atomic"
 )
 

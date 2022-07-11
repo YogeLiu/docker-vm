@@ -9,13 +9,13 @@ package core
 
 import (
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/module/rpc"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 	"reflect"
 	"testing"
 )
@@ -427,7 +427,7 @@ func TestRequestScheduler_handleTxReq(t *testing.T) {
 	scheduler := newTestRequestScheduler(t)
 	log := logger.NewTestDockerLogger()
 	scheduler.logger = log
-	scheduler.contractManager = &ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)}
+	scheduler.contractManager = &ContractManager{eventCh: make(chan interface{}, _contractManagerEventChSize)}
 	type fields struct {
 		scheduler *RequestScheduler
 	}
@@ -488,7 +488,7 @@ func newTestRequestScheduler(t *testing.T) *RequestScheduler {
 
 	// new scheduler
 	scheduler := NewRequestScheduler(chainRPCService, origProcessManager, crossProcessManager,
-		&ContractManager{eventCh: make(chan *protogo.DockerVMMessage, _contractManagerEventChSize)})
+		&ContractManager{eventCh: make(chan interface{}, _contractManagerEventChSize)})
 	origProcessManager.SetScheduler(scheduler)
 	crossProcessManager.SetScheduler(scheduler)
 	chainRPCService.SetScheduler(scheduler)

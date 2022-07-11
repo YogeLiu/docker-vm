@@ -28,9 +28,9 @@ import (
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/gas"
+	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 	"github.com/gogo/protobuf/proto"
 )
 

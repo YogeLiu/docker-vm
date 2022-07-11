@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )

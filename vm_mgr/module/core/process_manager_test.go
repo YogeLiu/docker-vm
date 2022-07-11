@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/messages"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/mocks"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/mocks"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 	"github.com/emirpasic/gods/maps/linkedhashmap"
 	"reflect"
 	"strconv"
@@ -649,7 +649,7 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 		requestGroups: map[string]interfaces.RequestGroup{groupKey: &RequestGroup{
 			txCh:    make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
-			eventCh: make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
+			eventCh: make(chan interface{}, _requestGroupEventChSize),
 		}},
 	}
 
@@ -980,7 +980,7 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 		closeCh: make(chan *messages.RequestGroupKey, _closeChSize),
 		requestGroups: map[string]interfaces.RequestGroup{contractKey1: &RequestGroup{
 			txCh:             make(chan *protogo.DockerVMMessage, _requestGroupTxChSize),
-			eventCh:          make(chan *messages.GetProcessRespMsg, _requestGroupEventChSize),
+			eventCh:          make(chan interface{}, _requestGroupEventChSize),
 			origTxController: &txController{}},
 		},
 	})

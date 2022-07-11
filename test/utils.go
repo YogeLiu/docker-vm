@@ -28,7 +28,7 @@ import (
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/protocol/v2/mock"
 	"chainmaker.org/chainmaker/protocol/v2/test"
-	dockergo "chainmaker.org/chainmaker/vm-docker-go/v2"
+	dockergo "chainmaker.org/chainmaker/vm-engine/v2"
 	"chainmaker.org/chainmaker/vm/v2"
 	"github.com/docker/distribution/uuid"
 	"github.com/golang/mock/gomock"
