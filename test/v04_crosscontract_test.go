@@ -25,7 +25,7 @@ func TestDockerGoCrossCall(t *testing.T) {
 
 	contractInfo := commonPb.Contract{
 		Name:        ContractNameTest,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 		Address:     ContractNameAddr,
 	}
 

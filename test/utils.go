@@ -162,7 +162,7 @@ var (
 func mockNormalGetrossInfo(simContext *mock.MockTxSimContext) {
 	normalCrossInfoOnce.Do(
 		func() {
-			normalCrossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
+			normalCrossInfo.AddLayer(commonPb.RuntimeType_GO)
 		},
 	)
 
@@ -176,7 +176,7 @@ func mockNormalGetrossInfo(simContext *mock.MockTxSimContext) {
 func mockCrossCallGetCrossInfo(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().GetCrossInfo().DoAndReturn(
 		func() uint64 {
-			crossCallCrossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
+			crossCallCrossInfo.AddLayer(commonPb.RuntimeType_GO)
 			return crossCallCrossInfo.GetCtxBitmap()
 		},
 	).AnyTimes()
@@ -789,7 +789,7 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 				&commonPb.Contract{
 					Name:        ContractNameTest,
 					Version:     ContractVersionTest,
-					RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+					RuntimeType: commonPb.RuntimeType_GO,
 				},
 				method,
 				nil,
@@ -821,7 +821,7 @@ func callContract(
 		&commonPb.Contract{
 			Name:        ContractNameTest,
 			Version:     ContractVersionTest,
-			RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+			RuntimeType: commonPb.RuntimeType_GO,
 		},
 		invokeMethod,
 		nil,

@@ -208,7 +208,7 @@ func testDeployCutVersion(version string) {
 	newContractId := &commonPb.Contract{
 		Name:        performContractName,
 		Version:     version,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 	}
 
 	parameters := generateInitParams()
@@ -227,7 +227,7 @@ func testCutSaveVersion(version string) {
 	newContractId := &commonPb.Contract{
 		Name:        performContractName,
 		Version:     version,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 	}
 
 	parameters := generateInitParams()

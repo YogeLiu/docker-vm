@@ -49,7 +49,7 @@ func setupTest(t *testing.T) {
 
 	//step4: mock contractId, contractBin
 	fmt.Printf("======step4 mock contractId and txContext=======\n")
-	mockContractId = initContractId(commonPb.RuntimeType_DOCKER_GO)
+	mockContractId = initContractId(commonPb.RuntimeType_GO)
 	mockTxContext = initMockSimContext(t)
 	mockNormalGetDepth(mockTxContext)
 	mockNormalGetrossInfo(mockTxContext)

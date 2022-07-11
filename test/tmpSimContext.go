@@ -55,7 +55,7 @@ func (s *TxContextMockTest) GetTxRWMapByContractName(
 // GetCrossInfo get contract call link information
 func (s *TxContextMockTest) GetCrossInfo() uint64 {
 	crossInfo := vm.NewCallContractContext(0)
-	crossInfo.AddLayer(commonPb.RuntimeType_DOCKER_GO)
+	crossInfo.AddLayer(commonPb.RuntimeType_GO)
 	return crossInfo.GetCtxBitmap()
 }
 

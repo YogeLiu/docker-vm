@@ -9,14 +9,15 @@ package utils
 
 import (
 	"bytes"
-	"chainmaker.org/chainmaker/pb-go/v2/common"
-	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 )
 
 // WriteToFile WriteFile write value to file
@@ -115,7 +116,7 @@ func IsOrig(tx *protogo.DockerVMMessage) bool {
 
 // hasUsed judge whether a vm has been used
 func hasUsed(ctxBitmap uint64) bool {
-	typeBit := uint64(1 << (59 - common.RuntimeType_DOCKER_GO))
+	typeBit := uint64(1 << (59 - common.RuntimeType_GO))
 	return typeBit&ctxBitmap > 0
 }
 

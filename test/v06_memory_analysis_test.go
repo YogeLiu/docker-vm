@@ -48,7 +48,7 @@ func TestDockerGoMemory(t *testing.T) {
 	mockContractId = &commonPb.Contract{
 		Name:        contractName,
 		Version:     ContractVersionTest,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 	}
 	mockTxContext = initMockSimContext(t)
 	mockNormalGetDepth(mockTxContext)
@@ -110,7 +110,7 @@ func testMultipleTxs(mockLogger protocol.Logger) {
 				newContractId := &commonPb.Contract{
 					Name:        contractName,
 					Version:     ContractVersionTest,
-					RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+					RuntimeType: commonPb.RuntimeType_GO,
 				}
 
 				parameters := generateInitParams()

@@ -182,7 +182,7 @@ func testDeployCut() {
 	newContractId := &commonPb.Contract{
 		Name:        performContractName,
 		Version:     performContractVersion,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 	}
 
 	parameters := generateInitParams()
@@ -201,7 +201,7 @@ func testCutSave() {
 	newContractId := &commonPb.Contract{
 		Name:        performContractName,
 		Version:     performContractVersion,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 	}
 
 	parameters := generateInitParams()
@@ -230,7 +230,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //	newContractId := &commonPb.Contract{
 //		Name:        performContractName,
 //		Version:     performContractVersion,
-//		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+//		RuntimeType: commonPb.RuntimeType_GO,
 //	}
 //
 //	parameters := generateInitParams()
@@ -259,7 +259,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //	newContractId := &commonPb.Contract{
 //		Name:        performContractName,
 //		Version:     performContractVersion,
-//		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+//		RuntimeType: commonPb.RuntimeType_GO,
 //	}
 //
 //	parameters := generateInitParams()
@@ -277,7 +277,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //	newContractId := &commonPb.Contract{
 //		Name:        performContractName,
 //		Version:     performContractVersion,
-//		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+//		RuntimeType: commonPb.RuntimeType_GO,
 //	}
 //
 //	parameters := generateInitParams()
