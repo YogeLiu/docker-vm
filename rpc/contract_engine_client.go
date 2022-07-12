@@ -211,13 +211,13 @@ func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
 func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 
 	// just for mac development and pprof testing
-	if !c.config.DockerVMUDSOpen {
+	if c.config.ConnectionProtocol == config.TCPProtocol {
 		url := fmt.Sprintf("%s:%d", c.config.ContractEngine.Host, c.config.ContractEngine.Port)
 		dialOpts := []grpc.DialOption{
 			grpc.WithInsecure(),
 			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(int(c.config.ContractEngine.MaxRecvMsgSize)*1024*1024),
-				grpc.MaxCallSendMsgSize(int(c.config.ContractEngine.MaxSendMsgSize)*1024*1024),
+				grpc.MaxCallRecvMsgSize(int(c.config.MaxRecvMsgSize)*1024*1024),
+				grpc.MaxCallSendMsgSize(int(c.config.MaxSendMsgSize)*1024*1024),
 			),
 		}
 		return grpc.Dial(url, dialOpts...)

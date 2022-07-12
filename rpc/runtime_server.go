@@ -128,7 +128,7 @@ func (s *RuntimeServer) StopRuntimeServer() {
 }
 
 func createListener(chainId string, vmConfig *config.DockerVMConfig) (net.Listener, error) {
-	if vmConfig.DockerVMUDSOpen {
+	if vmConfig.ConnectionProtocol == config.UDSProtocol {
 		sockDir := filepath.Join(vmConfig.DockerVMMountPath, config.RuntimeSockDir)
 		runtimeServerSockPath := filepath.Join(sockDir, config.RuntimeSockName)
 		err := utils.CreateDir(sockDir)

@@ -184,9 +184,9 @@ func (r *RuntimeInstance) Invoke(
 			// TODO: 超时时间自定义
 		case <-timeoutC:
 			r.logger.Errorf(
-				"[from chain] handle tx [%s] failed, fail to receive response in %d seconds and return timeout response",
+				"[from chain] handle tx [%s] failed, fail to receive response in %d milliseconds and return timeout response",
 				originalTxId,
-				r.clientMgr.GetVMConfig().TxTimeLimit,
+				timeout,
 			)
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(

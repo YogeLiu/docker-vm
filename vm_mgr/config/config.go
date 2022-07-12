@@ -201,6 +201,12 @@ func (c *conf) setEnv() error {
 		c.RPC.ConnectionTimeout = time.Duration(timeout) * time.Second
 	}
 
+	if processNum, ok := os.LookupEnv("MAX_ORIGINAL_PROCESS_NUM"); ok {
+		if c.Process.MaxOriginalProcessNum, err = strconv.Atoi(processNum); err != nil {
+			return fmt.Errorf("failed to ParseInt processNum, %v", err)
+		}
+	}
+
 	if contractEngineLogLevel, ok := os.LookupEnv("DOCKERVM_CONTRACT_ENGINE_LOG_LEVEL"); ok {
 		c.Log.ContractEngineLog.Level = contractEngineLogLevel
 	}

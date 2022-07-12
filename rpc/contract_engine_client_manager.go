@@ -177,7 +177,7 @@ func (cm *ContractEngineClientManager) GetUniqueTxKey(txId string) string {
 
 // NeedSendContractByteCode judge whether need to send contract bytecode
 func (cm *ContractEngineClientManager) NeedSendContractByteCode() bool {
-	return !cm.config.DockerVMUDSOpen
+	return cm.config.ConnectionProtocol == config.TCPProtocol
 }
 
 // HasActiveConnections returns the alive client map length
