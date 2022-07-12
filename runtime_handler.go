@@ -1195,44 +1195,12 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 
 	hostMountPath := r.clientMgr.GetVMConfig().DockerVMMountPath
 	contractDir := filepath.Join(hostMountPath, mountContractDir)
-
-	contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
-	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
 	contractFullNamePath := filepath.Join(contractDir, contractFullName)
 
 	// save bytecode to disk
-	err = r.saveBytesToDisk(byteCode, contractZipPath)
+	err = r.saveBytesToDisk(byteCode, contractFullNamePath)
 	if err != nil {
 		r.logger.Errorf("fail to save bytecode to disk: %s", err)
-		response.Response.Code = protogo.DockerVMCode_FAIL
-		response.Response.Message = err.Error()
-		return response
-	}
-
-	// extract 7z file
-	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
-	err = r.runCmd(unzipCommand)
-	if err != nil {
-		r.logger.Errorf("fail to extract contract, %v", err)
-		response.Response.Code = protogo.DockerVMCode_FAIL
-		response.Response.Message = err.Error()
-		return response
-	}
-
-	// remove 7z file
-	err = os.Remove(contractZipPath)
-	if err != nil {
-		r.logger.Errorf("fail to remove zipped file: %s", err)
-		response.Response.Code = protogo.DockerVMCode_FAIL
-		response.Response.Message = err.Error()
-		return response
-	}
-
-	// replace contract name to contractName:version
-	err = os.Rename(contractPathWithoutVersion, contractFullNamePath)
-	if err != nil {
-		r.logger.Errorf("fail to rename original file name: %s, "+
-			"please make sure contract name should be same as zipped file", err)
 		response.Response.Code = protogo.DockerVMCode_FAIL
 		response.Response.Message = err.Error()
 		return response

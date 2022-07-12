@@ -90,7 +90,7 @@ func (cm *ContractEngineClientManager) Start() error {
 		go cm.listen()
 	})
 
-	cm.logger.Infof("after start: alive conn %d", len(cm.aliveClientMap))
+	cm.logger.Infof("after start: alive conn %d, all connection established", len(cm.aliveClientMap))
 	return err
 }
 
