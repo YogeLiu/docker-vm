@@ -6,7 +6,7 @@ require (
 	chainmaker.org/chainmaker/chainconf/v2 v2.2.3-0.20220607072052-653ff1f72ed5 // indirect
 	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220628025818-290c39d5f1c8
 	chainmaker.org/chainmaker/localconf/v2 v2.2.2-0.20220607115425-03689a750027
-	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220708122443-1f5106cb5e51
+	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220713115418-627748021f33
 	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220628032755-cebcbb60be67
 	chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220615103110-6849a8ada870
 	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220630074844-e45e59cf56f3
