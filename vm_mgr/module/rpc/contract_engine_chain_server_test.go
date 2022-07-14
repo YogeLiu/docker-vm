@@ -8,8 +8,8 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"net"

@@ -12,7 +12,7 @@ import (
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
-	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
+	docker_go "chainmaker.org/chainmaker/vm-engine/v2"
 )
 
 const (
@@ -182,7 +182,7 @@ func testDeployCut() {
 	newContractId := &commonPb.Contract{
 		Name:        performContractName,
 		Version:     performContractVersion,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 	}
 
 	parameters := generateInitParams()
@@ -201,7 +201,7 @@ func testCutSave() {
 	newContractId := &commonPb.Contract{
 		Name:        performContractName,
 		Version:     performContractVersion,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 	}
 
 	parameters := generateInitParams()
@@ -230,7 +230,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //	newContractId := &commonPb.Contract{
 //		Name:        performContractName,
 //		Version:     performContractVersion,
-//		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+//		RuntimeType: commonPb.RuntimeType_GO,
 //	}
 //
 //	parameters := generateInitParams()
@@ -259,7 +259,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //	newContractId := &commonPb.Contract{
 //		Name:        performContractName,
 //		Version:     performContractVersion,
-//		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+//		RuntimeType: commonPb.RuntimeType_GO,
 //	}
 //
 //	parameters := generateInitParams()
@@ -277,7 +277,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //	newContractId := &commonPb.Contract{
 //		Name:        performContractName,
 //		Version:     performContractVersion,
-//		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+//		RuntimeType: commonPb.RuntimeType_GO,
 //	}
 //
 //	parameters := generateInitParams()

@@ -15,7 +15,7 @@ import (
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
-	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
+	docker_go "chainmaker.org/chainmaker/vm-engine/v2"
 )
 
 const (
@@ -48,7 +48,7 @@ func TestDockerGoMemory(t *testing.T) {
 	mockContractId = &commonPb.Contract{
 		Name:        contractName,
 		Version:     ContractVersionTest,
-		RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+		RuntimeType: commonPb.RuntimeType_GO,
 	}
 	mockTxContext = initMockSimContext(t)
 	mockNormalGetDepth(mockTxContext)
@@ -110,7 +110,7 @@ func testMultipleTxs(mockLogger protocol.Logger) {
 				newContractId := &commonPb.Contract{
 					Name:        contractName,
 					Version:     ContractVersionTest,
-					RuntimeType: commonPb.RuntimeType_DOCKER_GO,
+					RuntimeType: commonPb.RuntimeType_GO,
 				}
 
 				parameters := generateInitParams()

@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 )
 
 const (

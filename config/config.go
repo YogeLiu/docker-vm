@@ -11,25 +11,20 @@ import "time"
 
 // DockerVMConfig match vm settings in chain maker yml
 type DockerVMConfig struct {
-	EnableDockerVM    bool   `mapstructure:"enable_dockervm"`     // enable docker go virtual machine
-	DockerVMMountPath string `mapstructure:"dockervm_mount_path"` // mount point in chainmaker
-	DockerVMLogPath   string `mapstructure:"dockervm_log_path"`   // log point in chainmaker
+	EnableDockerVM    bool   `mapstructure:"enable"`          // enable docker go virtual machine
+	DockerVMMountPath string `mapstructure:"data_mount_path"` // mount point in chainmaker
+	DockerVMLogPath   string `mapstructure:"log_mount_path"`  // log point in chainmaker
 
 	// unix domain socket open, used for chainmaker and docker manager communication
-	DockerVMUDSOpen bool `mapstructure:"uds_open"`
+	ConnectionProtocol string `mapstructure:"protocol"`
 
-	MaxConnection uint32 `mapstructure:"max_connection"` // max client connection
 	// uds_open true
 	// 可自定义交易执行超时时间，但是tx_scheduler_timeout是否有冲突，保留配置，但不启用
 	TxTimeLimit uint32 `mapstructure:"time_limit"`
 
-	MaxConcurrency      uint32 `mapstructure:"max_concurrency"`        // max process num
-	MaxSendMsgSize      uint32 `mapstructure:"max_send_msg_size"`      // grpc max send message size, Unit: MB
-	MaxRecvMsgSize      uint32 `mapstructure:"max_recv_msg_size"`      // grpc max recv message size, Unit: MB
-	EnablePprof         bool   `mapstructure:"enable_pprof"`           // enable pprof
-	DockerVMPprofPort   uint32 `mapstructure:"docker_vm_pprof_port"`   // contract engine pprof
-	SandBoxPprofPort    uint32 `mapstructure:"sandbox_pprof_port"`     // sandbox pprof port
-	MaxLocalContractNum uint32 `mapstructure:"max_local_contract_num"` // max local contract num
+	MaxConcurrency uint32 `mapstructure:"max_concurrency"`   // max process num
+	MaxSendMsgSize uint32 `mapstructure:"max_send_msg_size"` // grpc max send message size, Unit: MB
+	MaxRecvMsgSize uint32 `mapstructure:"max_recv_msg_size"` // grpc max recv message size, Unit: MB
 	// uds_open false， tcp
 	RuntimeServer  RuntimeServerConfig  `mapstructure:"runtime_server"`  // runtime server
 	ContractEngine ContractEngineConfig `mapstructure:"contract_engine"` // contract engine
@@ -37,21 +32,15 @@ type DockerVMConfig struct {
 
 // RuntimeServerConfig is the runtime server config
 type RuntimeServerConfig struct {
-	Host           string `mapstructure:"host"`
-	Port           int    `mapstructure:"port"`
-	DialTimeout    uint32 `mapstructure:"dial_timeout"`
-	MaxSendMsgSize uint64 `mapstructure:"max_send_msg_size"`
-	MaxRecvMsgSize uint64 `mapstructure:"max_recv_msg_size"`
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
 }
 
 // ContractEngineConfig is the contract engine config
 type ContractEngineConfig struct {
-	Host           string `mapstructure:"host"`
-	Port           int    `mapstructure:"port"`
-	DialTimeout    uint32 `mapstructure:"dial_timeout"`
-	MaxSendMsgSize uint64 `mapstructure:"max_send_msg_size"`
-	MaxRecvMsgSize uint64 `mapstructure:"max_recv_msg_size"`
-	MaxConnection  uint64 `mapstructure:"max_connection"`
+	Host          string `mapstructure:"host"`
+	Port          int    `mapstructure:"port"`
+	MaxConnection uint64 `mapstructure:"max_connection"`
 }
 
 // DockerContainerConfig docker container settings
@@ -128,6 +117,11 @@ const (
 	ServerMinInterval = time.Duration(1) * time.Minute
 	// ConnectionTimeout connection timeout time
 	ConnectionTimeout = 5 * time.Second
+
+	// TCPProtocol is tcp connection protocol
+	TCPProtocol = "tcp"
+	// UDSProtocol is uds connection protocol
+	UDSProtocol = "uds"
 )
 
 const (

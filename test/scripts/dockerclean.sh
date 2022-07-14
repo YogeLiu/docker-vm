@@ -5,7 +5,7 @@
 
 docker stop chaimaker_vm_test
 docker rm chaimaker_vm_test
-# docker rmi chainmakerofficial/chainmaker-vm-docker-go:develop
+# docker rmi chainmakerofficial/chainmaker-vm-engine:develop
 
 docker image prune -f
 

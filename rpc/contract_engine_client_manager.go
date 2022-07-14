@@ -8,10 +8,10 @@ import (
 
 	"chainmaker.org/chainmaker/protocol/v2"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+	"chainmaker.org/chainmaker/vm-engine/v2/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"go.uber.org/atomic"
 )
 
@@ -90,7 +90,7 @@ func (cm *ContractEngineClientManager) Start() error {
 		go cm.listen()
 	})
 
-	cm.logger.Infof("after start: alive conn %d", len(cm.aliveClientMap))
+	cm.logger.Infof("after start: alive conn %d, all connection established", len(cm.aliveClientMap))
 	return err
 }
 
@@ -177,7 +177,7 @@ func (cm *ContractEngineClientManager) GetUniqueTxKey(txId string) string {
 
 // NeedSendContractByteCode judge whether need to send contract bytecode
 func (cm *ContractEngineClientManager) NeedSendContractByteCode() bool {
-	return !cm.config.DockerVMUDSOpen
+	return cm.config.ConnectionProtocol == config.TCPProtocol
 }
 
 // HasActiveConnections returns the alive client map length

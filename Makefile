@@ -5,11 +5,11 @@ build-test:
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${VERSION} -f Dockerfile ./
-	docker images | grep chainmaker-vm-docker-go
+	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-engine:${VERSION} -f Dockerfile ./
+	docker images | grep chainmaker-vm-engine
 
 image-push:
-	docker push chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	docker push chainmakerofficial/chainmaker-vm-engine:${VERSION}
 
 update-gomod:
 	cd vm_mgr && rm -rf vendor
@@ -25,7 +25,7 @@ clean-test:
 clean:
 	cd vm_mgr && rm -rf vendor
 	cd test/scripts && ./dockerclean.sh
-	docker image rm chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	docker image rm chainmakerofficial/chainmaker-vm-engine:${VERSION}
 	docker image prune -f
 
 ci:
@@ -39,10 +39,10 @@ gomod:
 ut:
 	./test/scripts/prepare.sh
 	make build-image
-	# UDS: docker run -itd --rm -v $(shell pwd)/data/org1/docker-go:/mount -v $(shell pwd)/log/org1/dockervm:/log --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
-	docker run -itd --net=host --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${VERSION}
+	# UDS: docker run -itd --rm -v $(shell pwd)/data/org1/docker-go:/mount -v $(shell pwd)/log/org1/dockervm:/log --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-engine:${VERSION}
+	docker run -itd --net=host --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-engine:${VERSION}
 	sh ./ut_cover.sh
 	docker stop chaimaker_vm_test
 
 version:
-	docker inspect chainmakerofficial/chainmaker-vm-docker-go:${VERSION} | jq '.[].ContainerConfig.Labels'
+	docker inspect chainmakerofficial/chainmaker-vm-engine:${VERSION} | jq '.[].ContainerConfig.Labels'

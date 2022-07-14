@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package security
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"go.uber.org/zap"
 	"os"
 )

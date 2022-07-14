@@ -1,8 +1,8 @@
 package interfaces
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 )
 
 //  EventType is the event type

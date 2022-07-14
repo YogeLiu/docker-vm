@@ -1,8 +1,8 @@
 package mocks
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 )
 
 type MockProcessManager struct{}
@@ -95,6 +95,11 @@ func (rs *MockRequestScheduler) PutMsg(msg interface{}) error {
 }
 
 func (rs *MockRequestScheduler) GetRequestGroup(chainID, contractName, contractVersion string) (interfaces.RequestGroup, bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (rs *MockRequestScheduler) GetContractManager() interfaces.ContractManager {
 	//TODO implement me
 	panic("implement me")
 }

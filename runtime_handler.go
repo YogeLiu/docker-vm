@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -28,9 +29,9 @@ import (
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/gas"
+	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -1162,6 +1163,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 			Result:          make([]byte, 1),
 			ContractName:    recvMsg.Request.ContractName,
 			ContractVersion: recvMsg.Request.ContractVersion,
+			Code:            protogo.DockerVMCode_FAIL,
 		},
 	}
 
@@ -1174,12 +1176,25 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 	)
 
 	contractName := recvMsg.Request.ContractName
-	r.logger.Debugf("name: %s", contractName)
-	r.logger.Debugf("full name: %s", contractFullName)
+	r.logger.Debugf("contract name: %s", contractName)
+	r.logger.Debugf("contract full name: %s", contractFullName)
+
+	sendContract := r.clientMgr.NeedSendContractByteCode()
+
+	// bytecode == 0
+	// 		get 7z -> save 7z to chainID#contractName#Version -> extract
+	//			uds: return path, mv bin .. , remove dir
+	//			tcp: return bin, remove dir
+	// bytecode != 0
+	//		get bytecode -> save bytecode to chainID#contractName#Version
+	// 			uds: return path, mv bin ..
+	//			tcp: return bin, remove dir
 
 	var err error
 	if len(byteCode) == 0 {
 		r.logger.Warnf("[%s] bytecode is missing", txId)
+
+		// get bytecode 7z from txSimContext / database
 		byteCode, err = txSimContext.GetContractBytecode(contractName)
 		if err != nil || len(byteCode) == 0 {
 			r.logger.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
@@ -1191,86 +1206,44 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 			}
 			return response
 		}
-	}
 
-	hostMountPath := r.clientMgr.GetVMConfig().DockerVMMountPath
-	contractDir := filepath.Join(hostMountPath, mountContractDir)
-
-	contractZipPath := filepath.Join(contractDir, fmt.Sprintf("%s.7z", contractName)) // contract1.7z
-	contractPathWithoutVersion := filepath.Join(contractDir, contractName)
-	contractFullNamePath := filepath.Join(contractDir, contractFullName)
-
-	// save bytecode to disk
-	err = r.saveBytesToDisk(byteCode, contractZipPath)
-	if err != nil {
-		r.logger.Errorf("fail to save bytecode to disk: %s", err)
-		response.Response.Code = protogo.DockerVMCode_FAIL
-		response.Response.Message = err.Error()
-		return response
-	}
-
-	// extract 7z file
-	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, contractDir) // contract1
-	err = r.runCmd(unzipCommand)
-	if err != nil {
-		r.logger.Errorf("fail to extract contract, %v", err)
-		response.Response.Code = protogo.DockerVMCode_FAIL
-		response.Response.Message = err.Error()
-		return response
-	}
-
-	// remove 7z file
-	err = os.Remove(contractZipPath)
-	if err != nil {
-		r.logger.Errorf("fail to remove zipped file: %s", err)
-		response.Response.Code = protogo.DockerVMCode_FAIL
-		response.Response.Message = err.Error()
-		return response
-	}
-
-	// replace contract name to contractName:version
-	err = os.Rename(contractPathWithoutVersion, contractFullNamePath)
-	if err != nil {
-		r.logger.Errorf("fail to rename original file name: %s, "+
-			"please make sure contract name should be same as zipped file", err)
-		response.Response.Code = protogo.DockerVMCode_FAIL
-		response.Response.Message = err.Error()
-		return response
-	}
-
-	response.Response.Code = protogo.DockerVMCode_OK
-
-	if r.clientMgr.NeedSendContractByteCode() {
-		contractByteCode, err := ioutil.ReadFile(contractFullNamePath)
-		if err != nil {
-			r.logger.Errorf("fail to load contract executable file: %s, ", err)
-			response.Response.Code = protogo.DockerVMCode_FAIL
+		// got extracted bytecode
+		if _, err = r.extractContract(byteCode, contractFullName, sendContract); err != nil {
+			r.logger.Errorf("[%s] failed to extract contract %s from tx_sim_context, %v",
+				txId, contractName, err)
 			response.Response.Message = err.Error()
 			return response
 		}
 
-		// remove contract file
-		err = os.Remove(contractFullNamePath)
-		if err != nil {
-			r.logger.Errorf("fail to remove zipped file: %s", err)
+		// tcp: need to send bytecode
+		if sendContract {
+			response.Response.Result = byteCode
 		}
-
 		response.Response.Code = protogo.DockerVMCode_OK
-		response.Response.Result = contractByteCode
+		return response
 	}
 
-	return response
-}
+	// uds: need to save bytecode
+	if !sendContract {
+		hostMountPath := r.clientMgr.GetVMConfig().DockerVMMountPath
+		contractDir := filepath.Join(hostMountPath, mountContractDir)
+		contractFullNamePath := filepath.Join(contractDir, contractFullName)
 
-// constructContractKey chainId#contractName#contractVersion
-func constructContractKey(chainID, contractName, contractVersion string) string {
-	var sb strings.Builder
-	sb.WriteString(chainID)
-	sb.WriteString("#")
-	sb.WriteString(contractName)
-	sb.WriteString("#")
-	sb.WriteString(contractVersion)
-	return sb.String()
+		// save bytecode to disk
+		err = r.saveBytesToDisk(byteCode, contractFullNamePath, "")
+		if err != nil {
+			r.logger.Errorf("failed to save bytecode to disk: %s", err)
+			response.Response.Message = err.Error()
+		}
+		response.Response.Code = protogo.DockerVMCode_OK
+		return response
+	}
+
+	// tcp: need to send bytecode
+	response.Response.Code = protogo.DockerVMCode_OK
+	response.Response.Result = byteCode
+
+	return response
 }
 
 func (r *RuntimeInstance) errorResult(
@@ -1286,7 +1259,17 @@ func (r *RuntimeInstance) errorResult(
 	return contractResult, protocol.ExecOrderTxTypeNormal
 }
 
-func (r *RuntimeInstance) saveBytesToDisk(bytes []byte, newFilePath string) error {
+// saveBytesToDisk save contract bytecode to disk
+func (r *RuntimeInstance) saveBytesToDisk(bytes []byte, newFilePath, newFileDir string) error {
+
+	if len(newFileDir) != 0 {
+		if _, err := os.Stat(newFilePath); os.IsNotExist(err) {
+			err = os.Mkdir(newFileDir, 0777)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	f, err := os.Create(newFilePath)
 	if err != nil {
@@ -1336,4 +1319,102 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.DockerVM
 		Response: nil,
 		Request:  nil,
 	}
+}
+
+// extractContract extract contract from 7z to bin
+func (r *RuntimeInstance) extractContract(bytecode []byte, contractFullName string, sendContract bool) ([]byte, error) {
+
+	// tmp contract dir (include .7z and bin files)
+	tmpContractDir := "tmp-contract-" + uuid.New().String()
+
+	// contract zip path (.7z path)
+	contractZipPath := filepath.Join(tmpContractDir, fmt.Sprintf("%s.7z", contractFullName))
+
+	// save bytecode to tmpContractDir
+	var err error
+	err = r.saveBytesToDisk(bytecode, contractZipPath, tmpContractDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save tmp contract bin for version query")
+	}
+
+	// extract 7z file
+	unzipCommand := fmt.Sprintf("7z e %s -o%s -y", contractZipPath, tmpContractDir) // contract1
+	err = runCmd(unzipCommand)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract contract, %v", err)
+	}
+
+	// remove tmpContractDir in the end
+	defer func() {
+		if err = os.RemoveAll(tmpContractDir); err != nil {
+			r.logger.Errorf("failed to remove tmp contract bin dir %s", tmpContractDir)
+		}
+	}()
+
+	// exec contract bin to get version
+	// read all files in tmpContractDir
+	fileInfoList, err := ioutil.ReadDir(tmpContractDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read tmp contract dir %s, %v", tmpContractDir, err)
+	}
+
+	// 2 files, include .7z file and bin file
+	if len(fileInfoList) != 2 {
+		return nil, fmt.Errorf("file num in contract dir %s != 2", tmpContractDir)
+	}
+
+	// range file list
+	for i := range fileInfoList {
+
+		// skip .7z file
+		if strings.HasSuffix(fileInfoList[i].Name(), ".7z") {
+			continue
+		}
+
+		// get contract bin file path
+		fp := filepath.Join(tmpContractDir, fileInfoList[i].Name())
+		extBytecode, err := ioutil.ReadFile(fp)
+		if err != nil {
+			return nil, fmt.Errorf("read from byteCode file %s failed, %s", fp, err)
+		}
+
+		// uds, need to save bytecode
+		if !sendContract {
+			// mv contractBin ..
+			mvCmd := fmt.Sprintf("mv %s .", contractZipPath)
+			if err = runCmd(mvCmd); err != nil {
+				return nil, fmt.Errorf("failed to extract contract, %v", err)
+			}
+		}
+		return extBytecode, nil
+	}
+	return nil, fmt.Errorf("no contract binaries satisfied")
+}
+
+// constructContractKey chainId#contractName#contractVersion
+func constructContractKey(chainID, contractName, contractVersion string) string {
+	var sb strings.Builder
+	sb.WriteString(chainID)
+	sb.WriteString("#")
+	sb.WriteString(contractName)
+	sb.WriteString("#")
+	sb.WriteString(contractVersion)
+	return sb.String()
+}
+
+// runCmd exec cmd
+func runCmd(command string) error {
+	var stderr bytes.Buffer
+	commands := strings.Split(command, " ")
+	cmd := exec.Command(commands[0], commands[1:]...) // #nosec
+	cmd.Stderr = &stderr
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to run cmd %s start, %v, %v", command, err, stderr.String())
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("failed to run cmd %s wait, %v, %v", command, err, stderr.String())
+	}
+	return nil
 }

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
+	docker_go "chainmaker.org/chainmaker/vm-engine/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,7 +49,7 @@ func setupTest(t *testing.T) {
 
 	//step4: mock contractId, contractBin
 	fmt.Printf("======step4 mock contractId and txContext=======\n")
-	mockContractId = initContractId(commonPb.RuntimeType_DOCKER_GO)
+	mockContractId = initContractId(commonPb.RuntimeType_GO)
 	mockTxContext = initMockSimContext(t)
 	mockNormalGetDepth(mockTxContext)
 	mockNormalGetrossInfo(mockTxContext)

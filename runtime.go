@@ -16,9 +16,9 @@ import (
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/interfaces"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/gas"
+	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 )
 
 const (
@@ -184,9 +184,9 @@ func (r *RuntimeInstance) Invoke(
 			// TODO: 超时时间自定义
 		case <-timeoutC:
 			r.logger.Errorf(
-				"[from chain] handle tx [%s] failed, fail to receive response in %d seconds and return timeout response",
+				"[from chain] handle tx [%s] failed, fail to receive response in %d milliseconds and return timeout response",
 				originalTxId,
-				r.clientMgr.GetVMConfig().TxTimeLimit,
+				timeout,
 			)
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(

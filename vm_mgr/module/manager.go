@@ -9,10 +9,10 @@ package module
 
 import (
 	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/rpc"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/module/core"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/module/rpc"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/module/security"
 	"fmt"
 	"go.uber.org/zap"
 )

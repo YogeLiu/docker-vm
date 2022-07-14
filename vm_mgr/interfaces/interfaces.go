@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package interfaces
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 )
 
 type (

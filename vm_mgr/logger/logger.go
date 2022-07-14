@@ -15,7 +15,7 @@ import (
 
 	rotatelogs "chainmaker.org/chainmaker/common/v2/log/file-rotatelogs"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
