@@ -104,6 +104,10 @@ func (m *InstancesManager) StartVM() error {
 	if m == nil {
 		return nil
 	}
+	if !m.dockerVMConfig.EnableDockerVM {
+		m.mgrLogger.Infof("vm engine disabled, no need to start")
+		return nil
+	}
 	m.mgrLogger.Info("start docker vm...")
 	var err error
 
