@@ -2,9 +2,9 @@ package docker_go
 
 import (
 	"bytes"
+	"chainmaker.org/chainmaker/utils/v2"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
@@ -17,11 +17,8 @@ import (
 	"sync/atomic"
 
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
-	commonCrt "chainmaker.org/chainmaker/common/v2/cert"
 	"chainmaker.org/chainmaker/common/v2/crypto"
-	"chainmaker.org/chainmaker/common/v2/crypto/asym"
 	bcx509 "chainmaker.org/chainmaker/common/v2/crypto/x509"
-	"chainmaker.org/chainmaker/common/v2/evmutils"
 	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
@@ -757,156 +754,37 @@ func (r *RuntimeInstance) getSenderAddress(
 	txSimContext protocol.TxSimContext,
 ) (string, error) {
 
-	var address string
 	var err error
-
 	sender := txSimContext.GetSender()
 
 	switch sender.MemberType {
 	case accesscontrol.MemberType_CERT:
-		address, err = r.getSenderAddressFromCert(sender.MemberInfo, chainConfig.Vm.AddrType)
-		if err != nil {
-			r.logger.Errorf("getSenderAddressFromCert failed, %s", err.Error())
-			return "", err
-		}
+		return utils.GetStrAddrFromPbMember(sender, chainConfig.Vm.AddrType, 0)
 	case accesscontrol.MemberType_CERT_HASH,
 		accesscontrol.MemberType_ALIAS:
-		address, err = r.getSenderAddressFromCertHash(sender.MemberInfo, chainConfig.Vm.AddrType, txSimContext)
+		certHashKey := hex.EncodeToString(sender.MemberInfo)
+		certBytes, err := txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
 		if err != nil {
-			r.logger.Errorf("getSenderAddressFromCert failed, %s", err.Error())
+			r.logger.Errorf("get cert from chain failed, %s", err.Error())
 			return "", err
 		}
-
+		var cert *bcx509.Certificate
+		cert, err = utils.ParseCert(certBytes)
+		if err != nil {
+			return "", err
+		}
+		return utils.CertToAddrStr(cert, chainConfig.Vm.AddrType)
 	case accesscontrol.MemberType_PUBLIC_KEY:
-		address, err = r.getSenderAddressFromPublicKeyPEM(
-			sender.MemberInfo,
+		return utils.GetStrAddrFromPbMember(
+			sender,
 			chainConfig.Vm.AddrType,
-			crypto.HashAlgoMap[chainConfig.GetCrypto().Hash],
+			crypto.HashAlgoMap[chainConfig.Crypto.Hash],
 		)
-		if err != nil {
-			r.logger.Errorf("getSenderAddressFromPublicKeyPEM failed, %s", err.Error())
-			return "", err
-		}
 
 	default:
 		r.logger.Errorf("getSenderAddress failed, invalid member type")
 		return "", err
 	}
-
-	return address, nil
-}
-
-func (r *RuntimeInstance) getSenderAddressFromCertHash(
-	memberInfo []byte,
-	addressType configPb.AddrType,
-	txSimContext protocol.TxSimContext,
-) (string, error) {
-
-	var certBytes []byte
-	var err error
-	certBytes, err = r.getCertFromChain(memberInfo, txSimContext)
-	if err != nil {
-		return "", err
-	}
-
-	var address string
-	address, err = r.getSenderAddressFromCert(certBytes, addressType)
-	if err != nil {
-		r.logger.Errorf("getSenderAddressFromCert failed, %s", err.Error())
-		return "", err
-	}
-
-	return address, nil
-}
-
-func (r *RuntimeInstance) getCertFromChain(memberInfo []byte, txSimContext protocol.TxSimContext) ([]byte, error) {
-	certHashKey := hex.EncodeToString(memberInfo)
-	certBytes, err := txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
-	if err != nil {
-		r.logger.Errorf("get cert from chain failed, %s", err.Error())
-		return nil, err
-	}
-
-	return certBytes, nil
-}
-
-func (r *RuntimeInstance) getSenderAddressFromCert(certPem []byte, addressType configPb.AddrType) (string, error) {
-	if addressType == configPb.AddrType_ZXL {
-		address, err := evmutils.ZXAddressFromCertificatePEM(certPem)
-		if err != nil {
-			return "", fmt.Errorf("ParseCertificate failed, %s", err.Error())
-		}
-
-		return address, nil
-	}
-
-	if addressType == configPb.AddrType_CHAINMAKER {
-		return r.calculateCertAddr(certPem)
-	}
-
-	return "", errors.New("invalid address type")
-}
-
-func (r *RuntimeInstance) calculateCertAddr(certPem []byte) (string, error) {
-	blockCrt, _ := pem.Decode(certPem)
-	crt, err := bcx509.ParseCertificate(blockCrt.Bytes)
-	if err != nil {
-		return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
-	}
-
-	ski := hex.EncodeToString(crt.SubjectKeyId)
-	addrInt, err := evmutils.MakeAddressFromHex(ski)
-	if err != nil {
-		return "", fmt.Errorf("MakeAddressFromHex failed, %s", err.Error())
-	}
-
-	addr := evmutils.BigToAddress(addrInt)
-	addrBytes := addr[:]
-
-	return hex.EncodeToString(addrBytes), nil
-}
-
-func (r *RuntimeInstance) getSenderAddressFromPublicKeyPEM(
-	publicKeyPem []byte,
-	addressType configPb.AddrType,
-	hashType crypto.HashType,
-) (string, error) {
-
-	if addressType == configPb.AddrType_ZXL {
-		address, err := evmutils.ZXAddressFromPublicKeyPEM(publicKeyPem)
-		if err != nil {
-			r.logger.Errorf("ZXAddressFromPublicKeyPEM, failed, %s", err.Error())
-		}
-		return address, err
-	}
-
-	if addressType == configPb.AddrType_CHAINMAKER {
-		return r.calculatePubKeyAddr(publicKeyPem, hashType)
-	}
-
-	return "", errors.New("invalid address type")
-}
-
-func (r *RuntimeInstance) calculatePubKeyAddr(publicKeyPem []byte, hashType crypto.HashType) (string, error) {
-	publicKey, err := asym.PublicKeyFromPEM(publicKeyPem)
-	if err != nil {
-		return "", fmt.Errorf("ParsePublicKey failed, %s", err.Error())
-	}
-
-	ski, err := commonCrt.ComputeSKI(hashType, publicKey.ToStandardKey())
-	if err != nil {
-		return "", fmt.Errorf("computeSKI from public key failed, %s", err.Error())
-	}
-
-	addrInt, err := evmutils.MakeAddressFromHex(hex.EncodeToString(ski))
-	if err != nil {
-		return "", fmt.Errorf("make address from public key failed, %s", err)
-	}
-
-	addr := evmutils.BigToAddress(addrInt)
-	addrBytes := addr[:]
-
-	return hex.EncodeToString(addrBytes), nil
 }
 
 func kvIteratorCreate(txSimContext protocol.TxSimContext, calledContractName string,

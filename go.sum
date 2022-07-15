@@ -23,12 +23,14 @@ chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220713115418-627748021f33/go.mod h
 chainmaker.org/chainmaker/protocol/v2 v2.2.1-0.20220420035842-6273a5991b73/go.mod h1:C3QQOKuRWJeSP+nIeVGLCf4ScHzfyBVYNoVMn149uVU=
 chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220601091317-c1b2cd0fb763/go.mod h1:EQMkCcb9reNMxc2p2N6ecyjImdYMszZPHKMt/Vqx8Js=
 chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220607065007-b25caf2d737e/go.mod h1:diR/Oq41XnjF85kQljLz0lDkAPqeIGxvw6bjujFDoOw=
-chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220628032755-cebcbb60be67 h1:5hhD9HflsFvruYW5yO4k8yjCOHBpm6dpq5aPcwVRX/c=
 chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220628032755-cebcbb60be67/go.mod h1:/1+PK+fCwmopWd8c0vyY69tcg4kdjeXVl5hIZ3n+7r0=
+chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220704085016-8d4e4164a9e1 h1:UzJfF49C4LApYUPOMnenyULW1kvE4uLmwO/1EBpJcSM=
+chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220704085016-8d4e4164a9e1/go.mod h1:/1+PK+fCwmopWd8c0vyY69tcg4kdjeXVl5hIZ3n+7r0=
 chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220601092510-ec93c1095f0f/go.mod h1:i4nlJCGIo+V9ePPUDTE0HZe3TctG9kkLP1snVF7BEJc=
 chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220607065108-d755d04a537f/go.mod h1:2QXL+3L0E4KpCFgWAWdDgDiBv9OP1XiCwBvGEP3VemQ=
-chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220615103110-6849a8ada870 h1:a26R5VKfY4fNA4pZfTDVzgw6jeGbWHHRZg5Veg2DZlY=
 chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220615103110-6849a8ada870/go.mod h1:i4nlJCGIo+V9ePPUDTE0HZe3TctG9kkLP1snVF7BEJc=
+chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220714093409-76db3fe643ae h1:ZZgESa8twNQaXS6ayhuKC/UsLNEBZI2gaP4kQIErfio=
+chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220714093409-76db3fe643ae/go.mod h1:nxJKxJ3jxYa7GapqNo+3/27s7hJieA7xpcsOuCr57yY=
 chainmaker.org/chainmaker/vm-native/v2 v2.2.3-0.20220628133901-3789e21c3b8a h1:5K75iyWWm2GkfQ5FcBLVHPqW95NQWg2LjdCt2LMzkpk=
 chainmaker.org/chainmaker/vm-native/v2 v2.2.3-0.20220628133901-3789e21c3b8a/go.mod h1:ZPX7qfvaOi7ds8DoesBWZk/Rmch0R7zsygaGNDisR8g=
 chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220630074844-e45e59cf56f3 h1:zYhP2jSGRFF3PxQZR/cT5dqwMLnVdE+XHFVt8AHQFKc=
