@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -23,6 +22,7 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 	"github.com/gogo/protobuf/proto"
+	"github.com/google/uuid"
 )
 
 func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerVMMessage,
@@ -1095,23 +1095,23 @@ func (r *RuntimeInstance) saveBytesToDisk(bytes []byte, newFilePath, newFileDir 
 }
 
 // RunCmd exec cmd
-func (r *RuntimeInstance) runCmd(command string) error {
-	var stderr bytes.Buffer
-	commands := strings.Split(command, " ")
-	cmd := exec.Command(commands[0], commands[1:]...) // #nosec
-	cmd.Stderr = &stderr
-
-	if err := cmd.Start(); err != nil {
-		r.logger.Errorf("failed to run cmd %s start, %v, %v", command, err, stderr.String())
-		return err
-	}
-
-	if err := cmd.Wait(); err != nil {
-		r.logger.Errorf("failed to run cmd %s wait, %v, %v", command, err, stderr.String())
-		return err
-	}
-	return nil
-}
+//func (r *RuntimeInstance) runCmd(command string) error {
+//	var stderr bytes.Buffer
+//	commands := strings.Split(command, " ")
+//	cmd := exec.Command(commands[0], commands[1:]...) // #nosec
+//	cmd.Stderr = &stderr
+//
+//	if err := cmd.Start(); err != nil {
+//		r.logger.Errorf("failed to run cmd %s start, %v, %v", command, err, stderr.String())
+//		return err
+//	}
+//
+//	if err := cmd.Wait(); err != nil {
+//		r.logger.Errorf("failed to run cmd %s wait, %v, %v", command, err, stderr.String())
+//		return err
+//	}
+//	return nil
+//}
 
 func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.DockerVMType) *protogo.DockerVMMessage {
 	return &protogo.DockerVMMessage{

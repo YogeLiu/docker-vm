@@ -38,6 +38,11 @@ type TxContextMockTest struct {
 	CacheMap map[string][]byte
 }
 
+func (s *TxContextMockTest) GetStrAddrFromPbMember(pbMember *acPb.Member) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 //GetNoRecord read data from state, but not record into read set, only used for framework
 func (s *TxContextMockTest) GetNoRecord(contractName string, key []byte) ([]byte, error) {
 	//TODO implement me

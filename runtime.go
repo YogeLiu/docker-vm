@@ -14,7 +14,6 @@ import (
 	"time"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
@@ -25,11 +24,6 @@ const (
 	mountContractDir = "contracts"
 	msgIterIsNil     = "iterator is nil"
 	timeout          = 9000 // tx execution timeout(milliseconds)
-)
-
-var (
-	chainConfigContractName = syscontract.SystemContract_CHAIN_CONFIG.String()
-	keyChainConfig          = chainConfigContractName
 )
 
 // RuntimeInstance docker-go runtime
@@ -287,8 +281,8 @@ func (r *RuntimeInstance) Invoke(
 	}
 }
 
-func (r *RuntimeInstance) getChainConfigDefaultGas(TxSimContext protocol.TxSimContext) uint64 {
-	chainConfig, err := TxSimContext.GetBlockchainStore().GetLastChainConfig()
+func (r *RuntimeInstance) getChainConfigDefaultGas(txSimContext protocol.TxSimContext) uint64 {
+	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
 	if err != nil {
 		r.logger.Debugf("get last chain config err [%v]", err.Error())
 		return 0
