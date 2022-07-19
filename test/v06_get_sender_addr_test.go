@@ -20,6 +20,7 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 	mockGetSender(simContext)
 	mockTxGetChainConf(simContext)
 	mockGetBlockVersion(simContext)
+	mockGetRequestId(simContext)
 
 	testData := []struct {
 		/*
