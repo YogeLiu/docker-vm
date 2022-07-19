@@ -23,7 +23,8 @@ type SysCallElapsedTime struct {
 	StorageTimeInSysCall int64
 }
 
-func NewSysCallElapsedTime(opType protogo.CDMType, startTime int64, totalTime int64, storageTime int64) *SysCallElapsedTime {
+func NewSysCallElapsedTime(opType protogo.CDMType, startTime int64, totalTime int64,
+	storageTime int64) *SysCallElapsedTime {
 	return &SysCallElapsedTime{
 		OpType:               opType,
 		StartTime:            startTime,
@@ -93,14 +94,14 @@ func (e *TxElapsedTime) AddSysCallElapsedTime(sysCallElapsedTime *SysCallElapsed
 
 	switch sysCallElapsedTime.OpType {
 	case protogo.CDMType_CDM_TYPE_GET_BYTECODE, protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME:
-		e.ContingentSysCallCnt += 1
+		e.ContingentSysCallCnt++
 		e.ContingentSysCallTime += sysCallElapsedTime.TotalTime
 		e.StorageTimeInSysCall += sysCallElapsedTime.StorageTimeInSysCall
 	case protogo.CDMType_CDM_TYPE_GET_STATE, protogo.CDMType_CDM_TYPE_GET_BATCH_STATE,
 		protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
 		protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
 		protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-		e.SysCallCnt += 1
+		e.SysCallCnt++
 		e.SysCallTime += sysCallElapsedTime.TotalTime
 		e.StorageTimeInSysCall += sysCallElapsedTime.StorageTimeInSysCall
 	default:
@@ -129,7 +130,7 @@ func (e *TxElapsedTime) Add(t *TxElapsedTime) {
 }
 
 func (e *TxElapsedTime) AddContingentSysCall(spend int64) {
-	e.ContingentSysCallCnt += 1
+	e.ContingentSysCallCnt++
 	e.ContingentSysCallTime += spend
 
 }
@@ -168,8 +169,8 @@ func NewRequestMgr() *RequestMgr {
 }
 
 func (r *RequestMgr) PrintBlockElapsedTime(requestId string) string {
-	BlockElapsedTime := r.RequestMap[requestId]
-	return BlockElapsedTime.ToString()
+	blockElapsedTime := r.RequestMap[requestId]
+	return blockElapsedTime.ToString()
 }
 
 func (r *RequestMgr) AddRequest(requestId string) {
@@ -180,14 +181,12 @@ func (r *RequestMgr) AddRequest(requestId string) {
 		return
 	}
 	r.logger.Warnf("receive duplicated request: %s", requestId)
-	return
 }
 
 func (r *RequestMgr) RemoveRequest(requestId string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	delete(r.RequestMap, requestId)
-	return
 }
 
 // AddTx if add tx to tx request map need lock

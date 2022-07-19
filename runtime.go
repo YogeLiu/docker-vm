@@ -1329,7 +1329,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 	byteCode []byte, txSimContext protocol.TxSimContext) (*protogo.CDMMessage, int64) {
 
 	var err error
-	var stroageTime int64 = 0
+	var storageTime int64
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE)
 
@@ -1341,7 +1341,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		startTime := time.Now()
 		byteCode, err = txSimContext.GetContractBytecode(contractName)
 		spend := time.Since(startTime).Nanoseconds()
-		stroageTime += spend
+		storageTime += spend
 		if err != nil || len(byteCode) == 0 {
 			r.Log.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
 				contractName)
@@ -1351,7 +1351,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 				response.Message = "contract byte is nil"
 			}
 
-			return response, stroageTime
+			return response, storageTime
 		}
 	}
 
@@ -1369,7 +1369,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 			// file may or may not exist, just run into another problem.
 			r.Log.Errorf("read file failed", err)
 			response.Message = err.Error()
-			return response, stroageTime
+			return response, storageTime
 		}
 
 		// save bytecode to disk
@@ -1377,7 +1377,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		if err != nil {
 			r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
 			response.Message = err.Error()
-			return response, stroageTime
+			return response, storageTime
 		}
 
 		// extract 7z file
@@ -1386,7 +1386,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		if err != nil {
 			r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
 			response.Message = err.Error()
-			return response, stroageTime
+			return response, storageTime
 		}
 
 		// remove 7z file
@@ -1395,7 +1395,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 			r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
 				contractZipPath)
 			response.Message = err.Error()
-			return response, stroageTime
+			return response, storageTime
 		}
 
 		// replace contract name to contractName:version
@@ -1405,7 +1405,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 				"please make sure contract name should be same as contract name (first input name) while compiling",
 				txId, err)
 			response.Message = err.Error()
-			return response, stroageTime
+			return response, storageTime
 		}
 
 	}
@@ -1415,7 +1415,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		if err != nil {
 			r.Log.Errorf("fail to load contract executable file: %s, ", err)
 			response.Message = err.Error()
-			return response, stroageTime
+			return response, storageTime
 		}
 
 		response.ResultCode = protocol.ContractSdkSignalResultSuccess
@@ -1425,7 +1425,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		response.Payload = []byte(contractNameAndVersion)
 	}
 
-	return response, stroageTime
+	return response, storageTime
 }
 
 func (r *RuntimeInstance) handleGetContractName(txId string, recvMsg *protogo.CDMMessage,
