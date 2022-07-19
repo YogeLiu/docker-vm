@@ -19,6 +19,7 @@ import (
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
@@ -124,7 +125,7 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractKey strin
 		defer func() {
 			// add time statistics
 			spend := time.Since(sysCallStart).Nanoseconds()
-			sysCallElapsedTime := NewSysCallElapsedTime(getByteCodeMsg.Type, sysCallStart.UnixNano(), spend, 0)
+			sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(getByteCodeMsg.Type, sysCallStart.UnixNano(), spend, 0)
 			cm.scheduler.AddTxSysCallElapsedTime(getByteCodeMsg.TxId, sysCallElapsedTime)
 		}()
 

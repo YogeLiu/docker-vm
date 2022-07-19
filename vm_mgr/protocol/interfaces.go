@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package protocol
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
 )
@@ -46,10 +46,10 @@ type Scheduler interface {
 
 	// time statistics
 	RegisterTxElapsedTime(txRequest *protogo.TxRequest, startTime int64)
-	AddTxSysCallElapsedTime(txId string, sysCallElapsedTime *core.SysCallElapsedTime)
-	AddTxCallContractElapsedTime(txId string, sysCallElapsedTime *core.SysCallElapsedTime)
+	AddTxSysCallElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime)
+	AddTxCallContractElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime)
 	RemoveTxElapsedTime(txId string)
-	GetTxElapsedTime(txId string) *core.TxElapsedTime
+	GetTxElapsedTime(txId string) *tx_requests.TxElapsedTime
 }
 
 type UserController interface {

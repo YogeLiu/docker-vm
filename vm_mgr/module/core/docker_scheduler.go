@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
@@ -47,7 +48,7 @@ type DockerScheduler struct {
 	crossContractsCh chan *protogo.TxRequest
 
 	// TxRequestMgr key: tx unique id
-	TxRequestMgr map[string]*TxElapsedTime
+	TxRequestMgr map[string]*tx_requests.TxElapsedTime
 }
 
 // NewDockerScheduler new docker scheduler
@@ -63,7 +64,7 @@ func NewDockerScheduler(processManager *ProcessManager) *DockerScheduler {
 		crossContractsCh: make(chan *protogo.TxRequest, crossContractsChanSize),
 		responseChMap:    sync.Map{},
 		// TxRequestMgr key: tx unique id
-		TxRequestMgr: make(map[string]*TxElapsedTime),
+		TxRequestMgr: make(map[string]*tx_requests.TxElapsedTime),
 	}
 
 	return scheduler
@@ -226,11 +227,11 @@ func (s *DockerScheduler) RegisterTxElapsedTime(txRequest *protogo.TxRequest, st
 		s.logger.Debugf("duplicated tx, txid already exists: %s", txRequest.TxId)
 		return
 	}
-	s.TxRequestMgr[txRequest.TxId] = NewTxElapsedTime(txRequest.TxId, startTime)
+	s.TxRequestMgr[txRequest.TxId] = tx_requests.NewTxElapsedTime(txRequest.TxId, startTime)
 	return
 }
 
-func (s *DockerScheduler) AddTxSysCallElapsedTime(txId string, sysCallElapsedTime *SysCallElapsedTime) {
+func (s *DockerScheduler) AddTxSysCallElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime) {
 	if s.TxRequestMgr[txId] == nil {
 		return
 	}
@@ -238,7 +239,7 @@ func (s *DockerScheduler) AddTxSysCallElapsedTime(txId string, sysCallElapsedTim
 	return
 }
 
-func (s *DockerScheduler) AddTxCallContractElapsedTime(txId string, sysCallElapsedTime *SysCallElapsedTime) {
+func (s *DockerScheduler) AddTxCallContractElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime) {
 	if s.TxRequestMgr[txId] == nil {
 		return
 	}
@@ -251,6 +252,6 @@ func (s *DockerScheduler) RemoveTxElapsedTime(txId string) {
 	return
 }
 
-func (s *DockerScheduler) GetTxElapsedTime(txId string) *TxElapsedTime {
+func (s *DockerScheduler) GetTxElapsedTime(txId string) *tx_requests.TxElapsedTime {
 	return s.TxRequestMgr[txId]
 }

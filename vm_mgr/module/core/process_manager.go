@@ -15,6 +15,7 @@ import (
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
@@ -263,7 +264,7 @@ func (pm *ProcessManager) ModifyContractName(txRequest *protogo.TxRequest) error
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME, sysCallStart.UnixNano(), spend, 0)
 		pm.scheduler.AddTxSysCallElapsedTime(txRequest.TxId, sysCallElapsedTime)
 	}()
 
