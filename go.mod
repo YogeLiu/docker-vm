@@ -5,11 +5,11 @@ go 1.16
 require (
 	chainmaker.org/chainmaker/chainconf/v2 v2.2.3-0.20220607072052-653ff1f72ed5 // indirect
 	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220628025818-290c39d5f1c8
-	chainmaker.org/chainmaker/localconf/v2 v2.2.2-0.20220607115425-03689a750027
+	chainmaker.org/chainmaker/localconf/v2 v2.2.2-0.20220714065948-d56b9b5eaa1e
 	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220713115418-627748021f33
-	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220704085016-8d4e4164a9e1
+	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220719114924-bf00dd60367d
 	chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220714093409-76db3fe643ae
-	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220630074844-e45e59cf56f3
+	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220719120450-b21a8ffb3573
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0

@@ -2,8 +2,6 @@ package docker_go
 
 import (
 	"bytes"
-	"chainmaker.org/chainmaker/utils/v2"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,13 +15,8 @@ import (
 	"sync/atomic"
 
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
-	"chainmaker.org/chainmaker/common/v2/crypto"
-	bcx509 "chainmaker.org/chainmaker/common/v2/crypto/x509"
-	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
-	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
 	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
@@ -701,37 +694,8 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		return getSenderAddressResponse, gasUsed
 	}
 
-	var bytes []byte
-	bytes, err = txSimContext.Get(chainConfigContractName, []byte(keyChainConfig))
-	if err != nil {
-		r.logger.Errorf("txSimContext get failed, name[%s] key[%s] err: %s",
-			chainConfigContractName, keyChainConfig, err.Error())
-		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		getSenderAddressResponse.SysCallMessage.Message = err.Error()
-		getSenderAddressResponse.SysCallMessage.Payload = nil
-		return getSenderAddressResponse, gasUsed
-	}
-
-	var chainConfig configPb.ChainConfig
-	if err = proto.Unmarshal(bytes, &chainConfig); err != nil {
-		r.logger.Errorf("unmarshal chainConfig failed, contractName %s err: %+v", chainConfigContractName, err)
-		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		getSenderAddressResponse.SysCallMessage.Message = err.Error()
-		getSenderAddressResponse.SysCallMessage.Payload = nil
-		return getSenderAddressResponse, gasUsed
-	}
-
-	/*
-		| memberType            | memberInfo |
-		| ---                   | ---        |
-		| MemberType_CERT       | PEM        |
-		| MemberType_CERT_HASH  | HASH       |
-		| MemberType_PUBLIC_KEY | PEM        |
-		| MemberType_ALIAS      | ALIAS      |
-	*/
-
 	var address string
-	address, err = r.getSenderAddress(chainConfig, txSimContext)
+	address, err = txSimContext.GetStrAddrFromPbMember(txSimContext.GetSender())
 	if err != nil {
 		r.logger.Error(err.Error())
 		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
@@ -747,44 +711,6 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 	}
 
 	return getSenderAddressResponse, gasUsed
-}
-
-func (r *RuntimeInstance) getSenderAddress(
-	chainConfig configPb.ChainConfig,
-	txSimContext protocol.TxSimContext,
-) (string, error) {
-
-	var err error
-	sender := txSimContext.GetSender()
-
-	switch sender.MemberType {
-	case accesscontrol.MemberType_CERT:
-		return utils.GetStrAddrFromPbMember(sender, chainConfig.Vm.AddrType, 0)
-	case accesscontrol.MemberType_CERT_HASH,
-		accesscontrol.MemberType_ALIAS:
-		certHashKey := hex.EncodeToString(sender.MemberInfo)
-		certBytes, err := txSimContext.Get(syscontract.SystemContract_CERT_MANAGE.String(), []byte(certHashKey))
-		if err != nil {
-			r.logger.Errorf("get cert from chain failed, %s", err.Error())
-			return "", err
-		}
-		var cert *bcx509.Certificate
-		cert, err = utils.ParseCert(certBytes)
-		if err != nil {
-			return "", err
-		}
-		return utils.CertToAddrStr(cert, chainConfig.Vm.AddrType)
-	case accesscontrol.MemberType_PUBLIC_KEY:
-		return utils.GetStrAddrFromPbMember(
-			sender,
-			chainConfig.Vm.AddrType,
-			crypto.HashAlgoMap[chainConfig.Crypto.Hash],
-		)
-
-	default:
-		r.logger.Errorf("getSenderAddress failed, invalid member type")
-		return "", err
-	}
 }
 
 func kvIteratorCreate(txSimContext protocol.TxSimContext, calledContractName string,
