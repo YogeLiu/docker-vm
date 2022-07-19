@@ -487,6 +487,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		}
 
 		txResponse.Events = events
+		txResponse.TxElapsedTime = &protogo.TxElapsedTime{}
 
 	} else {
 		txResponse.Code = protogo.ContractResultCode_FAIL
@@ -495,6 +496,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		txResponse.WriteMap = nil
 		txResponse.ReadMap = nil
 		txResponse.Events = nil
+		txResponse.TxElapsedTime = &protogo.TxElapsedTime{}
 	}
 
 	h.process.returnTxResponse(txResponse)
