@@ -74,7 +74,7 @@ const (
 	//DefaultMaxLocalContractNum = 1024
 
 	// ContractsDir dir save executable contract
-	ContractsDir = "contracts-bins"
+	ContractsDir = "contract-bins"
 	// SockDir dir save domain socket file
 	SockDir = "contract-engine-sock"
 	// EngineSockName domain socket file name
