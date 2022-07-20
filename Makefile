@@ -1,7 +1,7 @@
 VERSION221=v2.2.2_qc
 VERSION222=v2.2.2
 VERSION=v2.2.3_qc
-IMAGE_VERSION=v2.2.3
+IMAGE_VERSION=v2.2.4
 
 BUILD_TIME = $(shell date "+%Y%m%d%H%M%S")
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)

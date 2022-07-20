@@ -250,16 +250,13 @@ func (p *Process) LaunchProcess() *ExitErr {
 			p.processName, p.Handler.TxRequest.TxId, err, p.ProcessState)
 	}
 
-	//if !p.isCrossProcess {
-	//	return &ExitErr{
-	//		err:  err,
-	//		desc: stderr.String(),
-	//	}
-	//}
+	// log stderr string
+	stdErrStr := stderr.String()
+	p.logger.Infof("process %s stderr is: %s", p.processName, stdErrStr)
 
 	return &ExitErr{
 		err:  err,
-		desc: stderr.String(),
+		desc: stdErrStr,
 	}
 
 	// cross process can only be killed: success finished or original process timeout
@@ -337,6 +334,15 @@ func (p *Process) listenProcess() {
 			p.logger.Debugf("[%s] put tx response in response chan for in process [%s] with chan length[%d]",
 				txResponse.TxId, p.processName, len(responseCh))
 
+			// add tx call contract elapsed time to response
+			txElapsedTime := p.Handler.scheduler.GetTxElapsedTime(txResponse.TxId)
+			if txElapsedTime != nil {
+				txResponse.TxElapsedTime.CrossCallCnt = txElapsedTime.CrossCallCnt
+				txResponse.TxElapsedTime.CrossCallTime = txElapsedTime.CrossCallTime
+			}
+			// remove tx elapsed time
+			p.Handler.scheduler.RemoveTxElapsedTime(p.Handler.TxRequest.TxId)
+
 			responseCh <- txResponse
 
 			p.logger.Debugf("[%s] end handle tx in process [%s]", txResponse.TxId, p.processName)
@@ -352,8 +358,10 @@ func (p *Process) listenProcess() {
 				}
 			}
 		case <-p.Handler.txExpireTimer.C:
+			// triggered by tx time out: config.SandBoxTimeout
 			p.stopProcess(false)
 		case err := <-p.exitCh:
+			// triggered by process run into panic or exit
 			processReleased := p.handleProcessExit(err)
 			if processReleased {
 				return
@@ -371,6 +379,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
+		p.Handler.scheduler.RemoveTxElapsedTime(currentTx.TxId)
 		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
 		p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, existErr.err.Error())
 
@@ -410,10 +419,14 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		<-p.cmdReadyCh
 	}
 
+	txElapsedTime := p.Handler.scheduler.GetTxElapsedTime(p.Handler.TxRequest.TxId)
+
 	if currentTx.TxContext.CurrentHeight > 0 {
 		p.logger.Warnf("process [%s] [%s] handle cross contract err message [%s]", p.processName,
 			currentTx.TxId, existErr.err.Error())
-
+		if txElapsedTime != nil {
+			p.logger.Info(txElapsedTime.ToString(), txElapsedTime.PrintCallList())
+		}
 		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
 			currentTx.TxId, currentTx.TxContext.CurrentHeight)
 		p.Handler.scheduler.ReturnErrorCrossContractResponse(currentTx, errResponse)
@@ -422,6 +435,13 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	}
 
 	p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, err.Error())
+
+	// time statistics, log tx spend times with detail, then remove statistics data
+	if txElapsedTime != nil {
+		p.logger.Info(txElapsedTime.ToString(), txElapsedTime.PrintCallList())
+		p.Handler.scheduler.RemoveTxElapsedTime(p.Handler.TxRequest.TxId)
+	}
+
 	go p.startProcess()
 	return false
 }
@@ -463,6 +483,8 @@ func (p *Process) handleNewTx() (string, error) {
 
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
+	zapLogger := contractLogger.Desugar()
+	logLevel, _ := logger.TransformLogLevel(config.SandBoxLogLevel)
 	rd := bufio.NewReader(contractPipe)
 	for {
 		str, err := rd.ReadString('\n')
@@ -471,7 +493,7 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 			return
 		}
 		str = strings.TrimSuffix(str, "\n")
-		contractLogger.Debugf(str)
+		zapLogger.Check(logLevel, str).Write()
 	}
 }
 

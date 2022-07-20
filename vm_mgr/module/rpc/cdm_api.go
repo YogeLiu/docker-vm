@@ -1,5 +1,6 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -94,6 +95,7 @@ func (cdm *CDMApi) receiveMsgRoutine(c *CommunicateConn) {
 
 			cdm.logger.Debugf("cdm server recv msg %s[%s] , type: [%s]", receivedMsg.ChainId, receivedMsg.TxId, receivedMsg.Type)
 
+			// todo duplicate code and logic
 			switch receivedMsg.Type {
 			case protogo.CDMType_CDM_TYPE_TX_REQUEST:
 				err = cdm.handleTxRequest(receivedMsg)
@@ -194,6 +196,7 @@ func (cdm *CDMApi) handleTxRequest(cdmMessage *protogo.CDMMessage) error {
 	return nil
 }
 
+// todo duplicate code and logic
 func (cdm *CDMApi) handleGetStateResponse(cdmMessage *protogo.CDMMessage) error {
 
 	responseCh := cdm.scheduler.GetResponseChByTxId(cdmMessage.ChainId, cdmMessage.TxId)

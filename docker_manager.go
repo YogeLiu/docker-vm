@@ -1,5 +1,6 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -9,6 +10,7 @@ package docker_go
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -30,6 +32,7 @@ type DockerManager struct {
 	clientManager         *rpc.ClientManager            // grpc client
 	dockerVMConfig        *config.DockerVMConfig        // original config from local config
 	dockerContainerConfig *config.DockerContainerConfig // container setting
+	RequestMgr            *RequestMgr
 }
 
 // NewDockerManager return docker manager and running a default container
@@ -64,6 +67,7 @@ func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerMa
 		clientManager:         rpc.NewClientManager(dockerVMConfig),
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
+		RequestMgr:            NewRequestMgr(),
 	}
 
 	// init mount directory and subdirectory
@@ -97,6 +101,18 @@ func (m *DockerManager) StopVM() error {
 	return nil
 }
 
+func (m *DockerManager) BeforeSchedule(blockFingerprint string, blockHeight uint64) {
+	m.RequestMgr.AddRequest(blockFingerprint)
+}
+
+func (m *DockerManager) AfterSchedule(blockFingerprint string, blockHeight uint64) {
+	m.mgrLogger.InfoDynamic(
+		func() string {
+			return fmt.Sprintf("BlockHeight: %d, %s", blockHeight, m.RequestMgr.PrintBlockElapsedTime(blockFingerprint))
+		})
+	m.RequestMgr.RemoveRequest(blockFingerprint)
+}
+
 func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method,
 	codePath string, contract *common.Contract,
 	byteCode []byte, logger protocol.Logger) (protocol.RuntimeInstance, error) {
@@ -105,6 +121,7 @@ func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, c
 		ChainId:       chainId,
 		ClientManager: m.clientManager,
 		Log:           logger,
+		DockerManager: m,
 	}, nil
 }
 
@@ -128,14 +145,6 @@ func (m *DockerManager) initMountDirectory() error {
 		return err
 	}
 	m.mgrLogger.Debug("set contract dir: ", contractDir)
-
-	// create dms sock directory
-	sockDir := filepath.Join(mountDir, config.SockDir)
-	err = m.createDir(sockDir)
-	if err != nil {
-		return err
-	}
-	m.mgrLogger.Debug("set sock dir: ", sockDir)
 
 	// create log directory
 	logDir := m.dockerContainerConfig.HostLogDir

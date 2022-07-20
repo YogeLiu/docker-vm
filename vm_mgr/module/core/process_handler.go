@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
 
 	chainProtocol "chainmaker.org/chainmaker/protocol/v2"
 
@@ -226,6 +227,13 @@ func (h *ProcessHandler) sendInvoke() error {
 }
 
 func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) error {
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_STATE, sysCallStart.UnixNano(), spend)
+		h.scheduler.AddTxSysCallElapsedTime(getStateMsg.TxId, sysCallElapsedTime)
+	}()
 
 	// get data from chain maker
 	key := getStateMsg.Payload
@@ -258,6 +266,14 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 }
 
 func (h *ProcessHandler) handleGetBatchState(getStateMsg *SDKProtogo.DMSMessage) error {
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_BATCH_STATE, sysCallStart.UnixNano(), spend)
+		h.scheduler.AddTxSysCallElapsedTime(getStateMsg.TxId, sysCallElapsedTime)
+	}()
+
 	// get data from chain maker
 	key := getStateMsg.Payload
 
@@ -315,6 +331,14 @@ func constructCallContractErrorResponse(errMsg string, txId string, currentHeigh
 }
 
 func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessage) error {
+
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		callContractElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CALL_CONTRACT, sysCallStart.UnixNano(), spend)
+		h.scheduler.AddTxCallContractElapsedTime(callContractMsg.TxId, callContractElapsedTime)
+	}()
 
 	// validate cross contract params
 	var callContractRequest SDKProtogo.CallContractRequest
@@ -463,6 +487,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		}
 
 		txResponse.Events = events
+		txResponse.TxElapsedTime = &protogo.TxElapsedTime{}
 
 	} else {
 		txResponse.Code = protogo.ContractResultCode_FAIL
@@ -471,6 +496,7 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 		txResponse.WriteMap = nil
 		txResponse.ReadMap = nil
 		txResponse.Events = nil
+		txResponse.TxElapsedTime = &protogo.TxElapsedTime{}
 	}
 
 	h.process.returnTxResponse(txResponse)
@@ -478,6 +504,14 @@ func (h *ProcessHandler) handleCompleted(completedMsg *SDKProtogo.DMSMessage) er
 }
 
 func (h *ProcessHandler) handleCreateKvIterator(createKvIteratorMsg *SDKProtogo.DMSMessage) error {
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, sysCallStart.UnixNano(), spend)
+		h.scheduler.AddTxSysCallElapsedTime(createKvIteratorMsg.TxId, sysCallElapsedTime)
+	}()
+
 	keyList := createKvIteratorMsg.Payload
 
 	createKvIteratorReqMsg := &protogo.CDMMessage{
@@ -507,6 +541,14 @@ func (h *ProcessHandler) handleCreateKvIterator(createKvIteratorMsg *SDKProtogo.
 }
 
 func (h *ProcessHandler) handleConsumeKvIterator(consumeKvIteratorMsg *SDKProtogo.DMSMessage) error {
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR, sysCallStart.UnixNano(), spend)
+		h.scheduler.AddTxSysCallElapsedTime(consumeKvIteratorMsg.TxId, sysCallElapsedTime)
+	}()
+
 	KeyList := consumeKvIteratorMsg.Payload
 
 	consumeKvIteratorReqMsg := &protogo.CDMMessage{
@@ -535,6 +577,14 @@ func (h *ProcessHandler) handleConsumeKvIterator(consumeKvIteratorMsg *SDKProtog
 }
 
 func (h *ProcessHandler) handleCreateKeyHistoryIter(createKeyHistoryIterMsg *SDKProtogo.DMSMessage) error {
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, sysCallStart.UnixNano(), spend)
+		h.scheduler.AddTxSysCallElapsedTime(createKeyHistoryIterMsg.TxId, sysCallElapsedTime)
+	}()
+
 	keyList := createKeyHistoryIterMsg.Payload
 
 	createKeyHistoryIterReqMsg := &protogo.CDMMessage{
@@ -564,6 +614,14 @@ func (h *ProcessHandler) handleCreateKeyHistoryIter(createKeyHistoryIterMsg *SDK
 }
 
 func (h *ProcessHandler) handleConsumeKeyHistoryIter(consumeKeyHistoryIterMsg *SDKProtogo.DMSMessage) error {
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER, sysCallStart.UnixNano(), spend)
+		h.scheduler.AddTxSysCallElapsedTime(consumeKeyHistoryIterMsg.TxId, sysCallElapsedTime)
+	}()
+
 	keyList := consumeKeyHistoryIterMsg.Payload
 
 	consumeKeyHistoryIterReqMsg := &protogo.CDMMessage{
@@ -593,6 +651,14 @@ func (h *ProcessHandler) handleConsumeKeyHistoryIter(consumeKeyHistoryIterMsg *S
 }
 
 func (h *ProcessHandler) handleGetSenderAddr(msg *SDKProtogo.DMSMessage) error {
+	sysCallStart := time.Now()
+	defer func() {
+		// add time statistics
+		spend := time.Since(sysCallStart).Nanoseconds()
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS, sysCallStart.UnixNano(), spend)
+		h.scheduler.AddTxSysCallElapsedTime(msg.TxId, sysCallElapsedTime)
+	}()
+
 	getSenderAddrReqMsg := &protogo.CDMMessage{
 		TxId:    msg.TxId,
 		Type:    protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS,
