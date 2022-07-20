@@ -755,6 +755,7 @@ func mockLastChainConfig() (*configPb.ChainConfig, error) {
 }
 
 // 获取链配置，读取地址格式
+// nolint: deadcode, unused
 func mockTxGetChainConf_back(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().Get(
 		syscontract.SystemContract_CHAIN_CONFIG.String(),
@@ -764,6 +765,7 @@ func mockTxGetChainConf_back(simContext *mock.MockTxSimContext) {
 	).AnyTimes()
 }
 
+// nolint: unused
 func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	atomic.AddInt32(&chainConfigCounter, 1)
 
