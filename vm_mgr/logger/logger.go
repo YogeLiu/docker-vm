@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	DockerLogDir = "/log"          // mount directory for log
-	LogFileName  = "docker-go.log" // log file name
+	DockerLogDir = "/log"   // mount directory for log
+	LogFileName  = "go.log" // log file name
 )
 
 const (

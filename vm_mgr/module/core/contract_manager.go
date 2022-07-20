@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	ContractsDir                = "contracts" // ContractsDir dir save executable contract
+	ContractsDir                = "contracts-bins" // ContractsDir dir save executable contract
 	_contractManagerEventChSize = 64
 	_sizePerContract            = 15 // MiB
 )
