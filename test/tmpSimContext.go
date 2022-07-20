@@ -38,6 +38,11 @@ type TxContextMockTest struct {
 	CacheMap map[string][]byte
 }
 
+func (s *TxContextMockTest) GetStrAddrFromPbMember(pbMember *acPb.Member) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 //GetNoRecord read data from state, but not record into read set, only used for framework
 func (s *TxContextMockTest) GetNoRecord(contractName string, key []byte) ([]byte, error) {
 	//TODO implement me
@@ -305,14 +310,14 @@ func (s *TxContextMockTest) GetSender() *acPb.Member {
 	return s.sender
 }
 
-// func (*TxContextMockTest) GetBlockchainStore() protocol.BlockchainStore {
-// 	return &mockBlockchainStore{}
-//  }
+func (*TxContextMockTest) GetBlockchainStore() protocol.BlockchainStore {
+	return &mockBlockchainStore{}
+}
 
 // GetBlockchainStore returns blockchain store
-func (*TxContextMockTest) GetBlockchainStore() protocol.BlockchainStore {
-	return nil
-}
+//func (*TxContextMockTest) GetBlockchainStore() protocol.BlockchainStore {
+//	return nil
+//}
 
 // GetAccessControl returns access control
 func (*TxContextMockTest) GetAccessControl() (protocol.AccessControlProvider, error) {
@@ -354,6 +359,61 @@ func BaseParam(parameters map[string][]byte) {
 type mockBlockchainStore struct {
 }
 
+func (m mockBlockchainStore) CreateDatabase(contractName string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) DropDatabase(contractName string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) GetContractDbName(contractName string) string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) GetMemberExtraData(member *acPb.Member) (*acPb.MemberExtraData, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) GetTxWithRWSet(txId string) (*commonPb.TransactionWithRWSet, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) GetTxInfoWithRWSet(txId string) (*commonPb.TransactionInfoWithRWSet, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) GetTxWithInfo(txId string) (*commonPb.TransactionInfo, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) TxExistsInFullDB(txId string) (bool, uint64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) TxExistsInIncrementDB(txId string, startHeight uint64) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) GetTxInfoOnly(txId string) (*commonPb.TransactionInfo, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockBlockchainStore) ReadObjects(contractName string, keys [][]byte) ([][]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // GetContractByName
 // @param name
 // @return *commonPb.Contract
@@ -390,7 +450,9 @@ func (m mockBlockchainStore) GetBlockHeaderByHeight(height uint64) (*commonPb.Bl
 // @return *configPb.ChainConfig
 // @return error
 func (m mockBlockchainStore) GetLastChainConfig() (*configPb.ChainConfig, error) {
-	panic("implement me")
+	return &configPb.ChainConfig{
+		AccountConfig: nil,
+	}, nil
 }
 
 // GetTxHeight

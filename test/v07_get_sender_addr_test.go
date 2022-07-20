@@ -15,10 +15,12 @@ import (
 func TestDockerGoGetSenderAddr(t *testing.T) {
 	setupTest(t)
 
-	simContext := initMockSimContext(t)
+	simContext, ctrl := initMockSimContext(t)
+	mockGetLastChainConfig(simContext, ctrl)
 	mockTxQueryCertFromChain(simContext)
 	mockGetSender(simContext)
-	mockTxGetChainConf(simContext)
+	mockGetStrAddrFromPbMember(simContext)
+	// mockTxGetChainConf(simContext)
 	mockGetBlockVersion(simContext)
 	mockNormalGetrossInfo(simContext)
 	mockNormalGetDepth(simContext)
@@ -39,18 +41,18 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 		wantAddr string
 	}{
 		{zxlCertAddressFromCert},
-		{zxlCertAddressFromCert},
+		// {zxlCertAddressFromCert},
 		{zxlPKAddress},
-		{zxlCertAddressFromCert},
+		// {zxlCertAddressFromCert},
 
 		{cmCertAddressFromCert},
-		{cmCertAddressFromCert},
+		// {cmCertAddressFromCert},
 		{cmPKAddress},
-		{cmCertAddressFromCert},
+		// {cmCertAddressFromCert},
 	}
 
 	parameters := generateInitParams()
-	method := "GetSenderAddr"
+	method := "get_sender_address"
 
 	for index, data := range testData {
 		result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,

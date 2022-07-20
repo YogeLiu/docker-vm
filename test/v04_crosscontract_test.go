@@ -20,8 +20,8 @@ func TestDockerGoCrossCall(t *testing.T) {
 	// success test
 	parameters0 := generateInitParams()
 	parameters0["contract_name"] = []byte(ContractNameTest)
-	parameters0["contract_method"] = []byte("Display")
-	method := "CrossContract"
+	parameters0["contract_method"] = []byte("display")
+	method := "cross_contract"
 
 	contractInfo := commonPb.Contract{
 		Name:        ContractNameTest,
@@ -35,7 +35,8 @@ func TestDockerGoCrossCall(t *testing.T) {
 		Address:     "",
 	}
 
-	mockTxContext2 := initMockSimContext(t)
+	mockTxContext2, ctrl := initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext2, ctrl)
 	mockCrossCallGetDepth(mockTxContext2)
 	mockCrossCallGetCrossInfo(mockTxContext2)
 

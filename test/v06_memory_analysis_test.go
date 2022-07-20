@@ -16,11 +16,12 @@ import (
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
 	docker_go "chainmaker.org/chainmaker/vm-engine/v2"
+	"github.com/golang/mock/gomock"
 )
 
 const (
-	contractName = "contract_fact_cut07"
-	methodSave   = "Save"
+	contractName = "contract_fact_cut08"
+	methodSave   = "save"
 )
 
 func TestDockerGoMemory(t *testing.T) {
@@ -50,11 +51,13 @@ func TestDockerGoMemory(t *testing.T) {
 		Version:     ContractVersionTest,
 		RuntimeType: commonPb.RuntimeType_GO,
 	}
-	mockTxContext = initMockSimContext(t)
+	var ctrl *gomock.Controller
+	mockTxContext, ctrl = initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext, ctrl)
 	mockNormalGetDepth(mockTxContext)
 	mockNormalGetrossInfo(mockTxContext)
 
-	filePath := fmt.Sprintf("./testdata/%s.7z", contractName)
+	filePath := fmt.Sprintf("./testdata/%s", contractName)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))

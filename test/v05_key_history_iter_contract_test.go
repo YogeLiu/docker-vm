@@ -32,7 +32,7 @@ func TestDockerGoKeyHistoryKvIterator(t *testing.T) {
 	parameters := generateInitParams()
 	parameters["key"] = []byte("key1")
 	parameters["field"] = []byte("field1")
-	method := "KeyHistoryIter"
+	method := "key_history_kv_iter"
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
 		parameters, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.GetCode())
