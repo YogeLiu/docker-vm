@@ -19,6 +19,8 @@ type DockerVMConfig struct {
 	DockerVMPort          uint32 `mapstructure:"docker_vm_port"`
 	MaxSendMsgSize        uint32 `mapstructure:"max_send_msg_size"`
 	MaxRecvMsgSize        uint32 `mapstructure:"max_recv_msg_size"`
+	DisableInstall        bool   `mapstructure:"disable_install"`
+	DisableUpgrade        bool   `mapstructure:"disable_upgrade"`
 }
 
 // DockerContainerConfig docker container settings
