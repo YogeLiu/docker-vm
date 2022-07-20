@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	performContractName    = "contract_fact_cut07"
+	performContractName    = "contract_fact_cut08"
 	performContractVersion = "1.0.0"
 
 	// nolint: varcheck,unused
@@ -170,7 +170,7 @@ func testDeployCut() {
 
 	fmt.Printf("=== step 6 deploy 【%s】 ===\n", performContractName)
 
-	filePath := fmt.Sprintf("./testdata/%s.7z", performContractName)
+	filePath := fmt.Sprintf("./testdata/%s", performContractName)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))
@@ -207,7 +207,7 @@ func testCutSave() {
 	parameters := generateInitParams()
 	parameters["file_key"] = []byte("key")
 	parameters["file_name"] = []byte("name")
-	method := methodSave
+	method := "save"
 
 	newRuntimeInstance.Invoke(newContractId, method, nil, parameters,
 		performTxContext, uint64(123))

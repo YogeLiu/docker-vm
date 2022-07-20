@@ -15,6 +15,7 @@ import (
 
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -702,6 +703,22 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		getSenderAddressResponse.SysCallMessage.Message = err.Error()
 		getSenderAddressResponse.SysCallMessage.Payload = nil
 		return getSenderAddressResponse, gasUsed
+	}
+
+	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
+	if err != nil {
+		r.logger.Error(err.Error())
+		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+		getSenderAddressResponse.SysCallMessage.Message = err.Error()
+		getSenderAddressResponse.SysCallMessage.Payload = nil
+		return getSenderAddressResponse, gasUsed
+	}
+
+	if chainConfig.Vm.AddrType == configPb.AddrType_ZXL {
+		zxAddr := strings.Builder{}
+		zxAddr.WriteString("ZX")
+		zxAddr.WriteString(address)
+		address = zxAddr.String()
 	}
 
 	r.logger.Debug("get sender address: ", address)

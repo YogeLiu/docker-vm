@@ -196,7 +196,7 @@ func testDeployCutVersion(version string) {
 
 	fmt.Printf("=== step 6 deploy 【%s】 ===\n", performContractName)
 
-	filePath := fmt.Sprintf("./testdata/%s.7z", performContractName)
+	filePath := fmt.Sprintf("./testdata/%s", performContractName)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))

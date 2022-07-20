@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	docker_go "chainmaker.org/chainmaker/vm-engine/v2"
 	"github.com/stretchr/testify/assert"
@@ -50,11 +52,12 @@ func setupTest(t *testing.T) {
 	//step4: mock contractId, contractBin
 	fmt.Printf("======step4 mock contractId and txContext=======\n")
 	mockContractId = initContractId(commonPb.RuntimeType_GO)
-	mockTxContext = initMockSimContext(t)
+	var ctrl *gomock.Controller
+	mockTxContext, ctrl = initMockSimContext(t)
 	mockNormalGetDepth(mockTxContext)
 	mockNormalGetrossInfo(mockTxContext)
 
-	filePath := fmt.Sprintf("./testdata/%s.7z", ContractNameTest)
+	filePath := fmt.Sprintf("./testdata/%s", ContractNameTest)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))
@@ -62,12 +65,15 @@ func setupTest(t *testing.T) {
 
 	//step5: create new NewRuntimeInstance -- for create user contract
 	fmt.Printf("=== step 5 create new runtime instance ===\n")
-	mockLogger := newMockTestLogger(nil, testVMLogName)
+	mockLogger := newMockHoleLogger(nil, testVMLogName)
 	mockRuntimeInstance, err = mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 		"", nil, nil, mockLogger)
 	if err != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", err))
 	}
+
+	mockTxContext.EXPECT().GetContractBytecode(gomock.Any()).Return(contractBin, nil).AnyTimes()
+	mockGetLastChainConfig(mockTxContext, ctrl)
 
 	//step6: invoke user contract --- create user contract
 	fmt.Printf("=== step 6 init user contract ===\n")
@@ -92,17 +98,17 @@ func TestDockerGoBasicInvoke(t *testing.T) {
 
 	parameters := generateInitParams()
 	// parameters["method"] = []byte("display")
-	method := "Display"
+	method := "display"
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil, parameters,
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 
-	// parameters["method"] = []byte("not existed method")
+	parameters["method"] = []byte("not existed method")
 	method = "not existed method"
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil, parameters,
 		mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
-	assert.Equal(t, []byte("unknown contract method"), result.Result)
+	assert.Equal(t, []byte("unknown method"), result.Result)
 	fmt.Println(result)
 
 	tearDownTest()

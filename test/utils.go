@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"chainmaker.org/chainmaker/common/v2/crypto"
 	"chainmaker.org/chainmaker/common/v2/sortedmap"
 	"chainmaker.org/chainmaker/localconf/v2"
 	"chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
@@ -28,6 +29,7 @@ import (
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/protocol/v2/mock"
 	"chainmaker.org/chainmaker/protocol/v2/test"
+	"chainmaker.org/chainmaker/utils/v2"
 	dockergo "chainmaker.org/chainmaker/vm-engine/v2"
 	"chainmaker.org/chainmaker/vm/v2"
 	"github.com/docker/distribution/uuid"
@@ -44,7 +46,7 @@ const (
 
 	// ContractNameTest is test contract name
 	// ContractNameTest = "contract_test09"
-	ContractNameTest = "contract_test13"
+	ContractNameTest = "contract_test14"
 	ContractNameAddr = "xxxxxxaddressfehis"
 
 	// ContractVersionTest is test contract version
@@ -125,7 +127,7 @@ func newMockTestLogger(ctrl *gomock.Controller, name string) protocol.Logger {
 	return &GoLogger{}
 }
 
-func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
+func initMockSimContext(t *testing.T) (*mock.MockTxSimContext, *gomock.Controller) {
 	ctrl := gomock.NewController(t)
 	simContext := mock.NewMockTxSimContext(ctrl)
 
@@ -149,7 +151,7 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 
 	mockPutIntoReadSet(simContext)
 
-	return simContext
+	return simContext, ctrl
 
 }
 
@@ -667,31 +669,31 @@ func mockGetSender(simContext *mock.MockTxSimContext) {
 
 func mockTxSimContextGetSender() *accesscontrol.Member {
 	atomic.AddInt32(&senderCounter, 1)
-	switch senderCounter % 4 {
+	switch senderCounter % 2 {
 	case 1:
 		return &accesscontrol.Member{
 			OrgId:      chainId,
 			MemberType: accesscontrol.MemberType_CERT,
 			MemberInfo: []byte(certPEM),
 		}
-	case 2:
-		return &accesscontrol.Member{
-			OrgId:      chainId,
-			MemberType: accesscontrol.MemberType_CERT_HASH,
-			MemberInfo: nil,
-		}
-	case 3:
+	// case 2:
+	// 	return &accesscontrol.Member{
+	// 		OrgId:      chainId,
+	// 		MemberType: accesscontrol.MemberType_CERT_HASH,
+	// 		MemberInfo: nil,
+	// 	}
+	case 0:
 		return &accesscontrol.Member{
 			OrgId:      chainId,
 			MemberType: accesscontrol.MemberType_PUBLIC_KEY,
 			MemberInfo: []byte(pkPEM),
 		}
-	case 0:
-		return &accesscontrol.Member{
-			OrgId:      chainId,
-			MemberType: accesscontrol.MemberType_ALIAS,
-			MemberInfo: nil,
-		}
+	// case 0:
+	// 	return &accesscontrol.Member{
+	// 		OrgId:      chainId,
+	// 		MemberType: accesscontrol.MemberType_ALIAS,
+	// 		MemberInfo: nil,
+	// 	}
 	default:
 		return nil
 	}
@@ -717,8 +719,43 @@ func mockQueryCert(name string, nothing interface{}) ([]byte, error) {
 //	return 0
 //}
 
+func mockGetLastChainConfig(simContext *mock.MockTxSimContext, ctrl *gomock.Controller) {
+
+	blockchainStore := mock.NewMockBlockchainStore(ctrl)
+	blockchainStore.EXPECT().GetLastChainConfig().DoAndReturn(mockLastChainConfig).AnyTimes()
+
+	simContext.EXPECT().GetBlockchainStore().Return(blockchainStore).AnyTimes()
+}
+
+func mockLastChainConfig() (*configPb.ChainConfig, error) {
+	switch chainConfigCounter % 4 {
+	case 1, 2:
+		chainConfig := &configPb.ChainConfig{
+			AccountConfig: &configPb.GasAccountConfig{
+				DefaultGas: 10000,
+			},
+			Vm: &configPb.Vm{
+				AddrType: configPb.AddrType_ZXL,
+			},
+		}
+		return chainConfig, nil
+	case 3, 0:
+		chainConfig := &configPb.ChainConfig{
+			AccountConfig: &configPb.GasAccountConfig{
+				DefaultGas: 10000,
+			},
+			Vm: &configPb.Vm{
+				AddrType: configPb.AddrType_CHAINMAKER,
+			},
+		}
+		return chainConfig, nil
+	}
+
+	return nil, nil
+}
+
 // 获取链配置，读取地址格式
-func mockTxGetChainConf(simContext *mock.MockTxSimContext) {
+func mockTxGetChainConf_back(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().Get(
 		syscontract.SystemContract_CHAIN_CONFIG.String(),
 		[]byte(syscontract.SystemContract_CHAIN_CONFIG.String()),
@@ -763,6 +800,23 @@ func mockGetChainConf(name string, key []byte) ([]byte, error) {
 	default:
 		return nil, nil
 	}
+}
+
+func mockGetStrAddrFromPbMember(s *mock.MockTxSimContext) {
+	s.EXPECT().GetStrAddrFromPbMember(gomock.Any()).DoAndReturn(mockGetStrAddr).AnyTimes()
+}
+
+func mockGetStrAddr(pbMember *accesscontrol.Member) (string, error) {
+	atomic.AddInt32(&chainConfigCounter, 1)
+
+	switch chainConfigCounter % 4 {
+	case 1, 2:
+		return utils.GetStrAddrFromPbMember(pbMember, configPb.AddrType_ZXL, crypto.HASH_TYPE_SHA256)
+	case 3, 0:
+		return utils.GetStrAddrFromPbMember(pbMember, configPb.AddrType_CHAINMAKER, crypto.HASH_TYPE_SHA256)
+	}
+
+	return "", nil
 }
 
 func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte) {

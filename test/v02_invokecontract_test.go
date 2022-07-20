@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	methodPutState = "PutState"
-	methodGetState = "GetState"
+	methodPutState = "put_state"
+	methodGetState = "get_state"
 )
 
 // put state and delete state testing
@@ -39,7 +39,7 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters1["key"] = []byte("key2")
 	parameters1["field"] = []byte("field2")
 	parameters1["value"] = []byte("500")
-	method = "PutStateByte"
+	method = "put_state_byte"
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key2"), []byte("field2")), []byte("500"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil,
@@ -50,7 +50,8 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters2 := generateInitParams()
 	parameters2["key"] = []byte("key3")
 	parameters2["value"] = []byte("300")
-	method = "PutStateFromKey"
+	parameters2["method"] = []byte("put_state_from_key_byte")
+	method = invokeMethod
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key3"), nil), []byte("300"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil,
@@ -65,7 +66,9 @@ func TestDockerGoPutState(t *testing.T) {
 	parameters3["method"] = []byte("put_state_from_key_byte")
 	parameters3["key"] = []byte("key4")
 	parameters3["value"] = []byte("400")
-	method = "PutStateFromKeyByte"
+	parameters3["method"] = []byte("put_state_from_key_byte")
+
+	method = invokeMethod
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key4"), nil), []byte("400"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil,
@@ -197,7 +200,7 @@ func TestDockerGoOutRange(t *testing.T) {
 
 	parameters0 := generateInitParams()
 	parameters0["method"] = []byte("out_of_range")
-	method := "OutOfRange"
+	method := "out_of_range"
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
 		parameters0, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
@@ -220,7 +223,7 @@ func TestDockerGoInvalidMethod(t *testing.T) {
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
 		parameters0, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(1), result.Code)
-	assert.Equal(t, []byte("unknown contract method"), result.Result)
+	assert.Equal(t, []byte("unknown method"), result.Result)
 	fmt.Println(result)
 
 	tearDownTest()
