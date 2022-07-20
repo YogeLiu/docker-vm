@@ -336,7 +336,7 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		callContractElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_UNDEFINED, sysCallStart.UnixNano(), spend)
+		callContractElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CALL_CONTRACT, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxCallContractElapsedTime(callContractMsg.TxId, callContractElapsedTime)
 	}()
 

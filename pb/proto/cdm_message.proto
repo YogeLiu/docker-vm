@@ -76,6 +76,8 @@ enum CDMType {
 
     CDM_TYPE_GET_BATCH_STATE_RESPONSE = 20;
 
+    CDM_TYPE_CALL_CONTRACT = 21;
+
 }
 
 
