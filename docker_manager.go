@@ -36,7 +36,7 @@ type DockerManager struct {
 }
 
 // NewDockerManager return docker manager and running a default container
-func NewDockerManager(chainId string, vmConfig map[string]interface{}) *DockerManager {
+func NewDockerManager(chainId string, vmConfig map[string]interface{}) protocol.VmInstancesManager {
 
 	dockerVMConfig := &config.DockerVMConfig{}
 	_ = mapstructure.Decode(vmConfig, dockerVMConfig)
