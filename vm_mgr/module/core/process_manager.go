@@ -264,7 +264,7 @@ func (pm *ProcessManager) ModifyContractName(txRequest *protogo.TxRequest) error
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME, sysCallStart.UnixNano(), spend)
 		pm.scheduler.AddTxSysCallElapsedTime(txRequest.TxId, sysCallElapsedTime)
 	}()
 

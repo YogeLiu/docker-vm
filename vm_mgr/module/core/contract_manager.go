@@ -125,7 +125,7 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractKey strin
 		defer func() {
 			// add time statistics
 			spend := time.Since(sysCallStart).Nanoseconds()
-			sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(getByteCodeMsg.Type, sysCallStart.UnixNano(), spend, 0)
+			sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(getByteCodeMsg.Type, sysCallStart.UnixNano(), spend)
 			cm.scheduler.AddTxSysCallElapsedTime(getByteCodeMsg.TxId, sysCallElapsedTime)
 		}()
 
@@ -151,6 +151,7 @@ func (cm *ContractManager) lookupContractFromDB(chainId, txId, contractKey strin
 				return "", err
 			}
 		case <-time.After(getByteCodeTimeout):
+			cm.logger.Errorf("%s fail to get contract: %s bytecode, timeout", txId, contractKey)
 			return "", errors.New("fail to get bytecode, timeout")
 		}
 

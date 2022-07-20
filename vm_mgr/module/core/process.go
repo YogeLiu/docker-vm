@@ -252,7 +252,7 @@ func (p *Process) LaunchProcess() *ExitErr {
 
 	// log stderr string
 	stdErrStr := stderr.String()
-	p.logger.Warnf("process %s stderr is: %s", p.processName, stdErrStr)
+	p.logger.Infof("process %s stderr is: %s", p.processName, stdErrStr)
 
 	return &ExitErr{
 		err:  err,
@@ -379,6 +379,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
+		p.Handler.scheduler.RemoveTxElapsedTime(currentTx.TxId)
 		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
 		p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, existErr.err.Error())
 
@@ -418,10 +419,14 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		<-p.cmdReadyCh
 	}
 
+	txElapsedTime := p.Handler.scheduler.GetTxElapsedTime(p.Handler.TxRequest.TxId)
+
 	if currentTx.TxContext.CurrentHeight > 0 {
 		p.logger.Warnf("process [%s] [%s] handle cross contract err message [%s]", p.processName,
 			currentTx.TxId, existErr.err.Error())
-
+		if txElapsedTime != nil {
+			p.logger.Info(txElapsedTime.ToString(), txElapsedTime.PrintCallList())
+		}
 		errResponse := constructCallContractErrorResponse(utils.CrossContractRuntimePanicError.Error(),
 			currentTx.TxId, currentTx.TxContext.CurrentHeight)
 		p.Handler.scheduler.ReturnErrorCrossContractResponse(currentTx, errResponse)
@@ -432,10 +437,8 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, err.Error())
 
 	// time statistics, log tx spend times with detail, then remove statistics data
-	txElapsedTime := p.Handler.scheduler.GetTxElapsedTime(p.Handler.TxRequest.TxId)
 	if txElapsedTime != nil {
-		p.logger.Info(txElapsedTime.ToString())
-		p.logger.Info(txElapsedTime.PrintCallList())
+		p.logger.Info(txElapsedTime.ToString(), txElapsedTime.PrintCallList())
 		p.Handler.scheduler.RemoveTxElapsedTime(p.Handler.TxRequest.TxId)
 	}
 

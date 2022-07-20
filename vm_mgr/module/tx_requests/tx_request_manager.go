@@ -15,19 +15,16 @@ import (
 
 // SysCallElapsedTime syscall include read date from chainmaker node and cross call contract
 type SysCallElapsedTime struct {
-	OpType               protogo.CDMType
-	StartTime            int64
-	EndTime              int64
-	TotalTime            int64
-	StorageTimeInSysCall int64
+	OpType    protogo.CDMType
+	StartTime int64
+	TotalTime int64
 }
 
-func NewSysCallElapsedTime(opType protogo.CDMType, startTime int64, totalTime int64, storageTime int64) *SysCallElapsedTime {
+func NewSysCallElapsedTime(opType protogo.CDMType, startTime int64, totalTime int64) *SysCallElapsedTime {
 	return &SysCallElapsedTime{
-		OpType:               opType,
-		StartTime:            startTime,
-		TotalTime:            totalTime,
-		StorageTimeInSysCall: storageTime,
+		OpType:    opType,
+		StartTime: startTime,
+		TotalTime: totalTime,
 	}
 }
 
@@ -35,8 +32,8 @@ func (s *SysCallElapsedTime) ToString() string {
 	if s == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s start: %v, spend: %dμs, r/w store: %dμs; ",
-		s.OpType.String(), time.Unix(s.StartTime/1e9, s.StartTime%1e9), s.TotalTime/1000, s.StorageTimeInSysCall/1000,
+	return fmt.Sprintf("%s start: %v, spend: %dμs; ",
+		s.OpType.String(), time.Unix(s.StartTime/1e9, s.StartTime%1e9), s.TotalTime/1000,
 	)
 }
 
@@ -49,8 +46,8 @@ func (e *TxElapsedTime) PrintCallList() string {
 		sb.WriteString(sysCallTime.ToString())
 	}
 	sb.WriteString("cross calls: ")
-	for _, sysCallTime := range e.CrossCallList {
-		sb.WriteString(sysCallTime.ToString())
+	for _, callContractTime := range e.CrossCallList {
+		sb.WriteString(callContractTime.ToString())
 	}
 	return sb.String()
 }
@@ -63,7 +60,6 @@ type TxElapsedTime struct {
 	TotalTime             int64
 	SysCallCnt            int32
 	SysCallTime           int64
-	StorageTimeInSysCall  int64
 	ContingentSysCallCnt  int32
 	ContingentSysCallTime int64
 	CrossCallCnt          int32
@@ -84,9 +80,9 @@ func (e *TxElapsedTime) ToString() string {
 		return ""
 	}
 
-	return fmt.Sprintf("%s spend time: %dμs, syscall: %dμs(%d), r/w store: %dμs, possible syscall: %dμs(%d)"+
+	return fmt.Sprintf("%s spend time: %dμs, syscall: %dμs(%d), possible syscall: %dμs(%d)"+
 		"cross contract: %dμs(%d)",
-		e.TxId, e.TotalTime/1000, e.SysCallTime/1000, e.SysCallCnt, e.StorageTimeInSysCall/1000,
+		e.TxId, e.TotalTime/1000, e.SysCallTime/1000, e.SysCallCnt,
 		e.ContingentSysCallTime/1000, e.ContingentSysCallCnt, e.CrossCallTime/1000, e.CrossCallCnt,
 	)
 }
@@ -99,16 +95,14 @@ func (e *TxElapsedTime) AddSysCallElapsedTime(sysCallElapsedTime *SysCallElapsed
 
 	switch sysCallElapsedTime.OpType {
 	case protogo.CDMType_CDM_TYPE_GET_BYTECODE, protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME:
-		e.ContingentSysCallCnt += 1
+		e.ContingentSysCallCnt++
 		e.ContingentSysCallTime += sysCallElapsedTime.TotalTime
-		e.StorageTimeInSysCall += sysCallElapsedTime.StorageTimeInSysCall
 	case protogo.CDMType_CDM_TYPE_GET_STATE, protogo.CDMType_CDM_TYPE_GET_BATCH_STATE,
 		protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR,
 		protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER,
 		protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-		e.SysCallCnt += 1
+		e.SysCallCnt++
 		e.SysCallTime += sysCallElapsedTime.TotalTime
-		e.StorageTimeInSysCall += sysCallElapsedTime.StorageTimeInSysCall
 	default:
 		return
 	}
@@ -127,22 +121,4 @@ func (e *TxElapsedTime) AddCallContractElapsedTime(crossCallElapsedTime *SysCall
 
 	e.SysCallList = append(e.CrossCallList, crossCallElapsedTime)
 	return
-}
-
-func (e *TxElapsedTime) Add(t *TxElapsedTime) {
-	if t == nil {
-		return
-	}
-
-	t.TotalTime += t.TotalTime
-
-	e.SysCallCnt += t.SysCallCnt
-	e.SysCallTime += t.SysCallTime
-	e.StorageTimeInSysCall += t.StorageTimeInSysCall
-
-	e.ContingentSysCallCnt += t.ContingentSysCallCnt
-	e.ContingentSysCallTime += t.ContingentSysCallTime
-
-	e.CrossCallCnt += t.CrossCallCnt
-	e.CrossCallTime += t.CrossCallTime
 }

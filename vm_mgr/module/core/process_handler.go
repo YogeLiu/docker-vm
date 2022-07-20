@@ -231,7 +231,7 @@ func (h *ProcessHandler) handleGetState(getStateMsg *SDKProtogo.DMSMessage) erro
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_STATE, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_STATE, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxSysCallElapsedTime(getStateMsg.TxId, sysCallElapsedTime)
 	}()
 
@@ -270,7 +270,7 @@ func (h *ProcessHandler) handleGetBatchState(getStateMsg *SDKProtogo.DMSMessage)
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_BATCH_STATE, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_BATCH_STATE, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxSysCallElapsedTime(getStateMsg.TxId, sysCallElapsedTime)
 	}()
 
@@ -336,7 +336,7 @@ func (h *ProcessHandler) handleCallContract(callContractMsg *SDKProtogo.DMSMessa
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		callContractElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_UNDEFINED, sysCallStart.UnixNano(), spend, 0)
+		callContractElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_UNDEFINED, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxCallContractElapsedTime(callContractMsg.TxId, callContractElapsedTime)
 	}()
 
@@ -508,7 +508,7 @@ func (h *ProcessHandler) handleCreateKvIterator(createKvIteratorMsg *SDKProtogo.
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxSysCallElapsedTime(createKvIteratorMsg.TxId, sysCallElapsedTime)
 	}()
 
@@ -545,7 +545,7 @@ func (h *ProcessHandler) handleConsumeKvIterator(consumeKvIteratorMsg *SDKProtog
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxSysCallElapsedTime(consumeKvIteratorMsg.TxId, sysCallElapsedTime)
 	}()
 
@@ -581,7 +581,7 @@ func (h *ProcessHandler) handleCreateKeyHistoryIter(createKeyHistoryIterMsg *SDK
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxSysCallElapsedTime(createKeyHistoryIterMsg.TxId, sysCallElapsedTime)
 	}()
 
@@ -618,7 +618,7 @@ func (h *ProcessHandler) handleConsumeKeyHistoryIter(consumeKeyHistoryIterMsg *S
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxSysCallElapsedTime(consumeKeyHistoryIterMsg.TxId, sysCallElapsedTime)
 	}()
 
@@ -655,7 +655,7 @@ func (h *ProcessHandler) handleGetSenderAddr(msg *SDKProtogo.DMSMessage) error {
 	defer func() {
 		// add time statistics
 		spend := time.Since(sysCallStart).Nanoseconds()
-		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS, sysCallStart.UnixNano(), spend, 0)
+		sysCallElapsedTime := tx_requests.NewSysCallElapsedTime(protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS, sysCallStart.UnixNano(), spend)
 		h.scheduler.AddTxSysCallElapsedTime(msg.TxId, sysCallElapsedTime)
 	}()
 

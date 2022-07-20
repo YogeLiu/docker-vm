@@ -10,6 +10,7 @@ package docker_go
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -101,16 +102,15 @@ func (m *DockerManager) StopVM() error {
 }
 
 func (m *DockerManager) BeforeSchedule(blockFingerprint string, blockHeight uint64) {
-	go func() {
-		m.RequestMgr.AddRequest(blockFingerprint)
-	}()
+	m.RequestMgr.AddRequest(blockFingerprint)
 }
 
 func (m *DockerManager) AfterSchedule(blockFingerprint string, blockHeight uint64) {
-	go func() {
-		m.mgrLogger.Infof("BlockHeight: %s, %s", blockHeight, m.RequestMgr.PrintBlockElapsedTime(blockFingerprint))
-		m.RequestMgr.RemoveRequest(blockFingerprint)
-	}()
+	m.mgrLogger.InfoDynamic(
+		func() string {
+			return fmt.Sprintf("BlockHeight: %d, %s", blockHeight, m.RequestMgr.PrintBlockElapsedTime(blockFingerprint))
+		})
+	m.RequestMgr.RemoveRequest(blockFingerprint)
 }
 
 func (m *DockerManager) NewRuntimeInstance(txSimContext protocol.TxSimContext, chainId, method,

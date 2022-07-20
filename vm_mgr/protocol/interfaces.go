@@ -47,7 +47,7 @@ type Scheduler interface {
 	// time statistics
 	RegisterTxElapsedTime(txRequest *protogo.TxRequest, startTime int64)
 	AddTxSysCallElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime)
-	AddTxCallContractElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime)
+	AddTxCallContractElapsedTime(txId string, callContractElapsedTime *tx_requests.SysCallElapsedTime)
 	RemoveTxElapsedTime(txId string)
 	GetTxElapsedTime(txId string) *tx_requests.TxElapsedTime
 }
