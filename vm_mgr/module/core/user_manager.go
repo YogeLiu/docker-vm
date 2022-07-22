@@ -138,10 +138,13 @@ func (u *UsersManager) constructNewUser(userId int) *security.User {
 
 // GetAvailableUser pop user from queue header
 func (u *UsersManager) GetAvailableUser() (*security.User, error) {
+	if u.userQueue.GetQueueLength() == 0 {
+		u.logger.Error("user queue is empty，can not create new process")
+	}
 
 	user, err := u.userQueue.DequeueOrWaitForNextElement()
 	if err != nil {
-		u.logger.Errorf("fail to call DequeueOrWaitForNextElement")
+		u.logger.Errorf("fail to get available user: %s", err)
 		return nil, err
 	}
 

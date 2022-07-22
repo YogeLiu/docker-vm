@@ -76,6 +76,8 @@ enum CDMType {
 
     CDM_TYPE_GET_BATCH_STATE_RESPONSE = 20;
 
+    CDM_TYPE_CALL_CONTRACT = 21;
+
 }
 
 
@@ -131,6 +133,8 @@ message TxResponse {
 
     string chain_id = 8;
 
+    TxElapsedTime tx_elapsed_time= 9;
+
 }
 
 message DockerContractEvent {
@@ -163,6 +167,11 @@ enum ProcessState {
     PROCESS_STATE_CROSS_FINISHED = 4;
 
     PROCESS_STATE_CROSS_FAIL = 5;
+}
+
+message TxElapsedTime {
+    int32 CrossCallCnt = 1;
+    int64 CrossCallTime =2;
 }
 
 
