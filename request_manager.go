@@ -59,8 +59,9 @@ type TxElapsedTime struct {
 
 func NewTxElapsedTime(txId string, startTime int64) *TxElapsedTime {
 	return &TxElapsedTime{
-		TxId:      txId,
-		StartTime: startTime,
+		TxId:        txId,
+		StartTime:   startTime,
+		SysCallList: make([]*SysCallElapsedTime, 0, 5),
 	}
 }
 
@@ -105,6 +106,13 @@ func (e *TxElapsedTime) AddSysCallElapsedTime(sysCallElapsedTime *SysCallElapsed
 		e.SysCallTime += sysCallElapsedTime.TotalTime
 		e.StorageTimeInSysCall += sysCallElapsedTime.StorageTimeInSysCall
 	default:
+		return
+	}
+}
+
+// todo add lock (maybe do not need)
+func (e *TxElapsedTime) AddToSysCallList(sysCallElapsedTime *SysCallElapsedTime) {
+	if sysCallElapsedTime == nil {
 		return
 	}
 

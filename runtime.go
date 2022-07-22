@@ -194,27 +194,26 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	for {
 		select {
 		case recvMsg := <-responseCh:
+
+			// init syscall time statistics
+			sysCallStart := time.Now()
+			var storageTime int64
+			sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), 0, 0)
+			txElapsedTime.AddToSysCallList(sysCallElapsedTime)
+
+			// do syscall according to msg type
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
-				getByteCodeResponse, storageTime := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
+				getByteCodeResponse, readStorageTime := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
+				storageTime = readStorageTime
 				r.ClientManager.PutSysCallResponse(getByteCodeResponse)
 				r.Log.Debugf("tx [%s] finish get bytecode", uniqueTxKey)
 
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, storageTime)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
-
 			case protogo.CDMType_CDM_TYPE_GET_STATE:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
-				getStateResponse, storageTime, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
-
+				getStateResponse, readStorageTime, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
+				storageTime = readStorageTime
 				if pass {
 					gasUsed, err = gas.GetStateGasUsed(gasUsed, getStateResponse.Payload)
 					if err != nil {
@@ -226,18 +225,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.ClientManager.PutSysCallResponse(getStateResponse)
 				r.Log.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
 
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, storageTime)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
-
 			case protogo.CDMType_CDM_TYPE_GET_BATCH_STATE:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
-				getStateResponse, storageTime, pass := r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext)
-
+				getStateResponse, readStorageTime, pass := r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext)
+				storageTime = readStorageTime
 				if pass {
 					gasUsed, err = gas.GetBatchStateGasUsed(gasUsed, getStateResponse.Payload)
 					if err != nil {
@@ -249,15 +240,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.ClientManager.PutSysCallResponse(getStateResponse)
 				r.Log.Debugf("tx [%s] finish get state [%v]", uniqueTxKey, getStateResponse)
 
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, storageTime)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
-
 			case protogo.CDMType_CDM_TYPE_TX_RESPONSE:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("[%s] start handle response [%v]", uniqueTxKey, recvMsg)
 				// construct response
 				txResponse := recvMsg.TxResponse
@@ -321,8 +304,8 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.Log.Debugf("[%s] finish handle response [%v]", uniqueTxKey, contractResult)
 
 				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, 0)
+				sysCallElapsedTime.TotalTime = time.Since(sysCallStart).Nanoseconds()
+				sysCallElapsedTime.StorageTimeInSysCall = storageTime
 				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
 				txElapsedTime.CrossCallCnt = txResponse.TxElapsedTime.CrossCallCnt
 				txElapsedTime.CrossCallTime = txResponse.TxElapsedTime.CrossCallTime
@@ -331,8 +314,6 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				return contractResult, specialTxType
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("tx [%s] start create kv iterator [%v]", uniqueTxKey, recvMsg)
 				var createKvIteratorResponse *protogo.CDMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
@@ -341,15 +322,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.ClientManager.PutSysCallResponse(createKvIteratorResponse)
 				r.Log.Debugf("tx [%s] finish create kv iterator [%v]", uniqueTxKey, createKvIteratorResponse)
 
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, 0)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
-
 			case protogo.CDMType_CDM_TYPE_CONSUME_KV_ITERATOR:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("tx [%s] start consume kv iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKvIteratorResponse *protogo.CDMMessage
 				consumeKvIteratorResponse, gasUsed = r.handleConsumeKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
@@ -357,15 +330,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.ClientManager.PutSysCallResponse(consumeKvIteratorResponse)
 				r.Log.Debugf("tx [%s] finish consume kv iterator [%v]", uniqueTxKey, consumeKvIteratorResponse)
 
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, 0)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
-
 			case protogo.CDMType_CDM_TYPE_CREATE_KEY_HISTORY_ITER:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("tx [%s] start create key history iterator [%v]", uniqueTxKey, recvMsg)
 				var createKeyHistoryIterResp *protogo.CDMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
@@ -373,14 +338,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.ClientManager.PutSysCallResponse(createKeyHistoryIterResp)
 				r.Log.Debugf("tx [%s] finish create key history iterator [%v]", uniqueTxKey, createKeyHistoryIterResp)
 
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, 0)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
-
 			case protogo.CDMType_CDM_TYPE_CONSUME_KEY_HISTORY_ITER:
-				sysCallStart := time.Now()
 
 				r.Log.Debugf("tx [%s] start consume key history iterator [%v]", uniqueTxKey, recvMsg)
 				var consumeKeyHistoryResp *protogo.CDMMessage
@@ -388,41 +346,21 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.ClientManager.PutSysCallResponse(consumeKeyHistoryResp)
 				r.Log.Debugf("tx [%s] finish consume key history iterator [%v]", uniqueTxKey, consumeKeyHistoryResp)
 
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, 0)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
-
 			case protogo.CDMType_CDM_TYPE_GET_SENDER_ADDRESS:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("tx [%s] start get sender address [%v]", uniqueTxKey, recvMsg)
 				var getSenderAddressResp *protogo.CDMMessage
 				getSenderAddressResp, gasUsed = r.handleGetSenderAddress(uniqueTxKey, txSimContext, gasUsed)
 				r.ClientManager.PutSysCallResponse(getSenderAddressResp)
 				r.Log.Debugf("tx [%s] finish get sender address [%v]", uniqueTxKey, getSenderAddressResp)
 
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, 0)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
-
 			case protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME:
-				sysCallStart := time.Now()
-
 				r.Log.Debugf("tx [%s] start get contract name [%v]", uniqueTxKey, recvMsg)
 				var getContractNameResp *protogo.CDMMessage
-				getContractNameResp, storageTime := r.handleGetContractName(uniqueTxKey, recvMsg, txSimContext)
+				getContractNameResp, readStorageTime := r.handleGetContractName(uniqueTxKey, recvMsg, txSimContext)
+				storageTime = readStorageTime
+
 				r.ClientManager.PutSysCallResponse(getContractNameResp)
 				r.Log.Debugf("tx [%s] finish get contract name [%v]", uniqueTxKey, getContractNameResp)
-
-				// add time statistics
-				spend := time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), spend, storageTime)
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				r.Log.Debugf(txElapsedTime.ToString())
 
 			default:
 				contractResult.GasUsed = gasUsed
@@ -432,6 +370,13 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					"fail to receive request",
 				)
 			}
+
+			// end time statistics; modify total spend time and storage time
+			sysCallElapsedTime.TotalTime = time.Since(sysCallStart).Nanoseconds()
+			sysCallElapsedTime.StorageTimeInSysCall = storageTime
+			txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
+			r.Log.Debug(txElapsedTime.ToString(), txElapsedTime.PrintSysCallList())
+
 		case <-timeoutC:
 			deleted := r.ClientManager.DeleteReceiveChan(r.ChainId, uniqueTxKey)
 			if deleted {
