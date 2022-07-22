@@ -19,6 +19,7 @@ import (
 	"time"
 
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
+	"go.uber.org/zap/zapcore"
 
 	"go.uber.org/zap"
 
@@ -485,6 +486,9 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT, config.DockerLogDir)
 	zapLogger := contractLogger.Desugar()
 	logLevel, _ := logger.TransformLogLevel(config.SandBoxLogLevel)
+	if logLevel > zapcore.ErrorLevel {
+		logLevel = zapcore.ErrorLevel
+	}
 	rd := bufio.NewReader(contractPipe)
 	for {
 		str, err := rd.ReadString('\n')
