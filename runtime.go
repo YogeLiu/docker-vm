@@ -256,6 +256,16 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.Log.Debugf("[%s] start handle response [%v]", uniqueTxKey, recvMsg)
 				// construct response
 				txResponse := recvMsg.TxResponse
+
+				// add time statistics
+				defer func() {
+					sysCallElapsedTime.TotalTime = time.Since(sysCallStart).Nanoseconds()
+					sysCallElapsedTime.StorageTimeInSysCall = storageTime
+					txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
+					txElapsedTime.CrossCallCnt = txResponse.TxElapsedTime.CrossCallCnt
+					txElapsedTime.CrossCallTime = txResponse.TxElapsedTime.CrossCallTime
+				}()
+
 				// tx fail, just return without merge read write map and events
 				if txResponse.Code != 0 {
 					contractResult.Code = 1
@@ -314,14 +324,6 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				contractResult.ContractEvent = contractEvents
 
 				r.Log.Debugf("[%s] finish handle response [%v]", uniqueTxKey, contractResult)
-
-				// add time statistics
-				sysCallElapsedTime.TotalTime = time.Since(sysCallStart).Nanoseconds()
-				sysCallElapsedTime.StorageTimeInSysCall = storageTime
-				txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-				txElapsedTime.CrossCallCnt = txResponse.TxElapsedTime.CrossCallCnt
-				txElapsedTime.CrossCallTime = txResponse.TxElapsedTime.CrossCallTime
-				r.Log.Debugf(txElapsedTime.ToString())
 
 				return contractResult, specialTxType
 
