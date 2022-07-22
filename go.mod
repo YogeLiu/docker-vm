@@ -6,10 +6,11 @@ require (
 	chainmaker.org/chainmaker/chainconf/v2 v2.2.3-0.20220607072052-653ff1f72ed5 // indirect
 	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220628025818-290c39d5f1c8
 	chainmaker.org/chainmaker/localconf/v2 v2.2.2-0.20220714065948-d56b9b5eaa1e
+	chainmaker.org/chainmaker/logger/v2 v2.2.2-0.20220607065325-81b19abf90a7
 	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220713115418-627748021f33
-	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220719114924-bf00dd60367d
+	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220722034210-cb7eefe42958
 	chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220714093409-76db3fe643ae
-	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220720132124-5168e4cb955d
+	chainmaker.org/chainmaker/vm/v2 v2.2.3-0.20220722034811-c50198c9f2d8
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0

@@ -1,5 +1,6 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -7,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"errors"
 	"fmt"
 	"os"
@@ -30,6 +32,7 @@ type InstancesManager struct {
 	runtimeServer         *rpc.RuntimeServer                 // grpc server
 	dockerVMConfig        *config.DockerVMConfig             // original config from local config
 	dockerContainerConfig *config.DockerContainerConfig      // container setting
+	BlockDurationMgr      *utils.BlockTxsDurationMgr
 }
 
 // NewInstancesManager return docker vm instance manager
@@ -61,6 +64,7 @@ func NewInstancesManager(chainId string, logger protocol.Logger, vmConfig map[st
 		clientMgr:             rpc.NewClientManager(chainId, logger, dockerVMConfig),
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
+		BlockDurationMgr:      utils.NewBlockTxsDurationMgr(),
 	}
 
 	// init mount directory and subdirectory
@@ -95,6 +99,7 @@ func (m *InstancesManager) NewRuntimeInstance(txSimContext protocol.TxSimContext
 		event:               make([]*commonPb.ContractEvent, 0),
 		sandboxMsgCh:        make(chan *protogo.DockerVMMessage, 1),
 		contractEngineMsgCh: make(chan *protogo.DockerVMMessage, 1),
+		DockerManager:       m,
 	}, nil
 }
 
@@ -138,6 +143,20 @@ func (m *InstancesManager) StopVM() error {
 
 	m.mgrLogger.Info("stop chain [%s] docker vm", m.chainId)
 	return nil
+}
+
+// BeforeSchedule add request before block schedule
+func (m *InstancesManager) BeforeSchedule(blockFingerprint string, blockHeight uint64) {
+	m.BlockDurationMgr.AddBlockTxsDuration(blockFingerprint)
+}
+
+// AfterSchedule print tx log after block schedule
+func (m *InstancesManager) AfterSchedule(blockFingerprint string, blockHeight uint64) {
+	m.mgrLogger.InfoDynamic(
+		func() string {
+			return fmt.Sprintf("BlockHeight: %d, %s", blockHeight, m.BlockDurationMgr.PrintBlockTxsDuration(blockFingerprint))
+		})
+	m.BlockDurationMgr.RemoveBlockTxsDuration(blockFingerprint)
 }
 
 // InitMountDirectory init mount directory and subdirectories

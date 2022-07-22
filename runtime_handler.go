@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
@@ -286,7 +287,11 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 
 	contractName = string(contractNameBytes)
 
+	startTime := time.Now()
 	value, err = txSimContext.Get(contractName, stateKey)
+	if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+		r.logger.Warnf("failed to add latest storage duration, %v", err)
+	}
 
 	if err != nil {
 		r.logger.Errorf("fail to get state from sim context: %s", err)
@@ -328,7 +333,12 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 		return response, gasUsed
 	}
 
+	startTime := time.Now()
 	getKeys, err = txSimContext.GetKeys(keys.Keys)
+	if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+		r.logger.Warnf("failed to add latest storage duration, %v", err)
+	}
+
 	if err != nil {
 		response.SysCallMessage.Message = err.Error()
 		return response, gasUsed
@@ -1016,7 +1026,12 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 		r.logger.Warnf("[%s] bytecode is missing", txId)
 
 		// get bytecode 7z from txSimContext / database
+		startTime := time.Now()
 		byteCode, err = txSimContext.GetContractBytecode(contractName)
+		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+			r.logger.Warnf("failed to add latest storage duration, %v", err)
+		}
+
 		if err != nil || len(byteCode) == 0 {
 			r.logger.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
 				contractName)

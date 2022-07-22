@@ -76,3 +76,7 @@ func Exists(path string) (bool, error) {
 	}
 	return false, err
 }
+
+func ConstructBlockFingerPrint(chainID, timestamp, blockheight string) {
+
+}
