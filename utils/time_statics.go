@@ -52,6 +52,7 @@ type TxDuration struct {
 	CrossCallDuration         int64
 	SysCallList               []*SysCallDuration
 	CrossCallList             []*TxDuration
+	Sealed                    bool
 }
 
 func NewTxDuration(originalTxId, txId string, startTime int64) *TxDuration {
@@ -172,6 +173,10 @@ func (e *TxDuration) AddContingentSysCall(spend int64) {
 	e.ContingentSysCallDuration += spend
 }
 
+func (e *TxDuration) Seal() {
+	e.Sealed = true
+}
+
 type BlockTxsDuration struct {
 	//txs []*TxDuration
 	txs map[string]*TxDuration
@@ -191,11 +196,15 @@ func (b *BlockTxsDuration) AddTxDuration(t *TxDuration) {
 }
 
 func (e *TxDuration) getCallerNode() *TxDuration {
-	if len(e.CrossCallList) == 0 {
-		return e
+	for _, item := range e.CrossCallList {
+		if item.Sealed {
+			continue
+		}
+
+		return item.getCallerNode()
 	}
 
-	return e.CrossCallList[len(e.CrossCallList)-1].getCallerNode()
+	return e
 }
 
 func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
