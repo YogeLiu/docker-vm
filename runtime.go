@@ -130,19 +130,19 @@ func (r *RuntimeInstance) Invoke(
 
 	// init time statistics
 	startTime := time.Now()
-	r.txDuration = utils.NewTxDuration(uniqueTxKey, startTime.UnixNano())
+	r.txDuration = utils.NewTxDuration(originalTxId, uniqueTxKey, startTime.UnixNano())
+
+	// add time statistics
+	fingerprint := txSimContext.GetBlockFingerprint()
+	// if it is a query tx, fingerprint is "", not record this tx
+	if fingerprint != "" {
+		r.DockerManager.BlockDurationMgr.AddTx(fingerprint, r.txDuration)
+	}
 
 	defer func() {
-		// add time statistics
 		r.txDuration.TotalDuration = time.Since(startTime).Nanoseconds()
 		r.logger.Debugf(r.txDuration.ToString())
-
-		fingerprint := txSimContext.GetBlockFingerprint()
-		// if it is a query tx, fingerprint is "", not record this tx
-
-		if fingerprint != "" {
-			r.DockerManager.BlockDurationMgr.AddTx(fingerprint, r.txDuration)
-		}
+		r.DockerManager.BlockDurationMgr.FinishTx(fingerprint, r.txDuration)
 	}()
 
 	// register notify for sandbox msg

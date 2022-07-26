@@ -38,6 +38,7 @@ func (s *SysCallDuration) ToString() string {
 }
 
 type TxDuration struct {
+	OriginalTxId              string
 	TxId                      string
 	StartTime                 int64
 	EndTime                   int64
@@ -50,12 +51,14 @@ type TxDuration struct {
 	CrossCallCnt              int32
 	CrossCallDuration         int64
 	SysCallList               []*SysCallDuration
+	CrossCallList             []*TxDuration
 }
 
-func NewTxDuration(txId string, startTime int64) *TxDuration {
+func NewTxDuration(originalTxId, txId string, startTime int64) *TxDuration {
 	return &TxDuration{
-		TxId:      txId,
-		StartTime: startTime,
+		OriginalTxId: originalTxId,
+		TxId:         txId,
+		StartTime:    startTime,
 	}
 }
 
@@ -145,22 +148,23 @@ func (e *TxDuration) addSysCallDuration(duration *SysCallDuration) {
 	}
 }
 
-func (e *TxDuration) Add(t *TxDuration) {
-	if t == nil {
+func (e *TxDuration) Add(txDuration *TxDuration) {
+	if txDuration == nil {
 		return
 	}
 
-	t.TotalDuration += t.TotalDuration
+	// 跨合约调用时直接更新跟节点的以下属性，以便最终统计
+	e.TotalDuration += txDuration.TotalDuration
 
-	e.SysCallCnt += t.SysCallCnt
-	e.SysCallDuration += t.SysCallDuration
-	e.StorageDuration += t.StorageDuration
+	e.SysCallCnt += txDuration.SysCallCnt
+	e.SysCallDuration += txDuration.SysCallDuration
+	e.StorageDuration += txDuration.StorageDuration
 
-	e.ContingentSysCallCnt += t.ContingentSysCallCnt
-	e.ContingentSysCallDuration += t.ContingentSysCallDuration
+	e.ContingentSysCallCnt += txDuration.ContingentSysCallCnt
+	e.ContingentSysCallDuration += txDuration.ContingentSysCallDuration
 
-	e.CrossCallCnt += t.CrossCallCnt
-	e.CrossCallDuration += t.CrossCallDuration
+	e.CrossCallCnt += txDuration.CrossCallCnt
+	e.CrossCallDuration += txDuration.CrossCallDuration
 }
 
 func (e *TxDuration) AddContingentSysCall(spend int64) {
@@ -169,19 +173,49 @@ func (e *TxDuration) AddContingentSysCall(spend int64) {
 }
 
 type BlockTxsDuration struct {
-	txs []*TxDuration
+	//txs []*TxDuration
+	txs map[string]*TxDuration
 }
 
 // todo add lock
 func (b *BlockTxsDuration) AddTxDuration(t *TxDuration) {
-	b.txs = append(b.txs, t)
+	txDuration, ok := b.txs[t.OriginalTxId]
+	if !ok {
+		// original tx
+		b.txs[t.OriginalTxId] = t
+	}
+
+	// cross call tx
+	callerNode := txDuration.getCallerNode()
+	callerNode.CrossCallList = append(callerNode.CrossCallList, t)
+}
+
+func (e *TxDuration) getCallerNode() *TxDuration {
+	if len(e.CrossCallList) == 0 {
+		return e
+	}
+
+	return e.CrossCallList[len(e.CrossCallList)-1].getCallerNode()
+}
+
+func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
+	txDuration, ok := b.txs[t.OriginalTxId]
+	if !ok {
+		// original tx
+		b.txs[t.OriginalTxId] = t
+	}
+
+	// update root txDuration data to facilitate statistics in blocks
+	txDuration.SysCallCnt += t.SysCallCnt
+	txDuration.ContingentSysCallCnt += t.ContingentSysCallCnt
+	txDuration.CrossCallCnt += t.CrossCallCnt
 }
 
 func (b *BlockTxsDuration) ToString() string {
 	if b == nil {
 		return ""
 	}
-	txTotal := NewTxDuration("", 0)
+	txTotal := NewTxDuration("", "", 0)
 	for _, tx := range b.txs {
 		txTotal.Add(tx)
 	}
@@ -230,4 +264,13 @@ func (r *BlockTxsDurationMgr) AddTx(id string, txTime *TxDuration) {
 		return
 	}
 	r.blockDurations[id].AddTxDuration(txTime)
+}
+
+func (r *BlockTxsDurationMgr) FinishTx(id string, txTime *TxDuration) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	if r.blockDurations[id] == nil {
+		return
+	}
+	r.blockDurations[id].FinishTxDuration(txTime)
 }
