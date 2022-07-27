@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 function ut_cover() {
-  go test -coverprofile cover.out ./...
+  go test -v -coverprofile cover.out ./...
   total=$(go tool cover -func=cover.out | tail -1)
   echo ${total}
   rm cover.out

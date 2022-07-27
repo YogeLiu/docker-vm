@@ -127,6 +127,9 @@ func (r *RuntimeInstance) handlerCallContract(
 ) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
+	response.Response = &protogo.TxResponse{
+		TxDuration: &protogo.TxDuration{},
+	}
 	specialTxType := protocol.ExecOrderTxTypeNormal
 	// validate cross contract params
 	callContractPayload := recvMsg.SysCallMessage.Payload[config.KeyCallContractReq]
@@ -230,7 +233,10 @@ func (r *RuntimeInstance) handlerCallContract(
 		return response, gasUsed, specialTxType
 	}
 
-	response.SysCallMessage.Payload[config.KeyCallContractResp] = respBytes
+	response.SysCallMessage.Payload = map[string][]byte{
+		config.KeyCallContractResp: respBytes,
+	}
+
 	response.SysCallMessage.Code = protogo.DockerVMCode_OK
 	//response.SysCallMessage.Message = "success"
 
@@ -290,13 +296,13 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 	startTime := time.Now()
 	value, err = txSimContext.Get(contractName, stateKey)
 	if err != nil {
-		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
-			r.logger.Warnf("failed to add latest storage duration, %v", err)
-		}
-
 		r.logger.Errorf("fail to get state from sim context: %s", err)
 		response.SysCallMessage.Message = err.Error()
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+
+		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+			r.logger.Warnf("failed to add latest storage duration, %v", err)
+		}
 		return response, gasUsed
 	}
 
@@ -340,10 +346,11 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 	startTime := time.Now()
 	getKeys, err = txSimContext.GetKeys(keys.Keys)
 	if err != nil {
+		response.SysCallMessage.Message = err.Error()
+
 		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
 			r.logger.Warnf("failed to add latest storage duration, %v", err)
 		}
-		response.SysCallMessage.Message = err.Error()
 		return response, gasUsed
 	}
 
@@ -474,7 +481,9 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 
 	r.logger.Debug("create kv iterator: ", index)
 	createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
-	createKvIteratorResponse.SysCallMessage.Payload[config.KeyIterIndex] = bytehelper.IntToBytes(index)
+	createKvIteratorResponse.SysCallMessage.Payload = map[string][]byte{
+		config.KeyIterIndex: bytehelper.IntToBytes(index),
+	}
 
 	return createKvIteratorResponse, gasUsed
 }
@@ -1161,6 +1170,7 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.DockerVM
 		Type: msgType,
 		SysCallMessage: &protogo.SysCallMessage{
 			Payload: map[string][]byte{},
+			Message: "",
 		},
 		Response: nil,
 		Request:  nil,
