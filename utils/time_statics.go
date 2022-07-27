@@ -80,6 +80,11 @@ func (e *TxDuration) PrintSysCallList() string {
 	}
 	var sb strings.Builder
 	for _, sysCallTime := range e.SysCallList {
+		if sysCallTime.OpType == protogo.DockerVMType_CALL_CONTRACT_REQUEST {
+			sb.WriteString("start cross call from [" + e.TxId + "]")
+			sb.WriteString(e.PrintSysCallList())
+			sb.WriteString("end the cross call from [" + e.TxId + "]")
+		}
 		sb.WriteString(sysCallTime.ToString())
 	}
 	return sb.String()
@@ -154,7 +159,6 @@ func (e *TxDuration) Add(txDuration *TxDuration) {
 		return
 	}
 
-	// 跨合约调用时直接更新跟节点的以下属性，以便最终统计
 	e.TotalDuration += txDuration.TotalDuration
 
 	e.SysCallCnt += txDuration.SysCallCnt
@@ -210,8 +214,7 @@ func (e *TxDuration) getCallerNode() *TxDuration {
 func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
 	txDuration, ok := b.txs[t.OriginalTxId]
 	if !ok {
-		// original tx
-		b.txs[t.OriginalTxId] = t
+		return
 	}
 
 	// update root txDuration data to facilitate statistics in blocks
