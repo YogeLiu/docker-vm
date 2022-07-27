@@ -141,9 +141,9 @@ func (r *RuntimeInstance) Invoke(
 
 	defer func() {
 		r.txDuration.TotalDuration = time.Since(startTime).Nanoseconds()
-		r.logger.Debugf(r.txDuration.ToString())
 		r.txDuration.Seal()
 		r.DockerManager.BlockDurationMgr.FinishTx(fingerprint, r.txDuration)
+		r.logger.Debugf(r.txDuration.PrintSysCallList())
 	}()
 
 	// register notify for sandbox msg

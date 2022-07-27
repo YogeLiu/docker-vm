@@ -86,13 +86,20 @@ func (e *TxDuration) PrintSysCallList() string {
 		return "no syscalls"
 	}
 	var sb strings.Builder
+	crossCnt := len(e.CrossCallList)
+	crossIndex := 0
 	for _, sysCallTime := range e.SysCallList {
 		if sysCallTime.OpType == protogo.DockerVMType_CALL_CONTRACT_REQUEST {
-			sb.WriteString("start cross call from [" + e.TxId + "]")
-			sb.WriteString(e.PrintSysCallList())
-			sb.WriteString("end the cross call from [" + e.TxId + "]")
+			if crossIndex < crossCnt {
+				sb.WriteString(sysCallTime.ToString())
+				sb.WriteString("< details of the cross call from [" + e.TxId + "]: ")
+				sb.WriteString(e.CrossCallList[crossIndex].PrintSysCallList())
+				sb.WriteString("> ")
+				crossIndex++
+			}
+		} else {
+			sb.WriteString(sysCallTime.ToString())
 		}
-		sb.WriteString(sysCallTime.ToString())
 	}
 	return sb.String()
 }
@@ -125,6 +132,10 @@ func (e *TxDuration) EndSysCall(msg *protogo.DockerVMMessage) error {
 	latestSysCall.TotalDuration = time.Since(time.Unix(0, latestSysCall.StartTime)).Nanoseconds()
 	e.addSysCallDuration(latestSysCall)
 	if latestSysCall.OpType == protogo.DockerVMType_TX_RESPONSE {
+		if msg.Response.TxDuration == nil {
+			return nil
+		}
+
 		e.CrossCallCnt = msg.Response.TxDuration.CrossCallCnt
 		e.CrossCallDuration = msg.Response.TxDuration.CrossCallTime
 	}
@@ -200,10 +211,15 @@ type BlockTxsDuration struct {
 // AddTxDuration .
 func (b *BlockTxsDuration) AddTxDuration(t *TxDuration) {
 	// todo add lock
+	if b.txs == nil {
+		b.txs = make(map[string]*TxDuration)
+	}
+
 	txDuration, ok := b.txs[t.OriginalTxId]
 	if !ok {
 		// original tx
 		b.txs[t.OriginalTxId] = t
+		return
 	}
 
 	// cross call tx
@@ -225,6 +241,10 @@ func (e *TxDuration) getCallerNode() *TxDuration {
 
 // FinishTxDuration .
 func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
+	if b.txs == nil {
+		return
+	}
+
 	txDuration, ok := b.txs[t.OriginalTxId]
 	if !ok {
 		return
