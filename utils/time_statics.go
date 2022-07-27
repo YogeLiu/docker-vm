@@ -11,6 +11,7 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 )
 
+// SysCallDuration .
 type SysCallDuration struct {
 	OpType          protogo.DockerVMType
 	StartTime       int64
@@ -18,6 +19,7 @@ type SysCallDuration struct {
 	StorageDuration int64
 }
 
+// NewSysCallDuration .
 func NewSysCallDuration(opType protogo.DockerVMType, startTime int64, totalTime int64,
 	storageTime int64) *SysCallDuration {
 	return &SysCallDuration{
@@ -28,6 +30,7 @@ func NewSysCallDuration(opType protogo.DockerVMType, startTime int64, totalTime 
 	}
 }
 
+// ToString .
 func (s *SysCallDuration) ToString() string {
 	if s == nil {
 		return ""
@@ -37,6 +40,7 @@ func (s *SysCallDuration) ToString() string {
 	)
 }
 
+// TxDuration .
 type TxDuration struct {
 	OriginalTxId              string
 	TxId                      string
@@ -55,6 +59,7 @@ type TxDuration struct {
 	Sealed                    bool
 }
 
+// NewTxDuration .
 func NewTxDuration(originalTxId, txId string, startTime int64) *TxDuration {
 	return &TxDuration{
 		OriginalTxId: originalTxId,
@@ -63,6 +68,7 @@ func NewTxDuration(originalTxId, txId string, startTime int64) *TxDuration {
 	}
 }
 
+// ToString .
 func (e *TxDuration) ToString() string {
 	if e == nil {
 		return ""
@@ -74,6 +80,7 @@ func (e *TxDuration) ToString() string {
 	)
 }
 
+// PrintSysCallList print tx duration
 func (e *TxDuration) PrintSysCallList() string {
 	if e.SysCallList == nil {
 		return "no syscalls"
@@ -154,6 +161,7 @@ func (e *TxDuration) addSysCallDuration(duration *SysCallDuration) {
 	}
 }
 
+// Add .
 func (e *TxDuration) Add(txDuration *TxDuration) {
 	if txDuration == nil {
 		return
@@ -172,22 +180,26 @@ func (e *TxDuration) Add(txDuration *TxDuration) {
 	e.CrossCallDuration += txDuration.CrossCallDuration
 }
 
+// AddContingentSysCall .
 func (e *TxDuration) AddContingentSysCall(spend int64) {
 	e.ContingentSysCallCnt++
 	e.ContingentSysCallDuration += spend
 }
 
+// Seal .
 func (e *TxDuration) Seal() {
 	e.Sealed = true
 }
 
+// BlockTxsDuration .
 type BlockTxsDuration struct {
 	//txs []*TxDuration
 	txs map[string]*TxDuration
 }
 
-// todo add lock
+// AddTxDuration .
 func (b *BlockTxsDuration) AddTxDuration(t *TxDuration) {
+	// todo add lock
 	txDuration, ok := b.txs[t.OriginalTxId]
 	if !ok {
 		// original tx
@@ -211,6 +223,7 @@ func (e *TxDuration) getCallerNode() *TxDuration {
 	return e
 }
 
+// FinishTxDuration .
 func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
 	txDuration, ok := b.txs[t.OriginalTxId]
 	if !ok {
@@ -223,6 +236,7 @@ func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
 	txDuration.CrossCallCnt += t.CrossCallCnt
 }
 
+// ToString .
 func (b *BlockTxsDuration) ToString() string {
 	if b == nil {
 		return ""
@@ -234,12 +248,14 @@ func (b *BlockTxsDuration) ToString() string {
 	return txTotal.ToString()
 }
 
+// BlockTxsDurationMgr .
 type BlockTxsDurationMgr struct {
 	blockDurations map[string]*BlockTxsDuration
 	lock           sync.Mutex
 	logger         *logger.CMLogger
 }
 
+// NewBlockTxsDurationMgr .
 func NewBlockTxsDurationMgr() *BlockTxsDurationMgr {
 	return &BlockTxsDurationMgr{
 		blockDurations: make(map[string]*BlockTxsDuration),
@@ -247,11 +263,13 @@ func NewBlockTxsDurationMgr() *BlockTxsDurationMgr {
 	}
 }
 
+// PrintBlockTxsDuration .
 func (r *BlockTxsDurationMgr) PrintBlockTxsDuration(id string) string {
 	durations := r.blockDurations[id]
 	return durations.ToString()
 }
 
+// AddBlockTxsDuration .
 func (r *BlockTxsDurationMgr) AddBlockTxsDuration(id string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -262,6 +280,7 @@ func (r *BlockTxsDurationMgr) AddBlockTxsDuration(id string) {
 	r.logger.Warnf("receive duplicated block, fingerprint: %s", id)
 }
 
+// RemoveBlockTxsDuration .
 func (r *BlockTxsDurationMgr) RemoveBlockTxsDuration(id string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -278,6 +297,7 @@ func (r *BlockTxsDurationMgr) AddTx(id string, txTime *TxDuration) {
 	r.blockDurations[id].AddTxDuration(txTime)
 }
 
+// FinishTx .
 func (r *BlockTxsDurationMgr) FinishTx(id string, txTime *TxDuration) {
 	r.lock.Lock()
 	defer r.lock.Unlock()

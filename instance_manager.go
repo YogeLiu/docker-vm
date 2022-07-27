@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
-	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"errors"
 	"fmt"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/rpc"
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"github.com/mitchellh/mapstructure"
 )
 

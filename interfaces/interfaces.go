@@ -52,6 +52,7 @@ type forRuntimeInstance interface {
 	GetByteCodeRespChLen() int
 }
 
+// RuntimeService is the runtime service
 type RuntimeService interface {
 	RegisterSandboxMsgNotify(
 		chainId, txId string,

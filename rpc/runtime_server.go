@@ -35,6 +35,7 @@ type RuntimeServer struct {
 	stopOnce  sync.Once
 }
 
+// NewRuntimeServer .
 func NewRuntimeServer(chainId string, logger protocol.Logger, vmConfig *config.DockerVMConfig) (*RuntimeServer, error) {
 	errCh := make(chan error, 1)
 
@@ -89,6 +90,7 @@ func NewRuntimeServer(chainId string, logger protocol.Logger, vmConfig *config.D
 	}
 }
 
+// StartRuntimeServer .
 func (s *RuntimeServer) StartRuntimeServer(runtimeService *RuntimeService) error {
 	var startErr error
 	s.startOnce.Do(

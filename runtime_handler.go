@@ -289,15 +289,19 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 
 	startTime := time.Now()
 	value, err = txSimContext.Get(contractName, stateKey)
-	if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
-		r.logger.Warnf("failed to add latest storage duration, %v", err)
-	}
-
 	if err != nil {
+		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+			r.logger.Warnf("failed to add latest storage duration, %v", err)
+		}
+
 		r.logger.Errorf("fail to get state from sim context: %s", err)
 		response.SysCallMessage.Message = err.Error()
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		return response, gasUsed
+	}
+
+	if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+		r.logger.Warnf("failed to add latest storage duration, %v", err)
 	}
 
 	//r.logger.Debug("get value: ", string(value))
@@ -335,13 +339,16 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 
 	startTime := time.Now()
 	getKeys, err = txSimContext.GetKeys(keys.Keys)
-	if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
-		r.logger.Warnf("failed to add latest storage duration, %v", err)
-	}
-
 	if err != nil {
+		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+			r.logger.Warnf("failed to add latest storage duration, %v", err)
+		}
 		response.SysCallMessage.Message = err.Error()
 		return response, gasUsed
+	}
+
+	if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+		r.logger.Warnf("failed to add latest storage duration, %v", err)
 	}
 
 	r.logger.Debugf("get batch keys values: %v", getKeys)
@@ -1028,11 +1035,10 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 		// get bytecode 7z from txSimContext / database
 		startTime := time.Now()
 		byteCode, err = txSimContext.GetContractBytecode(contractName)
-		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
-			r.logger.Warnf("failed to add latest storage duration, %v", err)
-		}
-
 		if err != nil || len(byteCode) == 0 {
+			if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+				r.logger.Warnf("failed to add latest storage duration, %v", err)
+			}
 			r.logger.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
 				contractName)
 			if err != nil {
@@ -1041,6 +1047,10 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 				response.Response.Message = "contract byte is nil"
 			}
 			return response
+		}
+
+		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+			r.logger.Warnf("failed to add latest storage duration, %v", err)
 		}
 
 		// got extracted bytecode

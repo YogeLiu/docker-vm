@@ -47,6 +47,7 @@ const (
 	// ContractNameTest is test contract name
 	// ContractNameTest = "contract_test09"
 	ContractNameTest = "contract_test15"
+	// ContractNameAddr contract addr
 	ContractNameAddr = "xxxxxxaddressfehis"
 
 	// ContractVersionTest is test contract version
@@ -656,6 +657,7 @@ func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
 	).AnyTimes()
 }
 
+// GetBlockVersion get block version
 func GetBlockVersion() uint32 {
 	return uint32(2300)
 }
