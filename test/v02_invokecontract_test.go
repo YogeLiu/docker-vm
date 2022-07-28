@@ -180,20 +180,20 @@ func TestDockerGoGetState(t *testing.T) {
 	tearDownTest()
 }
 
-func TestDockerGoTimeout(t *testing.T) {
-	setupTest(t)
-
-	parameters0 := generateInitParams()
-	parameters0["method"] = []byte("time_out")
-	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
-		parameters0, mockTxContext, uint64(123))
-	assert.Equal(t, uint32(1), result.Code)
-	assert.Nil(t, result.Result)
-	fmt.Printf("%+v", result)
-	assert.Equal(t, "tx timeout", result.Message)
-	assert.Nil(t, result.ContractEvent)
-	tearDownTest()
-}
+// func TestDockerGoTimeout(t *testing.T) {
+// 	setupTest(t)
+//
+// 	parameters0 := generateInitParams()
+// 	parameters0["method"] = []byte("time_out")
+// 	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+// 		parameters0, mockTxContext, uint64(123))
+// 	assert.Equal(t, uint32(1), result.Code)
+// 	assert.Nil(t, result.Result)
+// 	fmt.Printf("%+v", result)
+// 	assert.Equal(t, "tx timeout", result.Message)
+// 	assert.Nil(t, result.ContractEvent)
+// 	tearDownTest()
+// }
 
 func TestDockerGoOutRange(t *testing.T) {
 	setupTest(t)
