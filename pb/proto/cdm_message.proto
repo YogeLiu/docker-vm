@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 */
 syntax = "proto3";
 
-package proto;
+package dockergo;
 
 option go_package = "chainmaker.org/chainmaker/vm-docker-go/vm_mgr/pb/protogo";
 

@@ -1,4 +1,4 @@
-VERSION=v2.2.3
+VERSION=v2.3.0
 
 CURRENT_PATH=$(pwd)
 TEST_PATH=${CURRENT_PATH}/test/testdata
