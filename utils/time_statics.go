@@ -19,7 +19,7 @@ type SysCallDuration struct {
 	StorageDuration int64
 }
 
-// NewSysCallDuration .
+// NewSysCallDuration construct a SysCallDuration
 func NewSysCallDuration(opType protogo.DockerVMType, startTime int64, totalTime int64,
 	storageTime int64) *SysCallDuration {
 	return &SysCallDuration{
@@ -131,14 +131,6 @@ func (e *TxDuration) EndSysCall(msg *protogo.DockerVMMessage) error {
 	}
 	latestSysCall.TotalDuration = time.Since(time.Unix(0, latestSysCall.StartTime)).Nanoseconds()
 	e.addSysCallDuration(latestSysCall)
-	if latestSysCall.OpType == protogo.DockerVMType_TX_RESPONSE {
-		if msg.Response.TxDuration == nil {
-			return nil
-		}
-
-		e.CrossCallCnt = msg.Response.TxDuration.CrossCallCnt
-		e.CrossCallDuration = msg.Response.TxDuration.CrossCallTime
-	}
 	return nil
 }
 
@@ -151,12 +143,14 @@ func (e *TxDuration) GetLatestSysCall() (*SysCallDuration, error) {
 }
 
 // todo add lock (maybe do not need)
+// addSysCallDuration add the count of system calls and the duration of system calls to the total record
 func (e *TxDuration) addSysCallDuration(duration *SysCallDuration) {
 	if duration == nil {
 		return
 	}
 	switch duration.OpType {
 	case protogo.DockerVMType_GET_BYTECODE_REQUEST:
+		// get bytecode are recorded separately, which is different from syscall
 		e.ContingentSysCallCnt++
 		e.ContingentSysCallDuration += duration.TotalDuration
 		e.StorageDuration += duration.StorageDuration
@@ -164,15 +158,22 @@ func (e *TxDuration) addSysCallDuration(duration *SysCallDuration) {
 		protogo.DockerVMType_CREATE_KV_ITERATOR_REQUEST, protogo.DockerVMType_CONSUME_KV_ITERATOR_REQUEST,
 		protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST, protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST,
 		protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
+		// record all syscalls except cross contract calls and get bytecode
 		e.SysCallCnt++
 		e.SysCallDuration += duration.TotalDuration
 		e.StorageDuration += duration.StorageDuration
+	case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
+		// cross contract calls are recorded separately, which is different from syscall
+		e.CrossCallCnt++
+		e.CrossCallDuration += duration.TotalDuration
 	default:
 		return
 	}
 }
 
-// Add .
+// Add the param txDuration to self
+// just add the root duration,
+// the duration of child nodes will be synchronized to the root node at the end of statistics
 func (e *TxDuration) Add(txDuration *TxDuration) {
 	if txDuration == nil {
 		return
@@ -191,30 +192,31 @@ func (e *TxDuration) Add(txDuration *TxDuration) {
 	e.CrossCallDuration += txDuration.CrossCallDuration
 }
 
-// AddContingentSysCall .
+// AddContingentSysCall add contingent syscall
 func (e *TxDuration) AddContingentSysCall(spend int64) {
 	e.ContingentSysCallCnt++
 	e.ContingentSysCallDuration += spend
 }
 
-// Seal .
+// Seal the txDuration, The sealed node will no longer update its state
+// and will not generate new cross contract calls at this node and its child nodes
 func (e *TxDuration) Seal() {
 	e.Sealed = true
 }
 
-// BlockTxsDuration .
+// BlockTxsDuration record the duration of all transactions in a block
 type BlockTxsDuration struct {
-	//txs []*TxDuration
 	txs map[string]*TxDuration
 }
 
-// AddTxDuration .
+// AddTxDuration add a TxDuration
 func (b *BlockTxsDuration) AddTxDuration(t *TxDuration) {
 	// todo add lock
 	if b.txs == nil {
 		b.txs = make(map[string]*TxDuration)
 	}
 
+	// the original txDuration is recorded in BlockTxsDuration as the root of the txDuration tree
 	txDuration, ok := b.txs[t.OriginalTxId]
 	if !ok {
 		// original tx
@@ -223,23 +225,30 @@ func (b *BlockTxsDuration) AddTxDuration(t *TxDuration) {
 	}
 
 	// cross call tx
+	// cross contract call finds its own parent node through the root
 	callerNode := txDuration.getCallerNode()
 	callerNode.CrossCallList = append(callerNode.CrossCallList, t)
 }
 
+// getCallerNode return the only node in the tree that can be called across contracts
 func (e *TxDuration) getCallerNode() *TxDuration {
 	for _, item := range e.CrossCallList {
+
+		// sealed nodes cannot be called across contracts
 		if item.Sealed {
 			continue
 		}
 
+		// unsealed nodes may be called across contracts
 		return item.getCallerNode()
 	}
 
+	// when the CrossCallList is empty or all nodes in CrossCallList are sealed,
+	// it is the only node that can initiate cross contract call
 	return e
 }
 
-// FinishTxDuration .
+// FinishTxDuration end time statistics
 func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
 	if b.txs == nil {
 		return
@@ -250,10 +259,15 @@ func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
 		return
 	}
 
-	// update root txDuration data to facilitate statistics in blocks
+	// add the following information to the root node when the cross call node finishes statistics
 	txDuration.SysCallCnt += t.SysCallCnt
+	txDuration.SysCallDuration += t.SysCallDuration
+
 	txDuration.ContingentSysCallCnt += t.ContingentSysCallCnt
+	txDuration.ContingentSysCallDuration += t.ContingentSysCallDuration
+
 	txDuration.CrossCallCnt += t.CrossCallCnt
+	txDuration.CrossCallDuration += t.CrossCallDuration
 }
 
 // ToString .
@@ -268,14 +282,14 @@ func (b *BlockTxsDuration) ToString() string {
 	return txTotal.ToString()
 }
 
-// BlockTxsDurationMgr .
+// BlockTxsDurationMgr record the txDuration of each block
 type BlockTxsDurationMgr struct {
 	blockDurations map[string]*BlockTxsDuration
 	lock           sync.Mutex
 	logger         *logger.CMLogger
 }
 
-// NewBlockTxsDurationMgr .
+// NewBlockTxsDurationMgr construct a BlockTxsDurationMgr
 func NewBlockTxsDurationMgr() *BlockTxsDurationMgr {
 	return &BlockTxsDurationMgr{
 		blockDurations: make(map[string]*BlockTxsDuration),
@@ -283,7 +297,7 @@ func NewBlockTxsDurationMgr() *BlockTxsDurationMgr {
 	}
 }
 
-// PrintBlockTxsDuration .
+// PrintBlockTxsDuration returns the duration of the specified block
 func (r *BlockTxsDurationMgr) PrintBlockTxsDuration(id string) string {
 	durations := r.blockDurations[id]
 	return durations.ToString()
@@ -319,6 +333,7 @@ func (r *BlockTxsDurationMgr) AddTx(id string, txTime *TxDuration) {
 
 // FinishTx .
 func (r *BlockTxsDurationMgr) FinishTx(id string, txTime *TxDuration) {
+	txTime.Seal()
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	if r.blockDurations[id] == nil {

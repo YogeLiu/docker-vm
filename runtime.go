@@ -141,7 +141,6 @@ func (r *RuntimeInstance) Invoke(
 
 	defer func() {
 		r.txDuration.TotalDuration = time.Since(startTime).Nanoseconds()
-		r.txDuration.Seal()
 		r.DockerManager.BlockDurationMgr.FinishTx(fingerprint, r.txDuration)
 		r.logger.Debugf(r.txDuration.PrintSysCallList())
 	}()

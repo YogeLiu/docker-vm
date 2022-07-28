@@ -163,8 +163,6 @@ message TxResponse {
     string contract_version = 9;
 
     string chain_id = 10;
-
-    TxDuration tx_duration = 11;
 }
 
 message DockerContractEvent {
@@ -228,9 +226,4 @@ message Event {
     string contract_name = 2;
     // Event payload
     repeated string data = 3;
-}
-
-message TxDuration {
-    int32 CrossCallCnt = 1;
-    int64 CrossCallTime =2;
 }

@@ -127,9 +127,6 @@ func (r *RuntimeInstance) handlerCallContract(
 ) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
-	response.Response = &protogo.TxResponse{
-		TxDuration: &protogo.TxDuration{},
-	}
 	specialTxType := protocol.ExecOrderTxTypeNormal
 	// validate cross contract params
 	callContractPayload := recvMsg.SysCallMessage.Payload[config.KeyCallContractReq]
