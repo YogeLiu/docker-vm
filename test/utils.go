@@ -36,7 +36,7 @@ const (
 	initMethod   = "init_contract"
 	invokeMethod = "invoke_contract"
 
-	ContractNameTest    = "contract_test04"
+	ContractNameTest    = "contract_test11"
 	ContractNameAddr    = "xxxxxxaddressfehis"
 	ContractVersionTest = "v1.0.0"
 

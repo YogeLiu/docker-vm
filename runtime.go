@@ -914,16 +914,16 @@ func keyHistoryIterNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
 		| ---   | ---         |
 		| 0     | txId        |
 		| 1     | blockHeight |
-		| 2     | value       |
-		| 3     | isDelete    |
-		| 4     | timestamp   |
+		| 2     | isDelete    |
+		| 3     | timestamp   |
+		| 4     | value       |
 	*/
 	response.Payload = func() []byte {
 		str := historyValue.TxId + "#" +
 			string(blockHeight) + "#" +
-			string(historyValue.Value) + "#" +
 			string(bytehelper.IntToBytes(int32(isDelete))) + "#" +
-			timestampStr
+			timestampStr + "#" +
+			string(historyValue.Value)
 		return []byte(str)
 	}()
 
