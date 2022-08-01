@@ -262,8 +262,10 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					sysCallElapsedTime.TotalTime = time.Since(sysCallStart).Nanoseconds()
 					sysCallElapsedTime.StorageTimeInSysCall = storageTime
 					txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
-					txElapsedTime.CrossCallCnt = txResponse.TxElapsedTime.CrossCallCnt
-					txElapsedTime.CrossCallTime = txResponse.TxElapsedTime.CrossCallTime
+					if txResponse.TxElapsedTime != nil {
+						txElapsedTime.CrossCallCnt = txResponse.TxElapsedTime.CrossCallCnt
+						txElapsedTime.CrossCallTime = txResponse.TxElapsedTime.CrossCallTime
+					}
 				}()
 
 				// tx fail, just return without merge read write map and events
