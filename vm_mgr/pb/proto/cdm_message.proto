@@ -75,6 +75,8 @@ enum CDMType {
     CDM_TYPE_GET_BATCH_STATE = 19;
 
     CDM_TYPE_GET_BATCH_STATE_RESPONSE = 20;
+
+    CDM_TYPE_CALL_CONTRACT = 21;
 }
 
 
@@ -129,6 +131,8 @@ message TxResponse {
     map<string, bytes> read_map = 7;
 
     string chain_id = 8;
+
+    TxElapsedTime tx_elapsed_time =9;
 }
 
 message DockerContractEvent {
@@ -141,7 +145,6 @@ message DockerContractEvent {
     // Event payload
     repeated string data = 4;
 }
-
 
 enum ContractResultCode {
     OK = 0;
@@ -161,6 +164,11 @@ enum ProcessState {
     PROCESS_STATE_CROSS_FINISHED = 4;
 
     PROCESS_STATE_CROSS_FAIL = 5;
+}
+
+message TxElapsedTime {
+    int32 CrossCallCnt = 1;
+    int64 CrossCallTime =2;
 }
 
 

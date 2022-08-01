@@ -81,6 +81,7 @@ type RuntimeInstance struct {
 	ChainId       string // chain id
 	ClientManager ClientManager
 	Log           protocol.Logger
+	DockerManager *DockerManager
 }
 
 // Invoke process one tx in docker and return result
@@ -90,6 +91,15 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	gasUsed uint64) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
 
 	originalTxId := txSimContext.GetTx().Payload.TxId
+
+	uniqueTxKey := r.ClientManager.GetUniqueTxKey(originalTxId)
+
+	// contract response
+	contractResult = &commonPb.ContractResult{
+		Code:    uint32(1),
+		Result:  nil,
+		Message: "",
+	}
 
 	if !r.ClientManager.HasActiveConnections() {
 		r.Log.Errorf("cdm client stream not ready, waiting reconnect, tx id: %s", originalTxId)
@@ -109,14 +119,6 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		return r.errorResult(contractResult, err, err.Error())
 	}
 
-	uniqueTxKey := r.ClientManager.GetUniqueTxKey(originalTxId)
-
-	// contract response
-	contractResult = &commonPb.ContractResult{
-		Code:    uint32(1),
-		Result:  nil,
-		Message: "",
-	}
 	specialTxType := protocol.ExecOrderTxTypeNormal
 
 	var err error
@@ -178,6 +180,22 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 		return r.errorResult(contractResult, err, err.Error())
 	}
 
+	// init time statistics
+	startTime := time.Now()
+	txElapsedTime := NewTxElapsedTime(uniqueTxKey, startTime.UnixNano())
+
+	defer func() {
+		// add time statistics
+		txElapsedTime.TotalTime = time.Since(startTime).Nanoseconds()
+		r.Log.Debugf(txElapsedTime.ToString())
+
+		requestId := txSimContext.GetBlockFingerprint()
+		// if it is a query tx, requestId is "", not record this tx
+		if requestId != "" {
+			r.DockerManager.RequestMgr.AddTx(requestId, txElapsedTime)
+		}
+	}()
+
 	// send message to tx chan
 	r.ClientManager.PutTxRequest(cdmMessage)
 
@@ -188,17 +206,26 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	for {
 		select {
 		case recvMsg := <-responseCh:
+
+			// init syscall time statistics
+			sysCallStart := time.Now()
+			var storageTime int64
+			sysCallElapsedTime := NewSysCallElapsedTime(recvMsg.Type, sysCallStart.UnixNano(), 0, 0)
+			txElapsedTime.AddToSysCallList(sysCallElapsedTime)
+
+			// do syscall according to msg type
 			switch recvMsg.Type {
 			case protogo.CDMType_CDM_TYPE_GET_BYTECODE:
 				r.Log.Debugf("tx [%s] start get bytecode [%v]", uniqueTxKey, recvMsg)
-				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
+				getByteCodeResponse, readStorageTime := r.handleGetByteCodeRequest(uniqueTxKey, recvMsg, byteCode, txSimContext)
+				storageTime = readStorageTime
 				r.ClientManager.PutSysCallResponse(getByteCodeResponse)
 				r.Log.Debugf("tx [%s] finish get bytecode", uniqueTxKey)
 
 			case protogo.CDMType_CDM_TYPE_GET_STATE:
 				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
-				getStateResponse, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
-
+				getStateResponse, readStorageTime, pass := r.handleGetStateRequest(uniqueTxKey, recvMsg, txSimContext)
+				storageTime = readStorageTime
 				if pass {
 					gasUsed, err = gas.GetStateGasUsed(gasUsed, getStateResponse.Payload)
 					if err != nil {
@@ -212,8 +239,8 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 			case protogo.CDMType_CDM_TYPE_GET_BATCH_STATE:
 				r.Log.Debugf("tx [%s] start get state [%v]", uniqueTxKey, recvMsg)
-				getStateResponse, pass := r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext)
-
+				getStateResponse, readStorageTime, pass := r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext)
+				storageTime = readStorageTime
 				if pass {
 					gasUsed, err = gas.GetBatchStateGasUsed(gasUsed, getStateResponse.Payload)
 					if err != nil {
@@ -229,6 +256,16 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				r.Log.Debugf("[%s] start handle response [%v]", uniqueTxKey, recvMsg)
 				// construct response
 				txResponse := recvMsg.TxResponse
+
+				// add time statistics
+				defer func() {
+					sysCallElapsedTime.TotalTime = time.Since(sysCallStart).Nanoseconds()
+					sysCallElapsedTime.StorageTimeInSysCall = storageTime
+					txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
+					txElapsedTime.CrossCallCnt = txResponse.TxElapsedTime.CrossCallCnt
+					txElapsedTime.CrossCallTime = txResponse.TxElapsedTime.CrossCallTime
+				}()
+
 				// tx fail, just return without merge read write map and events
 				if txResponse.Code != 0 {
 					contractResult.Code = 1
@@ -287,6 +324,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				contractResult.ContractEvent = contractEvents
 
 				r.Log.Debugf("[%s] finish handle response [%v]", uniqueTxKey, contractResult)
+
 				return contractResult, specialTxType
 
 			case protogo.CDMType_CDM_TYPE_CREATE_KV_ITERATOR:
@@ -331,7 +369,9 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 			case protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME:
 				r.Log.Debugf("tx [%s] start get contract name [%v]", uniqueTxKey, recvMsg)
 				var getContractNameResp *protogo.CDMMessage
-				getContractNameResp = r.handleGetContractName(uniqueTxKey, recvMsg, txSimContext)
+				getContractNameResp, readStorageTime := r.handleGetContractName(uniqueTxKey, recvMsg, txSimContext)
+				storageTime = readStorageTime
+
 				r.ClientManager.PutSysCallResponse(getContractNameResp)
 				r.Log.Debugf("tx [%s] finish get contract name [%v]", uniqueTxKey, getContractNameResp)
 
@@ -343,11 +383,22 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 					"fail to receive request",
 				)
 			}
+
+			// end time statistics; modify total spend time and storage time
+			sysCallElapsedTime.TotalTime = time.Since(sysCallStart).Nanoseconds()
+			sysCallElapsedTime.StorageTimeInSysCall = storageTime
+			txElapsedTime.AddSysCallElapsedTime(sysCallElapsedTime)
+			r.Log.Debug(txElapsedTime.ToString(), txElapsedTime.PrintSysCallList())
+
 		case <-timeoutC:
 			deleted := r.ClientManager.DeleteReceiveChan(r.ChainId, uniqueTxKey)
 			if deleted {
 				r.Log.Errorf("[%s] fail to receive response in 10 seconds and return timeout response",
 					uniqueTxKey)
+				r.Log.Infof(txElapsedTime.ToString())
+				r.Log.InfoDynamic(func() string {
+					return txElapsedTime.PrintSysCallList()
+				})
 				contractResult.GasUsed = gasUsed
 				return r.errorResult(contractResult, fmt.Errorf("tx timeout"),
 					"fail to receive response",
@@ -1233,9 +1284,10 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.C
 }
 
 func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo.CDMMessage,
-	byteCode []byte, txSimContext protocol.TxSimContext) *protogo.CDMMessage {
+	byteCode []byte, txSimContext protocol.TxSimContext) (*protogo.CDMMessage, int64) {
 
 	var err error
+	var storageTime int64
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BYTECODE_RESPONSE)
 
@@ -1244,7 +1296,10 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 
 	if len(byteCode) == 0 {
 		r.Log.Warnf("[%s] bytecode is missing", txId)
+		startTime := time.Now()
 		byteCode, err = txSimContext.GetContractBytecode(contractName)
+		spend := time.Since(startTime).Nanoseconds()
+		storageTime += spend
 		if err != nil || len(byteCode) == 0 {
 			r.Log.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
 				contractName)
@@ -1254,7 +1309,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 				response.Message = "contract byte is nil"
 			}
 
-			return response
+			return response, storageTime
 		}
 	}
 
@@ -1272,7 +1327,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 			// file may or may not exist, just run into another problem.
 			r.Log.Errorf("read file failed", err)
 			response.Message = err.Error()
-			return response
+			return response, storageTime
 		}
 
 		// save bytecode to disk
@@ -1280,7 +1335,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		if err != nil {
 			r.Log.Errorf("[%s] fail to save bytecode to path [%s]: %s", txId, contractZipPath, err)
 			response.Message = err.Error()
-			return response
+			return response, storageTime
 		}
 
 		// extract 7z file
@@ -1289,7 +1344,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		if err != nil {
 			r.Log.Errorf("[%s] fail to extract contract: %s, extract command: [%s]", txId, err, unzipCommand)
 			response.Message = err.Error()
-			return response
+			return response, storageTime
 		}
 
 		// remove 7z file
@@ -1298,7 +1353,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 			r.Log.Errorf("[%s] fail to remove zipped file: %s, path of should removed file is: [%s]", txId, err,
 				contractZipPath)
 			response.Message = err.Error()
-			return response
+			return response, storageTime
 		}
 
 		// replace contract name to contractName:version
@@ -1308,7 +1363,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 				"please make sure contract name should be same as contract name (first input name) while compiling",
 				txId, err)
 			response.Message = err.Error()
-			return response
+			return response, storageTime
 		}
 
 	}
@@ -1318,7 +1373,7 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		if err != nil {
 			r.Log.Errorf("fail to load contract executable file: %s, ", err)
 			response.Message = err.Error()
-			return response
+			return response, storageTime
 		}
 
 		response.ResultCode = protocol.ContractSdkSignalResultSuccess
@@ -1328,16 +1383,20 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(txId string, recvMsg *protogo
 		response.Payload = []byte(contractNameAndVersion)
 	}
 
-	return response
+	return response, storageTime
 }
 
 func (r *RuntimeInstance) handleGetContractName(txId string, recvMsg *protogo.CDMMessage,
-	txSimContext protocol.TxSimContext) *protogo.CDMMessage {
+	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, int64) {
 	var err error
+	var storageTime int64
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_CONTRACT_NAME_RESPONSE)
 
+	startTime := time.Now()
 	contractInfo, err := txSimContext.GetContractByName(string(recvMsg.Payload))
+	storageTime = time.Since(startTime).Nanoseconds()
+
 	if err != nil || contractInfo.Name == "" {
 		response.ResultCode = protocol.ContractSdkSignalResultFail
 		if err != nil {
@@ -1346,7 +1405,7 @@ func (r *RuntimeInstance) handleGetContractName(txId string, recvMsg *protogo.CD
 			response.Message = fmt.Sprintf("%v contract not exist", recvMsg.Payload)
 		}
 		response.Payload = nil
-		return response
+		return response, storageTime
 	}
 
 	contractNameAndAddress := strings.Join([]string{contractInfo.Name, contractInfo.Address}, "#")
@@ -1354,11 +1413,11 @@ func (r *RuntimeInstance) handleGetContractName(txId string, recvMsg *protogo.CD
 	response.Payload = []byte(contractNameAndAddress)
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
 
-	return response
+	return response, storageTime
 }
 
 func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.CDMMessage,
-	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, bool) {
+	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, int64, bool) {
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_STATE_RESPONSE)
 
@@ -1375,38 +1434,43 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.CD
 		contractField = keyList[2]
 	}
 
+	startTime := time.Now()
 	value, err = txSimContext.Get(contractName, protocol.GetKeyStr(contractKey, contractField))
+	spend := time.Since(startTime).Nanoseconds()
 
 	if err != nil {
 		r.Log.Errorf("fail to get state from sim context: %s", err)
 		response.Message = err.Error()
-		return response, false
+		return response, spend, false
 	}
 
 	r.Log.Debug("get value: ", string(value))
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
 	response.Payload = value
-	return response, true
+	return response, spend, true
 }
 
 func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *protogo.CDMMessage,
-	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, bool) {
+	txSimContext protocol.TxSimContext) (*protogo.CDMMessage, int64, bool) {
 	var err error
 	var payload []byte
 	var getKeys []*vmPb.BatchKey
+	var storageTime int64
 
 	response := r.newEmptyResponse(txId, protogo.CDMType_CDM_TYPE_GET_BATCH_STATE_RESPONSE)
 
 	keys := &vmPb.BatchKeys{}
 	if err = keys.Unmarshal(recvMsg.Payload); err != nil {
 		response.Message = err.Error()
-		return response, false
+		return response, storageTime, false
 	}
 
+	startTime := time.Now()
 	getKeys, err = txSimContext.GetKeys(keys.Keys)
+	storageTime = time.Since(startTime).Nanoseconds()
 	if err != nil {
 		response.Message = err.Error()
-		return response, false
+		return response, storageTime, false
 	}
 
 	r.Log.Debugf("get batch keys values: %v", getKeys)
@@ -1414,12 +1478,12 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 	payload, err = resp.Marshal()
 	if err != nil {
 		response.Message = err.Error()
-		return response, false
+		return response, storageTime, false
 	}
 
 	response.ResultCode = protocol.ContractSdkSignalResultSuccess
 	response.Payload = payload
-	return response, true
+	return response, storageTime, true
 }
 
 func (r *RuntimeInstance) errorResult(contractResult *commonPb.ContractResult,

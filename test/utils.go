@@ -128,6 +128,8 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 			return tx
 		}).AnyTimes()
 
+	mockGetBlockFingerprint(simContext)
+
 	return simContext
 }
 
@@ -139,6 +141,7 @@ func mockPut(simContext *mock.MockTxSimContext, name string, key, value []byte) 
 			return nil
 		},
 	).AnyTimes()
+	mockGetBlockFingerprint(simContext)
 }
 
 func generateInitParams() map[string][]byte {
@@ -447,6 +450,7 @@ func mockGetKeyHistoryKVHandle(simContext *mock.MockTxSimContext, iteratorIndex 
 			return keyHistoryKvIter, true
 		},
 	).AnyTimes()
+	mockGetBlockFingerprint(simContext)
 }
 
 func mockGetHistoryIterForKey(simContext *mock.MockTxSimContext, contractName string, key []byte) {
@@ -580,6 +584,16 @@ func GetBlockVersion() uint32 {
 		return 2220
 	}
 	return 2201
+}
+
+func mockGetBlockFingerprint(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetBlockFingerprint().DoAndReturn(
+		GetBlockFingerprint,
+	).AnyTimes()
+}
+
+func GetBlockFingerprint() string {
+	return ""
 }
 
 // 获取sender公钥

@@ -1,5 +1,6 @@
 /*
 Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -58,7 +59,7 @@ func NewCDMServer() (*CDMServer, error) {
 		port := os.Getenv(config.ENV_VM_SERVICE_PORT)
 
 		if port != "" {
-			endPoint = port
+			endPoint = ":" + port
 		} else {
 			endPoint = fmt.Sprintf(":%d", config.DefaultListenPort)
 		}

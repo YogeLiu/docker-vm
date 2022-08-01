@@ -1,14 +1,14 @@
 module chainmaker.org/chainmaker/vm-docker-go/v2
 
-go 1.15
+go 1.16
 
 require (
-	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220606153444-cedb486be1ec
+	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220614062456-558cc969cd2a
 	chainmaker.org/chainmaker/localconf/v2 v2.2.1
 	chainmaker.org/chainmaker/logger/v2 v2.2.1
-	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220610130509-c60ae43cb8a5
-	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220610132334-904790e2009e
-	chainmaker.org/chainmaker/utils/v2 v2.2.2
+	chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220627132320-95cc14a8d47d
+	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220728063208-6a7975a00555
+	chainmaker.org/chainmaker/utils/v2 v2.2.3-0.20220614081000-17efb6e04bcb
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
