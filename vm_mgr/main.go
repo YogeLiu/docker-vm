@@ -83,14 +83,7 @@ func startPProf(managerLogger *zap.SugaredLogger) {
 
 func initFilesPath(logger *zap.SugaredLogger) error {
 	var err error
-	// mkdir paths
-	contractDir := filepath.Join(config.DockerMountDir, config.ContractsDir)
-	err = utils.CreateDir(contractDir)
-	if err != nil {
-		return err
-	}
-	logger.Debug("set contract dir: ", contractDir)
-
+	// mkdir socket paths
 	sockDir := filepath.Join(config.DockerMountDir, config.SockDir)
 	err = utils.CreateDir(sockDir)
 	if err != nil {

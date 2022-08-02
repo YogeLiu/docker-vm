@@ -27,6 +27,8 @@ func TestDockerGoKvIterator(t *testing.T) {
 		},
 	).AnyTimes()
 
+	mockGetBlockFingerprint(mockTxContext)
+
 	// NewIterator 1
 	startKey1 := protocol.GetKeyStr("key2", "")
 	limit1 := protocol.GetKeyStr("key4", "")

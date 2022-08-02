@@ -9,8 +9,10 @@ package core
 
 import (
 	"sync"
+	"time"
 
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
@@ -44,6 +46,9 @@ type DockerScheduler struct {
 	responseChMap    sync.Map
 
 	crossContractsCh chan *protogo.TxRequest
+
+	// TxRequestMgr key: tx unique id
+	TxRequestMgr sync.Map
 }
 
 // NewDockerScheduler new docker scheduler
@@ -58,6 +63,8 @@ func NewDockerScheduler(processManager *ProcessManager) *DockerScheduler {
 		getByteCodeReqCh: make(chan *protogo.CDMMessage, ReqChanSize),
 		crossContractsCh: make(chan *protogo.TxRequest, crossContractsChanSize),
 		responseChMap:    sync.Map{},
+		// TxRequestMgr key: tx unique id
+		TxRequestMgr: sync.Map{},
 	}
 
 	return scheduler
@@ -142,14 +149,17 @@ func (s *DockerScheduler) listenIncomingTxRequest() {
 
 func (s *DockerScheduler) handleTx(txRequest *protogo.TxRequest) {
 	s.logger.Debugf("[%s] docker scheduler handle tx", txRequest.TxId)
+	s.RegisterTxElapsedTime(txRequest, time.Now().UnixNano())
 	err := s.processManager.AddTx(txRequest)
 	if err == utils.ContractFileError {
+		s.RemoveTxElapsedTime(txRequest.TxId)
 		s.logger.Errorf("failed to add tx, err is :%s, txId: %s",
 			err, txRequest.TxId)
 		s.ReturnErrorResponse(txRequest.ChainId, txRequest.TxId, err.Error())
 		return
 	}
 	if err != nil {
+		s.RemoveTxElapsedTime(txRequest.TxId)
 		s.logger.Warnf("add tx warning: err is :%s, txId: %s",
 			err, txRequest.TxId)
 		return
@@ -212,4 +222,55 @@ func (s *DockerScheduler) ReturnErrorCrossContractResponse(crossContractTx *prot
 		return
 	}
 	responseCh <- errResponse
+}
+
+func (s *DockerScheduler) RegisterTxElapsedTime(txRequest *protogo.TxRequest, startTime int64) {
+	_, ok := s.TxRequestMgr.Load(txRequest.TxId)
+	if ok {
+		s.logger.Warnf("duplicated tx, txid already exists: %s", txRequest.TxId)
+		return
+	}
+
+	txElapsedTime := tx_requests.NewTxElapsedTime(txRequest.TxId, startTime)
+	s.TxRequestMgr.Store(txRequest.TxId, txElapsedTime)
+
+	return
+}
+
+func (s *DockerScheduler) AddTxSysCallElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime) {
+	txElapsedTime, ok := s.TxRequestMgr.Load(txId)
+	if !ok {
+		s.logger.Warnf("%s time statistics record not exis: %s", txId, sysCallElapsedTime.ToString())
+		return
+	}
+	txElapsedTime.(*tx_requests.TxElapsedTime).AddSysCallElapsedTime(sysCallElapsedTime)
+	return
+}
+
+func (s *DockerScheduler) AddTxCallContractElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime) {
+	txElapsedTime, ok := s.TxRequestMgr.Load(txId)
+	if !ok {
+		s.logger.Warnf("%s time statistics record not exis: %s", txId, sysCallElapsedTime.ToString())
+		return
+	}
+	txElapsedTime.(*tx_requests.TxElapsedTime).AddCallContractElapsedTime(sysCallElapsedTime)
+	return
+}
+
+func (s *DockerScheduler) RemoveTxElapsedTime(txId string) {
+	_, ok := s.TxRequestMgr.Load(txId)
+	if !ok {
+		s.logger.Warnf("%s time statistics record not exis before delete", txId)
+		return
+	}
+	s.TxRequestMgr.Delete(txId)
+}
+
+func (s *DockerScheduler) GetTxElapsedTime(txId string) *tx_requests.TxElapsedTime {
+	txElapsedTime, ok := s.TxRequestMgr.Load(txId)
+	if !ok {
+		s.logger.Warnf("%s time statistics record not exis before get", txId)
+		return nil
+	}
+	return txElapsedTime.(*tx_requests.TxElapsedTime)
 }

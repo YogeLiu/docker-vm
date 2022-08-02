@@ -94,3 +94,7 @@ func (st *FixedFIFO) DequeueOrWaitForNextElementContext(ctx context.Context) (in
 
 	}
 }
+
+func (st *FixedFIFO) GetQueueLength() int {
+	return len(st.queue)
+}

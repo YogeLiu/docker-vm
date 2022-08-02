@@ -13,6 +13,7 @@ import (
 
 	"chainmaker.org/chainmaker/protocol/v2"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,16 +74,17 @@ func TestDockerGoPutState(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, []byte("400"), value)
 
+	fix_with_magic := "fix_with_magic"
 	parameters4 := generateInitParams()
 	parameters4["method"] = []byte("put_state")
-	parameters4["key"] = []byte("")
+	parameters4["key"] = []byte(fix_with_magic)
 	parameters4["field"] = []byte("")
 	parameters4["value"] = []byte("500")
-	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte(""), []byte("")), []byte("500"))
+	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte(fix_with_magic), []byte("")), []byte("500"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters4, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
-	value, ok = tmpSimContextMap[fmt.Sprintf("%s::", ContractNameTest)]
+	value, ok = tmpSimContextMap[fmt.Sprintf("%s::%s", ContractNameTest, fix_with_magic)]
 	assert.True(t, ok)
 	assert.Equal(t, []byte("500"), value)
 
@@ -111,6 +113,8 @@ func TestDockerGoPutState(t *testing.T) {
 
 func TestDockerGoGetState(t *testing.T) {
 	setupTest(t)
+	mockTxContext.EXPECT().PutIntoReadSet(gomock.Any(), gomock.Any(), gomock.Any()).Return().AnyTimes()
+
 	parameters := generateInitParams()
 	parameters["method"] = []byte("put_state")
 	parameters["key"] = []byte("key1")
@@ -148,9 +152,9 @@ func TestDockerGoGetState(t *testing.T) {
 
 	parameters8 := generateInitParams()
 	parameters8["method"] = []byte("get_state")
-	parameters8["key"] = []byte("")
+	parameters8["key"] = []byte("fix_with_magic")
 	parameters8["field"] = []byte("field1")
-	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte(""), []byte("field1"))).Return([]byte(""), nil)
+	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte("fix_with_magic"), []byte("field1"))).Return([]byte(""), nil)
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
 		parameters8, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
