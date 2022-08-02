@@ -145,6 +145,7 @@ func (c *conf) setDefaultConfigs() {
 	//viper.SetDefault(logPrefix+".contract_engine.level", "debug")
 	viper.SetDefault(logPrefix+".contract_engine.console", true)
 	viper.SetDefault(logPrefix+".sandbox.level", "info")
+	//viper.SetDefault(logPrefix+".sandbox.level", "debug")
 	viper.SetDefault(logPrefix+".sandbox.console", true)
 
 	// set pprof default configs

@@ -15,7 +15,9 @@ import (
 	"chainmaker.org/chainmaker/utils/v2"
 )
 
+// nolint: revive
 const (
+	// function list gas price
 	GetArgsGasPrice               uint64 = 1  // GetArgsGasPrice
 	GetStateGasPrice              uint64 = 1  // GetStateGasPrice
 	GetBatchStateGasPrice         uint64 = 1  // GetBatchStateGasPrice

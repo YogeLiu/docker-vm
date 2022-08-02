@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -391,7 +392,7 @@ func (p *Process) ChangeSandbox(chainID, contractName, contractVersion, processN
 	}
 
 	// TODO: kill process by send signal, reset exitCh, new process will never blocked
-	if err := p.killProcess(); err != nil {
+	if err := p.killProcess(syscall.SIGTERM); err != nil {
 		return err
 	}
 
@@ -417,7 +418,7 @@ func (p *Process) CloseSandbox() error {
 		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
 	}
 
-	if err := p.killProcess(); err != nil {
+	if err := p.killProcess(syscall.SIGTERM); err != nil {
 		return fmt.Errorf("failed to kill process, %v", err)
 	}
 
@@ -476,7 +477,7 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 	// failed for init / upgrade, contract err, exit process & remove contract
 	if msg.Type == protogo.DockerVMType_ERROR &&
 		(p.Tx.Request.Method == initContract || p.Tx.Request.Method == upgradeContract) {
-		if err := p.killProcess(); err != nil {
+		if err := p.killProcess(syscall.SIGTERM); err != nil {
 			return fmt.Errorf("failed to kill process, %v", err)
 		}
 	}
@@ -495,7 +496,7 @@ func (p *Process) handleTimeout() error {
 		defer p.lock.Unlock()
 		p.logger.Debugf("busy timeout, go to timeout")
 		p.updateProcessState(timeout)
-		if err := p.killProcess(); err != nil {
+		if err := p.killProcess(syscall.SIGINT); err != nil {
 			p.logger.Warnf("failed to kill timeout process, %v", err)
 		}
 
@@ -691,13 +692,14 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 }
 
 // killProcess kills main process when process encounter error
-func (p *Process) killProcess() error {
+func (p *Process) killProcess(sig os.Signal) error {
 	<-p.cmdReadyCh
 	p.logger.Debugf("start to kill process")
 	if p.cmd == nil {
 		return errors.New("process cmd is nil")
 	}
-	if err := p.cmd.Process.Kill(); err != nil {
+
+	if err := p.cmd.Process.Signal(sig); err != nil {
 		return fmt.Errorf("failed to kill process, %v", err)
 	}
 	return nil

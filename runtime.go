@@ -18,6 +18,7 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 )
 
 const (
@@ -36,10 +37,10 @@ type RuntimeInstance struct {
 	clientMgr       interfaces.ContractEngineClientMgr //
 	runtimeService  interfaces.RuntimeService          //
 
-	sandboxMsgCh chan *protogo.DockerVMMessage
-	//sandboxMsgCh := make(chan *protogo.DockerVMMessage, 1)
+	sandboxMsgCh        chan *protogo.DockerVMMessage
 	contractEngineMsgCh chan *protogo.DockerVMMessage
-	//contractEngineMsgCh := make(chan *protogo.DockerVMMessage, 1)
+	DockerManager       *InstancesManager
+	txDuration          *utils.TxDuration
 }
 
 func (r *RuntimeInstance) contractEngineMsgNotify(msg *protogo.DockerVMMessage) {
@@ -127,6 +128,23 @@ func (r *RuntimeInstance) Invoke(
 		CrossContext: crossCtx,
 	}
 
+	// init time statistics
+	startTime := time.Now()
+	r.txDuration = utils.NewTxDuration(originalTxId, uniqueTxKey, startTime.UnixNano())
+
+	// add time statistics
+	fingerprint := txSimContext.GetBlockFingerprint()
+	// if it is a query tx, fingerprint is "", not record this tx
+	if fingerprint != "" {
+		r.DockerManager.BlockDurationMgr.AddTx(fingerprint, r.txDuration)
+	}
+
+	defer func() {
+		r.txDuration.TotalDuration = time.Since(startTime).Nanoseconds()
+		r.DockerManager.BlockDurationMgr.FinishTx(fingerprint, r.txDuration)
+		r.logger.Debugf(r.txDuration.PrintSysCallList())
+	}()
+
 	// register notify for sandbox msg
 	err = r.runtimeService.RegisterSandboxMsgNotify(r.chainId, uniqueTxKey, r.sandboxMsgNotify)
 	if err != nil {
@@ -153,19 +171,27 @@ func (r *RuntimeInstance) Invoke(
 	for {
 		select {
 		case recvMsg := <-r.contractEngineMsgCh:
+
+			r.txDuration.StartSysCall(recvMsg.Type)
+
 			switch recvMsg.Type {
 			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
 				r.logger.Debugf("tx [%s] start get bytecode", uniqueTxKey)
 				getByteCodeResponse := r.handleGetByteCodeRequest(uniqueTxKey, txSimContext, recvMsg, byteCode)
 				r.clientMgr.PutByteCodeResp(getByteCodeResponse)
 				r.logger.Debugf("tx [%s] finish get bytecode", uniqueTxKey)
+				if err = r.txDuration.EndSysCall(recvMsg); err != nil {
+					r.logger.Warnf("failed to end syscall, %v", err)
+				}
+
 			case protogo.DockerVMType_ERROR:
-				r.logger.Errorf("[from engine] handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
+				r.logger.Errorf("[engine] handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
 				return r.errorResult(
 					contractResult,
 					fmt.Errorf("tx timeout"),
 					recvMsg.Response.Message,
 				)
+
 			default:
 				contractResult.GasUsed = gasUsed
 				return r.errorResult(
@@ -182,6 +208,10 @@ func (r *RuntimeInstance) Invoke(
 				originalTxId,
 				timeout,
 			)
+			r.logger.Infof(r.txDuration.ToString())
+			r.logger.InfoDynamic(func() string {
+				return r.txDuration.PrintSysCallList()
+			})
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(
 				contractResult,
@@ -190,6 +220,9 @@ func (r *RuntimeInstance) Invoke(
 			)
 
 		case recvMsg := <-r.sandboxMsgCh:
+
+			r.txDuration.StartSysCall(recvMsg.Type)
+
 			switch recvMsg.Type {
 			case protogo.DockerVMType_GET_STATE_REQUEST:
 				r.logger.Debugf("tx [%s] start get state", uniqueTxKey)
@@ -210,6 +243,9 @@ func (r *RuntimeInstance) Invoke(
 			case protogo.DockerVMType_TX_RESPONSE:
 				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext, gasUsed, specialTxType)
 				r.logger.Debugf("tx [%s] finish handle response", originalTxId)
+				if err = r.txDuration.EndSysCall(recvMsg); err != nil {
+					r.logger.Warnf("failed to end syscall, %v", err)
+				}
 				return result, txType
 
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
@@ -260,7 +296,7 @@ func (r *RuntimeInstance) Invoke(
 				specialTxType = protocol.ExecOrderTxTypeIterator
 				consumeKeyHistoryResp, gasUsed = r.handleConsumeKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 				r.sendSysResponse(consumeKeyHistoryResp)
-				r.logger.Debugf("tx [%s] finish consume key history iteratorc", uniqueTxKey)
+				r.logger.Debugf("tx [%s] finish consume key history iterator", uniqueTxKey)
 
 			case protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
 				r.logger.Debugf("tx [%s] start get sender address", uniqueTxKey)
@@ -276,6 +312,9 @@ func (r *RuntimeInstance) Invoke(
 					fmt.Errorf("unknow msg type"),
 					"unknown msg type",
 				)
+			}
+			if err = r.txDuration.EndSysCall(recvMsg); err != nil {
+				r.logger.Warnf("failed to end syscall, %v", err)
 			}
 		}
 	}

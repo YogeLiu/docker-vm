@@ -23,7 +23,7 @@ const (
 	timeFormat = "2006-01-02 15:04:05"
 
 	loopNum   = 5
-	threadNum = 1000
+	threadNum = 10
 )
 
 var (
@@ -52,6 +52,7 @@ func TestDockerGoPerformance(t *testing.T) {
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
 	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockHoleLogger(nil, testVMLogName), cmConfig)
+	mockDockerManager.BlockDurationMgr.AddBlockTxsDuration(blockFingerprint)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")

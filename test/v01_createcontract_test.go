@@ -40,7 +40,8 @@ func setupTest(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockHoleLogger(nil, testVMLogName), cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockTestLogger(nil, testVMLogName), cmConfig)
+	mockDockerManager.BlockDurationMgr.AddBlockTxsDuration(blockFingerprint)
 
 	//step3: start docker VM
 	fmt.Printf("=== step 3 start Docker VM ===\n")
@@ -65,7 +66,7 @@ func setupTest(t *testing.T) {
 
 	//step5: create new NewRuntimeInstance -- for create user contract
 	fmt.Printf("=== step 5 create new runtime instance ===\n")
-	mockLogger := newMockHoleLogger(nil, testVMLogName)
+	mockLogger := newMockTestLogger(nil, testVMLogName)
 	mockRuntimeInstance, err = mockDockerManager.NewRuntimeInstance(nil, chainId, "",
 		"", nil, nil, mockLogger)
 	if err != nil {

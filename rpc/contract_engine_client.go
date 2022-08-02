@@ -24,8 +24,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// TODO: remove TLS
-
+// ContractEngineClient .
 type ContractEngineClient struct {
 	id          uint64
 	clientMgr   interfaces.ContractEngineClientMgr
@@ -38,6 +37,7 @@ type ContractEngineClient struct {
 	config      *config.DockerVMConfig
 }
 
+// NewContractEngineClient .
 func NewContractEngineClient(
 	chainId string,
 	id uint64,
@@ -58,6 +58,7 @@ func NewContractEngineClient(
 	}
 }
 
+// Start .
 func (c *ContractEngineClient) Start() error {
 
 	c.logger.Infof("start contract engine client[%d]", c.id)
@@ -95,6 +96,7 @@ func (c *ContractEngineClient) Start() error {
 	return nil
 }
 
+// Stop .
 func (c *ContractEngineClient) Stop() {
 	err := c.stream.CloseSend()
 	if err != nil {

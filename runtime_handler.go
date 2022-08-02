@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
@@ -229,7 +230,10 @@ func (r *RuntimeInstance) handlerCallContract(
 		return response, gasUsed, specialTxType
 	}
 
-	response.SysCallMessage.Payload[config.KeyCallContractResp] = respBytes
+	response.SysCallMessage.Payload = map[string][]byte{
+		config.KeyCallContractResp: respBytes,
+	}
+
 	response.SysCallMessage.Code = protogo.DockerVMCode_OK
 	//response.SysCallMessage.Message = "success"
 
@@ -286,13 +290,21 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 
 	contractName = string(contractNameBytes)
 
+	startTime := time.Now()
 	value, err = txSimContext.Get(contractName, stateKey)
-
 	if err != nil {
 		r.logger.Errorf("fail to get state from sim context: %s", err)
 		response.SysCallMessage.Message = err.Error()
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+
+		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+			r.logger.Warnf("failed to add latest storage duration, %v", err)
+		}
 		return response, gasUsed
+	}
+
+	if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+		r.logger.Warnf("failed to add latest storage duration, %v", err)
 	}
 
 	//r.logger.Debug("get value: ", string(value))
@@ -328,10 +340,19 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 		return response, gasUsed
 	}
 
+	startTime := time.Now()
 	getKeys, err = txSimContext.GetKeys(keys.Keys)
 	if err != nil {
 		response.SysCallMessage.Message = err.Error()
+
+		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+			r.logger.Warnf("failed to add latest storage duration, %v", err)
+		}
 		return response, gasUsed
+	}
+
+	if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+		r.logger.Warnf("failed to add latest storage duration, %v", err)
 	}
 
 	r.logger.Debugf("get batch keys values: %v", getKeys)
@@ -457,7 +478,9 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 
 	r.logger.Debug("create kv iterator: ", index)
 	createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
-	createKvIteratorResponse.SysCallMessage.Payload[config.KeyIterIndex] = bytehelper.IntToBytes(index)
+	createKvIteratorResponse.SysCallMessage.Payload = map[string][]byte{
+		config.KeyIterIndex: bytehelper.IntToBytes(index),
+	}
 
 	return createKvIteratorResponse, gasUsed
 }
@@ -1016,8 +1039,12 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 		r.logger.Warnf("[%s] bytecode is missing", txId)
 
 		// get bytecode 7z from txSimContext / database
+		startTime := time.Now()
 		byteCode, err = txSimContext.GetContractBytecode(contractName)
 		if err != nil || len(byteCode) == 0 {
+			if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+				r.logger.Warnf("failed to add latest storage duration, %v", err)
+			}
 			r.logger.Errorf("[%s] fail to get contract bytecode: %s, required contract name is: [%s]", txId, err,
 				contractName)
 			if err != nil {
@@ -1026,6 +1053,10 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 				response.Response.Message = "contract byte is nil"
 			}
 			return response
+		}
+
+		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
+			r.logger.Warnf("failed to add latest storage duration, %v", err)
 		}
 
 		// got extracted bytecode
@@ -1136,6 +1167,7 @@ func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.DockerVM
 		Type: msgType,
 		SysCallMessage: &protogo.SysCallMessage{
 			Payload: map[string][]byte{},
+			Message: "",
 		},
 		Response: nil,
 		Request:  nil,

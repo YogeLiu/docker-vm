@@ -1,4 +1,5 @@
 // nolint:unused, structcheck
+
 package test
 
 import (
@@ -25,6 +26,7 @@ var CertFilePath = "./testdata/admin1.sing.crt"
 var file []byte
 
 // TxContextMockTest mock tx context test
+// nolint: unused, structcheck
 type TxContextMockTest struct {
 	lock          *sync.Mutex
 	vmManager     protocol.VmManager
@@ -38,6 +40,12 @@ type TxContextMockTest struct {
 	CacheMap map[string][]byte
 }
 
+// GetBlockFingerprint returns unique id for block
+func (s *TxContextMockTest) GetBlockFingerprint() string {
+	return s.GetTx().GetPayload().GetTxId()
+}
+
+// GetStrAddrFromPbMember calculate string address from pb Member
 func (s *TxContextMockTest) GetStrAddrFromPbMember(pbMember *acPb.Member) (string, error) {
 	//TODO implement me
 	panic("implement me")
@@ -205,6 +213,7 @@ func (s *TxContextMockTest) GetStateSqlHandle(i int32) (protocol.SqlRows, bool) 
 	panic("implement me")
 }
 
+// nolint: unused, structcheck
 type callContractResult struct {
 	contractName string
 	method       string
@@ -310,6 +319,7 @@ func (s *TxContextMockTest) GetSender() *acPb.Member {
 	return s.sender
 }
 
+// GetBlockchainStore returns related blockchain store
 func (*TxContextMockTest) GetBlockchainStore() protocol.BlockchainStore {
 	return &mockBlockchainStore{}
 }

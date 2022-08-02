@@ -46,7 +46,8 @@ const (
 
 	// ContractNameTest is test contract name
 	// ContractNameTest = "contract_test09"
-	ContractNameTest = "contract_test15"
+	ContractNameTest = "contract_test17"
+	// ContractNameAddr contract addr
 	ContractNameAddr = "xxxxxxaddressfehis"
 
 	// ContractVersionTest is test contract version
@@ -88,6 +89,8 @@ CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
 -----END CERTIFICATE-----`
 	zxlCertAddressFromCert = "ZX0787b8affa4cbdb9994548010c80d9741113ae78"
 	cmCertAddressFromCert  = "305f98514f3c2f6fcaeb8247ed147bacf99990f8"
+
+	blockFingerprint = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 )
 
 var (
@@ -150,6 +153,7 @@ func initMockSimContext(t *testing.T) (*mock.MockTxSimContext, *gomock.Controlle
 		}).AnyTimes()
 
 	mockPutIntoReadSet(simContext)
+	simContext.EXPECT().GetBlockFingerprint().Return(blockFingerprint).AnyTimes()
 
 	return simContext, ctrl
 
@@ -656,6 +660,7 @@ func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
 	).AnyTimes()
 }
 
+// GetBlockVersion get block version
 func GetBlockVersion() uint32 {
 	return uint32(2300)
 }
@@ -944,12 +949,12 @@ func (GoLogger) Fatalw(msg string, keysAndValues ...interface{}) {
 
 // Info is the info log
 func (GoLogger) Info(args ...interface{}) {
-	//log.Printf("INFO: %v", args)
+	log.Printf("INFO: %v", args)
 }
 
 // Infof is the infof log
 func (GoLogger) Infof(format string, args ...interface{}) {
-	//log.Printf("INFO: "+format, args...)
+	log.Printf("INFO: "+format, args...)
 }
 
 // Infow is the infow log

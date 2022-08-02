@@ -7,11 +7,11 @@
 
 log:
   system:
-    log_level_default: INFO
+    log_level_default: DEBUG
     log_levels:
       core: INFO
       net: INFO
-      vm: INFO
+      vm: DEBUG
       storage: INFO
     file_path: ./testdata/log/org1/system.log
     docker_file_path: ./testdata/log/docker-go
