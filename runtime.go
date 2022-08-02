@@ -185,7 +185,8 @@ func (r *RuntimeInstance) Invoke(
 				}
 
 			case protogo.DockerVMType_ERROR:
-				r.logger.Errorf("[engine] handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
+				r.logger.Errorf("handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
+				contractResult.GasUsed = gasUsed
 				return r.errorResult(
 					contractResult,
 					fmt.Errorf("tx timeout"),
@@ -204,7 +205,7 @@ func (r *RuntimeInstance) Invoke(
 			// TODO: 超时时间自定义
 		case <-timeoutC:
 			r.logger.Errorf(
-				"[from chain] handle tx [%s] failed, fail to receive response in %d milliseconds and return timeout response",
+				"handle tx [%s] failed, fail to receive response in %d milliseconds and return timeout response",
 				originalTxId,
 				timeout,
 			)

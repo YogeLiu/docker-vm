@@ -152,7 +152,7 @@ func (u *UserManager) generateNewUser(uid int) error {
 	// it may failed to create newUser in centos, so add retry until it success
 	for !createSuccess {
 		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Warnf("failed to create user [%+v], err: [%s] and begin to retry", newUser, err)
+			u.logger.Debugf("failed to create user [%+v], err: [%s] and begin to retry", newUser, err)
 			continue
 		}
 		createSuccess = true
