@@ -21,7 +21,6 @@ var (
 // RuntimeService is the sandbox - chainmaker service
 type RuntimeService struct {
 	streamCounter atomic.Uint64
-	chainId       string
 	lock          sync.RWMutex
 	logger        protocol.Logger
 	//stream           protogo.DockerVMRpc_DockerVMCommunicateServer
@@ -31,11 +30,10 @@ type RuntimeService struct {
 }
 
 // NewRuntimeService returns runtime service
-func NewRuntimeService(chainId string, logger protocol.Logger) *RuntimeService {
+func NewRuntimeService(logger protocol.Logger) *RuntimeService {
 	runtimeServiceOnce.Do(func() {
 		runtimeServiceInstance = &RuntimeService{
 			streamCounter: atomic.Uint64{},
-			chainId:       chainId,
 			lock:          sync.RWMutex{},
 			logger:        logger,
 			sandboxMsgNotify: make(
@@ -159,7 +157,7 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
-				notify := s.getNotify(s.chainId, receivedMsg.TxId)
+				notify := s.getNotify(receivedMsg.ChainId, receivedMsg.TxId)
 				if notify == nil {
 					s.logger.Debugf("get receive notify[%s] failed, please check your key", receivedMsg.TxId)
 					break

@@ -1000,8 +1000,9 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 	byteCode []byte) *protogo.DockerVMMessage {
 
 	response := &protogo.DockerVMMessage{
-		TxId: txId,
-		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
+		ChainId: r.chainId,
+		TxId:    txId,
+		Type:    protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 		Response: &protogo.TxResponse{
 			ChainId:         r.chainId,
 			Result:          make([]byte, 1),
@@ -1163,8 +1164,9 @@ func (r *RuntimeInstance) saveBytesToDisk(bytes []byte, newFilePath, newFileDir 
 
 func (r *RuntimeInstance) newEmptyResponse(txId string, msgType protogo.DockerVMType) *protogo.DockerVMMessage {
 	return &protogo.DockerVMMessage{
-		TxId: txId,
-		Type: msgType,
+		ChainId: r.chainId,
+		TxId:    txId,
+		Type:    msgType,
 		SysCallMessage: &protogo.SysCallMessage{
 			Payload: map[string][]byte{},
 			Message: "",

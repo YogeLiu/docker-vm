@@ -122,6 +122,7 @@ func (r *RuntimeInstance) Invoke(
 	}
 
 	dockerVMMsg := &protogo.DockerVMMessage{
+		ChainId:      r.chainId,
 		TxId:         uniqueTxKey,
 		Type:         protogo.DockerVMType_TX_REQUEST,
 		Request:      txRequest,

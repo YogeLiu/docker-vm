@@ -28,7 +28,6 @@ import (
 type ContractEngineClient struct {
 	id          uint64
 	clientMgr   interfaces.ContractEngineClientMgr
-	chainId     string // Distinguish sock files of different chains
 	lock        *sync.RWMutex
 	stream      protogo.DockerVMRpc_DockerVMCommunicateClient
 	logger      protocol.Logger
@@ -39,7 +38,6 @@ type ContractEngineClient struct {
 
 // NewContractEngineClient .
 func NewContractEngineClient(
-	chainId string,
 	id uint64,
 	logger protocol.Logger,
 	cm interfaces.ContractEngineClientMgr,
@@ -48,7 +46,6 @@ func NewContractEngineClient(
 	return &ContractEngineClient{
 		id:          id,
 		clientMgr:   cm,
-		chainId:     chainId,
 		lock:        &sync.RWMutex{},
 		stream:      nil,
 		logger:      logger,
@@ -173,7 +170,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 
 			switch receivedMsg.Type {
 			case protogo.DockerVMType_TX_RESPONSE:
-				notify := c.clientMgr.GetReceiveNotify(c.chainId, receivedMsg.TxId)
+				notify := c.clientMgr.GetReceiveNotify(receivedMsg.ChainId, receivedMsg.TxId)
 				if notify == nil {
 					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil",
 						receivedMsg.TxId)
@@ -181,7 +178,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 				}
 				notify(receivedMsg)
 			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
-				notify := c.clientMgr.GetReceiveNotify(c.chainId, receivedMsg.TxId)
+				notify := c.clientMgr.GetReceiveNotify(receivedMsg.ChainId, receivedMsg.TxId)
 				if notify == nil {
 					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil", receivedMsg.TxId)
 					continue
@@ -189,7 +186,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 				notify(receivedMsg)
 
 			case protogo.DockerVMType_ERROR:
-				notify := c.clientMgr.GetReceiveNotify(c.chainId, receivedMsg.TxId)
+				notify := c.clientMgr.GetReceiveNotify(receivedMsg.ChainId, receivedMsg.TxId)
 				if notify == nil {
 					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil", receivedMsg.TxId)
 					continue

@@ -8,18 +8,19 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"fmt"
+	"math"
+	"path/filepath"
+	"strconv"
+	"time"
+
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
-	"fmt"
 	"go.uber.org/zap"
-	"math"
-	"path/filepath"
-	"strconv"
-	"time"
 )
 
 const (
@@ -251,8 +252,9 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
 		// send err req to request scheduler
 		err := r.requestScheduler.PutMsg(&protogo.DockerVMMessage{
-			TxId: req.TxId,
-			Type: protogo.DockerVMType_ERROR,
+			ChainId: r.chainID,
+			TxId:    req.TxId,
+			Type:    protogo.DockerVMType_ERROR,
 			Response: &protogo.TxResponse{
 				Code:            protogo.DockerVMCode_FAIL,
 				Message:         msg,
@@ -351,8 +353,9 @@ func (r *RequestGroup) sendGetContractReq(req *protogo.DockerVMMessage) error {
 
 	// info contract manager to get bytecode
 	if err := r.requestScheduler.GetContractManager().PutMsg(&protogo.DockerVMMessage{
-		TxId: req.TxId,
-		Type: protogo.DockerVMType_GET_BYTECODE_REQUEST,
+		ChainId: r.chainID,
+		TxId:    req.TxId,
+		Type:    protogo.DockerVMType_GET_BYTECODE_REQUEST,
 		Request: &protogo.TxRequest{
 			ChainId:         r.chainID,
 			ContractName:    r.contractName,
@@ -557,8 +560,9 @@ func (r *RequestGroup) updateControllerState(isOrig, toWaiting bool) {
 // returnTxErrorResp return error to request scheduler
 func (r *RequestGroup) returnTxErrorResp(txId string, errMsg string) error {
 	errResp := &protogo.DockerVMMessage{
-		Type: protogo.DockerVMType_ERROR,
-		TxId: txId,
+		ChainId: r.chainID,
+		Type:    protogo.DockerVMType_ERROR,
+		TxId:    txId,
 		Response: &protogo.TxResponse{
 			Code:    protogo.DockerVMCode_FAIL,
 			Result:  nil,

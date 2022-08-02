@@ -36,7 +36,7 @@ type RuntimeServer struct {
 }
 
 // NewRuntimeServer .
-func NewRuntimeServer(chainId string, logger protocol.Logger, vmConfig *config.DockerVMConfig) (*RuntimeServer, error) {
+func NewRuntimeServer(logger protocol.Logger, vmConfig *config.DockerVMConfig) (*RuntimeServer, error) {
 	errCh := make(chan error, 1)
 
 	runtimeServerOnce.Do(func() {
@@ -45,7 +45,7 @@ func NewRuntimeServer(chainId string, logger protocol.Logger, vmConfig *config.D
 			return
 		}
 
-		listener, err := createListener(chainId, vmConfig)
+		listener, err := createListener(vmConfig)
 		if err != nil {
 			errCh <- err
 			return
@@ -129,7 +129,7 @@ func (s *RuntimeServer) StopRuntimeServer() {
 	})
 }
 
-func createListener(chainId string, vmConfig *config.DockerVMConfig) (net.Listener, error) {
+func createListener(vmConfig *config.DockerVMConfig) (net.Listener, error) {
 	if vmConfig.ConnectionProtocol == config.UDSProtocol {
 		sockDir := filepath.Join(vmConfig.DockerVMMountPath, config.RuntimeSockDir)
 		runtimeServerSockPath := filepath.Join(sockDir, config.RuntimeSockName)

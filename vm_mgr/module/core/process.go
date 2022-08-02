@@ -440,6 +440,7 @@ func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
 	p.updateProcessState(busy)
 
 	msg := &protogo.DockerVMMessage{
+		ChainId:      p.chainID,
 		TxId:         p.Tx.TxId,
 		CrossContext: p.Tx.CrossContext,
 		Request:      p.Tx.Request,
@@ -742,8 +743,9 @@ func (p *Process) updateProcessState(state processState) {
 // returnTxErrorResp return error to request scheduler
 func (p *Process) returnTxErrorResp(txId string, errMsg string) error {
 	errResp := &protogo.DockerVMMessage{
-		Type: protogo.DockerVMType_ERROR,
-		TxId: txId,
+		Type:    protogo.DockerVMType_ERROR,
+		ChainId: p.chainID,
+		TxId:    txId,
 		Response: &protogo.TxResponse{
 			Code:    protogo.DockerVMCode_FAIL,
 			Result:  nil,
@@ -776,7 +778,8 @@ func (p *Process) returnSandboxExitResp(err error) error {
 func (p *Process) returnBadContractResp() error {
 	resp := &messages.BadContractResp{
 		Tx: &protogo.DockerVMMessage{
-			TxId: p.Tx.TxId,
+			ChainId: p.chainID,
+			TxId:    p.Tx.TxId,
 			Request: &protogo.TxRequest{
 				ContractName:    p.contractName,
 				ContractVersion: p.contractVersion,

@@ -61,7 +61,7 @@ func NewInstancesManager(chainId string, logger protocol.Logger, vmConfig map[st
 	newDockerManager := &InstancesManager{
 		chainId:               chainId,
 		mgrLogger:             logger,
-		clientMgr:             rpc.NewClientManager(chainId, logger, dockerVMConfig),
+		clientMgr:             rpc.NewClientManager(logger, dockerVMConfig),
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
 		BlockDurationMgr:      utils.NewBlockTxsDurationMgr(),
@@ -75,13 +75,13 @@ func NewInstancesManager(chainId string, logger protocol.Logger, vmConfig map[st
 	}
 
 	// runtime server
-	server, err := rpc.NewRuntimeServer(chainId, logger, dockerVMConfig)
+	server, err := rpc.NewRuntimeServer(logger, dockerVMConfig)
 	if err != nil {
 		logger.Errorf("fail to init docker manager, %s", err)
 		return nil
 	}
 	newDockerManager.runtimeServer = server
-	newDockerManager.runtimeService = rpc.NewRuntimeService(chainId, logger)
+	newDockerManager.runtimeService = rpc.NewRuntimeService(logger)
 
 	return newDockerManager
 }
