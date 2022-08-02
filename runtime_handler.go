@@ -1123,7 +1123,7 @@ func (r *RuntimeInstance) saveBytesToDisk(bytes []byte, newFilePath, newFileDir 
 		}
 	}
 
-	f, err := os.Create(newFilePath)
+	f, err := os.OpenFile(newFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		return err
 	}
