@@ -29,7 +29,11 @@ func TestMultiContractByRounds(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockHoleLogger(nil, testVMLogName), cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(
+		chainId,
+		newMockHoleLogger(nil, testVMLogName),
+		cmConfig,
+	).(*docker_go.InstancesManager)
 	mockDockerManager.BlockDurationMgr.AddBlockTxsDuration(blockFingerprint)
 
 	//step3: start docker VM
@@ -68,7 +72,11 @@ func TestMultiContractMixed(t *testing.T) {
 
 	//step2: generate a docker manager instance
 	fmt.Printf("=== step 2 Create docker instance ===\n")
-	mockDockerManager = docker_go.NewInstancesManager(chainId, newMockHoleLogger(nil, testVMLogName), cmConfig)
+	mockDockerManager = docker_go.NewInstancesManager(
+		chainId,
+		newMockHoleLogger(nil, testVMLogName),
+		cmConfig,
+	).(*docker_go.InstancesManager)
 	mockDockerManager.BlockDurationMgr.AddBlockTxsDuration(blockFingerprint)
 
 	//step3: start docker VM
