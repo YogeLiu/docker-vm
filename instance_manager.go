@@ -36,7 +36,7 @@ type InstancesManager struct {
 }
 
 // NewInstancesManager return docker vm instance manager
-func NewInstancesManager(chainId string, logger protocol.Logger, vmConfig map[string]interface{}) *InstancesManager {
+func NewInstancesManager(chainId string, logger protocol.Logger, vmConfig map[string]interface{}) protocol.VmInstancesManager {
 
 	dockerVMConfig := &config.DockerVMConfig{}
 	if err := mapstructure.Decode(vmConfig, dockerVMConfig); err != nil {
