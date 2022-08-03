@@ -186,8 +186,8 @@ func performMultiContractTxs(loopNum, threadNum int, versions []string, byRounds
 	averageTps := totalTps / float64(loopNum)
 	fmt.Println("total tps: ", averageTps)
 
-	//resultFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_result.log", performContractName, loopNum, threadNum)
-	//chartFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_chart.html", performContractName, loopNum, threadNum)
+	//resultFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_result.log", ContractNameTest, loopNum, threadNum)
+	//chartFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_chart.html", ContractNameTest, loopNum, threadNum)
 	//PrintGroupRunResultAndDraw("result", groupResultList, resultFileName, chartFileName)
 	//time.Sleep(3 * time.Second)
 }
@@ -196,9 +196,9 @@ func performMultiContractTxs(loopNum, threadNum int, versions []string, byRounds
 
 func testDeployCutVersion(version string) {
 
-	fmt.Printf("=== step 6 deploy 【%s】 ===\n", performContractName)
+	fmt.Printf("=== step 6 deploy 【%s】 ===\n", ContractNameTest)
 
-	filePath := fmt.Sprintf("./testdata/%s", performContractName)
+	filePath := fmt.Sprintf("./testdata/%s", ContractNameTest)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))
@@ -208,7 +208,7 @@ func testDeployCutVersion(version string) {
 		"", nil, nil, mockLogger)
 
 	newContractId := &commonPb.Contract{
-		Name:        performContractName,
+		Name:        ContractNameTest,
 		Version:     version,
 		RuntimeType: commonPb.RuntimeType_GO,
 	}
@@ -227,7 +227,7 @@ func testCutSaveVersion(version string) {
 		"", nil, nil, mockLogger)
 
 	newContractId := &commonPb.Contract{
-		Name:        performContractName,
+		Name:        ContractNameTest,
 		Version:     version,
 		RuntimeType: commonPb.RuntimeType_GO,
 	}

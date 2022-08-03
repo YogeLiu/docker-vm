@@ -28,7 +28,6 @@ const (
 
 // ContractEngineClientManager manager all contract engine clients
 type ContractEngineClientManager struct {
-	chainId        string
 	startOnce      sync.Once
 	logger         protocol.Logger
 	count          *atomic.Uint64 // tx count
@@ -46,14 +45,12 @@ type ContractEngineClientManager struct {
 
 // NewClientManager returns new client manager
 func NewClientManager(
-	chainId string,
 	logger protocol.Logger,
 	vmConfig *config.DockerVMConfig,
 ) interfaces.ContractEngineClientMgr {
 
 	clientMgrOnce.Do(func() {
 		mgrInstance = &ContractEngineClientManager{
-			chainId:        chainId,
 			startOnce:      sync.Once{},
 			logger:         logger,
 			count:          atomic.NewUint64(0),
@@ -254,7 +251,7 @@ func (cm *ContractEngineClientManager) establishConnections() error {
 		wg.Add(1)
 		go func() {
 			newIndex := cm.getNextIndex()
-			newClient := NewContractEngineClient(cm.chainId, newIndex, cm.logger, cm)
+			newClient := NewContractEngineClient(newIndex, cm.logger, cm)
 
 			for {
 				if cm.stop {
@@ -290,7 +287,7 @@ func (cm *ContractEngineClientManager) dropConnection(event *interfaces.Event) {
 
 func (cm *ContractEngineClientManager) reconnect() {
 	newIndex := cm.getNextIndex()
-	newClient := NewContractEngineClient(cm.chainId, newIndex, cm.logger, cm)
+	newClient := NewContractEngineClient(newIndex, cm.logger, cm)
 
 	for {
 		if cm.stop {

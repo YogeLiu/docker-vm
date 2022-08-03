@@ -8,10 +8,11 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 
 	"go.uber.org/zap"
 
@@ -301,7 +302,8 @@ func (cm *ContractManager) sendContractReadySignal(chainID, contractName, contra
 	}
 
 	if err := requestGroup.PutMsg(&protogo.DockerVMMessage{
-		Type: protogo.DockerVMType_GET_BYTECODE_RESPONSE,
+		ChainId: chainID,
+		Type:    protogo.DockerVMType_GET_BYTECODE_RESPONSE,
 		Response: &protogo.TxResponse{
 			Code: status,
 		},

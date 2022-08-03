@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	performContractName    = "contract_fact_cut08"
 	performContractVersion = "1.0.0"
 
 	// nolint: varcheck,unused
@@ -159,8 +158,8 @@ func performMultipleTxs(loopNum, threadNum int) {
 	averageTps := totalTps / float64(loopNum)
 	fmt.Println("total tps: ", averageTps)
 
-	//resultFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_result.log", performContractName, loopNum, threadNum)
-	//chartFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_chart.html", performContractName, loopNum, threadNum)
+	//resultFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_result.log", ContractNameTest, loopNum, threadNum)
+	//chartFileName := fmt.Sprintf("./result/%s-%d-%d_analysis_chart.html", ContractNameTest, loopNum, threadNum)
 	//PrintGroupRunResultAndDraw("result", groupResultList, resultFileName, chartFileName)
 	//time.Sleep(3 * time.Second)
 }
@@ -169,9 +168,9 @@ func performMultipleTxs(loopNum, threadNum int) {
 
 func testDeployCut() {
 
-	fmt.Printf("=== step 6 deploy 【%s】 ===\n", performContractName)
+	fmt.Printf("=== step 6 deploy 【%s】 ===\n", ContractNameTest)
 
-	filePath := fmt.Sprintf("./testdata/%s", performContractName)
+	filePath := fmt.Sprintf("./testdata/%s", ContractNameTest)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))
@@ -181,7 +180,7 @@ func testDeployCut() {
 		"", nil, nil, mockLogger)
 
 	newContractId := &commonPb.Contract{
-		Name:        performContractName,
+		Name:        ContractNameTest,
 		Version:     performContractVersion,
 		RuntimeType: commonPb.RuntimeType_GO,
 	}
@@ -200,7 +199,7 @@ func testCutSave() {
 		"", nil, nil, mockLogger)
 
 	newContractId := &commonPb.Contract{
-		Name:        performContractName,
+		Name:        ContractNameTest,
 		Version:     performContractVersion,
 		RuntimeType: commonPb.RuntimeType_GO,
 	}
@@ -229,7 +228,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //		"", nil, nil, mockLogger)
 //
 //	newContractId := &commonPb.Contract{
-//		Name:        performContractName,
+//		Name:        ContractNameTest,
 //		Version:     performContractVersion,
 //		RuntimeType: commonPb.RuntimeType_GO,
 //	}
@@ -246,9 +245,9 @@ func cutOutFloat64(number float64, n int) float64 {
 //
 //func testDeployZXL() {
 //
-//	fmt.Printf("=== step 6 deploy 【%s】 ===\n", performContractName)
+//	fmt.Printf("=== step 6 deploy 【%s】 ===\n", ContractNameTest)
 //
-//	filePath := fmt.Sprintf("./testdata/%s.7z", performContractName)
+//	filePath := fmt.Sprintf("./testdata/%s.7z", ContractNameTest)
 //	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 //	if contractFileErr != nil {
 //		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))
@@ -258,7 +257,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //		"", nil, nil, mockLogger)
 //
 //	newContractId := &commonPb.Contract{
-//		Name:        performContractName,
+//		Name:        ContractNameTest,
 //		Version:     performContractVersion,
 //		RuntimeType: commonPb.RuntimeType_GO,
 //	}
@@ -276,7 +275,7 @@ func cutOutFloat64(number float64, n int) float64 {
 //		"", nil, nil, mockLogger)
 //
 //	newContractId := &commonPb.Contract{
-//		Name:        performContractName,
+//		Name:        ContractNameTest,
 //		Version:     performContractVersion,
 //		RuntimeType: commonPb.RuntimeType_GO,
 //	}

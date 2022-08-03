@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	contractName = "contract_fact_cut08"
-	methodSave   = "save"
+	methodSave = "save"
 )
 
 func TestDockerGoMemory(t *testing.T) {
@@ -48,7 +47,7 @@ func TestDockerGoMemory(t *testing.T) {
 	//step4: mock contractId, contractBin
 	fmt.Printf("======step4 mock contractId and txContext=======\n")
 	mockContractId = &commonPb.Contract{
-		Name:        contractName,
+		Name:        ContractNameTest,
 		Version:     ContractVersionTest,
 		RuntimeType: commonPb.RuntimeType_GO,
 	}
@@ -58,7 +57,7 @@ func TestDockerGoMemory(t *testing.T) {
 	mockNormalGetDepth(mockTxContext)
 	mockNormalGetrossInfo(mockTxContext)
 
-	filePath := fmt.Sprintf("./testdata/%s", contractName)
+	filePath := fmt.Sprintf("./testdata/%s", ContractNameTest)
 	contractBin, contractFileErr := ioutil.ReadFile(filePath)
 	if contractFileErr != nil {
 		log.Fatal(fmt.Errorf("get byte code failed %v", contractFileErr))
@@ -93,7 +92,7 @@ func testMultipleTxs(mockLogger protocol.Logger) {
 	time.Sleep(20 * time.Second)
 	fmt.Println("---------- Start -------------------------")
 
-	mockTxContext.EXPECT().Put(contractName, []byte("key"), []byte("name")).Return(nil).AnyTimes()
+	mockTxContext.EXPECT().Put(ContractNameTest, []byte("key"), []byte("name")).Return(nil).AnyTimes()
 
 	loopNum := 2000
 	threadNum := 300
@@ -112,7 +111,7 @@ func testMultipleTxs(mockLogger protocol.Logger) {
 					"", nil, nil, mockLogger)
 
 				newContractId := &commonPb.Contract{
-					Name:        contractName,
+					Name:        ContractNameTest,
 					Version:     ContractVersionTest,
 					RuntimeType: commonPb.RuntimeType_GO,
 				}
