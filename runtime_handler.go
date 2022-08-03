@@ -1056,21 +1056,27 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 			return response
 		}
 
+		r.logger.Infof("[%s] get contract bytecode [%s] from chain db succeed", txId, contractFullName)
+
 		if err = r.txDuration.AddLatestStorageDuration(time.Since(startTime).Nanoseconds()); err != nil {
 			r.logger.Warnf("failed to add latest storage duration, %v", err)
 		}
 
 		// got extracted bytecode
-		if _, err = r.extractContract(byteCode, contractFullName, sendContract); err != nil {
+		var extractedBytecode []byte
+		extractedBytecode, err = r.extractContract(byteCode, contractFullName, sendContract)
+		if err != nil {
 			r.logger.Errorf("[%s] failed to extract contract %s from tx_sim_context, %v",
 				txId, contractName, err)
 			response.Response.Message = err.Error()
 			return response
 		}
 
+		r.logger.Infof("[%s] extract contract bytecode [%s] succeed", txId, contractFullName)
+
 		// tcp: need to send bytecode
 		if sendContract {
-			response.Response.Result = byteCode
+			response.Response.Result = extractedBytecode
 		}
 		response.Response.Code = protogo.DockerVMCode_OK
 		return response
@@ -1221,6 +1227,9 @@ func (r *RuntimeInstance) extractContract(bytecode []byte, contractFullName stri
 	// range file list
 	for i := range fileInfoList {
 
+		r.logger.Debugf("found file [%s] [size: %d] while extract contract [%s]",
+			fileInfoList[i].Name(), fileInfoList[i].Size(), contractFullName)
+
 		// skip .7z file
 		if strings.HasSuffix(fileInfoList[i].Name(), ".7z") {
 			continue
@@ -1243,6 +1252,7 @@ func (r *RuntimeInstance) extractContract(bytecode []byte, contractFullName stri
 		}
 		return extBytecode, nil
 	}
+
 	return nil, fmt.Errorf("no contract binaries satisfied")
 }
 
