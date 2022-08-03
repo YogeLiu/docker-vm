@@ -18,6 +18,7 @@ import (
 const (
 	methodPutState = "put_state"
 	methodGetState = "get_state"
+	fixEmptyKey    = "fix_empty_key"
 )
 
 // put state and delete state testing
@@ -79,16 +80,16 @@ func TestDockerGoPutState(t *testing.T) {
 	assert.Equal(t, []byte("400"), value)
 
 	parameters4 := generateInitParams()
-	parameters4["key"] = []byte("")
+	parameters4["key"] = []byte(fixEmptyKey)
 	parameters4["field"] = []byte("")
 	parameters4["value"] = []byte("500")
 	method = methodPutState
 
-	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte(""), []byte("")), []byte("500"))
+	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte(fixEmptyKey), []byte("")), []byte("500"))
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil,
 		parameters4, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
-	value, ok = tmpSimContextMap[fmt.Sprintf("%s::", ContractNameTest)]
+	value, ok = tmpSimContextMap[fmt.Sprintf("%s::%s", ContractNameTest, fixEmptyKey)]
 	assert.True(t, ok)
 	assert.Equal(t, []byte("500"), value)
 
@@ -155,11 +156,11 @@ func TestDockerGoGetState(t *testing.T) {
 	assert.Nil(t, result.Result)
 
 	parameters8 := generateInitParams()
-	parameters8["key"] = []byte("")
+	parameters8["key"] = []byte(fixEmptyKey)
 	parameters8["field"] = []byte("field1")
 	method = methodGetState
 
-	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte(""), []byte("field1"))).Return([]byte(""), nil)
+	mockTxContext.EXPECT().Get(ContractNameTest, protocol.GetKey([]byte(fixEmptyKey), []byte("field1"))).Return([]byte(""), nil)
 	result, _ = mockRuntimeInstance.Invoke(mockContractId, method, nil,
 		parameters8, mockTxContext, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
@@ -180,20 +181,20 @@ func TestDockerGoGetState(t *testing.T) {
 	tearDownTest()
 }
 
-// func TestDockerGoTimeout(t *testing.T) {
-// 	setupTest(t)
-//
-// 	parameters0 := generateInitParams()
-// 	parameters0["method"] = []byte("time_out")
-// 	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
-// 		parameters0, mockTxContext, uint64(123))
-// 	assert.Equal(t, uint32(1), result.Code)
-// 	assert.Nil(t, result.Result)
-// 	fmt.Printf("%+v", result)
-// 	assert.Equal(t, "tx timeout", result.Message)
-// 	assert.Nil(t, result.ContractEvent)
-// 	tearDownTest()
-// }
+func TestDockerGoTimeout(t *testing.T) {
+	setupTest(t)
+
+	parameters0 := generateInitParams()
+	parameters0["method"] = []byte("time_out")
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, invokeMethod, nil,
+		parameters0, mockTxContext, uint64(123))
+	assert.Equal(t, uint32(1), result.Code)
+	assert.Nil(t, result.Result)
+	fmt.Printf("%+v", result)
+	assert.Equal(t, "tx timeout", result.Message)
+	assert.Nil(t, result.ContractEvent)
+	tearDownTest()
+}
 
 func TestDockerGoOutRange(t *testing.T) {
 	setupTest(t)
