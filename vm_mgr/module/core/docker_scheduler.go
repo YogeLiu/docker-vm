@@ -240,7 +240,7 @@ func (s *DockerScheduler) RegisterTxElapsedTime(txRequest *protogo.TxRequest, st
 func (s *DockerScheduler) AddTxSysCallElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime) {
 	txElapsedTime, ok := s.TxRequestMgr.Load(txId)
 	if !ok {
-		s.logger.Warnf("%s time statistics record not exis: %s", txId, sysCallElapsedTime.ToString())
+		s.logger.Warnf("%s time statistics record not exist: %s", txId, sysCallElapsedTime.ToString())
 		return
 	}
 	txElapsedTime.(*tx_requests.TxElapsedTime).AddSysCallElapsedTime(sysCallElapsedTime)
@@ -250,7 +250,7 @@ func (s *DockerScheduler) AddTxSysCallElapsedTime(txId string, sysCallElapsedTim
 func (s *DockerScheduler) AddTxCallContractElapsedTime(txId string, sysCallElapsedTime *tx_requests.SysCallElapsedTime) {
 	txElapsedTime, ok := s.TxRequestMgr.Load(txId)
 	if !ok {
-		s.logger.Warnf("%s time statistics record not exis: %s", txId, sysCallElapsedTime.ToString())
+		s.logger.Warnf("%s time statistics record not exist: %s", txId, sysCallElapsedTime.ToString())
 		return
 	}
 	txElapsedTime.(*tx_requests.TxElapsedTime).AddCallContractElapsedTime(sysCallElapsedTime)
@@ -260,7 +260,7 @@ func (s *DockerScheduler) AddTxCallContractElapsedTime(txId string, sysCallElaps
 func (s *DockerScheduler) RemoveTxElapsedTime(txId string) {
 	_, ok := s.TxRequestMgr.Load(txId)
 	if !ok {
-		s.logger.Warnf("%s time statistics record not exis before delete", txId)
+		s.logger.Warnf("%s time statistics record not exist before delete", txId)
 		return
 	}
 	s.TxRequestMgr.Delete(txId)
@@ -269,7 +269,7 @@ func (s *DockerScheduler) RemoveTxElapsedTime(txId string) {
 func (s *DockerScheduler) GetTxElapsedTime(txId string) *tx_requests.TxElapsedTime {
 	txElapsedTime, ok := s.TxRequestMgr.Load(txId)
 	if !ok {
-		s.logger.Warnf("%s time statistics record not exis before get", txId)
+		s.logger.Warnf("%s time statistics record not exist before get", txId)
 		return nil
 	}
 	return txElapsedTime.(*tx_requests.TxElapsedTime)
