@@ -12,7 +12,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -228,10 +227,20 @@ func (p *Process) launchProcess() *exitErr {
 		}
 	}
 	p.logger.Debugf("add process to cgroup")
-
-	go p.printContractLog(contractOut)
-
 	p.logger.Debugf("process started")
+
+	// printContractLog print the sandbox cmd log
+	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
+	rd := bufio.NewReader(contractOut)
+	for {
+		str, err := rd.ReadString('\n')
+		if err != nil {
+			contractLogger.Info(err)
+			break
+		}
+		str = strings.TrimSuffix(str, "\n")
+		contractLogger.Debugf(str)
+	}
 
 	if err = cmd.Wait(); err != nil {
 		var txId string
@@ -538,7 +547,10 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 	defer p.popTimer()
 
 	var restartSandbox, returnErrResp, exitSandbox, restartAll, returnBadContractResp bool
-	errRet := existErr.err.Error()
+	var errRet string
+	if existErr != nil && existErr.err != nil {
+		errRet = existErr.err.Error()
+	}
 
 	defer func() {
 		if restartSandbox {
@@ -570,23 +582,24 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
-	if existErr.err == utils.ContractExecError {
-		p.logger.Debugf("start to release process")
-		exitSandbox = true
-		// contract panic when process start, pop oldest tx, retry get bytecode
-		select {
-		case p.Tx = <-p.txCh:
-			p.logger.Debugf("contract exec start failed, remove tx %s", p.Tx.TxId)
-			returnErrResp = true
-			break
-		default:
-			p.logger.Warn("contract exec start failed, no available tx")
-			break
+	if existErr != nil && existErr.err != nil {
+		if existErr.err == utils.ContractExecError {
+			p.logger.Debugf("start to release process")
+			exitSandbox = true
+			// contract panic when process start, pop oldest tx, retry get bytecode
+			select {
+			case p.Tx = <-p.txCh:
+				p.logger.Debugf("contract exec start failed, remove tx %s", p.Tx.TxId)
+				returnErrResp = true
+				break
+			default:
+				p.logger.Warn("contract exec start failed, no available tx")
+				break
+			}
+			returnBadContractResp = true
+			return true
 		}
-		returnBadContractResp = true
-		return true
 	}
-
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
 	// 3. created fail, writeToFile fail -> relaunch
 	if p.processState == created {
@@ -675,21 +688,6 @@ func (p *Process) resetContext(chainID, contractName, contractVersion, processNa
 	p.txCh = p.requestGroup.GetTxCh(p.isOrigProcess)
 
 	return nil
-}
-
-// printContractLog print the sandbox cmd log
-func (p *Process) printContractLog(contractPipe io.ReadCloser) {
-	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
-	rd := bufio.NewReader(contractPipe)
-	for {
-		str, err := rd.ReadString('\n')
-		if err != nil {
-			contractLogger.Info(err)
-			return
-		}
-		str = strings.TrimSuffix(str, "\n")
-		contractLogger.Debugf(str)
-	}
 }
 
 // killProcess kills main process when process encounter error
