@@ -257,12 +257,12 @@ func (cm *ContractEngineClientManager) establishConnections() error {
 				if cm.stop {
 					return
 				}
-				err := newClient.Start()
-				if err == nil {
+				if err := newClient.Start(); err != nil {
+					cm.logger.Warnf("client[%d] connect fail, try again...", newIndex)
+					time.Sleep(retryConnectDuration)
+				} else {
 					break
 				}
-				cm.logger.Warnf("client[%d] connect fail, try reconnect...", newIndex)
-				time.Sleep(retryConnectDuration)
 			}
 			cm.clientLock.Lock()
 			cm.aliveClientMap[newIndex] = newClient
@@ -295,11 +295,13 @@ func (cm *ContractEngineClientManager) reconnect() {
 		}
 
 		if err := newClient.Start(); err != nil {
+			cm.logger.Warnf("client[%d] reconnect fail, %v, try again...", newIndex, err)
+			time.Sleep(retryConnectDuration)
+		} else {
 			break
 		}
-		cm.logger.Warnf("client[%d] connect fail, try reconnect...", newIndex)
-		time.Sleep(retryConnectDuration)
 	}
+
 	cm.clientLock.Lock()
 	cm.aliveClientMap[newIndex] = newClient
 	cm.clientLock.Unlock()
@@ -307,6 +309,10 @@ func (cm *ContractEngineClientManager) reconnect() {
 }
 
 func (cm *ContractEngineClientManager) getNextIndex() uint64 {
+
+	cm.clientLock.Lock()
+	defer cm.clientLock.Unlock()
+
 	curIndex := cm.index
 	cm.index++
 	return curIndex

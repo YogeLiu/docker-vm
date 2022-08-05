@@ -121,13 +121,13 @@ func (m *InstancesManager) StartVM() error {
 		return err
 	}
 
-	m.mgrLogger.Debugf("chain[%s] docker vm start success :)", m.chainId)
-
 	// start ContractEngine RPC client
 	err = m.clientMgr.Start()
 	if err != nil {
 		return err
 	}
+
+	m.mgrLogger.Debugf("chain[%s] docker vm start success :)", m.chainId)
 
 	return nil
 }
@@ -137,7 +137,7 @@ func (m *InstancesManager) StopVM() error {
 	if m == nil {
 		return nil
 	}
-
+	m.mgrLogger.Info("stop docker vm...")
 	err := m.clientMgr.Stop()
 	if err != nil {
 		return err
@@ -145,7 +145,7 @@ func (m *InstancesManager) StopVM() error {
 
 	m.runtimeServer.StopRuntimeServer()
 
-	m.mgrLogger.Info("stop chain [%s] docker vm", m.chainId)
+	m.mgrLogger.Info("chain [%s] docker vm stop success :)", m.chainId)
 	return nil
 }
 
