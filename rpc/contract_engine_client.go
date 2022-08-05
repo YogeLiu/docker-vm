@@ -80,7 +80,7 @@ func (c *ContractEngineClient) Start() error {
 
 	stream, err := GetClientStream(conn)
 	if err != nil {
-		c.logger.Errorf("fail to get connection stream: %s", err)
+		c.logger.Warnf("fail to get connection stream: %s", err)
 		return err
 	}
 
@@ -155,13 +155,13 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			receivedMsg, revErr := c.stream.Recv()
 
 			if revErr == io.EOF {
-				c.logger.Error("client receive eof and exit receive goroutine")
+				c.logger.Warn("client receive eof and exit receive goroutine")
 				close(c.stopSend)
 				return
 			}
 
 			if revErr != nil {
-				c.logger.Errorf("client receive err and exit receive goroutine %s", revErr)
+				c.logger.Warnf("client receive err and exit receive goroutine %s", revErr)
 				close(c.stopSend)
 				return
 			}
