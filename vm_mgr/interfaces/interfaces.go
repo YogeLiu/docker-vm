@@ -29,6 +29,7 @@ type (
 		PutMsg(msg interface{}) error
 		GetProcessByName(processName string) (Process, bool)
 		GetProcessNumByContractKey(chainID, contractName, contractVersion string) int
+		GetProcessNumWithTask(chainID, contractName, contractVersion string) int
 		ChangeProcessState(processName string, toBusy bool) error
 	}
 	Process interface {
@@ -39,6 +40,7 @@ type (
 		GetContractName() string
 		GetContractVersion() string
 		GetUser() User
+		GetTx() *protogo.DockerVMMessage
 		SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer)
 		ChangeSandbox(chainID, contractName, contractVersion, processName string) error
 		CloseSandbox() error

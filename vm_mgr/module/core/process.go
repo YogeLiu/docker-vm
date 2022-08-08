@@ -376,6 +376,11 @@ func (p *Process) GetUser() interfaces.User {
 	return p.user
 }
 
+// GetTx returns tx
+func (p *Process) GetTx() *protogo.DockerVMMessage {
+	return p.Tx
+}
+
 // SetStream sets grpc stream
 func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer) {
 

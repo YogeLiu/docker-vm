@@ -32,6 +32,10 @@ func (pm *MockProcessManager) GetProcessNumByContractKey(chainID, contractName, 
 	panic("implement me")
 }
 
+func (pm *MockProcessManager) GetProcessNumWithTask(chainID, contractName, contractVersion string) int {
+	panic("implement me")
+}
+
 func (pm *MockProcessManager) ChangeProcessState(processName string, toBusy bool) error {
 	return nil
 }
@@ -68,6 +72,10 @@ func (p *MockProcess) GetContractVersion() string {
 }
 
 func (p *MockProcess) GetUser() interfaces.User {
+	panic("implement me")
+}
+
+func (p *MockProcess) GetTx() *protogo.DockerVMMessage {
 	panic("implement me")
 }
 

@@ -167,6 +167,26 @@ func (pm *ProcessManager) GetProcessNumByContractKey(chainID, contractName, cont
 	return 0
 }
 
+// GetProcessNumWithTask returns process with busy task
+func (pm *ProcessManager) GetProcessNumWithTask(chainID, contractName, contractVersion string) int {
+
+	pm.lock.RLock()
+	defer pm.lock.RUnlock()
+
+	var num int
+	groupKey := utils.ConstructContractKey(chainID, contractName, contractVersion)
+	if val, ok := pm.processGroups[groupKey]; ok {
+		for name := range val {
+			if process, exist := pm.busyProcesses[name]; exist {
+				if process.GetTx() != nil {
+					num++
+				}
+			}
+		}
+	}
+	return num
+}
+
 // ChangeProcessState changes the process state
 func (pm *ProcessManager) ChangeProcessState(processName string, toBusy bool) error {
 
