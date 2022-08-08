@@ -565,6 +565,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		exitError.err = utils.SandboxExitDefaultError
 	}
 
+	errRet := exitError.err.Error()
+
 	defer func() {
 		if restartSandbox {
 			go p.startProcess()
@@ -574,7 +576,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 			txId = p.Tx.TxId
 		}
 		if returnErrResp {
-			if err := p.returnTxErrorResp(txId, exitError.err.Error()); err != nil {
+			if err := p.returnTxErrorResp(txId, errRet); err != nil {
 				p.logger.Errorf("failed to return tx error response, %v", err)
 			}
 		}
