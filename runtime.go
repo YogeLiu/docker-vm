@@ -110,13 +110,13 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	if r.ClientManager.GetVMConfig().DisableInstall && method == protocol.ContractInitMethod {
 		r.Log.Errorf("%s docker_go has disabled contract install, pls check chainmaker.yml", originalTxId)
 		err := errors.New("contract install disabled in chainmaker.yml")
-		return r.errorResult(contractResult, err, err.Error())
+		return r.errorResult(contractResult, nil, err.Error())
 	}
 
 	if r.ClientManager.GetVMConfig().DisableUpgrade && method == protocol.ContractUpgradeMethod {
 		r.Log.Errorf("%s docker_go has disabled contract upgrade, pls check chainmaker.yml", originalTxId)
 		err := errors.New("contract upgrade disabled in chainmaker.yml")
-		return r.errorResult(contractResult, err, err.Error())
+		return r.errorResult(contractResult, nil, err.Error())
 	}
 
 	specialTxType := protocol.ExecOrderTxTypeNormal
