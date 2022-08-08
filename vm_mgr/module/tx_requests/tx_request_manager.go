@@ -119,6 +119,6 @@ func (e *TxElapsedTime) AddCallContractElapsedTime(crossCallElapsedTime *SysCall
 	e.CrossCallCnt += 1
 	e.CrossCallTime += crossCallElapsedTime.TotalTime
 
-	e.SysCallList = append(e.CrossCallList, crossCallElapsedTime)
+	e.CrossCallList = append(e.CrossCallList, crossCallElapsedTime)
 	return
 }
