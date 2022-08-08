@@ -271,14 +271,14 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
 	// original tx, send to original tx chan
 	if utils.IsOrig(req) {
-		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
 		r.origTxController.txCh <- req
+		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
 		return nil
 	}
 
 	// cross contract tx, send to cross contract tx chan
-	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
 	r.crossTxController.txCh <- req
+	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
 	return nil
 }
 
@@ -306,6 +306,9 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
 	needProcessNum := len(controller.txCh) - currProcessNum
+	if !isOrig {
+		needProcessNum = len(controller.txCh)
+	}
 	r.logger.Debugf("tx chan size: [%d], process num: [%d], need process num: [%d]",
 		len(controller.txCh), currProcessNum, needProcessNum)
 	var err error
