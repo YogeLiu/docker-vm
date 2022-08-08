@@ -309,8 +309,8 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	if !isOrig {
 		needProcessNum = len(controller.txCh)
 	}
-	r.logger.Debugf("tx chan size: [%d], process num: [%d], need process num: [%d]",
-		len(controller.txCh), currProcessNum, needProcessNum)
+	r.logger.Debugf("tx chan size: [%d], process num: [%d], need process num (isOrig: %v): [%d]",
+		len(controller.txCh), currProcessNum, isOrig, needProcessNum)
 	var err error
 	// need more processes
 	if needProcessNum > 0 {
@@ -422,12 +422,12 @@ moveTxs:
 		case tx := <-r.bufCh:
 			if utils.IsOrig(tx) {
 				// original tx, send to original tx chan
-				r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", tx.TxId, len(r.origTxController.txCh))
 				r.origTxController.txCh <- tx
+				r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", tx.TxId, len(r.origTxController.txCh))
 			} else {
 				// cross contract tx, send to cross contract tx chan
-				r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", tx.TxId, len(r.crossTxController.txCh))
 				r.crossTxController.txCh <- tx
+				r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", tx.TxId, len(r.crossTxController.txCh))
 			}
 		default:
 			break moveTxs
