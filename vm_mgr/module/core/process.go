@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -229,18 +230,7 @@ func (p *Process) launchProcess() *exitErr {
 	p.logger.Debugf("add process to cgroup")
 	p.logger.Debugf("process started")
 
-	// printContractLog print the sandbox cmd log
-	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
-	rd := bufio.NewReader(contractOut)
-	for {
-		str, err := rd.ReadString('\n')
-		if err != nil {
-			contractLogger.Info(err)
-			break
-		}
-		str = strings.TrimSuffix(str, "\n")
-		contractLogger.Debugf(str)
-	}
+	p.printContractLog(contractOut)
 
 	if err = cmd.Wait(); err != nil {
 		var txId string
@@ -255,6 +245,21 @@ func (p *Process) launchProcess() *exitErr {
 	}
 
 	return nil
+}
+
+// printContractLog print the sandbox cmd log
+func (p *Process) printContractLog(contractPipe io.ReadCloser) {
+	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
+	rd := bufio.NewReader(contractPipe)
+	for {
+		str, err := rd.ReadString('\n')
+		if err != nil {
+			contractLogger.Info(err)
+			return
+		}
+		str = strings.TrimSuffix(str, "\n")
+		contractLogger.Debugf(str)
+	}
 }
 
 // listenProcess listen to channels
