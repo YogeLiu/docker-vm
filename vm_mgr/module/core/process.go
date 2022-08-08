@@ -706,7 +706,17 @@ func (p *Process) killProcess(sig os.Signal) error {
 	if err := p.cmd.Process.Signal(sig); err != nil {
 		return fmt.Errorf("failed to kill process, %v", err)
 	}
+
+	go p.forcedKill()
+
 	return nil
+}
+
+func (p *Process) forcedKill() {
+	err := p.cmd.Process.Signal(syscall.SIGKILL)
+	if err != nil {
+		p.logger.Debugf("failed to kill process with SIGKILL, err: %s", err.Error())
+	}
 }
 
 // updateProcessState updates process state
