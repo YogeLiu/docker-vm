@@ -54,6 +54,7 @@ const (
 
 const (
 	_readyToIdleTimeoutRatio = 5
+	_forcedKillWaitTime      = 200 * time.Millisecond
 )
 
 const (
@@ -228,10 +229,9 @@ func (p *Process) launchProcess() *exitErr {
 		}
 	}
 	p.logger.Debugf("add process to cgroup")
-
-	go p.printContractLog(contractOut)
-
 	p.logger.Debugf("process started")
+
+	p.printContractLog(contractOut)
 
 	if err = cmd.Wait(); err != nil {
 		var txId string
@@ -246,6 +246,21 @@ func (p *Process) launchProcess() *exitErr {
 	}
 
 	return nil
+}
+
+// printContractLog print the sandbox cmd log
+func (p *Process) printContractLog(contractPipe io.ReadCloser) {
+	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
+	rd := bufio.NewReader(contractPipe)
+	for {
+		str, err := rd.ReadString('\n')
+		if err != nil {
+			contractLogger.Info(err)
+			return
+		}
+		str = strings.TrimSuffix(str, "\n")
+		contractLogger.Debugf(str)
+	}
 }
 
 // listenProcess listen to channels
@@ -533,12 +548,24 @@ func (p *Process) handleTimeout() error {
 }
 
 // handleProcessExit handle process exit
-func (p *Process) handleProcessExit(existErr *exitErr) bool {
+func (p *Process) handleProcessExit(exitError *exitErr) bool {
 
 	defer p.popTimer()
 
 	var restartSandbox, returnErrResp, exitSandbox, restartAll, returnBadContractResp bool
-	errRet := existErr.err.Error()
+
+	if exitError == nil {
+		exitError = &exitErr{
+			err:  utils.SandboxExitDefaultError,
+			desc: "",
+		}
+	}
+
+	if exitError.err == nil {
+		exitError.err = utils.SandboxExitDefaultError
+	}
+
+	errRet := exitError.err.Error()
 
 	defer func() {
 		if restartSandbox {
@@ -554,7 +581,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 			}
 		}
 		if exitSandbox {
-			if err := p.returnSandboxExitResp(existErr.err); err != nil {
+			if err := p.returnSandboxExitResp(exitError.err); err != nil {
 				p.logger.Errorf("failed to return sandbox exit resp, %v", err)
 			}
 		}
@@ -570,7 +597,7 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
-	if existErr.err == utils.ContractExecError {
+	if exitError.err == utils.ContractExecError {
 		p.logger.Debugf("start to release process")
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
@@ -586,17 +613,16 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 		returnBadContractResp = true
 		return true
 	}
-
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
 	// 3. created fail, writeToFile fail -> relaunch
 	if p.processState == created {
-		p.logger.Warnf("failed to launch process: %s", existErr.err)
+		p.logger.Warnf("failed to launch process: %s", exitError.err)
 		restartSandbox = true
 		return false
 	}
 
 	if p.processState == ready {
-		p.logger.Warnf("process exited when ready: %s", existErr.err)
+		p.logger.Warnf("process exited when ready: %s", exitError.err)
 		exitSandbox = true
 		// error after exec init or upgrade
 		if p.Tx.Request.Method == initContract || p.Tx.Request.Method == upgradeContract {
@@ -606,14 +632,14 @@ func (p *Process) handleProcessExit(existErr *exitErr) bool {
 	}
 
 	if p.processState == idle {
-		p.logger.Warnf("process exited when idle: %s", existErr.err)
+		p.logger.Warnf("process exited when idle: %s", exitError.err)
 		exitSandbox = true
 		return true
 	}
 
 	// 7. process panic, return error response
 	if p.processState == busy {
-		p.logger.Warnf("process exited when busy: %s", existErr.err)
+		p.logger.Warnf("process exited when busy: %s", exitError.err)
 		p.updateProcessState(created)
 		exitSandbox = true
 		returnErrResp = true
@@ -677,21 +703,6 @@ func (p *Process) resetContext(chainID, contractName, contractVersion, processNa
 	return nil
 }
 
-// printContractLog print the sandbox cmd log
-func (p *Process) printContractLog(contractPipe io.ReadCloser) {
-	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
-	rd := bufio.NewReader(contractPipe)
-	for {
-		str, err := rd.ReadString('\n')
-		if err != nil {
-			contractLogger.Info(err)
-			return
-		}
-		str = strings.TrimSuffix(str, "\n")
-		contractLogger.Debugf(str)
-	}
-}
-
 // killProcess kills main process when process encounter error
 func (p *Process) killProcess(sig os.Signal) error {
 	<-p.cmdReadyCh
@@ -703,7 +714,18 @@ func (p *Process) killProcess(sig os.Signal) error {
 	if err := p.cmd.Process.Signal(sig); err != nil {
 		return fmt.Errorf("failed to kill process, %v", err)
 	}
+
+	go p.forcedKill()
+
 	return nil
+}
+
+func (p *Process) forcedKill() {
+	time.Sleep(_forcedKillWaitTime)
+	err := p.cmd.Process.Signal(syscall.SIGKILL)
+	if err != nil {
+		p.logger.Debugf("failed to kill process with SIGKILL, err: %s", err.Error())
+	}
 }
 
 // updateProcessState updates process state

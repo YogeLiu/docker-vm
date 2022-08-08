@@ -18,7 +18,9 @@ var (
 	CrossContractRuntimePanicError = errors.New("cross contract runtime panic")
 
 	RuntimePanicError   = errors.New("runtime panic")
-	TxTimeoutPanicError = errors.New("tx timeout")
+	TxTimeoutPanicError = errors.New("tx time out")
 
 	RegisterProcessError = errors.New("fail to register process")
+
+	SandboxExitDefaultError = errors.New("exit with no additional error message")
 )
