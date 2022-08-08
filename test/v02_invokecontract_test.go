@@ -191,7 +191,7 @@ func TestDockerGoTimeout(t *testing.T) {
 	assert.Equal(t, uint32(1), result.Code)
 	assert.Nil(t, result.Result)
 	fmt.Printf("%+v", result)
-	assert.Equal(t, "tx timeout", result.Message)
+	assert.Equal(t, "tx time out", result.Message)
 	assert.Nil(t, result.ContractEvent)
 	tearDownTest()
 }
