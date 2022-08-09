@@ -148,10 +148,12 @@ func NewProcess(user interfaces.User, chainID, contractName, contractVersion, pr
 // PutMsg put invoking requests to chan, waiting for process to handle request
 //  @param req types include DockerVMType_TX_REQUEST, ChangeSandboxReqMsg and CloseSandboxReqMsg
 func (p *Process) PutMsg(msg *protogo.DockerVMMessage) {
-	if len(p.respCh) == 1 {
-		oldResp := <-p.respCh
+	select {
+	case resp := <-p.respCh:
 		p.logger.Errorf("resp chan is full, old resp txid is [%s](removed), new resp txid is [%s]",
-			oldResp.TxId, msg.TxId)
+			resp.TxId, msg.TxId)
+	default:
+		break
 	}
 	p.respCh <- msg
 }
@@ -459,7 +461,8 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 
 	elapsedTime := time.Since(tx.StartTime)
 	if elapsedTime > config.DockerVMConfig.Process.ExecTxTimeout {
-		return fmt.Errorf("tx [%s] expired, elapsed time: %v", tx.Tx.TxId, elapsedTime)
+		p.logger.Warnf("tx [%s] expired, elapsed time: %v", tx.Tx.TxId, elapsedTime)
+		return nil
 	}
 
 	p.logger.Debugf("start handle tx req [%s]", tx.Tx.TxId)
