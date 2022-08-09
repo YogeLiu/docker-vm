@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package interfaces
 
 import (
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 )
 
@@ -21,7 +22,7 @@ type (
 		Start()
 		PutMsg(msg interface{}) error
 		GetContractPath() string
-		GetTxCh(isOrig bool) chan *protogo.DockerVMMessage
+		GetTxCh(isOrig bool) chan *messages.TxPayload
 	}
 	ProcessManager interface {
 		Start()

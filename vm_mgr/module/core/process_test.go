@@ -3,8 +3,8 @@ package core
 import (
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/module/rpc"
-	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 	"testing"
 )
@@ -1502,11 +1502,11 @@ func newTestProcess(isOrig bool) *Process {
 		&ContractManager{eventCh: make(chan interface{}, _contractManagerEventChSize)})
 	scheduler.requestGroups[groupKey] = &RequestGroup{
 		origTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
+			txCh:       make(chan *messages.TxPayload, _origTxChSize),
 			processMgr: origProcessManager,
 		},
 		crossTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
+			txCh:       make(chan *messages.TxPayload, _crossTxChSize),
 			processMgr: crossProcessManager,
 		},
 	}

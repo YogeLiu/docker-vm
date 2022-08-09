@@ -6,7 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 
 package messages
 
-import "chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+import (
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"time"
+)
 
 // GetProcessReqMsg is the get process request msg (request group -> process manager)
 type GetProcessReqMsg struct {
@@ -89,4 +92,10 @@ type CloseMsg struct {
 type BadContractResp struct {
 	Tx     *protogo.DockerVMMessage
 	IsOrig bool
+}
+
+// TxPayload is the tx payload msg
+type TxPayload struct {
+	Tx        *protogo.DockerVMMessage
+	StartTime time.Time
 }

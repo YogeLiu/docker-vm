@@ -55,6 +55,7 @@ const (
 const (
 	_readyToIdleTimeoutRatio = 5
 	_forcedKillWaitTime      = 200 * time.Millisecond
+	_removeTxTime            = 9000 * time.Millisecond
 )
 
 const (
@@ -86,7 +87,7 @@ type Process struct {
 	cmdReadyCh chan bool
 	exitCh     chan *exitErr
 	updateCh   chan struct{}
-	txCh       chan *protogo.DockerVMMessage
+	txCh       chan *messages.TxPayload
 	respCh     chan *protogo.DockerVMMessage
 	timer      *time.Timer
 
@@ -273,8 +274,8 @@ func (p *Process) listenProcess() {
 			case tx := <-p.txCh:
 				// condition: during cmd.wait
 				if err := p.handleTxRequest(tx); err != nil {
-					p.logger.Errorf("failed to handle tx [%s] request, %v", tx.TxId, err)
-					if err := p.returnTxErrorResp(tx.TxId, err.Error()); err != nil {
+					p.logger.Errorf("failed to handle tx [%s] request, %v", tx.Tx.TxId, err)
+					if err := p.returnTxErrorResp(tx.Tx.TxId, err.Error()); err != nil {
 						p.logger.Errorf("failed to return tx error response, %v", err)
 					}
 				}
@@ -448,14 +449,23 @@ func (p *Process) CloseSandbox() error {
 }
 
 // handleTxRequest handle tx request from request group chan
-func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
+func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	p.logger.Debugf("start handle tx req [%s]", tx.TxId)
+	elapsedTime := time.Since(tx.StartTime)
+	if elapsedTime > _removeTxTime {
+		p.logger.Warnf("tx [%s] expired for %v, elapsed time: %v", tx.Tx.TxId, _removeTxTime, elapsedTime)
+		return nil
+	} else if elapsedTime > config.DockerVMConfig.Process.ExecTxTimeout {
+		return fmt.Errorf("tx [%s] expired for %v, elapsed time: %v", tx.Tx.TxId,
+			config.DockerVMConfig.Process.ExecTxTimeout, elapsedTime)
+	}
 
-	p.Tx = tx
+	p.logger.Debugf("start handle tx req [%s]", tx.Tx.TxId)
+
+	p.Tx = tx.Tx
 
 	p.updateProcessState(busy)
 
@@ -515,7 +525,7 @@ func (p *Process) handleTimeout() error {
 	case busy:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Debugf("busy timeout, go to timeout")
+		p.logger.Warnf("tx [%s] busy timeout", p.Tx.TxId)
 		p.updateProcessState(timeout)
 		if err := p.killProcess(syscall.SIGINT); err != nil {
 			p.logger.Warnf("failed to kill timeout process, %v", err)
@@ -603,11 +613,12 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
 	if exitError.err == utils.ContractExecError {
-		p.logger.Debugf("start to release process")
+		p.logger.Warnf("process exited when launch process, start to release process")
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
 		select {
-		case p.Tx = <-p.txCh:
+		case tx := <-p.txCh:
+			p.Tx = tx.Tx
 			p.logger.Debugf("contract exec start failed, remove tx %s", p.Tx.TxId)
 			returnErrResp = true
 			break
@@ -618,10 +629,11 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		returnBadContractResp = true
 		return true
 	}
+
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
 	// 3. created fail, writeToFile fail -> relaunch
 	if p.processState == created {
-		p.logger.Warnf("failed to launch process: %s", exitError.err)
+		p.logger.Warnf("process exited when created: %s", exitError.err)
 		restartSandbox = true
 		return false
 	}
@@ -659,7 +671,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  ========= condition: after cmd.wait
 	// 4. process change context, restart process
 	if p.processState == changing {
-		p.logger.Debugf("changing process to [%s]", p.processName)
+		p.logger.Warnf("changing process to [%s]", p.processName)
 		p.updateProcessState(created)
 		// restart process
 		restartAll = true
@@ -669,19 +681,21 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  ========= condition: after cmd.wait
 	// 5. process killed because resource release
 	if p.processState == closing {
-		p.logger.Debugf("killed for periodic process cleaning")
+		p.logger.Warnf("process killed for periodic process cleaning")
 		return true
 	}
 
 	// 6. process killed because of timeout, return error response and relaunch
 	if p.processState == timeout {
-		p.logger.Debugf("killed for timeout")
+		p.logger.Warnf("process killed for timeout")
 		p.updateProcessState(created)
+		exitSandbox = true
 		returnErrResp = true
-		restartSandbox = true
 		errRet = utils.TxTimeoutPanicError.Error()
+		return true
 	}
 
+	p.logger.Warnf("process killed for other reasons")
 	return false
 }
 
@@ -729,7 +743,7 @@ func (p *Process) forcedKill() {
 	time.Sleep(_forcedKillWaitTime)
 	err := p.cmd.Process.Signal(syscall.SIGKILL)
 	if err != nil {
-		p.logger.Debugf("failed to kill process with SIGKILL, err: %s", err.Error())
+		p.logger.Warnf("failed to kill process with SIGKILL, err: %s", err.Error())
 	}
 }
 
