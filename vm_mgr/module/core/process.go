@@ -86,7 +86,7 @@ type Process struct {
 	cmdReadyCh chan bool
 	exitCh     chan *exitErr
 	updateCh   chan struct{}
-	txCh       chan *protogo.DockerVMMessage
+	txCh       chan *messages.TxPayload
 	respCh     chan *protogo.DockerVMMessage
 	timer      *time.Timer
 
@@ -277,8 +277,8 @@ func (p *Process) listenProcess() {
 			case tx := <-p.txCh:
 				// condition: during cmd.wait
 				if err := p.handleTxRequest(tx); err != nil {
-					p.logger.Errorf("failed to handle tx [%s] request, %v", tx.TxId, err)
-					if err := p.returnTxErrorResp(tx.TxId, err.Error()); err != nil {
+					p.logger.Errorf("failed to handle tx [%s] request, %v", tx.Tx.TxId, err)
+					if err := p.returnTxErrorResp(tx.Tx.TxId, err.Error()); err != nil {
 						p.logger.Errorf("failed to return tx error response, %v", err)
 					}
 				}
@@ -452,14 +452,19 @@ func (p *Process) CloseSandbox() error {
 }
 
 // handleTxRequest handle tx request from request group chan
-func (p *Process) handleTxRequest(tx *protogo.DockerVMMessage) error {
+func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	p.logger.Debugf("start handle tx req [%s]", tx.TxId)
+	elapsedTime := time.Since(tx.StartTime)
+	if elapsedTime > config.DockerVMConfig.Process.ExecTxTimeout {
+		return fmt.Errorf("tx [%s] expired, elapsed time: %v", tx.Tx.TxId, elapsedTime)
+	}
 
-	p.Tx = tx
+	p.logger.Debugf("start handle tx req [%s]", tx.Tx.TxId)
+
+	p.Tx = tx.Tx
 
 	p.updateProcessState(busy)
 
@@ -611,7 +616,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
 		select {
-		case p.Tx = <-p.txCh:
+		case tx := <-p.txCh:
+			p.Tx = tx.Tx
 			p.logger.Debugf("contract exec start failed, remove tx %s", p.Tx.TxId)
 			returnErrResp = true
 			break

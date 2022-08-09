@@ -58,7 +58,7 @@ const _getByteCodeTimeout = 6
 
 // txController handle the tx request chan and process status
 type txController struct {
-	txCh           chan *protogo.DockerVMMessage
+	txCh           chan *messages.TxPayload
 	processWaiting bool
 	processMgr     interfaces.ProcessManager
 }
@@ -111,11 +111,11 @@ func NewRequestGroup(chainID, contractName, contractVersion string, oriPMgr, cro
 		getBytecodeTimer: time.NewTimer(math.MaxInt32 * time.Second), //initial tx timer, never triggered
 
 		origTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
+			txCh:       make(chan *messages.TxPayload, _origTxChSize),
 			processMgr: oriPMgr,
 		},
 		crossTxController: &txController{
-			txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
+			txCh:       make(chan *messages.TxPayload, _crossTxChSize),
 			processMgr: crossPMgr,
 		},
 	}
@@ -197,7 +197,7 @@ func (r *RequestGroup) GetContractPath() string {
 }
 
 // GetTxCh returns tx chan
-func (r *RequestGroup) GetTxCh(isOrig bool) chan *protogo.DockerVMMessage {
+func (r *RequestGroup) GetTxCh(isOrig bool) chan *messages.TxPayload {
 
 	if isOrig {
 		return r.origTxController.txCh
@@ -271,13 +271,19 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 
 	// original tx, send to original tx chan
 	if utils.IsOrig(req) {
-		r.origTxController.txCh <- req
+		r.origTxController.txCh <- &messages.TxPayload{
+			Tx:        req,
+			StartTime: time.Now(),
+		}
 		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
 		return nil
 	}
 
 	// cross contract tx, send to cross contract tx chan
-	r.crossTxController.txCh <- req
+	r.crossTxController.txCh <- &messages.TxPayload{
+		Tx:        req,
+		StartTime: time.Now(),
+	}
 	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
 	return nil
 }
@@ -421,11 +427,17 @@ moveTxs:
 		case tx := <-r.bufCh:
 			if utils.IsOrig(tx) {
 				// original tx, send to original tx chan
-				r.origTxController.txCh <- tx
+				r.origTxController.txCh <- &messages.TxPayload{
+					Tx:        tx,
+					StartTime: time.Now(),
+				}
 				r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", tx.TxId, len(r.origTxController.txCh))
 			} else {
 				// cross contract tx, send to cross contract tx chan
-				r.crossTxController.txCh <- tx
+				r.crossTxController.txCh <- &messages.TxPayload{
+					Tx:        tx,
+					StartTime: time.Now(),
+				}
 				r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", tx.TxId, len(r.crossTxController.txCh))
 			}
 		default:

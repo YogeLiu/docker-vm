@@ -31,8 +31,8 @@ func TestNewRequestGroup(t *testing.T) {
 	eventCh := make(chan interface{}, _requestGroupEventChSize)
 	txCh := make(chan *protogo.DockerVMMessage, _requestGroupEventChSize)
 	stopCh := make(chan struct{})
-	origTxCh := make(chan *protogo.DockerVMMessage, _origTxChSize)
-	crossTxCh := make(chan *protogo.DockerVMMessage, _crossTxChSize)
+	origTxCh := make(chan *messages.TxPayload, _origTxChSize)
+	crossTxCh := make(chan *messages.TxPayload, _crossTxChSize)
 
 	requestGroup := NewRequestGroup(testChainID, testContractName, testContractVersion, nil, nil, nil)
 	requestGroup.eventCh = eventCh
@@ -112,7 +112,7 @@ func TestRequestGroup_GetContractPath(t *testing.T) {
 			fields: fields{
 				group: requestGroup,
 			},
-			want: "/mount/contracts/chain1#testContractName#1.0.0",
+			want: "/mount/contract-bins/chain1#testContractName#1.0.0",
 		},
 	}
 	for _, tt := range tests {
@@ -130,8 +130,8 @@ func TestRequestGroup_GetTxCh(t *testing.T) {
 	SetConfig()
 
 	log := logger.NewTestDockerLogger()
-	testOrigTxCh := make(chan *protogo.DockerVMMessage, _origTxChSize)
-	testCrossTxCh := make(chan *protogo.DockerVMMessage, _crossTxChSize)
+	testOrigTxCh := make(chan *messages.TxPayload, _origTxChSize)
+	testCrossTxCh := make(chan *messages.TxPayload, _crossTxChSize)
 	requestGroup := NewRequestGroup(testChainID, "testContractName", "1.0.0", nil, nil, nil)
 	requestGroup.logger = log
 
@@ -148,7 +148,7 @@ func TestRequestGroup_GetTxCh(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   chan *protogo.DockerVMMessage
+		want   chan *messages.TxPayload
 	}{
 		{
 			name: "TestRequestGroup_GetTxCh_Orig",
@@ -194,11 +194,11 @@ func TestRequestGroup_PutMsg(t *testing.T) {
 	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
 	requestGroup.origTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
+		txCh:       make(chan *messages.TxPayload, _origTxChSize),
 		processMgr: origProcessManager,
 	}
 	requestGroup.crossTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
+		txCh:       make(chan *messages.TxPayload, _crossTxChSize),
 		processMgr: crossProcessManager,
 	}
 
@@ -324,14 +324,16 @@ func TestRequestGroup_getProcesses(t *testing.T) {
 	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
 	requestGroup.origTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
+		txCh:       make(chan *messages.TxPayload, _origTxChSize),
 		processMgr: origProcessManager,
 	}
 	requestGroup.crossTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
+		txCh:       make(chan *messages.TxPayload, _crossTxChSize),
 		processMgr: crossProcessManager,
 	}
-	requestGroup.origTxController.txCh <- &protogo.DockerVMMessage{}
+	requestGroup.origTxController.txCh <- &messages.TxPayload{
+		Tx: &protogo.DockerVMMessage{},
+	}
 
 	type fields struct {
 		group *RequestGroup
@@ -421,11 +423,11 @@ func TestRequestGroup_handleContractReadyResp(t *testing.T) {
 	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
 	requestGroup.origTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
+		txCh:       make(chan *messages.TxPayload, _origTxChSize),
 		processMgr: origProcessManager,
 	}
 	requestGroup.crossTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
+		txCh:       make(chan *messages.TxPayload, _crossTxChSize),
 		processMgr: crossProcessManager,
 	}
 
@@ -473,14 +475,16 @@ func TestRequestGroup_handleProcessReadyResp(t *testing.T) {
 	crossProcessManager := NewProcessManager(maxCrossProcessNum, releaseRate, true, usersManager)
 
 	requestGroup.origTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, _origTxChSize),
+		txCh:       make(chan *messages.TxPayload, _origTxChSize),
 		processMgr: origProcessManager,
 	}
 	requestGroup.crossTxController = &txController{
-		txCh:       make(chan *protogo.DockerVMMessage, _crossTxChSize),
+		txCh:       make(chan *messages.TxPayload, _crossTxChSize),
 		processMgr: crossProcessManager,
 	}
-	requestGroup.origTxController.txCh <- &protogo.DockerVMMessage{}
+	requestGroup.origTxController.txCh <- &messages.TxPayload{
+		Tx: &protogo.DockerVMMessage{},
+	}
 
 	type fields struct {
 		group *RequestGroup

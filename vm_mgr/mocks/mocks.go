@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 )
 
@@ -131,7 +132,7 @@ func (rg *MockRequestGroup) GetContractPath() string {
 	panic("implement me")
 }
 
-func (rg *MockRequestGroup) GetTxCh(isOrig bool) chan *protogo.DockerVMMessage {
+func (rg *MockRequestGroup) GetTxCh(isOrig bool) chan *messages.TxPayload {
 	//TODO implement me
 	panic("implement me")
 }
