@@ -55,6 +55,7 @@ const (
 const (
 	_readyToIdleTimeoutRatio = 5
 	_forcedKillWaitTime      = 200 * time.Millisecond
+	_removeTxTime            = 9000 * time.Millisecond
 )
 
 const (
@@ -148,13 +149,7 @@ func NewProcess(user interfaces.User, chainID, contractName, contractVersion, pr
 // PutMsg put invoking requests to chan, waiting for process to handle request
 //  @param req types include DockerVMType_TX_REQUEST, ChangeSandboxReqMsg and CloseSandboxReqMsg
 func (p *Process) PutMsg(msg *protogo.DockerVMMessage) {
-	select {
-	case resp := <-p.respCh:
-		p.logger.Errorf("resp chan is full, old resp txid is [%s](removed), new resp txid is [%s]",
-			resp.TxId, msg.TxId)
-	default:
-		break
-	}
+
 	p.respCh <- msg
 }
 
@@ -460,9 +455,12 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	defer p.lock.Unlock()
 
 	elapsedTime := time.Since(tx.StartTime)
-	if elapsedTime > config.DockerVMConfig.Process.ExecTxTimeout {
-		p.logger.Warnf("tx [%s] expired, elapsed time: %v", tx.Tx.TxId, elapsedTime)
+	if elapsedTime > _removeTxTime {
+		p.logger.Warnf("tx [%s] expired for %v, elapsed time: %v", tx.Tx.TxId, _removeTxTime, elapsedTime)
 		return nil
+	} else if elapsedTime > config.DockerVMConfig.Process.ExecTxTimeout {
+		return fmt.Errorf("tx [%s] expired for %v, elapsed time: %v", tx.Tx.TxId,
+			config.DockerVMConfig.Process.ExecTxTimeout, elapsedTime)
 	}
 
 	p.logger.Debugf("start handle tx req [%s]", tx.Tx.TxId)
