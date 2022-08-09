@@ -148,7 +148,11 @@ func NewProcess(user interfaces.User, chainID, contractName, contractVersion, pr
 // PutMsg put invoking requests to chan, waiting for process to handle request
 //  @param req types include DockerVMType_TX_REQUEST, ChangeSandboxReqMsg and CloseSandboxReqMsg
 func (p *Process) PutMsg(msg *protogo.DockerVMMessage) {
-
+	if len(p.respCh) == 1 {
+		oldResp := <-p.respCh
+		p.logger.Errorf("resp chan is full, old resp txid is [%s](removed), new resp txid is [%s]",
+			oldResp.TxId, msg.TxId)
+	}
 	p.respCh <- msg
 }
 
@@ -515,7 +519,7 @@ func (p *Process) handleTimeout() error {
 	case busy:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Debugf("busy timeout, go to timeout")
+		p.logger.Warnf("tx [%s] busy timeout", p.Tx.TxId)
 		p.updateProcessState(timeout)
 		if err := p.killProcess(syscall.SIGINT); err != nil {
 			p.logger.Warnf("failed to kill timeout process, %v", err)
@@ -603,7 +607,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	// =========  condition: before cmd.wait
 	// 1. created fail, ContractExecError -> return err and exit
 	if exitError.err == utils.ContractExecError {
-		p.logger.Debugf("start to release process")
+		p.logger.Warnf("process exited when launch process, start to release process")
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
 		select {
@@ -618,10 +622,11 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		returnBadContractResp = true
 		return true
 	}
+
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
 	// 3. created fail, writeToFile fail -> relaunch
 	if p.processState == created {
-		p.logger.Warnf("failed to launch process: %s", exitError.err)
+		p.logger.Warnf("process exited when created: %s", exitError.err)
 		restartSandbox = true
 		return false
 	}
@@ -659,7 +664,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  ========= condition: after cmd.wait
 	// 4. process change context, restart process
 	if p.processState == changing {
-		p.logger.Debugf("changing process to [%s]", p.processName)
+		p.logger.Warnf("changing process to [%s]", p.processName)
 		p.updateProcessState(created)
 		// restart process
 		restartAll = true
@@ -669,19 +674,21 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  ========= condition: after cmd.wait
 	// 5. process killed because resource release
 	if p.processState == closing {
-		p.logger.Debugf("killed for periodic process cleaning")
+		p.logger.Warnf("process killed for periodic process cleaning")
 		return true
 	}
 
 	// 6. process killed because of timeout, return error response and relaunch
 	if p.processState == timeout {
-		p.logger.Debugf("killed for timeout")
+		p.logger.Warnf("process killed for timeout")
 		p.updateProcessState(created)
+		exitSandbox = true
 		returnErrResp = true
-		restartSandbox = true
 		errRet = utils.TxTimeoutPanicError.Error()
+		return true
 	}
 
+	p.logger.Warnf("process killed for other reasons")
 	return false
 }
 
@@ -729,7 +736,7 @@ func (p *Process) forcedKill() {
 	time.Sleep(_forcedKillWaitTime)
 	err := p.cmd.Process.Signal(syscall.SIGKILL)
 	if err != nil {
-		p.logger.Debugf("failed to kill process with SIGKILL, err: %s", err.Error())
+		p.logger.Warnf("failed to kill process with SIGKILL, err: %s", err.Error())
 	}
 }
 
