@@ -252,6 +252,8 @@ func (p *Process) launchProcess() *exitErr {
 // printContractLog print the sandbox cmd log
 func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	contractLogger := logger.NewDockerLogger(logger.MODULE_CONTRACT)
+	zapLogger := contractLogger.Desugar()
+	logLevel := logger.GetLogLevel()
 	rd := bufio.NewReader(contractPipe)
 	for {
 		str, err := rd.ReadString('\n')
@@ -260,7 +262,7 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 			return
 		}
 		str = strings.TrimSuffix(str, "\n")
-		contractLogger.Debugf(str)
+		zapLogger.Check(logLevel, str).Write()
 	}
 }
 

@@ -93,10 +93,7 @@ func newDockerLogger(name, path string) *zap.SugaredLogger {
 	writeSyncer := getLogWriter()
 
 	// default log level is info
-	logLevel := new(zapcore.Level)
-	if err := logLevel.UnmarshalText([]byte(logLevelFromConfig)); err != nil {
-		panic("unknown log level, logLevelFromConfig: " + logLevelFromConfig + "," + err.Error())
-	}
+	logLevel := GetLogLevel()
 
 	core := zapcore.NewCore(
 		encoder,
@@ -194,4 +191,15 @@ func GenerateRequestGroupLoggerName(name string) string {
 	sb.WriteString(name)
 	sb.WriteString("]")
 	return sb.String()
+}
+
+func GetLogLevel() zapcore.Level {
+	var logLevel zapcore.Level
+	if err := logLevel.UnmarshalText([]byte(logLevelFromConfig)); err != nil {
+		logLevel = zapcore.InfoLevel
+	}
+	if logLevel > zapcore.ErrorLevel {
+		logLevel = zapcore.ErrorLevel
+	}
+	return logLevel
 }
