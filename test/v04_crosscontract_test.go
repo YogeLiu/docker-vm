@@ -21,7 +21,6 @@ func TestDockerGoCrossCall(t *testing.T) {
 	parameters0 := generateInitParams()
 	parameters0["contract_name"] = []byte(ContractNameTest)
 	parameters0["contract_method"] = []byte("display")
-	method := "cross_contract"
 
 	contractInfo := commonPb.Contract{
 		Name:        ContractNameTest,
@@ -45,7 +44,7 @@ func TestDockerGoCrossCall(t *testing.T) {
 	mockTxContext2.EXPECT().GetContractByName(ContractNameTest).Return(&contractInfo, nil).AnyTimes()
 	mockTxContext2.EXPECT().GetContractByName("").Return(&invalidContractInfo, nil).AnyTimes()
 
-	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, methodCrossContract, nil,
 		parameters0, mockTxContext2, uint64(123))
 	fmt.Printf("result -> [%+v]", result)
 	assert.Equal(t, uint32(0), result.Code)

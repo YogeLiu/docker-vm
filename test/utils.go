@@ -57,6 +57,8 @@ const (
 
 	chainId = "chain1"
 
+	methodCrossContract = "cross_contract"
+
 	txType = commonPb.TxType_INVOKE_CONTRACT
 
 	keyHistoryPrefix = "k"

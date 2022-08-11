@@ -74,7 +74,6 @@ func TestDockerGoGetCrossSenderAddr(t *testing.T) {
 	parameters0 := generateInitParams()
 	parameters0["contract_name"] = []byte(ContractNameTest)
 	parameters0["contract_method"] = []byte("get_sender_address")
-	method := "cross_contract"
 
 	contractInfo := commonPb.Contract{
 		Name:        ContractNameTest,
@@ -98,7 +97,7 @@ func TestDockerGoGetCrossSenderAddr(t *testing.T) {
 	mockTxContext2.EXPECT().GetContractByName(ContractNameTest).Return(&contractInfo, nil).AnyTimes()
 	mockTxContext2.EXPECT().GetContractByName("").Return(&invalidContractInfo, nil).AnyTimes()
 
-	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, methodCrossContract, nil,
 		parameters0, mockTxContext2, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 	assert.Equal(t, []byte(ContractNameAddr), result.Result)
