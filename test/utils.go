@@ -46,7 +46,7 @@ const (
 
 	// ContractNameTest is test contract name
 	// ContractNameTest = "contract_test09"
-	ContractNameTest = "contract_test101"
+	ContractNameTest = "contract_test102"
 	// ContractNameAddr contract addr
 	ContractNameAddr = "xxxxxxaddressfehis"
 
@@ -56,6 +56,8 @@ const (
 	constructKeySeparator = "#"
 
 	chainId = "chain1"
+
+	methodCrossContract = "cross_contract"
 
 	txType = commonPb.TxType_INVOKE_CONTRACT
 
@@ -118,6 +120,7 @@ func initContractId(runtimeType commonPb.RuntimeType) *commonPb.Contract {
 		Name:        ContractNameTest,
 		Version:     ContractVersionTest,
 		RuntimeType: runtimeType,
+		Address:     ContractNameAddr,
 	}
 }
 
@@ -846,6 +849,8 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 				"", nil, nil, mockLogger)
 
 			param["method"] = param["contract_method"]
+			param[protocol.ContractCrossCallerParam] = []byte(ContractNameAddr)
+
 			runtimeContractResult, specialTxType := callContractRuntimeInstance.Invoke(
 				&commonPb.Contract{
 					Name:        ContractNameTest,

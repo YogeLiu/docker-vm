@@ -124,6 +124,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	txSimContext protocol.TxSimContext,
 	gasUsed uint64,
 	currentContractName string,
+	caller string,
 ) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
@@ -182,8 +183,10 @@ func (r *RuntimeInstance) handlerCallContract(
 		return response, gasUsed, specialTxType
 	}
 
+	parameters := callContractReq.Args
+	parameters[protocol.ContractCrossCallerParam] = []byte(caller)
 	result, specialTxType, code = txSimContext.CallContract(contract, contractMethod,
-		nil, callContractReq.Args, gasUsed, txSimContext.GetTx().Payload.TxType)
+		nil, parameters, gasUsed, txSimContext.GetTx().Payload.TxType)
 	r.logger.Debugf("call contract result [%+v]", result)
 
 	if code != commonPb.TxStatusCode_SUCCESS {
