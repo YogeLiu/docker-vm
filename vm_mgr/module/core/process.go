@@ -643,6 +643,16 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	if p.processState == ready {
 		p.logger.Warnf("process exited when ready: %s", exitError.err)
 		exitSandbox = true
+		if p.Tx == nil {
+			p.logger.Warnf("exit with none tx")
+			return true
+		}
+
+		if p.Tx.Request == nil {
+			p.logger.Warnf("exit with invalid tx")
+			return true
+		}
+
 		// error after exec init or upgrade
 		if p.Tx.Request.Method == initContract || p.Tx.Request.Method == upgradeContract {
 			returnBadContractResp = true
