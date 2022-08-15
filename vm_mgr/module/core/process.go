@@ -746,8 +746,6 @@ func (p *Process) killProcess(sig os.Signal) error {
 		return fmt.Errorf("failed to kill process, %v", err)
 	}
 
-	go p.forcedKill()
-
 	return nil
 }
 
