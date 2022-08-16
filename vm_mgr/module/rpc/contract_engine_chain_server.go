@@ -63,7 +63,7 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 	} else {
 
 		sockDir := filepath.Join(config.DockerMountDir, ChainRPCDir)
-		if err = utils.Mkdir(sockDir); err != nil {
+		if err = utils.CreateDir(sockDir); err != nil {
 			return nil, fmt.Errorf("failed to create chain rpc sock dir %s", sockDir)
 		}
 

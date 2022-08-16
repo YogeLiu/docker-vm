@@ -9,7 +9,6 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
-	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 	"errors"
 	"fmt"
 	"net"
@@ -19,6 +18,7 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -36,7 +36,7 @@ func NewSandboxRPCServer(sockDir string) (*SandboxRPCServer, error) {
 
 	log := logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER)
 
-	if err := utils.Mkdir(sockDir); err != nil {
+	if err := utils.CreateDir(sockDir); err != nil {
 		return nil, fmt.Errorf("failed to create sandbox sock dir %s", sockDir)
 	}
 
