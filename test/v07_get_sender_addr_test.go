@@ -67,13 +67,13 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 	tearDownTest()
 }
 
-func TestDockerGoGetCrossSenderAddr(t *testing.T) {
+func TestDockerGoGetCrossSender(t *testing.T) {
 	setupTest(t)
 
 	// success test
 	parameters0 := generateInitParams()
 	parameters0["contract_name"] = []byte(ContractNameTest)
-	parameters0["contract_method"] = []byte("get_sender_address")
+	parameters0["contract_method"] = []byte("get_sender")
 
 	contractInfo := commonPb.Contract{
 		Name:        ContractNameTest,
@@ -101,6 +101,90 @@ func TestDockerGoGetCrossSenderAddr(t *testing.T) {
 		parameters0, mockTxContext2, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
 	assert.Equal(t, []byte(ContractNameAddr), result.Result)
+
+	tearDownTest()
+}
+
+func TestDockerGoGetCrossSenderAddr(t *testing.T) {
+	setupTest(t)
+
+	// success test
+	parameters0 := generateInitParams()
+	parameters0["contract_name"] = []byte(ContractNameTest)
+	parameters0["contract_method"] = []byte("get_sender_address")
+
+	contractInfo := commonPb.Contract{
+		Name:        ContractNameTest,
+		RuntimeType: commonPb.RuntimeType_GO,
+		Address:     ContractNameAddr,
+	}
+
+	invalidContractInfo := commonPb.Contract{
+		Name:        "",
+		RuntimeType: commonPb.RuntimeType_INVALID,
+		Address:     "",
+	}
+
+	mockTxContext2, ctrl := initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext2, ctrl)
+	mockCrossCallGetDepth(mockTxContext2)
+	mockCrossCallGetCrossInfo(mockTxContext2)
+
+	mockTxQueryCertFromChain(mockTxContext2)
+	mockGetSender(mockTxContext2)
+	mockGetStrAddrFromPbMember(mockTxContext2)
+
+	mockCallContract(mockTxContext2, parameters0)
+	mockTxContext2.EXPECT().GetTxRWMapByContractName(gomock.Any()).Return(nil, nil).AnyTimes()
+	mockTxContext2.EXPECT().GetContractByName(ContractNameTest).Return(&contractInfo, nil).AnyTimes()
+	mockTxContext2.EXPECT().GetContractByName("").Return(&invalidContractInfo, nil).AnyTimes()
+
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, methodCrossContract, nil,
+		parameters0, mockTxContext2, uint64(123))
+	assert.Equal(t, uint32(0), result.Code)
+	assert.Equal(t, []byte(zxlCertAddressFromCert), result.Result)
+
+	tearDownTest()
+}
+
+func TestDockerGoGetCrossOrigin(t *testing.T) {
+	setupTest(t)
+
+	// success test
+	parameters0 := generateInitParams()
+	parameters0["contract_name"] = []byte(ContractNameTest)
+	parameters0["contract_method"] = []byte("get_origin")
+
+	contractInfo := commonPb.Contract{
+		Name:        ContractNameTest,
+		RuntimeType: commonPb.RuntimeType_GO,
+		Address:     ContractNameAddr,
+	}
+
+	invalidContractInfo := commonPb.Contract{
+		Name:        "",
+		RuntimeType: commonPb.RuntimeType_INVALID,
+		Address:     "",
+	}
+
+	mockTxContext2, ctrl := initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext2, ctrl)
+	mockCrossCallGetDepth(mockTxContext2)
+	mockCrossCallGetCrossInfo(mockTxContext2)
+
+	mockTxQueryCertFromChain(mockTxContext2)
+	mockGetSender(mockTxContext2)
+	mockGetStrAddrFromPbMember(mockTxContext2)
+
+	mockCallContract(mockTxContext2, parameters0)
+	mockTxContext2.EXPECT().GetTxRWMapByContractName(gomock.Any()).Return(nil, nil).AnyTimes()
+	mockTxContext2.EXPECT().GetContractByName(ContractNameTest).Return(&contractInfo, nil).AnyTimes()
+	mockTxContext2.EXPECT().GetContractByName("").Return(&invalidContractInfo, nil).AnyTimes()
+
+	result, _ := mockRuntimeInstance.Invoke(mockContractId, methodCrossContract, nil,
+		parameters0, mockTxContext2, uint64(123))
+	assert.Equal(t, uint32(0), result.Code)
+	assert.Equal(t, []byte(zxlPKAddress), result.Result)
 
 	tearDownTest()
 }
