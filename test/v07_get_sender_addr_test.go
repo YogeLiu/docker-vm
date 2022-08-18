@@ -184,7 +184,7 @@ func TestDockerGoGetCrossOrigin(t *testing.T) {
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, methodCrossContract, nil,
 		parameters0, mockTxContext2, uint64(123))
 	assert.Equal(t, uint32(0), result.Code)
-	assert.Equal(t, []byte(zxlCertAddressFromCert), result.Result)
+	assert.Equal(t, []byte(zxlPKAddress), result.Result)
 
 	tearDownTest()
 }
