@@ -156,6 +156,11 @@ func exists(path string) (bool, error) {
 	return false, err
 }
 
+var (
+	normalStepTimeLimit = time.Second.Nanoseconds() * 2
+	grpcStepTimeLimit   = time.Millisecond.Nanoseconds() * 500
+)
+
 func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log string) {
 
 	if stepType != protogo.StepType_RUNTIME_PREPARE_TX_REQUEST {
@@ -204,12 +209,28 @@ func PrintTxStepsWithTime(msg *protogo.DockerVMMessage, untilDuration time.Durat
 		return "", false
 	}
 	lastStep := msg.StepDurations[len(msg.StepDurations)-1]
+	var sb strings.Builder
 	if lastStep.UntilDuration > untilDuration.Nanoseconds() {
-		return PrintTxSteps(msg), true
+		sb.WriteString(fmt.Sprintf("slow tx overall: "))
+		sb.WriteString(PrintTxSteps(msg))
+		return sb.String(), true
 	}
 	for _, step := range msg.StepDurations {
-		if step.StepDuration > time.Second.Nanoseconds()*2 {
-			return PrintTxSteps(msg), true
+		if step.StepDuration > normalStepTimeLimit {
+			sb.WriteString(fmt.Sprintf("slow tx at normal step %q, step cost: %vms: ",
+				step.Type, time.Duration(step.StepDuration).Seconds()*1000))
+			sb.WriteString(PrintTxSteps(msg))
+			return sb.String(), true
+		}
+		if (step.Type == protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST ||
+			step.Type == protogo.StepType_SANDBOX_GRPC_RECEIVE_TX_REQUEST ||
+			step.Type == protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE ||
+			step.Type == protogo.StepType_RUNTIME_GRPC_RECEIVE_TX_RESPONSE) &&
+			step.StepDuration > grpcStepTimeLimit {
+			sb.WriteString(fmt.Sprintf("slow tx at grpc step %q, step cost: %vms: ",
+				step.Type, time.Duration(step.StepDuration).Seconds()*1000))
+			sb.WriteString(PrintTxSteps(msg))
+			return sb.String(), true
 		}
 	}
 	return "", false
