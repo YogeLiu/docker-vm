@@ -130,7 +130,8 @@ func (r *RuntimeInstance) Invoke(
 	}
 
 	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0)
-	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST, "")
+	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST,
+		fmt.Sprintf("tx send chan length: %d", r.clientMgr.GetTxSendChLen()))
 
 	// init time statistics
 	startTime := time.Now()
@@ -189,7 +190,7 @@ func (r *RuntimeInstance) Invoke(
 				}
 
 			case protogo.DockerVMType_ERROR:
-				r.logger.Errorf("handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
+				r.logger.Warnf("handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
 				contractResult.GasUsed = gasUsed
 				return r.errorResult(
 					contractResult,

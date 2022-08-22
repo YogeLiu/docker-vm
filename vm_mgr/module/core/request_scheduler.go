@@ -22,7 +22,7 @@ const (
 	// _requestSchedulerTxChSize is request scheduler event chan size
 	_requestSchedulerTxChSize = 50000
 	// _requestSchedulerEventChSize is request scheduler event chan size
-	_requestSchedulerEventChSize = 100
+	_requestSchedulerEventChSize = 10000
 	// _closeChSize is close request group chan size
 	_closeChSize = 8
 )

@@ -112,7 +112,8 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				conn.wg.Done()
 				return
 			}
-			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
+			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST,
+				fmt.Sprintf("msg length: %d", msg.Size()))
 
 			switch msg.Type {
 			case protogo.DockerVMType_TX_REQUEST:
