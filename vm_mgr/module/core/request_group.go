@@ -26,13 +26,13 @@ import (
 const (
 
 	// _requestGroupTxChSize is request scheduler event chan size
-	_requestGroupTxChSize = 30000
+	_requestGroupTxChSize = 50000
 
 	// _requestGroupEventChSize is request scheduler event chan size
 	_requestGroupEventChSize = 100
 
 	// _origTxChSize is orig tx chan size
-	_origTxChSize = 30000
+	_origTxChSize = 50000
 
 	// _crossTxChSize is cross tx chan size
 	_crossTxChSize = 10000
@@ -180,7 +180,10 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 	case *messages.GetProcessRespMsg, *messages.BadContractResp:
 		r.eventCh <- msg
 	case *protogo.DockerVMMessage:
-		r.txCh <- msg.(*protogo.DockerVMMessage)
+		req := msg.(*protogo.DockerVMMessage)
+		utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_RECEIVE_TX_REQUEST,
+			fmt.Sprintf("group tx chan size: %d", len(r.txCh)))
+		r.txCh <- req
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
 	default:
@@ -269,22 +272,7 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 		return fmt.Errorf("failed to put msg into request scheduler, %s", msg)
 	}
 
-	// original tx, send to original tx chan
-	if utils.IsOrig(req) {
-		r.origTxController.txCh <- &messages.TxPayload{
-			Tx:        req,
-			StartTime: time.Now(),
-		}
-		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
-		return nil
-	}
-
-	// cross contract tx, send to cross contract tx chan
-	r.crossTxController.txCh <- &messages.TxPayload{
-		Tx:        req,
-		StartTime: time.Now(),
-	}
-	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
+	r.enqueueCh(req)
 	return nil
 }
 
@@ -425,21 +413,7 @@ moveTxs:
 	for {
 		select {
 		case tx := <-r.bufCh:
-			if utils.IsOrig(tx) {
-				// original tx, send to original tx chan
-				r.origTxController.txCh <- &messages.TxPayload{
-					Tx:        tx,
-					StartTime: time.Now(),
-				}
-				r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", tx.TxId, len(r.origTxController.txCh))
-			} else {
-				// cross contract tx, send to cross contract tx chan
-				r.crossTxController.txCh <- &messages.TxPayload{
-					Tx:        tx,
-					StartTime: time.Now(),
-				}
-				r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", tx.TxId, len(r.crossTxController.txCh))
-			}
+			r.enqueueCh(tx)
 		default:
 			break moveTxs
 		}
@@ -569,6 +543,31 @@ func (r *RequestGroup) updateControllerState(isOrig, toWaiting bool) {
 	} else {
 		controller.processWaiting = false
 	}
+}
+
+// enqueueCh enqueue tx to process tx ch
+func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
+
+	utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_SEND_TX_REQUEST,
+		fmt.Sprintf("group last tx chan size(original): %d, group last tx chan size(cross): %d",
+			len(r.origTxController.txCh), len(r.crossTxController.txCh)))
+
+	// original tx, send to original tx chan
+	if utils.IsOrig(req) {
+		r.origTxController.txCh <- &messages.TxPayload{
+			Tx:        req,
+			StartTime: time.Now(),
+		}
+		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
+		return
+	}
+
+	// cross contract tx, send to cross contract tx chan
+	r.crossTxController.txCh <- &messages.TxPayload{
+		Tx:        req,
+		StartTime: time.Now(),
+	}
+	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
 }
 
 // returnTxErrorResp return error to request scheduler

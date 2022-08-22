@@ -47,11 +47,15 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			return fmt.Errorf("failed to recv msg: %s", err)
+			err = fmt.Errorf("failed to recv msg: %s", err)
+			s.logger.Errorf(err.Error())
+			return err
 		}
 
 		if msg == nil {
-			return fmt.Errorf("recv nil message, ending contract stream")
+			err = fmt.Errorf("recv nil message, ending contract stream")
+			s.logger.Errorf(err.Error())
+			return err
 		}
 
 		s.logger.Debugf("receive msg from sandbox[%s]", msg.TxId)
@@ -69,7 +73,9 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		}
 
 		if !ok {
-			return fmt.Errorf("failed to get process, %v", err)
+			err = fmt.Errorf("failed to get process, %v", err)
+			s.logger.Errorf(err.Error())
+			return err
 		}
 
 		if msg.Type == protogo.DockerVMType_REGISTER {

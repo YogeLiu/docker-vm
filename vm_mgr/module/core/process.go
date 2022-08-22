@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -102,6 +103,8 @@ type Process struct {
 	requestScheduler interfaces.RequestScheduler
 
 	lock sync.RWMutex
+
+	timerPopped bool
 }
 
 // check interface implement
@@ -171,7 +174,7 @@ func (p *Process) startProcess() {
 // launchProcess launch a new process
 func (p *Process) launchProcess() *exitErr {
 
-	p.logger.Debugf("start launch process")
+	p.logger.Debugf("[%s] start launch process", p.getTxId())
 
 	var err error           // process global error
 	var stderr bytes.Buffer // used to capture the error message from contract
@@ -229,8 +232,8 @@ func (p *Process) launchProcess() *exitErr {
 			desc: "",
 		}
 	}
-	p.logger.Debugf("add process to cgroup")
-	p.logger.Debugf("process started")
+	p.logger.Debugf("[%s] add process to cgroup", p.getTxId())
+	p.logger.Debugf("[%s] process started", p.getTxId())
 
 	p.printContractLog(contractOut)
 
@@ -307,7 +310,7 @@ func (p *Process) listenProcess() {
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
-					p.logger.Errorf("failed to handle busy timeout timer, %v", err)
+					p.logger.Errorf("failed to handle busy timeout timer, %v, resp chan length: %d", err, len(p.respCh))
 				}
 				break
 
@@ -397,7 +400,7 @@ func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer
 // ChangeSandbox changes sandbox of process
 func (p *Process) ChangeSandbox(chainID, contractName, contractVersion, processName string) error {
 
-	p.logger.Debugf("process [%s] is changing to [%s]...", p.processName, processName)
+	p.logger.Debugf("[%s] process [%s] is changing to [%s]...", p.getTxId(), p.processName, processName)
 
 	if p.processState != idle {
 		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
@@ -428,7 +431,7 @@ func (p *Process) ChangeSandbox(chainID, contractName, contractVersion, processN
 // CloseSandbox close sandbox
 func (p *Process) CloseSandbox() error {
 
-	p.logger.Debugf("start to close sandbox")
+	p.logger.Debugf("[%s] start to close sandbox", p.getTxId())
 
 	if p.processState != idle {
 		return fmt.Errorf("wrong state, current process state is %v, need %v", p.processState, idle)
@@ -456,6 +459,9 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
+	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_REQUEST,
+		fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
+
 	elapsedTime := time.Since(tx.StartTime)
 	if elapsedTime > _removeTxTime {
 		p.logger.Warnf("tx [%s] expired for %v, elapsed time: %v", tx.Tx.TxId, _removeTxTime, elapsedTime)
@@ -465,18 +471,22 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 			config.DockerVMConfig.Process.ExecTxTimeout, elapsedTime)
 	}
 
-	p.logger.Debugf("start handle tx req [%s]", tx.Tx.TxId)
+	p.logger.Debugf("[%s] start handle tx req [%s]", tx.Tx.TxId, p.getTxId())
 
 	p.Tx = tx.Tx
 
 	p.updateProcessState(busy)
 
 	msg := &protogo.DockerVMMessage{
-		ChainId:      p.chainID,
-		TxId:         p.Tx.TxId,
-		CrossContext: p.Tx.CrossContext,
-		Request:      p.Tx.Request,
+		ChainId:       p.chainID,
+		TxId:          p.Tx.TxId,
+		CrossContext:  p.Tx.CrossContext,
+		Request:       p.Tx.Request,
+		StepDurations: tx.Tx.StepDurations,
 	}
+
+	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
+		fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
 
 	// send message to sandbox
 	if err := p.sendMsg(msg); err != nil {
@@ -492,7 +502,13 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	p.logger.Debugf("start handle tx resp [%s]", p.Tx.TxId)
+	p.logger.Debugf("[%s] start handle tx resp [%s]", p.Tx.TxId, p.getTxId())
+
+	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
+		fmt.Sprintf("tx chan size: %d", len(p.txCh)))
+	if str, ok := utils.PrintTxStepsWithTime(msg, 5*time.Second); ok {
+		p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
+	}
 
 	if msg.TxId != p.Tx.TxId {
 		p.logger.Warnf("abandon tx response due to different tx id, response tx id [%s], "+
@@ -521,6 +537,8 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 // handleTimeout handle busy timeout (sandbox timeout) and ready timeout (tx chan empty)
 func (p *Process) handleTimeout() error {
 
+	p.timerPopped = true
+
 	switch p.processState {
 
 	// busy timeout, restart, process state: busy -> timeout -> created -> ready, process manager keep busy
@@ -529,6 +547,7 @@ func (p *Process) handleTimeout() error {
 		defer p.lock.Unlock()
 		p.logger.Warnf("tx [%s] busy timeout", p.Tx.TxId)
 		p.updateProcessState(timeout)
+		p.logger.Errorf("timeout stack: %s", debug.Stack())
 		if err := p.killProcess(syscall.SIGINT); err != nil {
 			p.logger.Warnf("failed to kill timeout process, %v", err)
 		}
@@ -537,7 +556,7 @@ func (p *Process) handleTimeout() error {
 	case ready:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Debugf("ready timeout, go to idle")
+		p.logger.Debugf("[%s] ready timeout, go to idle", p.getTxId())
 		if err := p.processManager.ChangeProcessState(p.processName, false); err != nil {
 			return fmt.Errorf("change process state error, %v", err)
 		}
@@ -545,10 +564,10 @@ func (p *Process) handleTimeout() error {
 
 	case idle:
 		if len(p.txCh) > 0 {
-			p.logger.Debugf("idle timeout, txCh len > 0, go to ready")
+			p.logger.Debugf("[%s] idle timeout, txCh len > 0, go to ready", p.getTxId())
 			// change state from idle to busy
 			if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
-				p.logger.Debugf("failed to change state, %v", err)
+				p.logger.Debugf("[%s] failed to change state, %v", p.getTxId(), err)
 				return nil
 			}
 			p.lock.Lock()
@@ -559,11 +578,12 @@ func (p *Process) handleTimeout() error {
 		}
 
 	default:
-		p.logger.Debugf("process state should be busy / ready / idle, current state is %v", p.processState)
+		p.logger.Debugf("[%s] process state should be busy / ready / idle, current state is %v", p.getTxId(), p.processState)
 	}
 	return nil
 }
 
+// TODO: 存在changing状态更改延迟的问题，可能需要加锁
 // handleProcessExit handle process exit
 func (p *Process) handleProcessExit(exitError *exitErr) bool {
 
@@ -621,7 +641,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		select {
 		case tx := <-p.txCh:
 			p.Tx = tx.Tx
-			p.logger.Debugf("contract exec start failed, remove tx %s", p.Tx.TxId)
+			p.logger.Debugf("[%s] contract exec start failed, remove tx %s", p.getTxId(), p.Tx.TxId)
 			returnErrResp = true
 			break
 		default:
@@ -737,7 +757,7 @@ func (p *Process) resetContext(chainID, contractName, contractVersion, processNa
 // killProcess kills main process when process encounter error
 func (p *Process) killProcess(sig os.Signal) error {
 	<-p.cmdReadyCh
-	p.logger.Debugf("start to kill process")
+	p.logger.Debugf("[%s] start to kill process", p.getTxId())
 	if p.cmd == nil {
 		return errors.New("process cmd is nil")
 	}
@@ -760,7 +780,7 @@ func (p *Process) forcedKill() {
 // updateProcessState updates process state
 func (p *Process) updateProcessState(state processState) {
 
-	p.logger.Debugf("update process state from [%+v] to [%+v]", p.processState, state)
+	p.logger.Debugf("[%s] update process state from [%+v] to [%+v]", p.getTxId(), p.processState, state)
 
 	oldState := p.processState
 	p.processState = state
@@ -780,13 +800,13 @@ func (p *Process) updateProcessState(state processState) {
 		txId = p.Tx.TxId
 	}
 	if state == ready {
-		p.logger.Debugf("start ready tx timer for tx [%s]", txId)
+		p.logger.Debugf("[%s] start ready tx timer for tx [%s]", p.getTxId(), txId)
 		p.startReadyTimer()
 	} else if state == busy {
-		p.logger.Debugf("start busy tx timer for tx [%s]", txId)
+		p.logger.Debugf("[%s] start busy tx timer for tx [%s]", p.getTxId(), txId)
 		p.startBusyTimer()
 	} else if state == idle {
-		p.logger.Debugf("start idle tx timer for tx [%s]", txId)
+		p.logger.Debugf("[%s] start idle tx timer for tx [%s]", p.getTxId(), txId)
 		p.startIdleTimer()
 	}
 }
@@ -852,7 +872,7 @@ func (p *Process) returnBadContractResp() error {
 
 // sendMsg sends messages to sandbox
 func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
-	p.logger.Debugf("send msg to sandbox, tx_id: %s", msg.TxId)
+	p.logger.Debugf("[%s] send msg to sandbox, tx_id: %s", msg.TxId, p.getTxId())
 	if err := p.stream.Send(msg); err != nil {
 		return fmt.Errorf("failed to send msg to stream")
 	}
@@ -864,6 +884,7 @@ func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
 func (p *Process) startBusyTimer() {
 	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.ExecTxTimeout)
+	p.timerPopped = false
 }
 
 // startReadyTimer start timer at ready state
@@ -871,6 +892,7 @@ func (p *Process) startBusyTimer() {
 func (p *Process) startReadyTimer() {
 	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime)
+	p.timerPopped = false
 }
 
 // startIdleTimer start timer at idle state
@@ -878,22 +900,19 @@ func (p *Process) startReadyTimer() {
 func (p *Process) startIdleTimer() {
 	p.popTimer()
 	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime/_readyToIdleTimeoutRatio + 1)
+	p.timerPopped = false
 }
 
 func (p *Process) popTimer() {
-	if !p.timer.Stop() && len(p.timer.C) > 0 {
+	if !p.timer.Stop() && !p.timerPopped {
 		<-p.timer.C
 	}
 }
 
-// stopTimer stop timer
-func (p *Process) stopTimer() {
-	var txId string
+func (p *Process) getTxId() string {
+	tmpTxId := ""
 	if p.Tx != nil {
-		txId = p.Tx.TxId
+		tmpTxId = p.Tx.TxId
 	}
-	p.logger.Debugf("stop tx timer for tx [%s]", txId)
-	if !p.timer.Stop() && len(p.timer.C) > 0 {
-		<-p.timer.C
-	}
+	return tmpTxId
 }

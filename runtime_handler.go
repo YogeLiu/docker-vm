@@ -23,6 +23,7 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
 )
@@ -33,6 +34,14 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 
 	var err error
 	txResponse := recvMsg.Response
+
+	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, "")
+	defer func() {
+		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
+		if str, ok := utils.PrintTxStepsWithTime(recvMsg, 6*time.Second); ok {
+			r.logger.Warnf("[%s] slow tx execution, %s", recvMsg.TxId, str)
+		}
+	}()
 
 	contractResult = new(commonPb.ContractResult)
 	// tx fail, just return without merge read write map and events

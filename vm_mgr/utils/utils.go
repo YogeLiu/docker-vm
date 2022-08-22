@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
@@ -153,4 +154,72 @@ func exists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+// EnterNextStep enter next duration tx step
+func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log string) {
+
+	if stepType != protogo.StepType_RUNTIME_PREPARE_TX_REQUEST {
+		endTxStep(msg, log)
+	}
+	addTxStep(msg, stepType)
+	if stepType == protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE {
+		endTxStep(msg, log)
+	}
+}
+
+func addTxStep(msg *protogo.DockerVMMessage, stepType protogo.StepType) {
+	stepDur := &protogo.StepDuration{
+		Type:      stepType,
+		StartTime: time.Now().UnixNano(),
+	}
+	msg.StepDurations = append(msg.StepDurations, stepDur)
+}
+
+func endTxStep(msg *protogo.DockerVMMessage, log string) {
+	if len(msg.StepDurations) == 0 {
+		return
+	}
+	stepLen := len(msg.StepDurations)
+	currStep := msg.StepDurations[stepLen-1]
+	currStep.Msg = log
+	firstStep := msg.StepDurations[0]
+	currStep.UntilDuration = time.Since(time.Unix(0, firstStep.StartTime)).Nanoseconds()
+	currStep.StepDuration = time.Since(time.Unix(0, currStep.StartTime)).Nanoseconds()
+}
+
+// PrintTxSteps print all duration tx steps
+func PrintTxSteps(msg *protogo.DockerVMMessage) string {
+	var sb strings.Builder
+	for _, step := range msg.StepDurations {
+		sb.WriteString(fmt.Sprintf("<step: %q, start time: %v, step cost: %vms, until cost: %vms, msg: %s> ",
+			step.Type, time.Unix(0, step.StartTime),
+			time.Duration(step.StepDuration).Seconds()*1000,
+			time.Duration(step.UntilDuration).Seconds()*1000,
+			step.Msg))
+	}
+	return sb.String()
+}
+
+// PrintTxStepsWithTime print all duration tx steps with time limt
+func PrintTxStepsWithTime(msg *protogo.DockerVMMessage, untilDuration time.Duration) (string, bool) {
+	if len(msg.StepDurations) == 0 {
+		return "", false
+	}
+	lastStep := msg.StepDurations[len(msg.StepDurations)-1]
+	var sb strings.Builder
+	if lastStep.UntilDuration > untilDuration.Nanoseconds() {
+		sb.WriteString("slow tx overall: ")
+		sb.WriteString(PrintTxSteps(msg))
+		return sb.String(), true
+	}
+	for _, step := range msg.StepDurations {
+		if step.StepDuration > time.Millisecond.Nanoseconds()*500 {
+			sb.WriteString(fmt.Sprintf("slow tx at step %q, step cost: %vms: ",
+				step.Type, time.Duration(step.StepDuration).Seconds()*1000))
+			sb.WriteString(PrintTxSteps(msg))
+			return sb.String(), true
+		}
+	}
+	return "", false
 }

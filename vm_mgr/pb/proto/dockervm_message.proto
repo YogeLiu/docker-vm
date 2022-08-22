@@ -27,6 +27,9 @@ message DockerVMMessage {
     TxResponse response = 6;
 
     string chain_id = 7;
+
+    repeated StepDuration step_durations = 8;
+
 }
 
 message SysCallMessage {
@@ -54,6 +57,19 @@ message CrossContext {
      the length of vec is controlled by depth_count
     */
     uint64 cross_info = 3;
+}
+
+message StepDuration {
+
+    StepType type = 1;
+
+    int64 start_time = 2;
+
+    int64 step_duration = 3;
+
+    int64 until_duration = 4;
+
+    string msg = 5;
 }
 
 enum DockerVMType {
@@ -116,6 +132,53 @@ enum DockerVMType {
 
     GET_BATCH_STATE_RESPONSE = 28;
 
+}
+
+enum StepType {
+
+    RUNTIME_PREPARE_TX_REQUEST = 0;
+
+    RUNTIME_GRPC_SEND_TX_REQUEST = 1;
+
+    ENGINE_GRPC_RECEIVE_TX_REQUEST = 2;
+
+    ENGINE_SCHEDULER_RECEIVE_TX_REQUEST = 3;
+
+    ENGINE_SCHEDULER_SEND_TX_REQUEST = 4;
+
+    ENGINE_GROUP_RECEIVE_TX_REQUEST = 5;
+
+    ENGINE_GROUP_SEND_TX_REQUEST = 6;
+
+    ENGINE_PROCESS_RECEIVE_TX_REQUEST = 7;
+
+    ENGINE_PROCESS_SEND_TX_REQUEST = 8;
+
+    ENGINE_PROCESS_RECEIVE_TX_RESPONSE = 9;
+
+    SANDBOX_GRPC_RECEIVE_TX_REQUEST = 10;
+
+    SANDBOX_GRPC_SEND_TX_REQUEST = 11;
+
+    SANDBOX_CHAN_SEND_TX_REQUEST = 12;
+
+    SANDBOX_HANDLER_RECEIVE_TX_REQUEST = 13;
+
+    SANDBOX_HANDLER_EXECUTE = 14;
+
+    SANDBOX_SEND_CHAIN_RESP = 15;
+
+    SANDBOX_GRPC_SEND_CHAIN_RESP = 16;
+
+    SANDBOX_SEND_ENGINE_RESP = 17;
+
+    RUNTIME_GRPC_RECEIVE_TX_RESPONSE = 18;
+
+    RUNTIME_GET_NOTIFY_TX_RESPONSE = 19;
+
+    RUNTIME_HANDLER_RECEIVE_TX_RESPONSE = 20;
+
+    RUNTIME_HANDLE_TX_RESPONSE = 21;
 }
 
 // TX_REQUEST

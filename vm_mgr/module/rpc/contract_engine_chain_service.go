@@ -9,19 +9,18 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
-	"fmt"
-	"sync"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
+	"fmt"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"sync"
 )
 
-const _rpcEventChSize = 10240
+const _rpcEventChSize = 50000
 
 // ChainRPCService handles all messages of chain client (1 to 1)
 // Receive message types: tx request, get bytecode response
@@ -102,9 +101,10 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 	for {
 		select {
 		case <-conn.stopRecvCh:
-			s.logger.Debugf("stop recv msg routine...")
+			s.logger.Warnf("stop recv msg routine...")
 			conn.wg.Done()
 			return
+
 		default:
 			msg, err := s.recvMsg(conn)
 			if err != nil {
@@ -112,16 +112,25 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				conn.wg.Done()
 				return
 			}
+			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
+
 			switch msg.Type {
-			case protogo.DockerVMType_TX_REQUEST, protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-				s.logger.Debugf("chain -> contract engine, put msg [%s] into request scheduler", msg.TxId)
-				err = s.scheduler.PutMsg(msg)
+			case protogo.DockerVMType_TX_REQUEST:
+				s.logger.Debugf("chain -> contract engine, put request [%s] into request scheduler", msg.TxId)
+				err := s.scheduler.PutMsg(msg)
 				if err != nil {
-					s.logger.Errorf("failed to put msg into request scheduler chan: [%s]", err)
+					s.logger.Errorf("failed to put request into request scheduler chan: [%s]", err)
+				}
+			case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+				s.logger.Debugf("chain -> contract engine, put get bytecode resp [%s] into request scheduler", msg.TxId)
+				err := s.scheduler.PutMsg(msg)
+				if err != nil {
+					s.logger.Errorf("failed to put bytecode resp into request scheduler chan: [%s]", err)
 				}
 			default:
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)
 			}
+
 		}
 	}
 }
