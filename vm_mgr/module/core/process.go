@@ -104,8 +104,7 @@ type Process struct {
 
 	lock sync.RWMutex
 
-	currentTimeState string
-	timerPopped      bool
+	timerPopped bool
 }
 
 // check interface implement
@@ -140,8 +139,6 @@ func NewProcess(user interfaces.User, chainID, contractName, contractVersion, pr
 		requestScheduler: scheduler,
 
 		lock: sync.RWMutex{},
-
-		currentTimeState: "",
 	}
 
 	// GetRequestGroup is safe here, process has added to process manager, not nil
@@ -397,7 +394,6 @@ func (p *Process) SetStream(stream protogo.DockerVMRpc_DockerVMCommunicateServer
 	defer p.lock.Unlock()
 
 	p.updateProcessState(ready)
-	p.setTimerState("SetStream: change state to ready")
 	p.stream = stream
 }
 
@@ -480,7 +476,6 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	p.Tx = tx.Tx
 
 	p.updateProcessState(busy)
-	p.setTimerState("handleTxRequest: change state from ready to busy")
 
 	msg := &protogo.DockerVMMessage{
 		ChainId:       p.chainID,
@@ -492,12 +487,6 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 
 	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
 		fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
-
-	defer func() {
-		if str, ok := utils.PrintTxStepsWithTime(tx.Tx, 4*time.Second); ok {
-			p.logger.Warnf("[%s] slow tx execution, %s", str, tx.Tx.TxId)
-		}
-	}()
 
 	// send message to sandbox
 	if err := p.sendMsg(msg); err != nil {
@@ -512,12 +501,6 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
 	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
 		fmt.Sprintf("tx chan size: %d", len(p.txCh)))
-
-	defer func() {
-		if str, ok := utils.PrintTxStepsWithTime(msg, 5*time.Second); ok {
-			p.logger.Warnf("[%s] slow tx execution, %s", str, msg.TxId)
-		}
-	}()
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -536,7 +519,6 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
 	// change state from busy to ready
 	p.updateProcessState(ready)
-	p.setTimerState("handleTxResp: change state from busy to ready")
 
 	// failed for init / upgrade, contract err, exit process & remove contract
 	if msg.Type == protogo.DockerVMType_ERROR &&
@@ -560,10 +542,8 @@ func (p *Process) handleTimeout() error {
 	case busy:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Warnf("tx [%s] busy timeout, timer state: %s, tx steps duration: %s",
-			p.Tx.TxId, p.currentTimeState, utils.PrintTxSteps(p.Tx))
+		p.logger.Warnf("tx [%s] busy timeout", p.Tx.TxId)
 		p.updateProcessState(timeout)
-		p.setTimerState("handleTimeout: change state from busy to timeout")
 		p.logger.Errorf("timeout stack: %s", debug.Stack())
 		if err := p.killProcess(syscall.SIGINT); err != nil {
 			p.logger.Warnf("failed to kill timeout process, %v", err)
@@ -578,7 +558,6 @@ func (p *Process) handleTimeout() error {
 			return fmt.Errorf("change process state error, %v", err)
 		}
 		p.updateProcessState(idle)
-		p.setTimerState("handleTimeout: change state from ready to idle")
 
 	case idle:
 		if len(p.txCh) > 0 {
@@ -591,10 +570,8 @@ func (p *Process) handleTimeout() error {
 			p.lock.Lock()
 			defer p.lock.Unlock()
 			p.updateProcessState(ready)
-			p.setTimerState("handleTimeout: change state from idle to ready")
 		} else {
 			p.startIdleTimer()
-			p.setTimerState("handleTimeout: restart idle timer")
 		}
 
 	default:
@@ -927,14 +904,6 @@ func (p *Process) popTimer() {
 	if !p.timer.Stop() && !p.timerPopped {
 		<-p.timer.C
 	}
-}
-
-func (p *Process) setTimerState(str string) {
-	tmpTxId := ""
-	if p.Tx != nil {
-		tmpTxId = p.Tx.TxId
-	}
-	p.currentTimeState = fmt.Sprintf("%s, current state: %v, current txid: %v", str, p.processState, tmpTxId)
 }
 
 func (p *Process) getTxId() string {

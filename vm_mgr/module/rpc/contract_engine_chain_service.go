@@ -98,7 +98,6 @@ func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerV
 // message types include: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 	s.logger.Infof("start recv msg routine...")
-	txCh := make(chan *protogo.DockerVMMessage, _rpcEventChSize)
 	for {
 		select {
 		case <-conn.stopRecvCh:
@@ -106,7 +105,15 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 			conn.wg.Done()
 			return
 
-		case msg := <-txCh:
+		default:
+			msg, err := s.recvMsg(conn)
+			if err != nil {
+				close(conn.stopSendCh)
+				conn.wg.Done()
+				return
+			}
+			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
+
 			switch msg.Type {
 			case protogo.DockerVMType_TX_REQUEST:
 				s.logger.Debugf("chain -> contract engine, put request [%s] into request scheduler", msg.TxId)
@@ -124,15 +131,6 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)
 			}
 
-		default:
-			msg, err := s.recvMsg(conn)
-			if err != nil {
-				close(conn.stopSendCh)
-				conn.wg.Done()
-				return
-			}
-			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
-			txCh <- msg
 		}
 	}
 }

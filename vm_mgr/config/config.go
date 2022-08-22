@@ -142,9 +142,9 @@ func (c *conf) setDefaultConfigs() {
 	// set log default configs
 	const logPrefix = "log"
 	viper.SetDefault(logPrefix+".contract_engine.level", "info")
-	viper.SetDefault(logPrefix+".contract_engine.console", true)
+	viper.SetDefault(logPrefix+".contract_engine.console", false)
 	viper.SetDefault(logPrefix+".sandbox.level", "info")
-	viper.SetDefault(logPrefix+".sandbox.console", true)
+	viper.SetDefault(logPrefix+".sandbox.console", false)
 
 	// set pprof default configs
 	const pprofPrefix = "pprof"

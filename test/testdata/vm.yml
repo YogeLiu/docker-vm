@@ -26,10 +26,10 @@ process:
 log:
   contract_engine:
     level: "info"
-    console: true
+    console: false
   sandbox:
     level: "info"
-    console: true
+    console: false
 
 ########### Pprof ###########
 pprof:
