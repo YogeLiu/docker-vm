@@ -499,13 +499,16 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 // handleTxResp handle tx response
 func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
-	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
-		fmt.Sprintf("tx chan size: %d", len(p.txCh)))
-
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	p.logger.Debugf("[%s] start handle tx resp [%s]", p.Tx.TxId, p.getTxId())
+
+	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
+		fmt.Sprintf("tx chan size: %d", len(p.txCh)))
+	if str, ok := utils.PrintTxStepsWithTime(msg, 5*time.Second); ok {
+		p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
+	}
 
 	if msg.TxId != p.Tx.TxId {
 		p.logger.Warnf("abandon tx response due to different tx id, response tx id [%s], "+
