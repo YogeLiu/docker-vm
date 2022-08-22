@@ -35,14 +35,10 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	var err error
 	txResponse := recvMsg.Response
 
-	if str, ok := utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE); ok {
-		r.logger.Warnf("[%s] slow tx step, %s", recvMsg.TxId, str)
-	}
+	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, "")
 
 	defer func() {
-		if str, ok := utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE); ok {
-			r.logger.Warnf("[%s] slow tx step, %s", recvMsg.TxId, str)
-		}
+		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
 		if str, ok := utils.PrintTxStepsWithTime(recvMsg, 6*time.Second); ok {
 			r.logger.Warnf("[%s] slow tx execution, %s", recvMsg.TxId, str)
 		}

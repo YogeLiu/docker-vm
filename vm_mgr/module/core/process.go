@@ -463,9 +463,8 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if str, ok := utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_REQUEST); ok {
-		p.logger.Warnf("[%s] slow tx step, %s, request group tx chan size: %d", tx.Tx.TxId, str, len(p.txCh))
-	}
+	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_REQUEST,
+		fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
 
 	elapsedTime := time.Since(tx.StartTime)
 	if elapsedTime > _removeTxTime {
@@ -491,9 +490,9 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 		StepDurations: tx.Tx.StepDurations,
 	}
 
-	if str, ok := utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST); ok {
-		p.logger.Warnf("[%s] slow tx step, %s, request group tx chan size: %d", tx.Tx.TxId, str, len(p.txCh))
-	}
+	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
+		fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
+
 	defer func() {
 		if str, ok := utils.PrintTxStepsWithTime(tx.Tx, 4*time.Second); ok {
 			p.logger.Warnf("[%s] slow tx execution, %s", str, tx.Tx.TxId)
@@ -511,9 +510,9 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 // handleTxResp handle tx response
 func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
-	if str, ok := utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE); ok {
-		p.logger.Warnf("[%s] slow tx step, %s, tx chan size: %d", msg.TxId, str, len(p.txCh))
-	}
+	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
+		fmt.Sprintf("tx chan size: %d", len(p.txCh)))
+
 	defer func() {
 		if str, ok := utils.PrintTxStepsWithTime(msg, 5*time.Second); ok {
 			p.logger.Warnf("[%s] slow tx execution, %s", str, msg.TxId)
@@ -561,7 +560,8 @@ func (p *Process) handleTimeout() error {
 	case busy:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Warnf("tx [%s] busy timeout, timer state: %s, timer duration: %vs", p.Tx.TxId, p.currentTimeState)
+		p.logger.Warnf("tx [%s] busy timeout, timer state: %s, tx steps duration: %s",
+			p.Tx.TxId, p.currentTimeState, utils.PrintTxSteps(p.Tx))
 		p.updateProcessState(timeout)
 		p.setTimerState("handleTimeout: change state from busy to timeout")
 		p.logger.Errorf("timeout stack: %s", debug.Stack())

@@ -130,9 +130,7 @@ func (r *RuntimeInstance) Invoke(
 	}
 
 	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0)
-	if str, ok := utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST); ok {
-		r.logger.Warnf("[%s] slow tx step, %s", dockerVMMsg.TxId, str)
-	}
+	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST, "")
 
 	// init time statistics
 	startTime := time.Now()

@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"sync"
-	"time"
 )
 
 const _rpcEventChSize = 50000
@@ -132,9 +131,7 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				conn.wg.Done()
 				return
 			}
-			if str, ok := utils.EnterNextStepWithTime(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, time.Millisecond*500); ok {
-				s.logger.Warnf("[%s] slow tx step, %s", msg.TxId, str)
-			}
+			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
 			txCh <- msg
 		}
 	}

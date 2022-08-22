@@ -181,9 +181,8 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 		r.eventCh <- msg
 	case *protogo.DockerVMMessage:
 		req := msg.(*protogo.DockerVMMessage)
-		if str, ok := utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_RECEIVE_TX_REQUEST); ok {
-			r.logger.Warnf("[%s] slow tx step, %s, group tx chan size: %d", req.TxId, str, len(r.txCh))
-		}
+		utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_RECEIVE_TX_REQUEST,
+			fmt.Sprintf("group tx chan size: %d", len(r.txCh)))
 		r.txCh <- req
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
@@ -549,10 +548,9 @@ func (r *RequestGroup) updateControllerState(isOrig, toWaiting bool) {
 // enqueueCh enqueue tx to process tx ch
 func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
 
-	if str, ok := utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_SEND_TX_REQUEST); ok {
-		r.logger.Warnf("[%s] slow tx step, %s, group last tx chan size(original): %d, "+
-			"group last tx chan size(cross): %d", req.TxId, str, len(r.origTxController.txCh), len(r.crossTxController.txCh))
-	}
+	utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_SEND_TX_REQUEST,
+		fmt.Sprintf("group last tx chan size(original): %d, group last tx chan size(cross): %d",
+			len(r.origTxController.txCh), len(r.crossTxController.txCh)))
 
 	// original tx, send to original tx chan
 	if utils.IsOrig(req) {

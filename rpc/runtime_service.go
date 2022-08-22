@@ -160,9 +160,7 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
 
 				if receivedMsg.Type == protogo.DockerVMType_TX_RESPONSE {
-					if str, ok := utils.EnterNextStep(receivedMsg, protogo.StepType_RUNTIME_GRPC_RECEIVE_TX_RESPONSE); ok {
-						s.logger.Warnf("[%s] slow tx step, %s", receivedMsg.TxId, str)
-					}
+					utils.EnterNextStep(receivedMsg, protogo.StepType_RUNTIME_GRPC_RECEIVE_TX_RESPONSE, "")
 				}
 
 				notify := s.getNotify(receivedMsg.ChainId, receivedMsg.TxId)

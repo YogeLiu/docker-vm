@@ -68,6 +68,8 @@ message StepDuration {
     int64 step_duration = 3;
 
     int64 until_duration = 4;
+
+    string msg = 5;
 }
 
 enum DockerVMType {
