@@ -10,7 +10,6 @@ package docker_go
 import (
 	"errors"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -63,10 +62,6 @@ func (r *RuntimeInstance) Invoke(
 	txSimContext protocol.TxSimContext,
 	gasUsed uint64,
 ) (contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
-
-	timeDur := time.Millisecond * time.Duration(rand.Intn(50))
-
-	time.Sleep(timeDur)
 
 	originalTxId := txSimContext.GetTx().Payload.TxId
 	uniqueTxKey := r.clientMgr.GetUniqueTxKey(originalTxId)
