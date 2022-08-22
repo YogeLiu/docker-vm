@@ -156,6 +156,7 @@ func exists(path string) (bool, error) {
 	return false, err
 }
 
+// EnterNextStep enter next duration tx step
 func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log string) {
 
 	if stepType != protogo.StepType_RUNTIME_PREPARE_TX_REQUEST {
@@ -187,6 +188,7 @@ func endTxStep(msg *protogo.DockerVMMessage, log string) {
 	currStep.StepDuration = time.Since(time.Unix(0, currStep.StartTime)).Nanoseconds()
 }
 
+// PrintTxSteps print all duration tx steps
 func PrintTxSteps(msg *protogo.DockerVMMessage) string {
 	var sb strings.Builder
 	for _, step := range msg.StepDurations {
@@ -199,6 +201,7 @@ func PrintTxSteps(msg *protogo.DockerVMMessage) string {
 	return sb.String()
 }
 
+// PrintTxStepsWithTime print all duration tx steps with time limt
 func PrintTxStepsWithTime(msg *protogo.DockerVMMessage, untilDuration time.Duration) (string, bool) {
 	if len(msg.StepDurations) == 0 {
 		return "", false
@@ -206,7 +209,7 @@ func PrintTxStepsWithTime(msg *protogo.DockerVMMessage, untilDuration time.Durat
 	lastStep := msg.StepDurations[len(msg.StepDurations)-1]
 	var sb strings.Builder
 	if lastStep.UntilDuration > untilDuration.Nanoseconds() {
-		sb.WriteString(fmt.Sprintf("slow tx overall: "))
+		sb.WriteString("slow tx overall: ")
 		sb.WriteString(PrintTxSteps(msg))
 		return sb.String(), true
 	}
