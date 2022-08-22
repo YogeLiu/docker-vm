@@ -36,6 +36,12 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	txResponse := recvMsg.Response
 
 	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, "")
+	defer func() {
+		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
+		if str, ok := utils.PrintTxStepsWithTime(recvMsg, 6*time.Second); ok {
+			r.logger.Warnf("[%s] slow tx execution, %s", recvMsg.TxId, str)
+		}
+	}()
 
 	contractResult = new(commonPb.ContractResult)
 	// tx fail, just return without merge read write map and events
