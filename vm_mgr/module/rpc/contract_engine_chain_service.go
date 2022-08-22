@@ -100,21 +100,6 @@ func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerV
 func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 	s.logger.Infof("start recv msg routine...")
 	txCh := make(chan *protogo.DockerVMMessage, _rpcEventChSize)
-	go func() {
-		for {
-			msg, err := s.recvMsg(conn)
-			if err != nil {
-				close(conn.stopSendCh)
-				conn.wg.Done()
-				return
-			}
-			if str, ok := utils.EnterNextStepWithTime(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, time.Millisecond*500); ok {
-				msgBytes, _ := msg.Marshal()
-				s.logger.Warnf("[%s] slow tx step, %s, msgLen: %d", msg.TxId, str, len(msgBytes))
-			}
-			txCh <- msg
-		}
-	}()
 	for {
 		select {
 		case <-conn.stopRecvCh:
@@ -139,6 +124,18 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 			default:
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)
 			}
+
+		default:
+			msg, err := s.recvMsg(conn)
+			if err != nil {
+				close(conn.stopSendCh)
+				conn.wg.Done()
+				return
+			}
+			if str, ok := utils.EnterNextStepWithTime(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, time.Millisecond*500); ok {
+				s.logger.Warnf("[%s] slow tx step, %s", msg.TxId, str)
+			}
+			txCh <- msg
 		}
 	}
 }
