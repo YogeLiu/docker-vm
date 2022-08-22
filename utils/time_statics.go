@@ -341,3 +341,63 @@ func (r *BlockTxsDurationMgr) FinishTx(id string, txTime *TxDuration) {
 	}
 	r.blockDurations[id].FinishTxDuration(txTime)
 }
+
+func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType) (string, bool) {
+
+	slowStr := ""
+	isSlowStep := false
+
+	if stepType != protogo.StepType_RUNTIME_PREPARE_TX_REQUEST {
+		slowStr, isSlowStep = endTxStep(msg)
+	}
+	addTxStep(msg, stepType)
+	if stepType == protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE {
+		endTxStep(msg)
+	}
+	return slowStr, isSlowStep
+}
+
+func addTxStep(msg *protogo.DockerVMMessage, stepType protogo.StepType) {
+	stepDur := &protogo.StepDuration{
+		Type:      stepType,
+		StartTime: time.Now().UnixNano(),
+	}
+	msg.StepDurations = append(msg.StepDurations, stepDur)
+}
+
+func endTxStep(msg *protogo.DockerVMMessage) (string, bool) {
+	if len(msg.StepDurations) == 0 {
+		return "", false
+	}
+	stepLen := len(msg.StepDurations)
+	currStep := msg.StepDurations[stepLen-1]
+	firstStep := msg.StepDurations[0]
+	currStep.UntilDuration = time.Since(time.Unix(0, firstStep.StartTime)).Nanoseconds()
+	currStep.StepDuration = time.Since(time.Unix(0, currStep.StartTime)).Nanoseconds()
+	if currStep.StepDuration > time.Second.Nanoseconds()*2 {
+		return PrintTxSteps(msg), true
+	}
+	return "", false
+}
+
+func PrintTxSteps(msg *protogo.DockerVMMessage) string {
+	var sb strings.Builder
+	for _, step := range msg.StepDurations {
+		sb.WriteString(fmt.Sprintf("< step: %q, start time: %v, step cost: %vms, util cost: %vms > ",
+			step.Type, time.Unix(0, step.StartTime),
+			time.Duration(step.StepDuration).Seconds()*1000,
+			time.Duration(step.UntilDuration).Seconds()*1000))
+	}
+	return sb.String()
+}
+
+func PrintTxStepsWithTime(msg *protogo.DockerVMMessage, duration time.Duration) (string, bool) {
+	if len(msg.StepDurations) == 0 {
+		return "", false
+	}
+	lastStep := msg.StepDurations[len(msg.StepDurations)-1]
+	if lastStep.UntilDuration > duration.Nanoseconds() {
+		return PrintTxSteps(msg), true
+	}
+	return "", false
+}

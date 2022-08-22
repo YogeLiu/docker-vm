@@ -21,7 +21,7 @@ var (
 )
 
 const (
-	txSize               = 15000
+	txSize               = 50000
 	eventSize            = 100
 	retryConnectDuration = 2 * time.Second
 )
@@ -59,7 +59,7 @@ func NewClientManager(
 			clientLock:     sync.Mutex{},
 			aliveClientMap: make(map[uint64]*ContractEngineClient),
 			txSendCh:       make(chan *protogo.DockerVMMessage, txSize),
-			byteCodeRespCh: make(chan *protogo.DockerVMMessage, txSize*8),
+			byteCodeRespCh: make(chan *protogo.DockerVMMessage, 8),
 			notify:         make(map[string]func(msg *protogo.DockerVMMessage)),
 			eventCh:        make(chan *interfaces.Event, eventSize),
 			stop:           false,

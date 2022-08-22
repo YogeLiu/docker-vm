@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -71,6 +72,9 @@ func NewRuntimeServer(logger protocol.Logger, vmConfig *config.DockerVMConfig) (
 		serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
 
 		serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.ConnectionTimeout))
+		serverOpts = append(serverOpts, grpc.ReadBufferSize(1024*128))
+		serverOpts = append(serverOpts, grpc.WriteBufferSize(1024*128))
+		serverOpts = append(serverOpts, grpc.NumStreamWorkers(uint32(runtime.NumCPU()/2)))
 
 		server := grpc.NewServer(serverOpts...)
 

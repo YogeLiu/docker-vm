@@ -9,19 +9,19 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
-	"fmt"
-	"sync"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
+	"fmt"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"sync"
+	"time"
 )
 
-const _rpcEventChSize = 10240
+const _rpcEventChSize = 50000
 
 // ChainRPCService handles all messages of chain client (1 to 1)
 // Receive message types: tx request, get bytecode response
@@ -99,25 +99,42 @@ func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerV
 // message types include: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 	s.logger.Infof("start recv msg routine...")
-	for {
-		select {
-		case <-conn.stopRecvCh:
-			s.logger.Debugf("stop recv msg routine...")
-			conn.wg.Done()
-			return
-		default:
+	txCh := make(chan *protogo.DockerVMMessage, _rpcEventChSize)
+	go func() {
+		for {
 			msg, err := s.recvMsg(conn)
 			if err != nil {
 				close(conn.stopSendCh)
 				conn.wg.Done()
 				return
 			}
+			if str, ok := utils.EnterNextStepWithTime(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, time.Millisecond*500); ok {
+				msgBytes, _ := msg.Marshal()
+				s.logger.Warnf("[%s] slow tx step, %s, msgLen: %d", msg.TxId, str, len(msgBytes))
+			}
+			txCh <- msg
+		}
+	}()
+	for {
+		select {
+		case <-conn.stopRecvCh:
+			s.logger.Warnf("stop recv msg routine...")
+			conn.wg.Done()
+			return
+
+		case msg := <-txCh:
 			switch msg.Type {
-			case protogo.DockerVMType_TX_REQUEST, protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-				s.logger.Debugf("chain -> contract engine, put msg [%s] into request scheduler", msg.TxId)
-				err = s.scheduler.PutMsg(msg)
+			case protogo.DockerVMType_TX_REQUEST:
+				s.logger.Debugf("chain -> contract engine, put request [%s] into request scheduler", msg.TxId)
+				err := s.scheduler.PutMsg(msg)
 				if err != nil {
-					s.logger.Errorf("failed to put msg into request scheduler chan: [%s]", err)
+					s.logger.Errorf("failed to put request into request scheduler chan: [%s]", err)
+				}
+			case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
+				s.logger.Debugf("chain -> contract engine, put get bytecode resp [%s] into request scheduler", msg.TxId)
+				err := s.scheduler.PutMsg(msg)
+				if err != nil {
+					s.logger.Errorf("failed to put bytecode resp into request scheduler chan: [%s]", err)
 				}
 			default:
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)

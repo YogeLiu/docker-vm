@@ -25,7 +25,7 @@ import (
 
 const (
 	// _processManagerEventChSize is process manager event chan size
-	_processManagerEventChSize = 15000
+	_processManagerEventChSize = 50000
 )
 
 // ProcessManager manager the life cycle of processes

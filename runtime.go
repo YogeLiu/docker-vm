@@ -129,6 +129,11 @@ func (r *RuntimeInstance) Invoke(
 		CrossContext: crossCtx,
 	}
 
+	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0)
+	if str, ok := utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST); ok {
+		r.logger.Warnf("[%s] slow tx step, %s", dockerVMMsg.TxId, str)
+	}
+
 	// init time statistics
 	startTime := time.Now()
 	r.txDuration = utils.NewTxDuration(originalTxId, uniqueTxKey, startTime.UnixNano())
@@ -206,10 +211,8 @@ func (r *RuntimeInstance) Invoke(
 			// TODO: 超时时间自定义
 		case <-timeoutC:
 			r.logger.Errorf(
-				"handle tx [%s] failed, fail to receive response in %d milliseconds and return timeout response",
-				originalTxId,
-				timeout,
-			)
+				"handle tx [%s] failed, fail to receive response in %d milliseconds and return timeout response, %s",
+				originalTxId, timeout, utils.PrintTxSteps(dockerVMMsg))
 			r.logger.Infof(r.txDuration.ToString())
 			r.logger.InfoDynamic(func() string {
 				return r.txDuration.PrintSysCallList()
@@ -248,6 +251,7 @@ func (r *RuntimeInstance) Invoke(
 				if err = r.txDuration.EndSysCall(recvMsg); err != nil {
 					r.logger.Warnf("failed to end syscall, %v", err)
 				}
+				r.logger.Debugf("tx [%s] do some work after receive response", originalTxId)
 				return result, txType
 
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:

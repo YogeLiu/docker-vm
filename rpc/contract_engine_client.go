@@ -111,6 +111,10 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 		select {
 		case txReq := <-c.clientMgr.GetTxSendCh():
 			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
+			if str, ok := utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST); ok {
+				c.logger.Warnf("[%s] slow tx step, %s, tx send chan length: %d", txReq.TxId, str, c.clientMgr.GetTxSendChLen())
+			}
+
 			err = c.sendMsg(txReq)
 		case getByteCodeResp := <-c.clientMgr.GetByteCodeRespSendCh():
 			c.logger.Debugf(

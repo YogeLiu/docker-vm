@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"runtime"
 
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
@@ -100,6 +101,9 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 	serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.DockerVMConfig.RPC.ConnectionTimeout))
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(config.DockerVMConfig.RPC.MaxSendMsgSize*1024*1024))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(config.DockerVMConfig.RPC.MaxRecvMsgSize*1024*1024))
+	serverOpts = append(serverOpts, grpc.ReadBufferSize(1024*128))
+	serverOpts = append(serverOpts, grpc.WriteBufferSize(1024*128))
+	serverOpts = append(serverOpts, grpc.NumStreamWorkers(uint32(runtime.NumCPU()/2)))
 
 	server := grpc.NewServer(serverOpts...)
 

@@ -136,16 +136,14 @@ func (c *conf) setDefaultConfigs() {
 	viper.SetDefault(processPrefix+".max_original_process_num", 20)
 	viper.SetDefault(processPrefix+".exec_tx_timeout", 8*time.Second)
 	viper.SetDefault(processPrefix+".waiting_tx_time", 200*time.Millisecond)
-	viper.SetDefault(processPrefix+".release_rate", 30)
+	viper.SetDefault(processPrefix+".release_rate", 0)
 	viper.SetDefault(processPrefix+".release_period", 10*time.Minute)
 
 	// set log default configs
 	const logPrefix = "log"
 	viper.SetDefault(logPrefix+".contract_engine.level", "info")
-	//viper.SetDefault(logPrefix+".contract_engine.level", "debug")
 	viper.SetDefault(logPrefix+".contract_engine.console", true)
 	viper.SetDefault(logPrefix+".sandbox.level", "info")
-	//viper.SetDefault(logPrefix+".sandbox.level", "debug")
 	viper.SetDefault(logPrefix+".sandbox.console", true)
 
 	// set pprof default configs
@@ -214,6 +212,14 @@ func (c *conf) setEnv() error {
 
 	if sandboxLogLevel, ok := os.LookupEnv("DOCKERVM_SANDBOX_LOG_LEVEL"); ok {
 		c.Log.SandboxLog.Level = sandboxLogLevel
+	}
+
+	if logInConsole, ok := os.LookupEnv("DOCKERVM_LOG_IN_CONSOLE"); ok {
+		needLog, _ := strconv.ParseBool(logInConsole)
+		if !needLog {
+			c.Log.SandboxLog.Console = false
+			c.Log.ContractEngineLog.Console = false
+		}
 	}
 
 	return nil

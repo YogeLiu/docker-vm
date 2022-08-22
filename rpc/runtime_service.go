@@ -41,7 +41,7 @@ func NewRuntimeService(logger protocol.Logger) *RuntimeService {
 					msg *protogo.DockerVMMessage,
 					sendMsg func(msg *protogo.DockerVMMessage),
 				),
-				1000,
+				50000,
 			),
 			responseChanMap: sync.Map{},
 		}
@@ -93,6 +93,7 @@ type serviceStream struct {
 func (ss *serviceStream) putResp(msg *protogo.DockerVMMessage) {
 	ss.logger.Debugf("put sys_call response to send chan, txId [%s], type [%s]", msg.TxId, msg.Type)
 	ss.sendResponseCh <- msg
+
 }
 
 // DockerVMCommunicate is the runtime docker vm communicate stream
@@ -157,7 +158,15 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
+
+				if receivedMsg.Type == protogo.DockerVMType_TX_RESPONSE {
+					if str, ok := utils.EnterNextStep(receivedMsg, protogo.StepType_RUNTIME_GRPC_RECEIVE_TX_RESPONSE); ok {
+						s.logger.Warnf("[%s] slow tx step, %s", receivedMsg.TxId, str)
+					}
+				}
+
 				notify := s.getNotify(receivedMsg.ChainId, receivedMsg.TxId)
+
 				if notify == nil {
 					s.logger.Debugf("get receive notify[%s] failed, please check your key", receivedMsg.TxId)
 					break
