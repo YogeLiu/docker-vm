@@ -148,7 +148,7 @@ func (c *conf) setDefaultConfigs() {
 
 	// set pprof default configs
 	const pprofPrefix = "pprof"
-	viper.SetDefault(pprofPrefix+".contract_engine.enable", true)
+	//viper.SetDefault(pprofPrefix+".contract_engine.enable", true)
 	viper.SetDefault(pprofPrefix+".contract_engine.port", 21215)
 	viper.SetDefault(pprofPrefix+".sandbox.port", 21522)
 
