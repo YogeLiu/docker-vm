@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 )
 
@@ -160,29 +161,29 @@ func exists(path string) (bool, error) {
 func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log string) {
 
 	if stepType != protogo.StepType_RUNTIME_PREPARE_TX_REQUEST {
-		endTxStep(msg, log)
+		endTxStep(msg)
 	}
-	addTxStep(msg, stepType)
+	addTxStep(msg, stepType, log)
 	if stepType == protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE {
-		endTxStep(msg, log)
+		endTxStep(msg)
 	}
 }
 
-func addTxStep(msg *protogo.DockerVMMessage, stepType protogo.StepType) {
+func addTxStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log string) {
 	stepDur := &protogo.StepDuration{
 		Type:      stepType,
 		StartTime: time.Now().UnixNano(),
+		Msg:       log,
 	}
 	msg.StepDurations = append(msg.StepDurations, stepDur)
 }
 
-func endTxStep(msg *protogo.DockerVMMessage, log string) {
+func endTxStep(msg *protogo.DockerVMMessage) {
 	if len(msg.StepDurations) == 0 {
 		return
 	}
 	stepLen := len(msg.StepDurations)
 	currStep := msg.StepDurations[stepLen-1]
-	currStep.Msg = log
 	firstStep := msg.StepDurations[0]
 	currStep.UntilDuration = time.Since(time.Unix(0, firstStep.StartTime)).Nanoseconds()
 	currStep.StepDuration = time.Since(time.Unix(0, currStep.StartTime)).Nanoseconds()
@@ -202,19 +203,19 @@ func PrintTxSteps(msg *protogo.DockerVMMessage) string {
 }
 
 // PrintTxStepsWithTime print all duration tx steps with time limt
-func PrintTxStepsWithTime(msg *protogo.DockerVMMessage, untilDuration time.Duration) (string, bool) {
+func PrintTxStepsWithTime(msg *protogo.DockerVMMessage) (string, bool) {
 	if len(msg.StepDurations) == 0 {
 		return "", false
 	}
 	lastStep := msg.StepDurations[len(msg.StepDurations)-1]
 	var sb strings.Builder
-	if lastStep.UntilDuration > untilDuration.Nanoseconds() {
+	if lastStep.UntilDuration > config.DockerVMConfig.Slow.TxTime.Nanoseconds() {
 		sb.WriteString("slow tx overall: ")
 		sb.WriteString(PrintTxSteps(msg))
 		return sb.String(), true
 	}
 	for _, step := range msg.StepDurations {
-		if step.StepDuration > time.Millisecond.Nanoseconds()*500 {
+		if step.StepDuration > config.DockerVMConfig.Slow.StepTime.Nanoseconds() {
 			sb.WriteString(fmt.Sprintf("slow tx at step %q, step cost: %vms: ",
 				step.Type, time.Duration(step.StepDuration).Seconds()*1000))
 			sb.WriteString(PrintTxSteps(msg))

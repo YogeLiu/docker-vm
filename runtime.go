@@ -15,6 +15,7 @@ import (
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
@@ -24,7 +25,6 @@ import (
 const (
 	mountContractDir = "contract-bins"
 	msgIterIsNil     = "iterator is nil"
-	timeout          = 9000 // tx execution timeout(milliseconds)
 )
 
 // RuntimeInstance docker-go runtime
@@ -130,7 +130,8 @@ func (r *RuntimeInstance) Invoke(
 	}
 
 	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0)
-	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST, "")
+	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST,
+		fmt.Sprintf("tx send chan length: %d", r.clientMgr.GetTxSendChLen()))
 
 	// init time statistics
 	startTime := time.Now()
@@ -169,7 +170,7 @@ func (r *RuntimeInstance) Invoke(
 		_ = r.clientMgr.DeleteNotify(r.chainId, uniqueTxKey)
 	}()
 
-	timeoutC := time.After(timeout * time.Millisecond)
+	timeoutC := time.After(time.Duration(config.VMConfig.TxTimeout) * time.Second)
 
 	// wait this chan
 	for {
@@ -189,7 +190,7 @@ func (r *RuntimeInstance) Invoke(
 				}
 
 			case protogo.DockerVMType_ERROR:
-				r.logger.Errorf("handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
+				r.logger.Warnf("handle tx [%s] failed, err: [%s]", originalTxId, recvMsg.Response.Message)
 				contractResult.GasUsed = gasUsed
 				return r.errorResult(
 					contractResult,
@@ -209,8 +210,8 @@ func (r *RuntimeInstance) Invoke(
 			// TODO: 超时时间自定义
 		case <-timeoutC:
 			r.logger.Errorf(
-				"handle tx [%s] failed, fail to receive response in %d milliseconds and return timeout response, %s",
-				originalTxId, timeout, utils.PrintTxSteps(dockerVMMsg))
+				"handle tx [%s] failed, fail to receive response in %d secs and return timeout response, %s",
+				originalTxId, config.VMConfig.TxTimeout, utils.PrintTxSteps(dockerVMMsg))
 			r.logger.Infof(r.txDuration.ToString())
 			r.logger.InfoDynamic(func() string {
 				return r.txDuration.PrintSysCallList()

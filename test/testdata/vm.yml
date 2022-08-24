@@ -43,3 +43,7 @@ pprof:
 ########### Contract ###########
 contract:
   max_file_size: 20480 # contract size(MiB)
+
+slow:
+  step_time: 3s
+  tx_time: 6s
