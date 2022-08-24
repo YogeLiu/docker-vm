@@ -29,14 +29,16 @@ const (
 	SandboxRPCSockName = "sandbox.sock"
 )
 
+// DockerVMConfig is the docker vm config
 var DockerVMConfig *conf
 
 type conf struct {
-	RPC      rpcConf      `mapstructure:"rpc"`
-	Process  processConf  `mapstructure:"process"`
-	Log      logConf      `mapstructure:"log"`
-	Pprof    pprofConf    `mapstructure:"pprof"`
-	Contract contractConf `mapstructure:"contract"`
+	RPC      rpcConf       `mapstructure:"rpc"`
+	Process  processConf   `mapstructure:"process"`
+	Log      logConf       `mapstructure:"log"`
+	Pprof    pprofConf     `mapstructure:"pprof"`
+	Contract contractConf  `mapstructure:"contract"`
+	Slow     slowTxLogConf `mapstructure:"slow"`
 }
 
 type ChainRPCProtocolType int
@@ -89,6 +91,11 @@ type pprofInstanceConf struct {
 
 type contractConf struct {
 	MaxFileSize int `mapstructure:"max_file_size"`
+}
+
+type slowTxLogConf struct {
+	StepTime time.Duration `mapstructure:"step_time"`
+	TxTime   time.Duration `mapstructure:"tx_time"`
 }
 
 func InitConfig(configFileName string) error {
@@ -148,13 +155,17 @@ func (c *conf) setDefaultConfigs() {
 
 	// set pprof default configs
 	const pprofPrefix = "pprof"
-	//viper.SetDefault(pprofPrefix+".contract_engine.enable", true)
 	viper.SetDefault(pprofPrefix+".contract_engine.port", 21215)
 	viper.SetDefault(pprofPrefix+".sandbox.port", 21522)
 
 	// set contract default configs
 	const contractPrefix = "contract"
 	viper.SetDefault(contractPrefix+".max_file_size", 20480)
+
+	// set slow default configs
+	const slowPrefix = "slow"
+	viper.SetDefault(slowPrefix+".step_time", 3*time.Second)
+	viper.SetDefault(slowPrefix+".tx_time", 6*time.Second)
 }
 
 func (c *conf) setEnv() error {
@@ -220,6 +231,36 @@ func (c *conf) setEnv() error {
 		if !needLog {
 			c.Log.SandboxLog.Console = false
 			c.Log.ContractEngineLog.Console = false
+		}
+	}
+
+	if slowStepTime, ok := os.LookupEnv("SLOW_TX_STEP_TIME"); ok {
+		timeout, err := strconv.ParseInt(slowStepTime, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to ParseInt slowStepTime, %v", err)
+		}
+		if timeout != 0 {
+			c.Slow.StepTime = time.Duration(timeout) * time.Second
+		}
+	}
+
+	if slowTxTime, ok := os.LookupEnv("SLOW_TX_TIME"); ok {
+		timeout, err := strconv.ParseInt(slowTxTime, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to ParseInt slowTxTime, %v", err)
+		}
+		if timeout != 0 {
+			c.Slow.TxTime = time.Duration(timeout) * time.Second
+		}
+	}
+
+	if busyTimout, ok := os.LookupEnv("PROCESS_TIMEOUT"); ok {
+		timeout, err := strconv.ParseInt(busyTimout, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to ParseInt busyTimout, %v", err)
+		}
+		if timeout != 0 {
+			c.Process.ExecTxTimeout = time.Duration(timeout) * time.Second
 		}
 	}
 

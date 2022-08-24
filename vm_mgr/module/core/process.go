@@ -506,7 +506,7 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
 	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
 		fmt.Sprintf("tx chan size: %d", len(p.txCh)))
-	if str, ok := utils.PrintTxStepsWithTime(msg, 5*time.Second); ok {
+	if str, ok := utils.PrintTxStepsWithTime(msg); ok {
 		p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
 	}
 

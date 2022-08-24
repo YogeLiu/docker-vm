@@ -86,6 +86,7 @@ func NewInstancesManager(
 	}
 	newDockerManager.runtimeServer = server
 	newDockerManager.runtimeService = rpc.NewRuntimeService(logger)
+	config.VMConfig = dockerVMConfig
 
 	return newDockerManager
 }
@@ -246,25 +247,25 @@ func (m *InstancesManager) exists(path string) (bool, error) {
 	return false, err
 }
 
-func validateVMSettings(config *config.DockerVMConfig,
+func validateVMSettings(dockerVMConfig *config.DockerVMConfig,
 	dockerContainerConfig *config.DockerContainerConfig, chainId string) error {
 
 	var hostMountDir string
 	var hostLogDir string
 	var err error
-	if len(config.DockerVMMountPath) == 0 {
+	if len(dockerVMConfig.DockerVMMountPath) == 0 {
 		return errors.New("doesn't set host mount directory path correctly")
 	}
 
-	if len(config.DockerVMLogPath) == 0 {
+	if len(dockerVMConfig.DockerVMLogPath) == 0 {
 		return errors.New("doesn't set host log directory path correctly")
 	}
 
 	// set host mount directory path
-	if !filepath.IsAbs(config.DockerVMMountPath) {
-		hostMountDir, err = filepath.Abs(config.DockerVMMountPath)
+	if !filepath.IsAbs(dockerVMConfig.DockerVMMountPath) {
+		hostMountDir, err = filepath.Abs(dockerVMConfig.DockerVMMountPath)
 		if err != nil {
-			return fmt.Errorf("failed to abs DockerVMMountPath filepath, %s", config.DockerVMMountPath)
+			return fmt.Errorf("failed to abs DockerVMMountPath filepath, %s", dockerVMConfig.DockerVMMountPath)
 		}
 		//hostMountDir = filepath.Join(hostMountDir, chainId)
 	}
@@ -273,16 +274,28 @@ func validateVMSettings(config *config.DockerVMConfig,
 	//}
 
 	// set host log directory
-	if !filepath.IsAbs(config.DockerVMLogPath) {
-		hostLogDir, err = filepath.Abs(config.DockerVMLogPath)
+	if !filepath.IsAbs(dockerVMConfig.DockerVMLogPath) {
+		hostLogDir, err = filepath.Abs(dockerVMConfig.DockerVMLogPath)
 		if err != nil {
-			return fmt.Errorf("failed to abs DockerVMLogPath filepath, %s", config.DockerVMLogPath)
+			return fmt.Errorf("failed to abs DockerVMLogPath filepath, %s", dockerVMConfig.DockerVMLogPath)
 		}
 		//hostLogDir = filepath.Join(hostLogDir, chainId)
 	}
 	//else {
 	//	//hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
 	//}
+
+	if dockerVMConfig.TxTimeout == 0 {
+		dockerVMConfig.TxTimeout = config.DefaultTxTimeout
+	}
+
+	if dockerVMConfig.SlowTxLog.StepBaseTime == 0 {
+		dockerVMConfig.SlowTxLog.StepBaseTime = config.DefaultSlowStepLogTime
+	}
+
+	if dockerVMConfig.SlowTxLog.TxBaseTime == 0 {
+		dockerVMConfig.SlowTxLog.TxBaseTime = config.DefaultSlowTxLogTime
+	}
 
 	dockerContainerConfig.HostMountDir = hostMountDir
 	dockerContainerConfig.HostLogDir = hostLogDir

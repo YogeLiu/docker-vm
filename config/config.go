@@ -9,6 +9,9 @@ package config
 
 import "time"
 
+// VMConfig is the vm config
+var VMConfig *DockerVMConfig
+
 // DockerVMConfig match vm settings in chain maker yml
 type DockerVMConfig struct {
 	EnableDockerVM    bool   `mapstructure:"enable"`          // enable docker go virtual machine
@@ -20,7 +23,7 @@ type DockerVMConfig struct {
 
 	// uds_open true
 	// 可自定义交易执行超时时间，但是tx_scheduler_timeout是否有冲突，保留配置，但不启用
-	TxTimeLimit uint32 `mapstructure:"time_limit"`
+	TxTimeout uint32 `mapstructure:"tx_timeout"`
 
 	MaxConcurrency uint32 `mapstructure:"max_concurrency"`   // max process num
 	MaxSendMsgSize uint32 `mapstructure:"max_send_msg_size"` // grpc max send message size, Unit: MB
@@ -28,6 +31,7 @@ type DockerVMConfig struct {
 	// uds_open false， tcp
 	RuntimeServer  RuntimeServerConfig  `mapstructure:"runtime_server"`  // runtime server
 	ContractEngine ContractEngineConfig `mapstructure:"contract_engine"` // contract engine
+	SlowTxLog      SlowTxLogConfig      `mapstructure:"slow_tx_log"`     // slow tx config
 }
 
 // RuntimeServerConfig is the runtime server config
@@ -41,6 +45,12 @@ type ContractEngineConfig struct {
 	Host          string `mapstructure:"host"`
 	Port          int    `mapstructure:"port"`
 	MaxConnection uint64 `mapstructure:"max_connection"`
+}
+
+// SlowTxLogConfig is the slow tx log
+type SlowTxLogConfig struct {
+	StepBaseTime int `mapstructure:"step_base_time"`
+	TxBaseTime   int `mapstructure:"tx_base_time"`
 }
 
 // DockerContainerConfig docker container settings
@@ -122,6 +132,15 @@ const (
 	TCPProtocol = "tcp"
 	// UDSProtocol is uds connection protocol
 	UDSProtocol = "uds"
+
+	// DefaultTxTimeout is default tx timeout
+	DefaultTxTimeout = 9
+
+	// DefaultSlowStepLogTime is default slow step log time
+	DefaultSlowStepLogTime = 3
+
+	// DefaultSlowTxLogTime is default slow tx log time
+	DefaultSlowTxLogTime = 6
 )
 
 const (

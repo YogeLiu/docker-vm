@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"chainmaker.org/chainmaker/logger/v2"
+	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 )
 
@@ -388,19 +389,19 @@ func PrintTxSteps(msg *protogo.DockerVMMessage) string {
 }
 
 // PrintTxStepsWithTime print all duration tx steps with time limt
-func PrintTxStepsWithTime(msg *protogo.DockerVMMessage, untilDuration time.Duration) (string, bool) {
+func PrintTxStepsWithTime(msg *protogo.DockerVMMessage) (string, bool) {
 	if len(msg.StepDurations) == 0 {
 		return "", false
 	}
 	lastStep := msg.StepDurations[len(msg.StepDurations)-1]
 	var sb strings.Builder
-	if lastStep.UntilDuration > untilDuration.Nanoseconds() {
+	if lastStep.UntilDuration > time.Second.Nanoseconds()*int64(config.VMConfig.SlowTxLog.TxBaseTime) {
 		sb.WriteString("slow tx overall: ")
 		sb.WriteString(PrintTxSteps(msg))
 		return sb.String(), true
 	}
 	for _, step := range msg.StepDurations {
-		if step.StepDuration > time.Millisecond.Nanoseconds()*3000 {
+		if step.StepDuration > time.Second.Nanoseconds()*int64(config.VMConfig.SlowTxLog.StepBaseTime) {
 			sb.WriteString(fmt.Sprintf("slow tx at step %q, step cost: %vms: ",
 				step.Type, time.Duration(step.StepDuration).Seconds()*1000))
 			sb.WriteString(PrintTxSteps(msg))
