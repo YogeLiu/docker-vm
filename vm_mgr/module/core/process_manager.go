@@ -167,13 +167,11 @@ func (pm *ProcessManager) GetProcessNumByContractKey(chainID, contractName, cont
 	return 0
 }
 
-// GetProcessNumWithTask returns process with busy task
-func (pm *ProcessManager) GetProcessNumWithTask(chainID, contractName, contractVersion string) int {
+// GetIdleProcessNum returns idle process num
+func (pm *ProcessManager) GetIdleProcessNum(chainID, contractName, contractVersion string) int {
 
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
-
-	groupKey := utils.ConstructContractKey(chainID, contractName, contractVersion)
 
 	var num int
 	processIt := pm.idleProcesses.Iterator()
@@ -187,7 +185,7 @@ func (pm *ProcessManager) GetProcessNumWithTask(chainID, contractName, contractV
 		}
 	}
 
-	return len(pm.processGroups[groupKey]) - num
+	return num
 }
 
 // ChangeProcessState changes the process state

@@ -33,7 +33,7 @@ func (pm *MockProcessManager) GetProcessNumByContractKey(chainID, contractName, 
 	panic("implement me")
 }
 
-func (pm *MockProcessManager) GetProcessNumWithTask(chainID, contractName, contractVersion string) int {
+func (pm *MockProcessManager) GetIdleProcessNum(chainID, contractName, contractVersion string) int {
 	panic("implement me")
 }
 
