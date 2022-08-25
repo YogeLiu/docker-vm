@@ -173,6 +173,8 @@ func (pm *ProcessManager) GetProcessNumWithTask(chainID, contractName, contractV
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
 
+	groupKey := utils.ConstructContractKey(chainID, contractName, contractVersion)
+
 	var num int
 	processIt := pm.idleProcesses.Iterator()
 	for i := 0; i < pm.idleProcesses.Size(); i++ {
@@ -185,7 +187,7 @@ func (pm *ProcessManager) GetProcessNumWithTask(chainID, contractName, contractV
 		}
 	}
 
-	return num
+	return len(pm.processGroups[groupKey]) - num
 }
 
 // ChangeProcessState changes the process state
