@@ -129,7 +129,7 @@ func (r *RuntimeInstance) Invoke(
 		CrossContext: crossCtx,
 	}
 
-	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0)
+	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0, 20)
 	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST,
 		fmt.Sprintf("tx send chan length: %d", r.clientMgr.GetTxSendChLen()))
 

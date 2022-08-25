@@ -298,12 +298,12 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	//
 	//needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
 
-	currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
-	busyProcessNum := controller.processMgr.GetProcessNumWithTask(r.chainID, r.contractName, r.contractVersion)
+	//currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
+	idleProcessNum := controller.processMgr.GetIdleProcessNum(r.chainID, r.contractName, r.contractVersion)
 	// task num in txCh ==  process to use
-	needProcessNum := len(controller.txCh) - (currProcessNum - busyProcessNum)
-	r.logger.Debugf("tx chan size: [%d], current process num: [%d], busy process num: [%d], need process num "+
-		"(isOrig: %v): [%d]", len(controller.txCh), currProcessNum, busyProcessNum, isOrig, needProcessNum)
+	needProcessNum := len(controller.txCh) - idleProcessNum
+	r.logger.Debugf("tx chan size: [%d], idle process num: [%d], need process num "+
+		"(isOrig: %v): [%d]", len(controller.txCh), idleProcessNum, isOrig, needProcessNum)
 	var err error
 	// need more processes
 	if needProcessNum > 0 {

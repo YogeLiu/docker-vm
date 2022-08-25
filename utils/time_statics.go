@@ -286,7 +286,7 @@ func (b *BlockTxsDuration) ToString() string {
 // BlockTxsDurationMgr record the txDuration of each block
 type BlockTxsDurationMgr struct {
 	blockDurations map[string]*BlockTxsDuration
-	lock           sync.Mutex
+	lock           sync.RWMutex
 	logger         *logger.CMLogger
 }
 
@@ -300,6 +300,8 @@ func NewBlockTxsDurationMgr() *BlockTxsDurationMgr {
 
 // PrintBlockTxsDuration returns the duration of the specified block
 func (r *BlockTxsDurationMgr) PrintBlockTxsDuration(id string) string {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
 	durations := r.blockDurations[id]
 	return durations.ToString()
 }
