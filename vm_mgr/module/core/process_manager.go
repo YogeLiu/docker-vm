@@ -174,16 +174,17 @@ func (pm *ProcessManager) GetProcessNumWithTask(chainID, contractName, contractV
 	defer pm.lock.RUnlock()
 
 	var num int
-	groupKey := utils.ConstructContractKey(chainID, contractName, contractVersion)
-	if val, ok := pm.processGroups[groupKey]; ok {
-		for name := range val {
-			if process, exist := pm.busyProcesses[name]; exist {
-				if process.GetTx() != nil {
-					num++
-				}
-			}
+	processIt := pm.idleProcesses.Iterator()
+	for i := 0; i < pm.idleProcesses.Size(); i++ {
+		processIt.Next()
+		process := processIt.Value().(interfaces.Process)
+		if process.GetChainID() == chainID &&
+			process.GetContractName() == contractName &&
+			process.GetContractVersion() == contractVersion {
+			num++
 		}
 	}
+
 	return num
 }
 
