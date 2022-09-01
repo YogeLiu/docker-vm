@@ -353,6 +353,12 @@ func (p *Process) listenProcess() {
 	}
 }
 
+// IsReadyOrBusy returns processState == ready || processState == busy
+func (p *Process) IsReadyOrBusy() bool {
+
+	return p.processState == ready || p.processState == busy
+}
+
 // GetProcessName returns process name
 func (p *Process) GetProcessName() string {
 

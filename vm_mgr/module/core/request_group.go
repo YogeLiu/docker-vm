@@ -61,8 +61,6 @@ type txController struct {
 	txCh           chan *messages.TxPayload
 	processWaiting bool
 	processMgr     interfaces.ProcessManager
-	txCnt          uint64
-	lastCnt        uint64
 }
 
 // RequestGroup is a batch of txs group by contract name
@@ -282,46 +280,30 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 	var controller *txController
-	//var reqNumPerProcess int
+
+	if isOrig {
+		controller = r.origTxController
+	} else {
+		controller = r.crossTxController
+	}
+
+	if controller.processWaiting {
+		return 0, nil
+	}
 
 	// get corresponding controller and request number per process
 	var needProcessNum int
-	if isOrig {
-		controller = r.origTxController
-		currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
-		needProcessNum = len(controller.txCh) - currProcessNum
-		//reqNumPerProcess = reqNumPerOrigProcess
-	} else {
-		controller = r.crossTxController
-		needProcessNum = 1
-		//reqNumPerProcess = reqNumPerCrossProcess
-	}
+	processNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
+	readyOrBusyProcessNum := controller.processMgr.GetReadyOrBusyProcessNum(r.chainID, r.contractName, r.contractVersion)
+	needProcessNum = len(controller.txCh) - (processNum - readyOrBusyProcessNum)
 
-	// calculate how many processes it needs:
-	// (currProcessNum + needProcessNum) * reqNumPerProcess = processingReqNum + inQueueReqNum
-	//currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
-	//currChSize := len(controller.txCh)
-	//
-	//needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
-
-	//currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
-	//idleProcessNum := controller.processMgr.GetIdleProcessNum(r.chainID, r.contractName, r.contractVersion)
-	// task num in txCh ==  process to use
-	//needProcessNum := len(controller.txCh) - idleProcessNum
 	r.logger.Debugf("tx chan size: [%d], need process num (isOrig: %v): [%d]",
 		len(controller.txCh), isOrig, needProcessNum)
-	var err error
+
 	// need more processes
 	if needProcessNum > 0 {
-		if controller.lastCnt == controller.txCnt {
-			return 0, nil
-		}
-		// try to get processes only if it is not waiting
-		if controller.processWaiting {
-			return 0, nil
-		}
 		r.logger.Debugf("try to get %d process(es)", needProcessNum)
-		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
+		err := controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ChainID:         r.chainID,
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
@@ -332,26 +314,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-	} else { // do not need any process
-		// stop to get processes only if it is waiting
-		if !controller.processWaiting {
-			return 0, nil
-		}
-		r.logger.Debugf("stop waiting for processes")
-		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
-			ChainID:         r.chainID,
-			ContractName:    r.contractName,
-			ContractVersion: r.contractVersion,
-			ProcessNum:      0, // 0 for no need
-		})
-		// avoid duplicate stopping to get processes
-		r.updateControllerState(isOrig, false)
-		if err != nil {
-			return 0, err
-		}
 	}
-
-	controller.lastCnt = controller.txCnt
 
 	return needProcessNum, nil
 }
@@ -570,7 +533,6 @@ func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
 			Tx:        req,
 			StartTime: time.Now(),
 		}
-		r.origTxController.txCnt++
 		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
 		return
 	}
@@ -580,7 +542,6 @@ func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
 		Tx:        req,
 		StartTime: time.Now(),
 	}
-	r.crossTxController.txCnt++
 	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
 }
 
