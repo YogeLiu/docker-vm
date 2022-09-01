@@ -61,6 +61,8 @@ type txController struct {
 	txCh           chan *messages.TxPayload
 	processWaiting bool
 	processMgr     interfaces.ProcessManager
+	txCnt          uint64
+	lastCnt        uint64
 }
 
 // RequestGroup is a batch of txs group by contract name
@@ -283,11 +285,15 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	//var reqNumPerProcess int
 
 	// get corresponding controller and request number per process
+	var needProcessNum int
 	if isOrig {
 		controller = r.origTxController
+		currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
+		needProcessNum = len(controller.txCh) - currProcessNum
 		//reqNumPerProcess = reqNumPerOrigProcess
 	} else {
 		controller = r.crossTxController
+		needProcessNum = 1
 		//reqNumPerProcess = reqNumPerCrossProcess
 	}
 
@@ -299,14 +305,17 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	//needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
 
 	//currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
-	idleProcessNum := controller.processMgr.GetIdleProcessNum(r.chainID, r.contractName, r.contractVersion)
+	//idleProcessNum := controller.processMgr.GetIdleProcessNum(r.chainID, r.contractName, r.contractVersion)
 	// task num in txCh ==  process to use
-	needProcessNum := len(controller.txCh) - idleProcessNum
-	r.logger.Debugf("tx chan size: [%d], idle process num: [%d], need process num "+
-		"(isOrig: %v): [%d]", len(controller.txCh), idleProcessNum, isOrig, needProcessNum)
+	//needProcessNum := len(controller.txCh) - idleProcessNum
+	r.logger.Debugf("tx chan size: [%d], need process num (isOrig: %v): [%d]",
+		len(controller.txCh), isOrig, needProcessNum)
 	var err error
 	// need more processes
 	if needProcessNum > 0 {
+		if controller.lastCnt == controller.txCnt {
+			return 0, nil
+		}
 		// try to get processes only if it is not waiting
 		if controller.processWaiting {
 			return 0, nil
@@ -341,6 +350,9 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 			return 0, err
 		}
 	}
+
+	controller.lastCnt = controller.txCnt
+
 	return needProcessNum, nil
 }
 
@@ -558,6 +570,7 @@ func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
 			Tx:        req,
 			StartTime: time.Now(),
 		}
+		r.origTxController.txCnt++
 		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
 		return
 	}
@@ -567,6 +580,7 @@ func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
 		Tx:        req,
 		StartTime: time.Now(),
 	}
+	r.crossTxController.txCnt++
 	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
 }
 
