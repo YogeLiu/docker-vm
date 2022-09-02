@@ -764,6 +764,7 @@ func (pm *ProcessManager) removeFromProcessGroup(chainID, contractName, contract
 	}
 }
 
+// removeFromWaitingGroup and send process ready response to recheck need process num
 func (pm *ProcessManager) removeFromWaitingGroup(chainID, contractName, contractVersion string) {
 	pm.waitingRequestGroups.Remove(messages.RequestGroupKey{
 		ChainID:         chainID,
