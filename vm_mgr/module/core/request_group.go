@@ -280,39 +280,30 @@ func (r *RequestGroup) putTxReqToCh(req *protogo.DockerVMMessage) error {
 func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 
 	var controller *txController
-	//var reqNumPerProcess int
 
-	// get corresponding controller and request number per process
 	if isOrig {
 		controller = r.origTxController
-		//reqNumPerProcess = reqNumPerOrigProcess
 	} else {
 		controller = r.crossTxController
-		//reqNumPerProcess = reqNumPerCrossProcess
 	}
 
-	// calculate how many processes it needs:
-	// (currProcessNum + needProcessNum) * reqNumPerProcess = processingReqNum + inQueueReqNum
-	//currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.contractName, r.contractVersion)
-	//currChSize := len(controller.txCh)
-	//
-	//needProcessNum := int(math.Ceil(float64(currProcessNum+currChSize)/float64(reqNumPerProcess))) - currProcessNum
+	if controller.processWaiting {
+		return 0, nil
+	}
 
-	//currProcessNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
-	idleProcessNum := controller.processMgr.GetIdleProcessNum(r.chainID, r.contractName, r.contractVersion)
-	// task num in txCh ==  process to use
-	needProcessNum := len(controller.txCh) - idleProcessNum
-	r.logger.Debugf("tx chan size: [%d], idle process num: [%d], need process num "+
-		"(isOrig: %v): [%d]", len(controller.txCh), idleProcessNum, isOrig, needProcessNum)
-	var err error
+	// get corresponding controller and request number per process
+	var needProcessNum int
+	processNum := controller.processMgr.GetProcessNumByContractKey(r.chainID, r.contractName, r.contractVersion)
+	readyOrBusyProcessNum := controller.processMgr.GetReadyOrBusyProcessNum(r.chainID, r.contractName, r.contractVersion)
+	needProcessNum = len(controller.txCh) - (processNum - readyOrBusyProcessNum)
+
+	r.logger.Debugf("tx chan size: [%d], need process num (isOrig: %v): [%d]",
+		len(controller.txCh), isOrig, needProcessNum)
+
 	// need more processes
 	if needProcessNum > 0 {
-		// try to get processes only if it is not waiting
-		if controller.processWaiting {
-			return 0, nil
-		}
 		r.logger.Debugf("try to get %d process(es)", needProcessNum)
-		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
+		err := controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ChainID:         r.chainID,
 			ContractName:    r.contractName,
 			ContractVersion: r.contractVersion,
@@ -323,24 +314,8 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-	} else { // do not need any process
-		// stop to get processes only if it is waiting
-		if !controller.processWaiting {
-			return 0, nil
-		}
-		r.logger.Debugf("stop waiting for processes")
-		err = controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
-			ChainID:         r.chainID,
-			ContractName:    r.contractName,
-			ContractVersion: r.contractVersion,
-			ProcessNum:      0, // 0 for no need
-		})
-		// avoid duplicate stopping to get processes
-		r.updateControllerState(isOrig, false)
-		if err != nil {
-			return 0, err
-		}
 	}
+
 	return needProcessNum, nil
 }
 

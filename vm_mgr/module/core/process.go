@@ -353,6 +353,12 @@ func (p *Process) listenProcess() {
 	}
 }
 
+// IsReadyOrBusy returns processState == ready || processState == busy
+func (p *Process) IsReadyOrBusy() bool {
+
+	return p.processState == ready || p.processState == busy
+}
+
 // GetProcessName returns process name
 func (p *Process) GetProcessName() string {
 
@@ -587,7 +593,10 @@ func (p *Process) handleTimeout() error {
 // handleProcessExit handle process exit
 func (p *Process) handleProcessExit(exitError *exitErr) bool {
 
-	defer p.popTimer()
+	defer func() {
+		p.popTimer()
+		p.timerPopped = true
+	}()
 
 	var restartSandbox, returnErrResp, exitSandbox, restartAll, returnBadContractResp bool
 
@@ -906,6 +915,7 @@ func (p *Process) startIdleTimer() {
 func (p *Process) popTimer() {
 	if !p.timer.Stop() && !p.timerPopped {
 		<-p.timer.C
+
 	}
 }
 

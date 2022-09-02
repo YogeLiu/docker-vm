@@ -33,7 +33,7 @@ func (pm *MockProcessManager) GetProcessNumByContractKey(chainID, contractName, 
 	panic("implement me")
 }
 
-func (pm *MockProcessManager) GetIdleProcessNum(chainID, contractName, contractVersion string) int {
+func (pm *MockProcessManager) GetReadyOrBusyProcessNum(chainID, contractName, contractVersion string) int {
 	panic("implement me")
 }
 
@@ -70,6 +70,10 @@ func (p *MockProcess) GetContractName() string {
 
 func (p *MockProcess) GetContractVersion() string {
 	return p.ContractVersion
+}
+
+func (p *MockProcess) IsReadyOrBusy() bool {
+	return true
 }
 
 func (p *MockProcess) GetUser() interfaces.User {

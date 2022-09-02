@@ -38,10 +38,10 @@ type ProcessManager struct {
 	releaseRate   float64 // the minimum rate of available process
 	isOrigManager bool    // cross process manager or original process manager
 
-	idleProcesses        *linkedhashmap.Map            // _idle processes linked hashmap (process name -> _idle Process)
-	busyProcesses        map[string]interfaces.Process // _busy process map (process name -> _busy Process)
-	processGroups        map[string]map[string]bool    // process group by contract key (contract key -> Process name set)
-	waitingRequestGroups *linkedhashmap.Map            // waiting request groups linked hashmap (group key -> bool)
+	idleProcesses        *linkedhashmap.Map                       // _idle processes linked hashmap (process name -> _idle Process)
+	busyProcesses        map[string]interfaces.Process            // _busy process map (process name -> _busy Process)
+	processGroups        map[string]map[string]interfaces.Process // process group by contract key (contract key -> Process name set)
+	waitingRequestGroups *linkedhashmap.Map                       // waiting request groups linked hashmap (group key -> bool)
 
 	eventCh        chan interface{} // process manager event channel
 	allocateIdleCh chan struct{}
@@ -68,7 +68,7 @@ func NewProcessManager(maxProcessNum int, rate float64, isOrigManager bool, user
 
 		idleProcesses:        linkedhashmap.New(),
 		busyProcesses:        make(map[string]interfaces.Process),
-		processGroups:        make(map[string]map[string]bool),
+		processGroups:        make(map[string]map[string]interfaces.Process),
 		waitingRequestGroups: linkedhashmap.New(),
 
 		eventCh:        make(chan interface{}, _processManagerEventChSize),
@@ -167,24 +167,20 @@ func (pm *ProcessManager) GetProcessNumByContractKey(chainID, contractName, cont
 	return 0
 }
 
-// GetIdleProcessNum returns idle process num
-func (pm *ProcessManager) GetIdleProcessNum(chainID, contractName, contractVersion string) int {
+// GetReadyOrBusyProcessNum returns process num for processState == ready || processState == busy
+func (pm *ProcessManager) GetReadyOrBusyProcessNum(chainID, contractName, contractVersion string) int {
 
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
 
+	groupKey := utils.ConstructContractKey(chainID, contractName, contractVersion)
+
 	var num int
-	processIt := pm.idleProcesses.Iterator()
-	for i := 0; i < pm.idleProcesses.Size(); i++ {
-		processIt.Next()
-		process := processIt.Value().(interfaces.Process)
-		if process.GetChainID() == chainID &&
-			process.GetContractName() == contractName &&
-			process.GetContractVersion() == contractVersion {
+	for _, v := range pm.processGroups[groupKey] {
+		if v.IsReadyOrBusy() {
 			num++
 		}
 	}
-
 	return num
 }
 
@@ -691,7 +687,7 @@ func (pm *ProcessManager) addProcessToCache(chainID, contractName, contractVersi
 		pm.addProcessToIdle(processName, process)
 	}
 
-	pm.addToProcessGroup(chainID, contractName, contractVersion, processName)
+	pm.addToProcessGroup(process, chainID, contractName, contractVersion, processName)
 }
 
 // removeProcessFromCache remove process from busyProcesses, idleProcesses and processGroup
@@ -733,14 +729,14 @@ func (pm *ProcessManager) getAvailableProcessNum() int {
 }
 
 // addToProcessGroup add process to process map group by contract key
-func (pm *ProcessManager) addToProcessGroup(chainID, contractName, contractVersion, processName string) {
+func (pm *ProcessManager) addToProcessGroup(process interfaces.Process, chainID, contractName, contractVersion, processName string) {
 
 	groupKey := utils.ConstructContractKey(chainID, contractName, contractVersion)
 
 	if _, ok := pm.processGroups[groupKey]; !ok {
-		pm.processGroups[groupKey] = make(map[string]bool)
+		pm.processGroups[groupKey] = make(map[string]interfaces.Process)
 	}
-	pm.processGroups[groupKey][processName] = true
+	pm.processGroups[groupKey][processName] = process
 
 	pm.logger.Debugf("add %s - %s to process group, total num [%d]", groupKey, processName, len(pm.processGroups[groupKey]))
 }
@@ -768,6 +764,7 @@ func (pm *ProcessManager) removeFromProcessGroup(chainID, contractName, contract
 	}
 }
 
+// removeFromWaitingGroup and send process ready response to recheck need process num
 func (pm *ProcessManager) removeFromWaitingGroup(chainID, contractName, contractVersion string) {
 	pm.waitingRequestGroups.Remove(messages.RequestGroupKey{
 		ChainID:         chainID,

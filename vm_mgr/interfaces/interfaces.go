@@ -30,13 +30,14 @@ type (
 		PutMsg(msg interface{}) error
 		GetProcessByName(processName string) (Process, bool)
 		GetProcessNumByContractKey(chainID, contractName, contractVersion string) int
-		GetIdleProcessNum(chainID, contractName, contractVersion string) int
+		GetReadyOrBusyProcessNum(chainID, contractName, contractVersion string) int
 		ChangeProcessState(processName string, toBusy bool) error
 	}
 	Process interface {
 		PutMsg(msg *protogo.DockerVMMessage)
 		Start()
 		GetProcessName() string
+		IsReadyOrBusy() bool
 		GetChainID() string
 		GetContractName() string
 		GetContractVersion() string
