@@ -201,7 +201,7 @@ func getMockedCMConfig() (map[string]interface{}, error) {
 	if err = cmViper.Unmarshal(cmConfig); err != nil {
 		return nil, err
 	}
-	return cmConfig.VMConfig, nil
+	return cmConfig.VMConfig.DockerVMGo, nil
 }
 
 // ========== Mock Kv Iterator ==========
