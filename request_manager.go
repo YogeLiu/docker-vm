@@ -81,6 +81,7 @@ func (e *TxElapsedTime) PrintSysCallList() string {
 		return "no syscalls"
 	}
 	var sb strings.Builder
+	sb.WriteString(e.TxId + ": ")
 	for _, sysCallTime := range e.SysCallList {
 		sb.WriteString(sysCallTime.ToString())
 	}
