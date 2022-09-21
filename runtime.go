@@ -296,7 +296,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				// merge events
 				var contractEvents []*commonPb.ContractEvent
 
-				if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
+				if txSimContext.GetBlockVersion() < 2300 && len(txResponse.Events) > protocol.EventDataMaxCount-1 {
 					err = fmt.Errorf("too many event data")
 					r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 					return r.errorResult(contractResult, err, "fail to put event data")
