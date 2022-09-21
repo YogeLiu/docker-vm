@@ -121,7 +121,7 @@ func (s *RequestScheduler) PutMsg(msg interface{}) error {
 		case protogo.DockerVMType_GET_BYTECODE_REQUEST, protogo.DockerVMType_GET_BYTECODE_RESPONSE, protogo.DockerVMType_ERROR:
 			s.eventCh <- m
 		case protogo.DockerVMType_TX_REQUEST:
-			utils.EnterNextStep(m, protogo.StepType_ENGINE_SCHEDULER_RECEIVE_TX_REQUEST, fmt.Sprintf(" scheduler tx chan size: %d", len(s.txCh)))
+			//utils.EnterNextStep(m, protogo.StepType_ENGINE_SCHEDULER_RECEIVE_TX_REQUEST, fmt.Sprintf(" scheduler tx chan size: %d", len(s.txCh)))
 			s.txCh <- m
 		default:
 			return fmt.Errorf("unknown msg type, %+v", msg)
@@ -205,7 +205,7 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 		s.requestGroups[groupKey] = group
 	}
 
-	utils.EnterNextStep(req, protogo.StepType_ENGINE_SCHEDULER_SEND_TX_REQUEST, "")
+	//utils.EnterNextStep(req, protogo.StepType_ENGINE_SCHEDULER_SEND_TX_REQUEST, "")
 	// put req to such request group
 	if err := group.PutMsg(req); err != nil {
 		return fmt.Errorf("failed to invoke request group PutMsg, %v", err)

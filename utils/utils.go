@@ -48,6 +48,11 @@ func ConstructNotifyMapKey(names ...string) string {
 	return strings.Join(names, "#")
 }
 
+// ConstructUniqueTxKey txId#count
+func ConstructUniqueTxKey(names ...string) string {
+	return strings.Join(names, "#")
+}
+
 // CreateDir create dir
 func CreateDir(directory string) error {
 	exist, err := Exists(directory)

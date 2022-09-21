@@ -44,6 +44,7 @@ func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessMana
 //  @param stream is grpc stream
 //  @return error
 func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
+	var process interfaces.Process
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
@@ -60,22 +61,22 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 
 		s.logger.Debugf("receive msg from sandbox[%s]", msg.TxId)
 
-		var process interfaces.Process
 		var ok bool
 		// process may be created, busy, timeout, recreated
 		// created: ok (regular)
 		// busy: ok (regular)
 		// timeout: ok (restart, process abandon tx)
 		// recreated: ok (process abandon tx)
-		process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
-		if !ok {
-			process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
-		}
-
-		if !ok {
-			err = fmt.Errorf("failed to get process, %v", err)
-			s.logger.Errorf(err.Error())
-			return err
+		if process == nil {
+			process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
+			if !ok {
+				process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
+			}
+			if !ok {
+				err = fmt.Errorf("failed to get process, %v", err)
+				s.logger.Errorf(err.Error())
+				return err
+			}
 		}
 
 		if msg.Type == protogo.DockerVMType_REGISTER {

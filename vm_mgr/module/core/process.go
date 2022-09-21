@@ -54,9 +54,8 @@ const (
 )
 
 const (
-	_readyToIdleTimeoutRatio = 5
-	_forcedKillWaitTime      = 200 * time.Millisecond
-	_removeTxTime            = 9000 * time.Millisecond
+	_forcedKillWaitTime = 200 * time.Millisecond
+	_removeTxTime       = 9000 * time.Millisecond
 )
 
 const (
@@ -324,9 +323,10 @@ func (p *Process) listenProcess() {
 		} else if p.processState == idle {
 			select {
 
-			case <-p.timer.C:
-				if err := p.handleTimeout(); err != nil {
-					p.logger.Errorf("failed to handle idle timeout timer, %v", err)
+			case tx := <-p.txCh:
+				// condition: during cmd.wait
+				if err := p.handleIdleTxRequest(tx); err != nil {
+					p.logger.Errorf("failed to handle tx [%s] request when idle, %v", tx.Tx.TxId, err)
 				}
 				break
 
@@ -465,8 +465,8 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_REQUEST,
-		fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
+	//utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_REQUEST,
+	//	fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
 
 	elapsedTime := time.Since(tx.StartTime)
 	if elapsedTime > _removeTxTime {
@@ -477,7 +477,7 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 			config.DockerVMConfig.Process.ExecTxTimeout, elapsedTime)
 	}
 
-	p.logger.Debugf("[%s] start handle tx req [%s]", tx.Tx.TxId, p.getTxId())
+	p.logger.Debugf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
 
 	p.Tx = tx.Tx
 
@@ -491,8 +491,8 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 		StepDurations: tx.Tx.StepDurations,
 	}
 
-	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
-		fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
+	//utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
+	//	fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
 
 	// send message to sandbox
 	if err := p.sendMsg(msg); err != nil {
@@ -502,19 +502,43 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	return nil
 }
 
+// handleIdleTxRequest handle tx request from request group chan when process state is idle
+func (p *Process) handleIdleTxRequest(tx *messages.TxPayload) error {
+
+	defer func() {
+		// return tx
+		if err := p.requestScheduler.PutMsg(tx.Tx); err != nil {
+			p.logger.Errorf("failed to put msg [%s] to request group, %v", tx.Tx.TxId, err)
+		}
+	}()
+
+	// change state from idle to busy
+	if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
+		// failed to change state to busy, return
+		p.logger.Debugf("[%s] failed to change state to ready, %v", p.getTxId(), err)
+		return nil
+	}
+	// succeed to change state to busy, update state for itself
+	p.logger.Debugf("[%s] change state from idle to ready", p.getTxId())
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	p.updateProcessState(ready)
+	return nil
+}
+
 // handleTxResp handle tx response
 func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	p.logger.Debugf("[%s] start handle tx resp [%s]", p.Tx.TxId, p.getTxId())
+	p.logger.Debugf("[%s] start handle tx resp [%s]", p.getTxId(), msg.TxId)
 
-	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
-		fmt.Sprintf("tx chan size: %d", len(p.txCh)))
-	if str, ok := utils.PrintTxStepsWithTime(msg); ok {
-		p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
-	}
+	//utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
+	//	fmt.Sprintf("tx chan size: %d", len(p.txCh)))
+	//if str, ok := utils.PrintTxStepsWithTime(msg); ok {
+	//	p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
+	//}
 
 	if msg.TxId != p.Tx.TxId {
 		p.logger.Warnf("abandon tx response due to different tx id, response tx id [%s], "+
@@ -567,21 +591,6 @@ func (p *Process) handleTimeout() error {
 			return fmt.Errorf("change process state error, %v", err)
 		}
 		p.updateProcessState(idle)
-
-	case idle:
-		if len(p.txCh) > 0 {
-			p.logger.Debugf("[%s] idle timeout, txCh len > 0, go to ready", p.getTxId())
-			// change state from idle to busy
-			if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
-				p.logger.Debugf("[%s] failed to change state, %v", p.getTxId(), err)
-				return nil
-			}
-			p.lock.Lock()
-			defer p.lock.Unlock()
-			p.updateProcessState(ready)
-		} else {
-			p.startIdleTimer()
-		}
 
 	default:
 		p.logger.Debugf("[%s] process state should be busy / ready / idle, current state is %v", p.getTxId(), p.processState)
@@ -789,7 +798,7 @@ func (p *Process) forcedKill() {
 // updateProcessState updates process state
 func (p *Process) updateProcessState(state processState) {
 
-	p.logger.Debugf("[%s] update process state from [%+v] to [%+v]", p.getTxId(), p.processState, state)
+	//p.logger.Debugf("[%s] update process state from [%+v] to [%+v]", p.getTxId(), p.processState, state)
 
 	oldState := p.processState
 	p.processState = state
@@ -804,19 +813,16 @@ func (p *Process) updateProcessState(state processState) {
 	//}
 
 	// jump in the state that need to be timed
-	var txId string
-	if p.Tx != nil {
-		txId = p.Tx.TxId
-	}
+	//var txId string
+	//if p.Tx != nil {
+	//	txId = p.Tx.TxId
+	//}
 	if state == ready {
-		p.logger.Debugf("[%s] start ready tx timer for tx [%s]", p.getTxId(), txId)
+		//p.logger.Debugf("[%s] start ready tx timer for tx [%s]", p.getTxId(), txId)
 		p.startReadyTimer()
 	} else if state == busy {
-		p.logger.Debugf("[%s] start busy tx timer for tx [%s]", p.getTxId(), txId)
+		//p.logger.Debugf("[%s] start busy tx timer for tx [%s]", p.getTxId(), txId)
 		p.startBusyTimer()
-	} else if state == idle {
-		p.logger.Debugf("[%s] start idle tx timer for tx [%s]", p.getTxId(), txId)
-		p.startIdleTimer()
 	}
 }
 
@@ -881,7 +887,7 @@ func (p *Process) returnBadContractResp() error {
 
 // sendMsg sends messages to sandbox
 func (p *Process) sendMsg(msg *protogo.DockerVMMessage) error {
-	p.logger.Debugf("[%s] send msg to sandbox, tx_id: %s", msg.TxId, p.getTxId())
+	//p.logger.Debugf("[%s] send msg to sandbox, tx_id: %s", msg.TxId, p.getTxId())
 	if err := p.stream.Send(msg); err != nil {
 		return fmt.Errorf("failed to send msg to stream")
 	}
@@ -904,25 +910,15 @@ func (p *Process) startReadyTimer() {
 	p.timerPopped = false
 }
 
-// startIdleTimer start timer at idle state
-// start when process idle, len(txCh) > 0
-func (p *Process) startIdleTimer() {
-	p.popTimer()
-	p.timer.Reset(config.DockerVMConfig.Process.WaitingTxTime/_readyToIdleTimeoutRatio + 1)
-	p.timerPopped = false
-}
-
 func (p *Process) popTimer() {
 	if !p.timer.Stop() && !p.timerPopped {
 		<-p.timer.C
-
 	}
 }
 
 func (p *Process) getTxId() string {
-	tmpTxId := ""
 	if p.Tx != nil {
-		tmpTxId = p.Tx.TxId
+		return p.Tx.TxId
 	}
-	return tmpTxId
+	return ""
 }

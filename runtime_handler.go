@@ -23,27 +23,27 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
-	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
 )
 
 func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType) (
-	contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
+	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType,
+	contractResult *commonPb.ContractResult) (result *commonPb.ContractResult,
+	execOrderTxType protocol.ExecOrderTxType) {
 
 	var err error
 	txResponse := recvMsg.Response
 
-	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, "")
-	defer func() {
-		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
-		if str, ok := utils.PrintTxStepsWithTime(recvMsg); ok {
-			r.logger.Warnf("[%s] slow tx execution, %s", recvMsg.TxId, str)
-		}
-	}()
+	//utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, "")
+	//defer func() {
+	//	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
+	//	if str, ok := utils.PrintTxStepsWithTime(recvMsg); ok {
+	//		r.logger.Warnf("[%s] slow tx execution, %s", recvMsg.TxId, str)
+	//	}
+	//}()
 
-	contractResult = new(commonPb.ContractResult)
+	//contractResult = new(commonPb.ContractResult)
 	// tx fail, just return without merge read write map and events
 	if txResponse.Code != 0 {
 		contractResult.Code = 1
@@ -73,12 +73,6 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		return r.errorResult(contractResult, err, "fail to put in sim context")
 	}
 	r.logger.Debugf("merge tx[%s] sim context write map succeed", txId)
-
-	// merge events
-	if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
-		err = fmt.Errorf("too many event data")
-		return r.errorResult(contractResult, err, "fail to put event data")
-	}
 
 	for _, event := range txResponse.Events {
 		contractEvent := &commonPb.ContractEvent{
@@ -1269,14 +1263,8 @@ func (r *RuntimeInstance) extractContract(bytecode []byte, contractFullName stri
 }
 
 // constructContractKey chainId#contractName#contractVersion
-func constructContractKey(chainID, contractName, contractVersion string) string {
-	var sb strings.Builder
-	sb.WriteString(chainID)
-	sb.WriteString("#")
-	sb.WriteString(contractName)
-	sb.WriteString("#")
-	sb.WriteString(contractVersion)
-	return sb.String()
+func constructContractKey(keys ...string) string {
+	return strings.Join(keys, "#")
 }
 
 // runCmd exec cmd

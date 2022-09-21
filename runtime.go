@@ -8,10 +8,14 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/coocood/freecache"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -27,6 +31,21 @@ const (
 	msgIterIsNil     = "iterator is nil"
 )
 
+var dockerVMMsgPool = sync.Pool{
+	New: func() interface{} {
+		return &protogo.DockerVMMessage{
+			Request: &protogo.TxRequest{
+				TxContext: &protogo.TxContext{
+					WriteMap: nil,
+					ReadMap:  nil,
+				},
+			},
+			CrossContext:  &protogo.CrossContext{},
+			StepDurations: make([]*protogo.StepDuration, 0, 4),
+		}
+	},
+}
+
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
 	rowIndex        int32                              // iterator index
@@ -41,6 +60,7 @@ type RuntimeInstance struct {
 	contractEngineMsgCh chan *protogo.DockerVMMessage
 	DockerManager       *InstancesManager
 	txDuration          *utils.TxDuration
+	DefaultGasCache     *freecache.Cache
 }
 
 func (r *RuntimeInstance) contractEngineMsgNotify(msg *protogo.DockerVMMessage) {
@@ -103,35 +123,29 @@ func (r *RuntimeInstance) Invoke(
 		}
 	}
 
-	// construct DockerVMMessage
-	txRequest := &protogo.TxRequest{
-		ChainId:         r.chainId,
-		ContractName:    contract.Name,
-		ContractVersion: contract.Version,
-		Method:          method,
-		Parameters:      parameters,
-		TxContext: &protogo.TxContext{
-			WriteMap: nil,
-			ReadMap:  nil,
-		},
-	}
+	dockerVMMsg, _ := dockerVMMsgPool.Get().(*protogo.DockerVMMessage)
+	dockerVMMsg.ChainId = r.chainId
+	dockerVMMsg.TxId = uniqueTxKey
+	dockerVMMsg.Type = protogo.DockerVMType_TX_REQUEST
+	dockerVMMsg.Request.ChainId = r.chainId
+	dockerVMMsg.Request.ContractName = contract.Name
+	dockerVMMsg.Request.ContractVersion = contract.Version
+	dockerVMMsg.Request.Method = method
+	dockerVMMsg.Request.Parameters = parameters
+	dockerVMMsg.CrossContext.CrossInfo = txSimContext.GetCrossInfo()
+	dockerVMMsg.CrossContext.CurrentDepth = uint32(txSimContext.GetDepth())
+	dockerVMMsg.StepDurations = dockerVMMsg.StepDurations[:0]
+	defer func() {
+		dockerVMMsgPool.Put(dockerVMMsg)
+		for _, dur := range dockerVMMsg.StepDurations {
+			utils.TxStepPool.Put(dur)
+		}
+	}()
 
-	crossCtx := &protogo.CrossContext{
-		CrossInfo:    txSimContext.GetCrossInfo(),
-		CurrentDepth: uint32(txSimContext.GetDepth()),
-	}
-
-	dockerVMMsg := &protogo.DockerVMMessage{
-		ChainId:      r.chainId,
-		TxId:         uniqueTxKey,
-		Type:         protogo.DockerVMType_TX_REQUEST,
-		Request:      txRequest,
-		CrossContext: crossCtx,
-	}
-
-	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0, 20)
-	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST,
-		fmt.Sprintf("tx send chan length: %d", r.clientMgr.GetTxSendChLen()))
+	//var sb strings.Builder
+	//sb.WriteString("tx send chan length: ")
+	//sb.WriteString(strconv.Itoa(r.clientMgr.GetTxSendChLen()))
+	//utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST, "")
 
 	// init time statistics
 	startTime := time.Now()
@@ -147,7 +161,7 @@ func (r *RuntimeInstance) Invoke(
 	defer func() {
 		r.txDuration.TotalDuration = time.Since(startTime).Nanoseconds()
 		r.DockerManager.BlockDurationMgr.FinishTx(fingerprint, r.txDuration)
-		r.logger.Debugf(r.txDuration.PrintSysCallList())
+		//r.logger.Debugf(r.txDuration.PrintSysCallList())
 	}()
 
 	// register notify for sandbox msg
@@ -245,7 +259,8 @@ func (r *RuntimeInstance) Invoke(
 				r.logger.Debugf("tx [%s] finish get batch state", uniqueTxKey)
 
 			case protogo.DockerVMType_TX_RESPONSE:
-				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext, gasUsed, specialTxType)
+				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext,
+					gasUsed, specialTxType, contractResult)
 				r.logger.Debugf("tx [%s] finish handle response", originalTxId)
 				if err = r.txDuration.EndSysCall(recvMsg); err != nil {
 					r.logger.Warnf("failed to end syscall, %v", err)
@@ -327,14 +342,29 @@ func (r *RuntimeInstance) Invoke(
 }
 
 func (r *RuntimeInstance) getChainConfigDefaultGas(txSimContext protocol.TxSimContext) uint64 {
+	fingerprintBytes := []byte(txSimContext.GetBlockFingerprint())
+	v, err := r.DefaultGasCache.Get(fingerprintBytes)
+	if err == nil {
+		return binary.BigEndian.Uint64(v)
+	}
 	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
 	if err != nil {
 		r.logger.Debugf("get last chain config err [%v]", err.Error())
 		return 0
 	}
+
+	var defaultGas uint64
 	if chainConfig.AccountConfig != nil && chainConfig.AccountConfig.DefaultGas > 0 {
-		return chainConfig.AccountConfig.DefaultGas
+		defaultGas = chainConfig.AccountConfig.DefaultGas
+	} else {
+		r.logger.Debug("account config not set default gas value")
+		defaultGas = 0
 	}
-	r.logger.Debug("account config not set default gas value")
-	return 0
+
+	var buf = make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, defaultGas)
+	if err = r.DefaultGasCache.Set(fingerprintBytes, buf, 64); err != nil {
+		r.logger.Debugf("failed to put default gas cache for fingerprint: %s", txSimContext.GetBlockFingerprint())
+	}
+	return defaultGas
 }

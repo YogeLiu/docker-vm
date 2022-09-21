@@ -181,8 +181,8 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 		r.eventCh <- msg
 	case *protogo.DockerVMMessage:
 		req := msg.(*protogo.DockerVMMessage)
-		utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_RECEIVE_TX_REQUEST,
-			fmt.Sprintf("group tx chan size: %d", len(r.txCh)))
+		//utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_RECEIVE_TX_REQUEST,
+		//	fmt.Sprintf("group tx chan size: %d", len(r.txCh)))
 		r.txCh <- req
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
@@ -523,9 +523,12 @@ func (r *RequestGroup) updateControllerState(isOrig, toWaiting bool) {
 // enqueueCh enqueue tx to process tx ch
 func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
 
-	utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_SEND_TX_REQUEST,
-		fmt.Sprintf("group last tx chan size(original): %d, group last tx chan size(cross): %d",
-			len(r.origTxController.txCh), len(r.crossTxController.txCh)))
+	//var sb strings.Builder
+	//sb.WriteString("group last tx chan size(original): ")
+	//sb.WriteString(strconv.Itoa(len(r.origTxController.txCh)))
+	//sb.WriteString(", group last tx chan size(cross): ")
+	//sb.WriteString(strconv.Itoa(len(r.crossTxController.txCh)))
+	//utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_SEND_TX_REQUEST, "")
 
 	// original tx, send to original tx chan
 	if utils.IsOrig(req) {
