@@ -142,10 +142,7 @@ func (r *RuntimeInstance) Invoke(
 		}
 	}()
 
-	//var sb strings.Builder
-	//sb.WriteString("tx send chan length: ")
-	//sb.WriteString(strconv.Itoa(r.clientMgr.GetTxSendChLen()))
-	//utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST, "")
+	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST, "")
 
 	// init time statistics
 	startTime := time.Now()

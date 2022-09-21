@@ -534,11 +534,10 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 
 	p.logger.Debugf("[%s] start handle tx resp [%s]", p.getTxId(), msg.TxId)
 
-	//utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE,
-	//	fmt.Sprintf("tx chan size: %d", len(p.txCh)))
-	//if str, ok := utils.PrintTxStepsWithTime(msg); ok {
-	//	p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
-	//}
+	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE, "")
+	if str, ok := utils.PrintTxStepsWithTime(msg); ok {
+		p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
+	}
 
 	if msg.TxId != p.Tx.TxId {
 		p.logger.Warnf("abandon tx response due to different tx id, response tx id [%s], "+
