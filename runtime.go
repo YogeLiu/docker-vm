@@ -8,14 +8,12 @@ SPDX-License-Identifier: Apache-2.0
 package docker_go
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/coocood/freecache"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -60,7 +58,6 @@ type RuntimeInstance struct {
 	contractEngineMsgCh chan *protogo.DockerVMMessage
 	DockerManager       *InstancesManager
 	txDuration          *utils.TxDuration
-	DefaultGasCache     *freecache.Cache
 }
 
 func (r *RuntimeInstance) contractEngineMsgNotify(msg *protogo.DockerVMMessage) {
@@ -142,7 +139,8 @@ func (r *RuntimeInstance) Invoke(
 		}
 	}()
 
-	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST, "")
+	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST,
+		strings.Join([]string{"pos", strconv.Itoa(r.clientMgr.GetTxSendChLen())}, ":"))
 
 	// init time statistics
 	startTime := time.Now()
@@ -256,8 +254,7 @@ func (r *RuntimeInstance) Invoke(
 				r.logger.Debugf("tx [%s] finish get batch state", uniqueTxKey)
 
 			case protogo.DockerVMType_TX_RESPONSE:
-				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext,
-					gasUsed, specialTxType, contractResult)
+				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext, gasUsed, specialTxType)
 				r.logger.Debugf("tx [%s] finish handle response", originalTxId)
 				if err = r.txDuration.EndSysCall(recvMsg); err != nil {
 					r.logger.Warnf("failed to end syscall, %v", err)
@@ -339,29 +336,14 @@ func (r *RuntimeInstance) Invoke(
 }
 
 func (r *RuntimeInstance) getChainConfigDefaultGas(txSimContext protocol.TxSimContext) uint64 {
-	fingerprintBytes := []byte(txSimContext.GetBlockFingerprint())
-	v, err := r.DefaultGasCache.Get(fingerprintBytes)
-	if err == nil {
-		return binary.BigEndian.Uint64(v)
-	}
 	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
 	if err != nil {
 		r.logger.Debugf("get last chain config err [%v]", err.Error())
 		return 0
 	}
-
-	var defaultGas uint64
 	if chainConfig.AccountConfig != nil && chainConfig.AccountConfig.DefaultGas > 0 {
-		defaultGas = chainConfig.AccountConfig.DefaultGas
-	} else {
-		r.logger.Debug("account config not set default gas value")
-		defaultGas = 0
+		return chainConfig.AccountConfig.DefaultGas
 	}
-
-	var buf = make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, defaultGas)
-	if err = r.DefaultGasCache.Set(fingerprintBytes, buf, 64); err != nil {
-		r.logger.Debugf("failed to put default gas cache for fingerprint: %s", txSimContext.GetBlockFingerprint())
-	}
-	return defaultGas
+	r.logger.Debug("account config not set default gas value")
+	return 0
 }

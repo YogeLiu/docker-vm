@@ -214,8 +214,10 @@ func (s *RuntimeService) getNotify(chainId, txId string) func(msg *protogo.Docke
 	f func(msg *protogo.DockerVMMessage)) {
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
 	s.logger.Debugf("get notify for [%s]", notifyKey)
-	notify, _ := s.sandboxMsgNotify.Get(notifyKey)
-	return notify.(func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)))
+	if notify, ok := s.sandboxMsgNotify.Get(notifyKey); ok {
+		return notify.(func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)))
+	}
+	return nil
 }
 
 // DeleteSandboxMsgNotify delete sandbox msg notify

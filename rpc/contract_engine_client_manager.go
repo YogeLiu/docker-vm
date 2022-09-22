@@ -3,11 +3,11 @@ package rpc
 import (
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"chainmaker.org/chainmaker/protocol/v2"
+	"go.uber.org/atomic"
 
+	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
@@ -29,8 +29,8 @@ const (
 type ContractEngineClientManager struct {
 	startOnce      sync.Once
 	logger         protocol.Logger
-	count          uint64 // tx count
-	index          uint64 // client index
+	count          atomic.Uint64 // tx count
+	index          uint64        // client index
 	config         *config.DockerVMConfig
 	notifyLock     sync.RWMutex
 	clientLock     sync.Mutex
@@ -52,7 +52,7 @@ func NewClientManager(
 		mgrInstance = &ContractEngineClientManager{
 			startOnce:      sync.Once{},
 			logger:         logger,
-			count:          0,
+			count:          atomic.Uint64{},
 			config:         vmConfig,
 			notifyLock:     sync.RWMutex{},
 			clientLock:     sync.Mutex{},
@@ -163,7 +163,7 @@ func (cm *ContractEngineClientManager) DeleteNotify(chainId, txId string) bool {
 
 // GetUniqueTxKey returns unique tx key
 func (cm *ContractEngineClientManager) GetUniqueTxKey(txId string) string {
-	nextCount := atomic.AddUint64(&cm.count, 1)
+	nextCount := cm.count.Add(1)
 	return utils.ConstructUniqueTxKey(txId, strconv.FormatUint(nextCount, 10))
 }
 

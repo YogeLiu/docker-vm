@@ -9,15 +9,18 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
-	"fmt"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"sync"
 )
 
 const _rpcEventChSize = 50000
@@ -112,7 +115,8 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				conn.wg.Done()
 				return
 			}
-			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
+			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST,
+				strings.Join([]string{"msgLen", strconv.Itoa(msg.Size())}, ":"))
 
 			switch msg.Type {
 			case protogo.DockerVMType_TX_REQUEST:

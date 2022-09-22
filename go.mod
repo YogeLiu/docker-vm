@@ -10,7 +10,6 @@ require (
 	chainmaker.org/chainmaker/protocol/v2 v2.3.0
 	chainmaker.org/chainmaker/utils/v2 v2.3.0
 	chainmaker.org/chainmaker/vm/v2 v2.3.0
-	github.com/coocood/freecache v1.2.2
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0

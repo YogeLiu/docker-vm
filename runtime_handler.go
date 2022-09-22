@@ -2,7 +2,6 @@ package docker_go
 
 import (
 	"bytes"
-	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,19 +23,20 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
 )
 
 func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType,
-	contractResult *commonPb.ContractResult) (result *commonPb.ContractResult,
-	execOrderTxType protocol.ExecOrderTxType) {
+	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType) (
+	contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
 
 	var err error
 	txResponse := recvMsg.Response
 
-	//utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, "")
+	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, "")
 	defer func() {
 		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
 		if str, ok := utils.PrintTxStepsWithTime(recvMsg); ok {
@@ -44,7 +44,7 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		}
 	}()
 
-	//contractResult = new(commonPb.ContractResult)
+	contractResult = new(commonPb.ContractResult)
 	// tx fail, just return without merge read write map and events
 	if txResponse.Code != 0 {
 		contractResult.Code = 1

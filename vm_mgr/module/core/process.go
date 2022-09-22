@@ -283,20 +283,17 @@ func (p *Process) listenProcess() {
 						p.logger.Errorf("failed to return tx error response, %v", err)
 					}
 				}
-				break
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
 					p.logger.Errorf("failed to handle ready timeout timer, %v", err)
 				}
-				break
 
 			case err := <-p.exitCh:
 				processReleased := p.handleProcessExit(err)
 				if processReleased {
 					return
 				}
-				break
 			}
 		} else if p.processState == busy {
 			select {
@@ -305,20 +302,17 @@ func (p *Process) listenProcess() {
 				if err := p.handleTxResp(resp); err != nil {
 					p.logger.Warnf("failed to handle tx response, %v", err)
 				}
-				break
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
 					p.logger.Errorf("failed to handle busy timeout timer, %v, resp chan length: %d", err, len(p.respCh))
 				}
-				break
 
 			case err := <-p.exitCh:
 				processReleased := p.handleProcessExit(err)
 				if processReleased {
 					return
 				}
-				break
 			}
 		} else if p.processState == idle {
 			select {
@@ -328,14 +322,12 @@ func (p *Process) listenProcess() {
 				if err := p.handleIdleTxRequest(tx); err != nil {
 					p.logger.Errorf("failed to handle tx [%s] request when idle, %v", tx.Tx.TxId, err)
 				}
-				break
 
 			case err := <-p.exitCh:
 				processReleased := p.handleProcessExit(err)
 				if processReleased {
 					return
 				}
-				break
 			}
 		} else {
 			select {
@@ -345,9 +337,7 @@ func (p *Process) listenProcess() {
 				if processReleased {
 					return
 				}
-				break
 			case _ = <-p.updateCh:
-				break
 			}
 		}
 	}
@@ -465,9 +455,6 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	//utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_REQUEST,
-	//	fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
-
 	elapsedTime := time.Since(tx.StartTime)
 	if elapsedTime > _removeTxTime {
 		p.logger.Warnf("tx [%s] expired for %v, elapsed time: %v", tx.Tx.TxId, _removeTxTime, elapsedTime)
@@ -491,8 +478,8 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 		StepDurations: tx.Tx.StepDurations,
 	}
 
-	//utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
-	//	fmt.Sprintf("request group tx chan size: %d", len(p.txCh)))
+	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
+		strings.Join([]string{"waitingLen", strconv.Itoa(len(p.txCh))}, ":"))
 
 	// send message to sandbox
 	if err := p.sendMsg(msg); err != nil {

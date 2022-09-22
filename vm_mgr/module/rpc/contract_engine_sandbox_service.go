@@ -68,14 +68,12 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 		// timeout: ok (restart, process abandon tx)
 		// recreated: ok (process abandon tx)
 		if process == nil {
-			process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
-			if !ok {
-				process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName)
-			}
-			if !ok {
-				err = fmt.Errorf("failed to get process, %v", err)
-				s.logger.Errorf(err.Error())
-				return err
+			if process, ok = s.origProcessMgr.GetProcessByName(msg.CrossContext.ProcessName); !ok {
+				if process, ok = s.crossProcessMgr.GetProcessByName(msg.CrossContext.ProcessName); !ok {
+					err = fmt.Errorf("failed to get process, %v", err)
+					s.logger.Errorf(err.Error())
+					return err
+				}
 			}
 		}
 

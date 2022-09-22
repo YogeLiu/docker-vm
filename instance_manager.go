@@ -20,7 +20,6 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/rpc"
 	"chainmaker.org/chainmaker/vm-engine/v2/utils"
-	"github.com/coocood/freecache"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -34,7 +33,6 @@ type InstancesManager struct {
 	dockerVMConfig        *config.DockerVMConfig             // original config from local config
 	dockerContainerConfig *config.DockerContainerConfig      // container setting
 	BlockDurationMgr      *utils.BlockTxsDurationMgr
-	DefaultGasCache       *freecache.Cache
 }
 
 // NewInstancesManager return docker vm instance manager
@@ -71,7 +69,6 @@ func NewInstancesManager(
 		dockerVMConfig:        dockerVMConfig,
 		dockerContainerConfig: dockerContainerConfig,
 		BlockDurationMgr:      utils.NewBlockTxsDurationMgr(),
-		DefaultGasCache:       freecache.NewCache(512),
 	}
 
 	// init mount directory and subdirectory
@@ -108,7 +105,6 @@ func (m *InstancesManager) NewRuntimeInstance(txSimContext protocol.TxSimContext
 		sandboxMsgCh:        make(chan *protogo.DockerVMMessage, 1),
 		contractEngineMsgCh: make(chan *protogo.DockerVMMessage, 1),
 		DockerManager:       m,
-		DefaultGasCache:     m.DefaultGasCache,
 	}, nil
 }
 
