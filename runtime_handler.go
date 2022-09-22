@@ -36,7 +36,8 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	var err error
 	txResponse := recvMsg.Response
 
-	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, "")
+	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE,
+		strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.Size())}, ":"))
 	defer func() {
 		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
 		if str, ok := utils.PrintTxStepsWithTime(recvMsg); ok {

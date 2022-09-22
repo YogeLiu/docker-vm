@@ -12,6 +12,8 @@ import (
 	"io"
 	"net"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -111,7 +113,8 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 		select {
 		case txReq := <-c.clientMgr.GetTxSendCh():
 			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
-			utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST, "")
+			utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST,
+				strings.Join([]string{"msgSize", strconv.Itoa(txReq.Size())}, ":"))
 
 			err = c.sendMsg(txReq)
 		case getByteCodeResp := <-c.clientMgr.GetByteCodeRespSendCh():

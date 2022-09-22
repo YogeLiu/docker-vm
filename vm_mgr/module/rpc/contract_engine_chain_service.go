@@ -10,8 +10,6 @@ package rpc
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
@@ -115,8 +113,7 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				conn.wg.Done()
 				return
 			}
-			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST,
-				strings.Join([]string{"msgLen", strconv.Itoa(msg.Size())}, ":"))
+			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
 
 			switch msg.Type {
 			case protogo.DockerVMType_TX_REQUEST:
