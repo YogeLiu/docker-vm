@@ -2,17 +2,16 @@ package rpc
 
 import (
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
-	"chainmaker.org/chainmaker/protocol/v2"
+	"go.uber.org/atomic"
 
+	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/utils"
-	"go.uber.org/atomic"
 )
 
 var (
@@ -30,8 +29,8 @@ const (
 type ContractEngineClientManager struct {
 	startOnce      sync.Once
 	logger         protocol.Logger
-	count          *atomic.Uint64 // tx count
-	index          uint64         // client index
+	count          atomic.Uint64 // tx count
+	index          uint64        // client index
 	config         *config.DockerVMConfig
 	notifyLock     sync.RWMutex
 	clientLock     sync.Mutex
@@ -53,7 +52,7 @@ func NewClientManager(
 		mgrInstance = &ContractEngineClientManager{
 			startOnce:      sync.Once{},
 			logger:         logger,
-			count:          atomic.NewUint64(0),
+			count:          atomic.Uint64{},
 			config:         vmConfig,
 			notifyLock:     sync.RWMutex{},
 			clientLock:     sync.Mutex{},
@@ -164,12 +163,8 @@ func (cm *ContractEngineClientManager) DeleteNotify(chainId, txId string) bool {
 
 // GetUniqueTxKey returns unique tx key
 func (cm *ContractEngineClientManager) GetUniqueTxKey(txId string) string {
-	var sb strings.Builder
 	nextCount := cm.count.Add(1)
-	sb.WriteString(txId)
-	sb.WriteString("#")
-	sb.WriteString(strconv.FormatUint(nextCount, 10))
-	return sb.String()
+	return utils.ConstructUniqueTxKey(txId, strconv.FormatUint(nextCount, 10))
 }
 
 // NeedSendContractByteCode judge whether need to send contract bytecode

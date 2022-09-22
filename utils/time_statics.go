@@ -12,6 +12,19 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
 )
 
+var sysCallPool = sync.Pool{
+	New: func() interface{} {
+		return &SysCallDuration{}
+	},
+}
+
+// TxStepPool is the tx step sync pool
+var TxStepPool = sync.Pool{
+	New: func() interface{} {
+		return &protogo.StepDuration{}
+	},
+}
+
 // SysCallDuration .
 type SysCallDuration struct {
 	OpType          protogo.DockerVMType
@@ -66,6 +79,7 @@ func NewTxDuration(originalTxId, txId string, startTime int64) *TxDuration {
 		OriginalTxId: originalTxId,
 		TxId:         txId,
 		StartTime:    startTime,
+		SysCallList:  make([]*SysCallDuration, 0, 8),
 	}
 }
 
@@ -107,10 +121,11 @@ func (e *TxDuration) PrintSysCallList() string {
 
 // StartSysCall start new sys call
 func (e *TxDuration) StartSysCall(msgType protogo.DockerVMType) {
-	duration := &SysCallDuration{
-		OpType:    msgType,
-		StartTime: time.Now().UnixNano(),
-	}
+	duration, _ := sysCallPool.Get().(*SysCallDuration)
+	duration.OpType = msgType
+	duration.StartTime = time.Now().UnixNano()
+	duration.StorageDuration = 0
+	duration.TotalDuration = 0
 	e.SysCallList = append(e.SysCallList, duration)
 }
 
@@ -269,6 +284,10 @@ func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
 
 	txDuration.CrossCallCnt += t.CrossCallCnt
 	txDuration.CrossCallDuration += t.CrossCallDuration
+
+	for _, duration := range txDuration.SysCallList {
+		sysCallPool.Put(duration)
+	}
 }
 
 // ToString .
@@ -358,11 +377,12 @@ func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log 
 }
 
 func addTxStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log string) {
-	stepDur := &protogo.StepDuration{
-		Type:      stepType,
-		StartTime: time.Now().UnixNano(),
-		Msg:       log,
-	}
+	stepDur, _ := TxStepPool.Get().(*protogo.StepDuration)
+	stepDur.Type = stepType
+	stepDur.StartTime = time.Now().UnixNano()
+	stepDur.Msg = log
+	stepDur.StepDuration = 0
+	stepDur.UntilDuration = 0
 	msg.StepDurations = append(msg.StepDurations, stepDur)
 }
 

@@ -4,6 +4,8 @@ import (
 	"io"
 	"sync"
 
+	cmap "github.com/orcaman/concurrent-map"
+
 	"go.uber.org/atomic"
 
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -20,30 +22,26 @@ var (
 
 // RuntimeService is the sandbox - chainmaker service
 type RuntimeService struct {
-	streamCounter atomic.Uint64
-	lock          sync.RWMutex
-	logger        protocol.Logger
+	streamCounter    atomic.Uint64
+	lock             sync.RWMutex
+	logger           protocol.Logger
+	sandboxMsgNotify cmap.ConcurrentMap
 	//stream           protogo.DockerVMRpc_DockerVMCommunicateServer
-	sandboxMsgNotify map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage))
+	//sandboxMsgNotify map[string]func(msg *protogo.DockerVMMessage, sendMsg func(msg *protogo.DockerVMMessage))
 	//responseChanMap  map[uint64]chan *protogo.DockerVMMessage
-	responseChanMap sync.Map
+	//responseChanMap  sync.Map
 }
 
 // NewRuntimeService returns runtime service
 func NewRuntimeService(logger protocol.Logger) *RuntimeService {
+	cmap.SHARD_COUNT = 1024
 	runtimeServiceOnce.Do(func() {
 		runtimeServiceInstance = &RuntimeService{
-			streamCounter: atomic.Uint64{},
-			lock:          sync.RWMutex{},
-			logger:        logger,
-			sandboxMsgNotify: make(
-				map[string]func(
-					msg *protogo.DockerVMMessage,
-					sendMsg func(msg *protogo.DockerVMMessage),
-				),
-				50000,
-			),
-			responseChanMap: sync.Map{},
+			streamCounter:    atomic.Uint64{},
+			lock:             sync.RWMutex{},
+			logger:           logger,
+			sandboxMsgNotify: cmap.New(),
+			//responseChanMap:  sync.Map{},
 		}
 	})
 	return runtimeServiceInstance
@@ -54,31 +52,31 @@ func (s *RuntimeService) getStreamId() uint64 {
 	return s.streamCounter.Load()
 }
 
-func (s *RuntimeService) registerStreamSendCh(streamId uint64, sendCh chan *protogo.DockerVMMessage) bool {
-	s.logger.Debugf("register send chan for stream[%d]", streamId)
-	if _, ok := s.responseChanMap.Load(streamId); ok {
-		s.logger.Debugf("[%d] fail to register receive chan cause chan already registered", streamId)
-		return false
-	}
-	s.responseChanMap.Store(streamId, sendCh)
-	return true
-}
+//func (s *RuntimeService) registerStreamSendCh(streamId uint64, sendCh chan *protogo.DockerVMMessage) bool {
+//	s.logger.Debugf("register send chan for stream[%d]", streamId)
+//	if _, ok := s.responseChanMap.Load(streamId); ok {
+//		s.logger.Debugf("[%d] fail to register receive chan cause chan already registered", streamId)
+//		return false
+//	}
+//	s.responseChanMap.Store(streamId, sendCh)
+//	return true
+//}
 
 // nolint: unused
-func (s *RuntimeService) getStreamSendCh(streamId uint64) chan *protogo.DockerVMMessage {
-	s.logger.Debugf("get send chan for stream[%d]", streamId)
-	ch, ok := s.responseChanMap.Load(streamId)
-	if !ok {
-		return nil
-	}
+//func (s *RuntimeService) getStreamSendCh(streamId uint64) chan *protogo.DockerVMMessage {
+//	s.logger.Debugf("get send chan for stream[%d]", streamId)
+//	ch, ok := s.responseChanMap.Load(streamId)
+//	if !ok {
+//		return nil
+//	}
+//
+//	return ch.(chan *protogo.DockerVMMessage)
+//}
 
-	return ch.(chan *protogo.DockerVMMessage)
-}
-
-func (s *RuntimeService) deleteStreamSendCh(streamId uint64) {
-	s.logger.Debugf("delete send chan for stream[%d]", streamId)
-	s.responseChanMap.Delete(streamId)
-}
+//func (s *RuntimeService) deleteStreamSendCh(streamId uint64) {
+//	s.logger.Debugf("delete send chan for stream[%d]", streamId)
+//	s.responseChanMap.Delete(streamId)
+//}
 
 type serviceStream struct {
 	logger         protocol.Logger
@@ -107,9 +105,9 @@ func (s *RuntimeService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVM
 		stopReceive:    make(chan struct{}, 1),
 		wg:             &sync.WaitGroup{},
 	}
-	defer s.deleteStreamSendCh(ss.streamId)
+	//defer s.deleteStreamSendCh(ss.streamId)
 
-	s.registerStreamSendCh(ss.streamId, ss.sendResponseCh)
+	//s.registerStreamSendCh(ss.streamId, ss.sendResponseCh)
 
 	ss.wg.Add(2)
 
@@ -159,9 +157,9 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
 
-				if receivedMsg.Type == protogo.DockerVMType_TX_RESPONSE {
-					utils.EnterNextStep(receivedMsg, protogo.StepType_RUNTIME_GRPC_RECEIVE_TX_RESPONSE, "")
-				}
+				//if receivedMsg.Type == protogo.DockerVMType_TX_RESPONSE {
+				//	utils.EnterNextStep(receivedMsg, protogo.StepType_RUNTIME_GRPC_RECEIVE_TX_RESPONSE, "")
+				//}
 
 				notify := s.getNotify(receivedMsg.ChainId, receivedMsg.TxId)
 
@@ -203,41 +201,33 @@ func (s *RuntimeService) sendRoutine(ss *serviceStream) {
 // RegisterSandboxMsgNotify register sandbox msg notify
 func (s *RuntimeService) RegisterSandboxMsgNotify(chainId, txKey string,
 	respNotify func(msg *protogo.DockerVMMessage, sendF func(*protogo.DockerVMMessage))) error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txKey)
 	s.logger.Debugf("register receive respNotify for [%s]", notifyKey)
-	_, ok := s.sandboxMsgNotify[notifyKey]
-	if ok {
+	if _, ok := s.sandboxMsgNotify.Get(notifyKey); ok {
 		s.logger.Errorf("[%s] fail to register respNotify cause ")
 	}
-	s.sandboxMsgNotify[notifyKey] = respNotify
+	s.sandboxMsgNotify.Set(notifyKey, respNotify)
 	return nil
 }
 
-func (s *RuntimeService) getNotify(
-	chainId,
-	txId string,
-) func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)) {
-
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+func (s *RuntimeService) getNotify(chainId, txId string) func(msg *protogo.DockerVMMessage,
+	f func(msg *protogo.DockerVMMessage)) {
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
 	s.logger.Debugf("get notify for [%s]", notifyKey)
-	return s.sandboxMsgNotify[notifyKey]
+	if notify, ok := s.sandboxMsgNotify.Get(notifyKey); ok {
+		return notify.(func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)))
+	}
+	return nil
 }
 
 // DeleteSandboxMsgNotify delete sandbox msg notify
 func (s *RuntimeService) DeleteSandboxMsgNotify(chainId, txId string) bool {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
 	s.logger.Debugf("[%s] delete notify", txId)
-	_, ok := s.sandboxMsgNotify[notifyKey]
-	if !ok {
+	if _, ok := s.sandboxMsgNotify.Get(notifyKey); !ok {
 		s.logger.Debugf("[%s] delete notify fail, notify is already deleted", notifyKey)
 		return false
 	}
-	delete(s.sandboxMsgNotify, notifyKey)
+	s.sandboxMsgNotify.Remove(notifyKey)
 	return true
 }

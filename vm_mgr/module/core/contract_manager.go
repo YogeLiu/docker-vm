@@ -12,13 +12,12 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
-
 	"go.uber.org/zap"
 
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 )

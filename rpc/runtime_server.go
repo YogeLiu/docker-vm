@@ -11,11 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-engine/v2/utils"
-
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-engine/v2/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -72,8 +71,10 @@ func NewRuntimeServer(logger protocol.Logger, vmConfig *config.DockerVMConfig) (
 		serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
 
 		serverOpts = append(serverOpts, grpc.ConnectionTimeout(config.ConnectionTimeout))
-		serverOpts = append(serverOpts, grpc.ReadBufferSize(1024*128))
-		serverOpts = append(serverOpts, grpc.WriteBufferSize(1024*128))
+		serverOpts = append(serverOpts, grpc.ReadBufferSize(4*1024*1024))
+		serverOpts = append(serverOpts, grpc.WriteBufferSize(4*1024*1024))
+		serverOpts = append(serverOpts, grpc.InitialWindowSize(64*1024*1024))
+		serverOpts = append(serverOpts, grpc.InitialConnWindowSize(64*1024*1024))
 		serverOpts = append(serverOpts, grpc.NumStreamWorkers(uint32(runtime.NumCPU()/2)))
 
 		server := grpc.NewServer(serverOpts...)

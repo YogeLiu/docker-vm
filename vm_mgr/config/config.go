@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -170,51 +171,58 @@ func (c *conf) setDefaultConfigs() {
 
 func (c *conf) setEnv() error {
 
-	var err error
+	var errs []string
 
 	if chainRPCProtocol, ok := os.LookupEnv("CHAIN_RPC_PROTOCOL"); ok {
 		p, err := strconv.Atoi(chainRPCProtocol)
 		if err != nil {
-			return fmt.Errorf("failed to Atoi chainRPCProtocol, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to Atoi chainRPCProtocol: %v", err))
+		} else {
+			c.RPC.ChainRPCProtocol = ChainRPCProtocolType(p)
 		}
-		c.RPC.ChainRPCProtocol = ChainRPCProtocolType(p)
 	}
 
 	if chainRPCPort, ok := os.LookupEnv("CHAIN_RPC_PORT"); ok {
+		var err error
 		if c.RPC.ChainRPCPort, err = strconv.Atoi(chainRPCPort); err != nil {
-			return fmt.Errorf("failed to Atoi chainRPCPort, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to Atoi chainRPCPort: %v", err))
 		}
 	}
 
 	if sandboxRPCPort, ok := os.LookupEnv("SANDBOX_RPC_PORT"); ok {
+		var err error
 		if c.RPC.SandboxRPCPort, err = strconv.Atoi(sandboxRPCPort); err != nil {
-			return fmt.Errorf("failed to Atoi sandboxRPCPort, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to Atoi sandboxRPCPort: %v", err))
 		}
 	}
 
 	if maxSendMsgSize, ok := os.LookupEnv("MAX_SEND_MSG_SIZE"); ok {
+		var err error
 		if c.RPC.MaxSendMsgSize, err = strconv.Atoi(maxSendMsgSize); err != nil {
-			return fmt.Errorf("failed to Atoi maxSendMsgSize, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to Atoi maxSendMsgSize: %v", err))
 		}
 	}
 
 	if maxRecvMsgSize, ok := os.LookupEnv("MAX_RECV_MSG_SIZE"); ok {
+		var err error
 		if c.RPC.MaxRecvMsgSize, err = strconv.Atoi(maxRecvMsgSize); err != nil {
-			return fmt.Errorf("failed to Atoi maxRecvMsgSize, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to Atoi maxRecvMsgSize: %v", err))
 		}
 	}
 
 	if connectionTimeout, ok := os.LookupEnv("MAX_CONN_TIMEOUT"); ok {
 		timeout, err := strconv.ParseInt(connectionTimeout, 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to ParseInt connectionTimeout, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to ParseInt connectionTimeout: %v", err))
+		} else {
+			c.RPC.ConnectionTimeout = time.Duration(timeout) * time.Second
 		}
-		c.RPC.ConnectionTimeout = time.Duration(timeout) * time.Second
 	}
 
 	if processNum, ok := os.LookupEnv("MAX_ORIGINAL_PROCESS_NUM"); ok {
+		var err error
 		if c.Process.MaxOriginalProcessNum, err = strconv.Atoi(processNum); err != nil {
-			return fmt.Errorf("failed to ParseInt processNum, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to ParseInt processNum: %v", err))
 		}
 	}
 
@@ -237,7 +245,7 @@ func (c *conf) setEnv() error {
 	if slowStepTime, ok := os.LookupEnv("SLOW_TX_STEP_TIME"); ok {
 		timeout, err := strconv.ParseInt(slowStepTime, 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to ParseInt slowStepTime, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to ParseInt slowStepTime: %v", err))
 		}
 		if timeout != 0 {
 			c.Slow.StepTime = time.Duration(timeout) * time.Second
@@ -247,7 +255,7 @@ func (c *conf) setEnv() error {
 	if slowTxTime, ok := os.LookupEnv("SLOW_TX_TIME"); ok {
 		timeout, err := strconv.ParseInt(slowTxTime, 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to ParseInt slowTxTime, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to ParseInt slowTxTime: %v", err))
 		}
 		if timeout != 0 {
 			c.Slow.TxTime = time.Duration(timeout) * time.Second
@@ -257,14 +265,17 @@ func (c *conf) setEnv() error {
 	if busyTimout, ok := os.LookupEnv("PROCESS_TIMEOUT"); ok {
 		timeout, err := strconv.ParseInt(busyTimout, 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to ParseInt busyTimout, %v", err)
+			errs = append(errs, fmt.Sprintf("failed to ParseInt busyTimout: %v", err))
 		}
 		if timeout != 0 {
 			c.Process.ExecTxTimeout = time.Duration(timeout) * time.Second
 		}
 	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf(strings.Join(errs, ","))
 
-	return nil
 }
 
 func (c *conf) restrainConfig() {

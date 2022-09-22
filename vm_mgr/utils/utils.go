@@ -77,37 +77,25 @@ func RunCmd(command string) error {
 	return nil
 }
 
-// ConstructContractKey contractName#contractVersion
-func ConstructContractKey(chainID, contractName, contractVersion string) string {
-	var sb strings.Builder
-	sb.WriteString(chainID)
-	sb.WriteString("#")
-	sb.WriteString(contractName)
-	sb.WriteString("#")
-	sb.WriteString(contractVersion)
-	return sb.String()
+// ConstructContractKey chainID#contractName#contractVersion
+func ConstructContractKey(names ...string) string {
+	return strings.Join(names, "#")
 }
 
-// ConstructProcessName contractName#contractVersion#timestamp:index
+// ConstructProcessName chainID#contractName#contractVersion#timestamp#localIndex#overallIndex
 func ConstructProcessName(chainID, contractName, contractVersion string,
 	localIndex int, overallIndex uint64, isOrig bool) string {
-	var sb strings.Builder
 	typeStr := "o"
 	if !isOrig {
 		typeStr = "c"
 	}
-	sb.WriteString(chainID)
-	sb.WriteString("#")
-	sb.WriteString(typeStr)
-	sb.WriteString("#")
-	sb.WriteString(contractName)
-	sb.WriteString("#")
-	sb.WriteString(contractVersion)
-	sb.WriteString("#")
-	sb.WriteString(strconv.Itoa(localIndex))
-	sb.WriteString("#")
-	sb.WriteString(strconv.FormatUint(overallIndex, 10))
-	return sb.String()
+	return constructProcessName(chainID, typeStr, contractName, contractVersion,
+		strconv.Itoa(localIndex), strconv.FormatUint(overallIndex, 10))
+}
+
+// constructProcessName chainID#contractName#contractVersion#timestamp#localIndex#overallIndex
+func constructProcessName(names ...string) string {
+	return strings.Join(names, "#")
 }
 
 // IsOrig judge whether the tx is original or cross

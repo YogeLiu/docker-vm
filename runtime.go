@@ -10,7 +10,9 @@ package docker_go
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
@@ -26,6 +28,21 @@ const (
 	mountContractDir = "contract-bins"
 	msgIterIsNil     = "iterator is nil"
 )
+
+var dockerVMMsgPool = sync.Pool{
+	New: func() interface{} {
+		return &protogo.DockerVMMessage{
+			Request: &protogo.TxRequest{
+				TxContext: &protogo.TxContext{
+					WriteMap: nil,
+					ReadMap:  nil,
+				},
+			},
+			CrossContext:  &protogo.CrossContext{},
+			StepDurations: make([]*protogo.StepDuration, 0, 4),
+		}
+	},
+}
 
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
@@ -103,35 +120,27 @@ func (r *RuntimeInstance) Invoke(
 		}
 	}
 
-	// construct DockerVMMessage
-	txRequest := &protogo.TxRequest{
-		ChainId:         r.chainId,
-		ContractName:    contract.Name,
-		ContractVersion: contract.Version,
-		Method:          method,
-		Parameters:      parameters,
-		TxContext: &protogo.TxContext{
-			WriteMap: nil,
-			ReadMap:  nil,
-		},
-	}
+	dockerVMMsg, _ := dockerVMMsgPool.Get().(*protogo.DockerVMMessage)
+	dockerVMMsg.ChainId = r.chainId
+	dockerVMMsg.TxId = uniqueTxKey
+	dockerVMMsg.Type = protogo.DockerVMType_TX_REQUEST
+	dockerVMMsg.Request.ChainId = r.chainId
+	dockerVMMsg.Request.ContractName = contract.Name
+	dockerVMMsg.Request.ContractVersion = contract.Version
+	dockerVMMsg.Request.Method = method
+	dockerVMMsg.Request.Parameters = parameters
+	dockerVMMsg.CrossContext.CrossInfo = txSimContext.GetCrossInfo()
+	dockerVMMsg.CrossContext.CurrentDepth = uint32(txSimContext.GetDepth())
+	dockerVMMsg.StepDurations = dockerVMMsg.StepDurations[:0]
+	defer func() {
+		dockerVMMsgPool.Put(dockerVMMsg)
+		for _, dur := range dockerVMMsg.StepDurations {
+			utils.TxStepPool.Put(dur)
+		}
+	}()
 
-	crossCtx := &protogo.CrossContext{
-		CrossInfo:    txSimContext.GetCrossInfo(),
-		CurrentDepth: uint32(txSimContext.GetDepth()),
-	}
-
-	dockerVMMsg := &protogo.DockerVMMessage{
-		ChainId:      r.chainId,
-		TxId:         uniqueTxKey,
-		Type:         protogo.DockerVMType_TX_REQUEST,
-		Request:      txRequest,
-		CrossContext: crossCtx,
-	}
-
-	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0, 20)
 	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST,
-		fmt.Sprintf("tx send chan length: %d", r.clientMgr.GetTxSendChLen()))
+		strings.Join([]string{"pos", strconv.Itoa(r.clientMgr.GetTxSendChLen())}, ":"))
 
 	// init time statistics
 	startTime := time.Now()
@@ -147,7 +156,7 @@ func (r *RuntimeInstance) Invoke(
 	defer func() {
 		r.txDuration.TotalDuration = time.Since(startTime).Nanoseconds()
 		r.DockerManager.BlockDurationMgr.FinishTx(fingerprint, r.txDuration)
-		r.logger.Debugf(r.txDuration.PrintSysCallList())
+		//r.logger.Debugf(r.txDuration.PrintSysCallList())
 	}()
 
 	// register notify for sandbox msg

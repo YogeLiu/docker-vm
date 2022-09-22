@@ -12,6 +12,8 @@ import (
 	"io"
 	"net"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -112,7 +114,7 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 		case txReq := <-c.clientMgr.GetTxSendCh():
 			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
 			utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST,
-				fmt.Sprintf("tx send chan length: %d", c.clientMgr.GetTxSendChLen()))
+				strings.Join([]string{"msgSize", strconv.Itoa(txReq.Size())}, ":"))
 
 			err = c.sendMsg(txReq)
 		case getByteCodeResp := <-c.clientMgr.GetByteCodeRespSendCh():
@@ -164,7 +166,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			}
 
 			if revErr != nil {
-				c.logger.Warnf("client receive err and exit receive goroutine %s", revErr)
+				c.logger.Warnf("client receive err and exit receive goroutine, %s", revErr)
 				close(c.stopSend)
 				return
 			}
@@ -213,27 +215,24 @@ func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
 func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 
 	// just for mac development and pprof testing
+	dialOpts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(int(utils.GetMaxRecvMsgSizeFromConfig(c.config))*1024*1024),
+			grpc.MaxCallSendMsgSize(int(utils.GetMaxSendMsgSizeFromConfig(c.config))*1024*1024),
+		),
+		grpc.WithWriteBufferSize(4 * 1024 * 1024),
+		grpc.WithReadBufferSize(4 * 1024 * 1024),
+		grpc.WithInitialWindowSize(64 * 1024 * 1024),
+		grpc.WithInitialConnWindowSize(64 * 1024 * 1024),
+	}
 	if c.config.ConnectionProtocol == config.TCPProtocol {
 		url := fmt.Sprintf("%s:%d", c.config.ContractEngine.Host, c.config.ContractEngine.Port)
-		dialOpts := []grpc.DialOption{
-			grpc.WithInsecure(),
-			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(int(c.config.MaxRecvMsgSize)*1024*1024),
-				grpc.MaxCallSendMsgSize(int(c.config.MaxSendMsgSize)*1024*1024),
-			),
-		}
+
 		return grpc.Dial(url, dialOpts...)
 	}
 
-	udsDialOpts := []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(int(utils.GetMaxRecvMsgSizeFromConfig(c.config)*1024*1024)),
-			grpc.MaxCallSendMsgSize(int(utils.GetMaxSendMsgSizeFromConfig(c.config)*1024*1024)),
-		),
-	}
-
-	udsDialOpts = append(udsDialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
+	dialOpts = append(dialOpts, grpc.WithContextDialer(func(ctx context.Context, sock string) (net.Conn, error) {
 		unixAddress, _ := net.ResolveUnixAddr("unix", sock)
 		conn, err := net.DialUnix("unix", nil, unixAddress)
 		return conn, err
@@ -241,7 +240,7 @@ func (c *ContractEngineClient) NewClientConn() (*grpc.ClientConn, error) {
 
 	sockAddress := filepath.Join(c.config.DockerVMMountPath, config.SockDir, config.EngineSockName)
 
-	return grpc.DialContext(context.Background(), sockAddress, udsDialOpts...)
+	return grpc.DialContext(context.Background(), sockAddress, dialOpts...)
 
 }
 
