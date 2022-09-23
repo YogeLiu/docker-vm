@@ -131,7 +131,7 @@ func (r *RuntimeInstance) Invoke(
 	dockerVMMsg.Request.Parameters = parameters
 	dockerVMMsg.CrossContext.CrossInfo = txSimContext.GetCrossInfo()
 	dockerVMMsg.CrossContext.CurrentDepth = uint32(txSimContext.GetDepth())
-	dockerVMMsg.StepDurations = dockerVMMsg.StepDurations[:0]
+	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0, 4)
 	defer func() {
 		dockerVMMsgPool.Put(dockerVMMsg)
 		for _, dur := range dockerVMMsg.StepDurations {
