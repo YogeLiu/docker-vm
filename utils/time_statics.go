@@ -285,8 +285,8 @@ func (b *BlockTxsDuration) FinishTxDuration(t *TxDuration) {
 	txDuration.CrossCallCnt += t.CrossCallCnt
 	txDuration.CrossCallDuration += t.CrossCallDuration
 
-	for _, duration := range txDuration.SysCallList {
-		sysCallPool.Put(duration)
+	for _, v := range txDuration.SysCallList {
+		sysCallPool.Put(v)
 	}
 }
 
