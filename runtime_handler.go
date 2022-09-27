@@ -1252,10 +1252,12 @@ func (r *RuntimeInstance) extractContract(bytecode []byte, contractFullName stri
 
 		// uds, need to save bytecode
 		if !sendContract {
-			// mv contractBin ..
-			mvCmd := fmt.Sprintf("mv %s .", contractZipPath)
-			if err = runCmd(mvCmd); err != nil {
-				return nil, fmt.Errorf("failed to extract contract, %v", err)
+			hostMountPath := r.clientMgr.GetVMConfig().DockerVMMountPath
+			contractDir := filepath.Join(hostMountPath, mountContractDir)
+			contractFullNamePath := filepath.Join(contractDir, contractFullName)
+			err = r.saveBytesToDisk(extBytecode, contractFullNamePath, "")
+			if err != nil {
+				return nil, fmt.Errorf("failed to save bytecode to disk: %s", err)
 			}
 		}
 		return extBytecode, nil
