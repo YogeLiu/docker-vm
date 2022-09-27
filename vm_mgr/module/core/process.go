@@ -741,7 +741,7 @@ func (p *Process) resetContext(chainID, contractName, contractVersion, processNa
 	// reset request group
 	var ok bool
 	// GetRequestGroup is safe because waiting group exists -> request group exists
-	if p.requestGroup, ok = p.requestScheduler.GetRequestGroup(p.chainID, contractName, contractVersion); !ok {
+	if p.requestGroup, ok = p.requestScheduler.GetRequestGroup(chainID, contractName, contractVersion); !ok {
 		return fmt.Errorf("failed to get request group")
 	}
 
