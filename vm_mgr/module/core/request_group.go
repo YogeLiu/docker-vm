@@ -10,6 +10,7 @@ package core
 import (
 	"fmt"
 	"math"
+	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -196,7 +197,19 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 func (r *RequestGroup) GetContractPath() string {
 
 	contractKey := utils.ConstructContractKey(r.chainID, r.contractName, r.contractVersion)
-	return filepath.Join(r.requestScheduler.GetContractManager().GetContractMountDir(), contractKey)
+	path := filepath.Join(r.requestScheduler.GetContractManager().GetContractMountDir(), contractKey)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		r.contractState = _contractEmpty
+		r.logger.Error("contract bin not exist, waiting for reloading contract from chain")
+		return ""
+	}
+	return path
+}
+
+// IsContractReady returns contract ready or not
+func (r *RequestGroup) IsContractReady() bool {
+
+	return r.contractState == _contractReady
 }
 
 // GetTxCh returns tx chan
