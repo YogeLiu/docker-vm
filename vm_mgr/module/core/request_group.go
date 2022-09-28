@@ -198,7 +198,7 @@ func (r *RequestGroup) GetContractPath() string {
 
 	contractKey := utils.ConstructContractKey(r.chainID, r.contractName, r.contractVersion)
 	path := filepath.Join(r.requestScheduler.GetContractManager().GetContractMountDir(), contractKey)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
 		r.contractState = _contractEmpty
 		r.logger.Error("contract bin not exist, waiting for reloading contract from chain")
 		return ""
