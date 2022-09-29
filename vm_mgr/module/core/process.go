@@ -229,6 +229,7 @@ func (p *Process) launchProcess() *exitErr {
 			desc: "",
 		}
 	}
+
 	p.cmdReadyCh <- true
 
 	// add control group
