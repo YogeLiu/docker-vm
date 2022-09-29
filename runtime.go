@@ -65,8 +65,8 @@ func (r *RuntimeInstance) contractEngineMsgNotify(msg *protogo.DockerVMMessage) 
 }
 
 func (r *RuntimeInstance) sandboxMsgNotify(msg *protogo.DockerVMMessage, sendF func(msg *protogo.DockerVMMessage)) {
-	r.sandboxMsgCh <- msg
 	r.sendSysResponse = sendF
+	r.sandboxMsgCh <- msg
 }
 
 // Invoke process one tx in docker and return result

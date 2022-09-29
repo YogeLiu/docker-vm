@@ -1,11 +1,19 @@
 VERSION=v2.3.0
 
+BUILD_TIME = $(shell date "+%Y%m%d%H%M%S")
+GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
+GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
+
 build-test:
 	cd test/scripts && ./prepare.sh
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-engine:${VERSION} -f Dockerfile ./
+	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-engine:${VERSION} \
+	--build-arg BUILD_TIME=${BUILD_TIME} \
+	--build-arg GIT_BRANCH=${GIT_BRANCH} \
+	--build-arg GIT_COMMIT=${GIT_COMMIT} \
+	-f Dockerfile ./
 	docker images | grep chainmaker-vm-engine
 
 image-push:

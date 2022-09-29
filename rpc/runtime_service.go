@@ -48,8 +48,7 @@ func NewRuntimeService(logger protocol.Logger) *RuntimeService {
 }
 
 func (s *RuntimeService) getStreamId() uint64 {
-	s.streamCounter.Add(1)
-	return s.streamCounter.Load()
+	return s.streamCounter.Add(1)
 }
 
 //func (s *RuntimeService) registerStreamSendCh(streamId uint64, sendCh chan *protogo.DockerVMMessage) bool {
