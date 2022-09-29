@@ -134,9 +134,9 @@ func (r *RuntimeInstance) Invoke(
 	dockerVMMsg.StepDurations = make([]*protogo.StepDuration, 0, 4)
 	defer func() {
 		dockerVMMsgPool.Put(dockerVMMsg)
-		for _, dur := range dockerVMMsg.StepDurations {
-			utils.TxStepPool.Put(dur)
-		}
+		//for _, dur := range dockerVMMsg.StepDurations {
+		//	utils.TxStepPool.Put(dur)
+		//}
 	}()
 
 	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST,

@@ -18,12 +18,12 @@ var sysCallPool = sync.Pool{
 	},
 }
 
-// TxStepPool is the tx step sync pool
-var TxStepPool = sync.Pool{
-	New: func() interface{} {
-		return &protogo.StepDuration{}
-	},
-}
+//// TxStepPool is the tx step sync pool
+//var TxStepPool = sync.Pool{
+//	New: func() interface{} {
+//		return &protogo.StepDuration{}
+//	},
+//}
 
 // SysCallDuration .
 type SysCallDuration struct {
@@ -377,13 +377,17 @@ func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log 
 }
 
 func addTxStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log string) {
-	stepDur, _ := TxStepPool.Get().(*protogo.StepDuration)
-	stepDur.Type = stepType
-	stepDur.StartTime = time.Now().UnixNano()
-	stepDur.Msg = log
-	stepDur.StepDuration = 0
-	stepDur.UntilDuration = 0
-	msg.StepDurations = append(msg.StepDurations, stepDur)
+	//stepDur, _ := TxStepPool.Get().(*protogo.StepDuration)
+	//stepDur.Type = stepType
+	//stepDur.StartTime = time.Now().UnixNano()
+	//stepDur.Msg = log
+	//stepDur.StepDuration = 0
+	//stepDur.UntilDuration = 0
+	msg.StepDurations = append(msg.StepDurations, &protogo.StepDuration{
+		Type:      stepType,
+		StartTime: time.Now().UnixNano(),
+		Msg:       log,
+	})
 }
 
 func endTxStep(msg *protogo.DockerVMMessage) {
