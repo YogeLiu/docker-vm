@@ -136,11 +136,6 @@ func (rg *MockRequestGroup) GetContractPath() string {
 	panic("implement me")
 }
 
-func (rg *MockRequestGroup) IsContractReady() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (rg *MockRequestGroup) GetTxCh(isOrig bool) chan *messages.TxPayload {
 	//TODO implement me
 	panic("implement me")

@@ -182,16 +182,8 @@ func (p *Process) launchProcess() *exitErr {
 	if config.DockerVMConfig.RPC.ChainRPCProtocol == config.UDS {
 		tcpPort = 0
 	}
-	path := p.requestGroup.GetContractPath()
-	// missing contract
-	if len(path) == 0 {
-		return &exitErr{
-			err:  utils.ContractExecError,
-			desc: "",
-		}
-	}
 	cmd := exec.Cmd{
-		Path: path,
+		Path: p.requestGroup.GetContractPath(),
 		Args: []string{
 			p.user.GetSockPath(),
 			p.processName,
@@ -229,7 +221,6 @@ func (p *Process) launchProcess() *exitErr {
 			desc: "",
 		}
 	}
-
 	p.cmdReadyCh <- true
 
 	// add control group
@@ -471,15 +462,6 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	} else if elapsedTime > config.DockerVMConfig.Process.ExecTxTimeout {
 		return fmt.Errorf("tx [%s] expired for %v, elapsed time: %v", tx.Tx.TxId,
 			config.DockerVMConfig.Process.ExecTxTimeout, elapsedTime)
-	}
-
-	// contract not ready, perhaps because contract removed from disk
-	if !p.requestGroup.IsContractReady() {
-		// return tx
-		if err := p.requestScheduler.PutMsg(tx.Tx); err != nil {
-			p.logger.Errorf("failed to put msg [%s] to request group, %v", tx.Tx.TxId, err)
-		}
-		return fmt.Errorf("contract is not ready")
 	}
 
 	p.logger.Debugf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
