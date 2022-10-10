@@ -273,6 +273,9 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 			return
 		}
 		str = strings.TrimSuffix(str, "\n")
+		if str == "EOF" {
+			return
+		}
 		zapLogger.Check(logLevel, str).Write()
 	}
 }
