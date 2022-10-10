@@ -182,8 +182,17 @@ func (p *Process) launchProcess() *exitErr {
 	if config.DockerVMConfig.RPC.ChainRPCProtocol == config.UDS {
 		tcpPort = 0
 	}
+
+	path := p.requestGroup.GetContractPath()
+	if _, err = os.Stat(path); err != nil && os.IsNotExist(err) {
+		return &exitErr{
+			err:  utils.ContractNotExistError,
+			desc: "",
+		}
+	}
+
 	cmd := exec.Cmd{
-		Path: p.requestGroup.GetContractPath(),
+		Path: path,
 		Args: []string{
 			p.user.GetSockPath(),
 			p.processName,
@@ -241,7 +250,7 @@ func (p *Process) launchProcess() *exitErr {
 		if p.Tx != nil {
 			txId = p.Tx.TxId
 		}
-		p.logger.Warnf("process stopped for tx [%s], %v, %v", txId, err, stderr.String())
+		p.logger.Debugf("process stopped for tx [%s], %v, %v", txId, err, stderr.String())
 		return &exitErr{
 			err:  err,
 			desc: stderr.String(),
@@ -656,6 +665,13 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		return true
 	}
 
+	if exitError.err == utils.ContractNotExistError {
+		p.logger.Warnf("process exited for contract not exist, try to retrieve from blockchain")
+		exitSandbox = true
+		returnBadContractResp = true
+		return true
+	}
+
 	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
 	// 3. created fail, writeToFile fail -> relaunch
 	if p.processState == created {
@@ -707,7 +723,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  ========= condition: after cmd.wait
 	// 4. process change context, restart process
 	if p.processState == changing {
-		p.logger.Warnf("changing process to [%s]", p.processName)
+		p.logger.Debugf("changing process to [%s]", p.processName)
 		p.updateProcessState(created)
 		// restart process
 		restartAll = true

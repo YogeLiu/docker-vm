@@ -118,7 +118,8 @@ func (s *RuntimeService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVM
 }
 
 func (s *RuntimeService) recvRoutine(ss *serviceStream) {
-	s.logger.Infof("start receiving sandbox message")
+
+	s.logger.Debugf("start receiving sandbox message")
 
 	for {
 		select {
@@ -138,7 +139,7 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 			}
 
 			if recvErr != nil {
-				s.logger.Debugf("runtime service err and exit receive goroutine %s", recvErr)
+				s.logger.Warnf("runtime service err and exit receive goroutine %s", recvErr)
 				close(ss.stopSend)
 				ss.wg.Done()
 				return

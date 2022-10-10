@@ -10,6 +10,7 @@ package rpc
 
 import (
 	"fmt"
+	"io"
 
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
@@ -47,6 +48,12 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 	var process interfaces.Process
 	for {
 		msg, err := stream.Recv()
+
+		if err == io.EOF {
+			s.logger.Debugf("grpc EOF for sandbox disconnection...")
+			return err
+		}
+
 		if err != nil {
 			err = fmt.Errorf("failed to recv msg: %s", err)
 			s.logger.Errorf(err.Error())

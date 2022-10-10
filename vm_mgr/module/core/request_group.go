@@ -348,14 +348,14 @@ func (r *RequestGroup) sendGetContractReq(req *protogo.DockerVMMessage) error {
 // handleBadContractResp retry to get bytecode
 func (r *RequestGroup) handleBadContractResp(msg *messages.BadContractResp) error {
 
-	r.logger.Debugf("handle retry get bytecode")
+	r.logger.Debugf("handle bad contract response")
 
 	// reset contract state to empty
 	r.contractState = _contractEmpty
 
 	// retry next tx when chan size > 0
 	if len(r.origTxController.txCh) > 0 || len(r.crossTxController.txCh) > 0 {
-		r.logger.Debugf("retry to get bytecode")
+		r.logger.Info("handle retrieve contract from blockchain")
 		if err := r.sendGetContractReq(msg.Tx); err != nil {
 			return fmt.Errorf("failed to send get contract req, %v", err)
 		}
