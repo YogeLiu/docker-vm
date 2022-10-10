@@ -347,13 +347,13 @@ func (r *RuntimeInstance) getChainConfigDefaultGas(txSimContext protocol.TxSimCo
 		chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
 		if err != nil {
 			r.logger.Debugf("get last chain config err [%v]", err.Error())
-			return 0, nil
+			return uint64(0), nil
 		}
 		if chainConfig.AccountConfig != nil && chainConfig.AccountConfig.DefaultGas > 0 {
 			return chainConfig.AccountConfig.DefaultGas, nil
 		}
 		r.logger.Debug("account config not set default gas value")
-		return 0, nil
+		return uint64(0), nil
 	})
 
 	return val.(uint64)
