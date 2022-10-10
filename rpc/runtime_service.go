@@ -131,8 +131,8 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 			receivedMsg, recvErr := ss.stream.Recv()
 
 			// 客户端断开连接时会接收到该错误
-			if recvErr == io.EOF {
-				s.logger.Debugf("runtime service eof and exit receive goroutine")
+			if recvErr == io.EOF || status.Code(recvErr) == codes.Canceled {
+				s.logger.Debugf("sandbox client grpc stream closed (context cancelled)")
 				close(ss.stopSend)
 				ss.wg.Done()
 				return

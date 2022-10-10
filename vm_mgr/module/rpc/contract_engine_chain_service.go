@@ -10,6 +10,7 @@ package rpc
 
 import (
 	"fmt"
+	"io"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
@@ -179,6 +180,10 @@ func (s *ChainRPCService) sendMsgRoutine(conn *communicateConn) {
 // recvMsg receives messages from chainmaker
 func (s *ChainRPCService) recvMsg(conn *communicateConn) (*protogo.DockerVMMessage, error) {
 	msg, err := conn.stream.Recv()
+	if err == io.EOF || status.Code(err) == codes.Canceled {
+		s.logger.Warn("chainmaker client grpc stream closed (context cancelled)")
+		return nil, err
+	}
 	if err != nil {
 		s.logger.Errorf("recv err %s, existed", err)
 		return nil, err

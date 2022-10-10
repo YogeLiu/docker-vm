@@ -105,7 +105,7 @@ func (c *ContractEngineClient) Stop() {
 
 func (c *ContractEngineClient) sendMsgRoutine() {
 
-	c.logger.Infof("start sending contract engine message ")
+	c.logger.Debugf("start sending contract engine message ")
 
 	var err error
 
@@ -143,7 +143,7 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 
 func (c *ContractEngineClient) receiveMsgRoutine() {
 
-	c.logger.Infof("start receiving contract engine message ")
+	c.logger.Debugf("start receiving contract engine message ")
 	defer func() {
 		c.clientMgr.PutEvent(&interfaces.Event{
 			Id:        c.id,
@@ -157,16 +157,16 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			c.logger.Debugf("close contract engine client receive goroutine")
 			return
 		default:
-			receivedMsg, revErr := c.stream.Recv()
+			receivedMsg, recvErr := c.stream.Recv()
 
-			if revErr == io.EOF {
-				c.logger.Warn("client receive eof and exit receive goroutine")
+			if recvErr == io.EOF || status.Code(recvErr) == codes.Canceled {
+				c.logger.Warn("contract engine server grpc stream closed (context cancelled)")
 				close(c.stopSend)
 				return
 			}
 
-			if revErr != nil {
-				c.logger.Warnf("client receive err and exit receive goroutine, %s", revErr)
+			if recvErr != nil {
+				c.logger.Warnf("client receive err and exit receive goroutine, %s", recvErr)
 				close(c.stopSend)
 				return
 			}
