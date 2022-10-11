@@ -354,10 +354,18 @@ func (r *RequestGroup) handleBadContractResp(msg *messages.BadContractResp) erro
 		return nil
 	}
 
+	// remove contract lru and binary
+	if err := r.requestScheduler.GetContractManager().PutMsg(msg); err != nil {
+		return fmt.Errorf("failed to invoke contract manager PutMsg, %v", err)
+	}
+
 	// reset contract state to empty
 	r.contractState = _contractEmpty
 
 	// retry next tx when chan size > 0
+	// if binary is empty, return tx will be in outer txCh or inner txCh:
+	// outer txCh will meet contractWaiting;
+	// inner txCh will send get contract req here.
 	if len(r.origTxController.txCh) > 0 || len(r.crossTxController.txCh) > 0 {
 		r.logger.Info("handle retrieve contract from blockchain")
 		if err := r.sendGetContractReq(msg.Tx); err != nil {

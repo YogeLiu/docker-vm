@@ -177,7 +177,7 @@ func (cm *ContractManager) handleGetContractReq(req *protogo.DockerVMMessage) er
 		return fmt.Errorf("failed to request contract from chain, %v", err)
 	}
 
-	cm.logger.Debugf("send get bytecode request to chain [%s], contract name: [%s], contract version: [%s], "+
+	cm.logger.Infof("send get bytecode request to chain [%s], contract name: [%s], contract version: [%s], "+
 		"txId [%s] ", req.Request.ChainId, req.Request.ContractName, req.Request.ContractVersion, req.TxId)
 
 	return nil
@@ -266,10 +266,10 @@ func (cm *ContractManager) handleBadContractResp(msg *messages.BadContractResp) 
 		return fmt.Errorf("contract %s not exists in lru", contractKey)
 	}
 
+	cm.contractsLRU.Remove(contractKey)
 	if err := utils.RemoveDir(path.(string)); err != nil {
 		return fmt.Errorf("failed to remove file, %v", err)
 	}
-	cm.contractsLRU.Remove(contractKey)
 
 	cm.logger.Debugf("removed contract %s from disk and lru", contractKey)
 

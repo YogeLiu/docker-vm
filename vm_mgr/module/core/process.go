@@ -892,9 +892,6 @@ func (p *Process) returnBadContractResp() error {
 		},
 		IsOrig: p.isOrigProcess,
 	}
-	if err := p.requestScheduler.GetContractManager().PutMsg(resp); err != nil {
-		return fmt.Errorf("failed to invoke contract manager PutMsg, %v", err)
-	}
 
 	if err := p.requestGroup.PutMsg(resp); err != nil {
 		return fmt.Errorf("failed to invoke request group PutMsg, %v", err)
