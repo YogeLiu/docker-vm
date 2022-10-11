@@ -674,7 +674,6 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		select {
 		case tx := <-p.txCh:
 			p.Tx = tx.Tx
-			p.logger.Debugf("[%s] contract exec start failed, remove tx %s", p.getTxId(), p.Tx.TxId)
 			// return tx
 			if err := p.requestScheduler.PutMsg(tx.Tx); err != nil {
 				p.logger.Errorf("failed to put msg [%s] to request group, %v", tx.Tx.TxId, err)

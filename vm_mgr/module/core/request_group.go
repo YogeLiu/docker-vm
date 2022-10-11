@@ -287,7 +287,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		controller = r.crossTxController
 	}
 
-	if controller.processWaiting {
+	if controller.processWaiting || r.contractState != _contractReady {
 		return 0, nil
 	}
 
