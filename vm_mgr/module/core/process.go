@@ -670,7 +670,21 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	if exitError.err == utils.ContractNotExistError {
 		p.logger.Warnf("process exited for contract not exist, try to retrieve from blockchain")
 		exitSandbox = true
-		returnBadContractResp = true
+		// contract panic when process start, pop oldest tx, retry get bytecode
+		select {
+		case tx := <-p.txCh:
+			p.Tx = tx.Tx
+			p.logger.Debugf("[%s] contract exec start failed, remove tx %s", p.getTxId(), p.Tx.TxId)
+			// return tx
+			if err := p.requestScheduler.PutMsg(tx.Tx); err != nil {
+				p.logger.Errorf("failed to put msg [%s] to request group, %v", tx.Tx.TxId, err)
+			}
+			returnBadContractResp = true
+			break
+		default:
+			p.logger.Warn("contract exec start failed, no available tx")
+			break
+		}
 		return true
 	}
 

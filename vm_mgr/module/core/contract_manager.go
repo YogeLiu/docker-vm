@@ -265,6 +265,7 @@ func (cm *ContractManager) handleBadContractResp(msg *messages.BadContractResp) 
 	if !ok {
 		return fmt.Errorf("contract %s not exists in lru", contractKey)
 	}
+
 	if err := utils.RemoveDir(path.(string)); err != nil {
 		return fmt.Errorf("failed to remove file, %v", err)
 	}

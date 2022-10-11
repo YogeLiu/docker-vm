@@ -350,6 +350,10 @@ func (r *RequestGroup) handleBadContractResp(msg *messages.BadContractResp) erro
 
 	r.logger.Debugf("handle bad contract response")
 
+	if r.contractState != _contractReady {
+		return nil
+	}
+
 	// reset contract state to empty
 	r.contractState = _contractEmpty
 
