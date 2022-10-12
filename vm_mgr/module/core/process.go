@@ -657,7 +657,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  c. send exit sandbox msg
 	//  d. exit process
 	if exitError.err == utils.ContractExecError {
-		p.logger.Errorf("process exited when launch process, start to release process, %v", exitError)
+		p.logger.Errorf("process exited when launch process, start to release process, %s, %s",
+			exitError.err.Error(), exitError.desc)
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
 		select {
@@ -679,7 +680,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  b. send exit sandbox msg
 	//  c. exit process
 	if exitError.err == utils.ContractNotExistError {
-		p.logger.Errorf("process exited for contract not exist, try to retrieve from blockchain, %v", exitError)
+		p.logger.Errorf("process exited for contract not exist, try to retrieve from blockchain, %s, %s",
+			exitError.err.Error(), exitError.desc)
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
 		select {
@@ -701,7 +703,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	// 3. created fail, err from cmd.StdoutPipe() or writeToFile fail
 	//  a. restart sandbox
 	if p.processState == created {
-		p.logger.Errorf("process exited when created, %v", exitError)
+		p.logger.Errorf("process exited when created, %s, %s",
+			exitError.err.Error(), exitError.desc)
 		restartSandbox = true
 		return false
 	}
@@ -712,7 +715,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  b. send exit sandbox msg
 	//  c. exit process
 	if p.processState == ready {
-		p.logger.Errorf("process exited when ready, %v", exitError)
+		p.logger.Errorf("process exited when ready, %s, %s",
+			exitError.err.Error(), exitError.desc)
 		exitSandbox = true
 		if p.Tx == nil {
 			p.logger.Warnf("exit with none tx")
@@ -735,7 +739,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  a. send exit sandbox msg
 	//  b. exit process
 	if p.processState == idle {
-		p.logger.Errorf("process exited when idle, %v", exitError)
+		p.logger.Errorf("process exited when idle, %s, %s",
+			exitError.err.Error(), exitError.desc)
 		exitSandbox = true
 		return true
 	}
@@ -746,7 +751,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  c. send exit sandbox msg
 	//  d. exit process
 	if p.processState == busy {
-		p.logger.Errorf("[%s] process exited when busy, %v", p.getTxId(), exitError)
+		p.logger.Errorf("[%s] process exited when busy, %s, %s", p.getTxId(),
+			exitError.err.Error(), exitError.desc)
 		p.updateProcessState(created)
 		exitSandbox = true
 		returnErrResp = true
@@ -781,7 +787,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  b. return tx error
 	//  c. exit process
 	if p.processState == timeout {
-		p.logger.Errorf("[%s] process killed for timeout, %v", p.getTxId(), exitError)
+		p.logger.Errorf("[%s] process killed for timeout, %s, %s",
+			p.getTxId(), exitError.err.Error(), exitError.desc)
 		p.updateProcessState(created)
 		exitSandbox = true
 		returnErrResp = true
@@ -790,7 +797,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	}
 
 	// 10. sandbox exited for other reasons
-	p.logger.Errorf("[%s] process killed for other reasons, %v", p.getTxId(), exitError)
+	p.logger.Errorf("[%s] process killed for other reasons, %s, %s",
+		p.getTxId(), exitError.err.Error(), exitError.desc)
 	return false
 }
 
