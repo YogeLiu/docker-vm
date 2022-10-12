@@ -223,12 +223,12 @@ func (p *Process) launchProcess() *exitErr {
 		if os.IsNotExist(err) {
 			return &exitErr{
 				err:  utils.ContractNotExistError,
-				desc: strconv.Itoa(cfv),
+				desc: strconv.FormatInt(cfv, 10),
 			}
 		}
 		return &exitErr{
 			err:  utils.ContractExecError,
-			desc: strconv.Itoa(cfv),
+			desc: strconv.FormatInt(cfv, 10),
 		}
 	}
 	p.cmdReadyCh <- true
@@ -640,7 +640,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 			p.Start()
 		}
 		if returnBadContractResp {
-			contractFileVersion, err := strconv.Atoi(exitError.desc)
+			contractFileVersion, err := strconv.ParseInt(exitError.desc, 10, 64)
 			if err != nil {
 				contractFileVersion = p.requestGroup.GetContractFileVersion()
 			}
@@ -906,7 +906,7 @@ func (p *Process) returnSandboxExitResp(err error) error {
 }
 
 // returnBadContractResp return bad contract resp to contract manager
-func (p *Process) returnBadContractResp(cfv int) error {
+func (p *Process) returnBadContractResp(cfv int64) error {
 	resp := &messages.BadContractResp{
 		Tx: &protogo.DockerVMMessage{
 			ChainId: p.chainID,
@@ -918,7 +918,7 @@ func (p *Process) returnBadContractResp(cfv int) error {
 			},
 		},
 		IsOrig:              p.isOrigProcess,
-		ContractFileVersion: p.requestGroup.GetContractFileVersion(),
+		ContractFileVersion: cfv,
 	}
 
 	if err := p.requestGroup.PutMsg(resp); err != nil {

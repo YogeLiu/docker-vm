@@ -141,7 +141,7 @@ func (rg *MockRequestGroup) GetTxCh(isOrig bool) chan *messages.TxPayload {
 	panic("implement me")
 }
 
-func (rg *MockRequestGroup) GetContractFileVersion() int {
+func (rg *MockRequestGroup) GetContractFileVersion() int64 {
 	//TODO implement me
 	panic("implement me")
 }

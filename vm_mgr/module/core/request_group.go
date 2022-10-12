@@ -84,7 +84,7 @@ type RequestGroup struct {
 	origTxController  *txController // original tx controller
 	crossTxController *txController // cross contract tx controller
 
-	ContractFileVersion int
+	ContractFileVersion int64
 }
 
 // check interface implement
@@ -201,8 +201,8 @@ func (r *RequestGroup) GetContractPath() string {
 	return filepath.Join(r.requestScheduler.GetContractManager().GetContractMountDir(), contractKey)
 }
 
-// GetContractUpdateTime returns contract update time
-func (r *RequestGroup) GetContractFileVersion() int {
+// GetContractFileVersion returns contract update time
+func (r *RequestGroup) GetContractFileVersion() int64 {
 
 	return r.ContractFileVersion
 }
@@ -402,7 +402,7 @@ func (r *RequestGroup) handleContractReadyResp(msg *protogo.DockerVMMessage) err
 	}
 
 	r.contractState = _contractReady
-	r.ContractFileVersion = time.Now().Nanosecond()
+	r.ContractFileVersion = time.Now().UnixNano()
 
 	// put all tx from group txCh to process txCh
 moveTxs:

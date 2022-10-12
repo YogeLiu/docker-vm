@@ -93,7 +93,7 @@ type CloseMsg struct {
 type BadContractResp struct {
 	Tx                  *protogo.DockerVMMessage
 	IsOrig              bool
-	ContractFileVersion int
+	ContractFileVersion int64
 }
 
 // TxPayload is the tx payload msg
