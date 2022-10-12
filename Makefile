@@ -5,7 +5,8 @@ build-test:
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-engine:${VERSION} -f Dockerfile ./
+	cd vm_mgr && docker build -t chainmaker-vm-engine -f Dockerfile ./
+	docker tag chainmaker-vm-engine chainmakerofficial/chainmaker-vm-engine:${VERSION}
 	docker images | grep chainmaker-vm-engine
 
 image-push:
