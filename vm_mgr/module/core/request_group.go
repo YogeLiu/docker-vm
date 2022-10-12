@@ -83,6 +83,8 @@ type RequestGroup struct {
 
 	origTxController  *txController // original tx controller
 	crossTxController *txController // cross contract tx controller
+
+	ContractFileVersion int
 }
 
 // check interface implement
@@ -197,6 +199,12 @@ func (r *RequestGroup) GetContractPath() string {
 
 	contractKey := utils.ConstructContractKey(r.chainID, r.contractName, r.contractVersion)
 	return filepath.Join(r.requestScheduler.GetContractManager().GetContractMountDir(), contractKey)
+}
+
+// GetContractUpdateTime returns contract update time
+func (r *RequestGroup) GetContractFileVersion() int {
+
+	return r.ContractFileVersion
 }
 
 // GetTxCh returns tx chan
@@ -350,7 +358,7 @@ func (r *RequestGroup) handleBadContractResp(msg *messages.BadContractResp) erro
 
 	r.logger.Debugf("handle bad contract response")
 
-	if r.contractState != _contractReady {
+	if r.contractState != _contractReady || msg.ContractFileVersion != r.ContractFileVersion {
 		return nil
 	}
 
@@ -394,6 +402,7 @@ func (r *RequestGroup) handleContractReadyResp(msg *protogo.DockerVMMessage) err
 	}
 
 	r.contractState = _contractReady
+	r.ContractFileVersion = time.Now().Nanosecond()
 
 	// put all tx from group txCh to process txCh
 moveTxs:

@@ -22,6 +22,7 @@ type (
 		Start()
 		PutMsg(msg interface{}) error
 		GetContractPath() string
+		GetContractFileVersion() int
 		GetTxCh(isOrig bool) chan *messages.TxPayload
 	}
 	ProcessManager interface {
