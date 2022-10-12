@@ -10,11 +10,14 @@ package rpc
 
 import (
 	"fmt"
+	"io"
 
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // SandboxRPCService handles all messages of sandboxes (1 to n).
@@ -47,9 +50,13 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 	var process interfaces.Process
 	for {
 		msg, err := stream.Recv()
+
 		if err != nil {
-			err = fmt.Errorf("failed to recv msg: %s", err)
-			s.logger.Errorf(err.Error())
+			if err == io.EOF || status.Code(err) == codes.Canceled {
+				s.logger.Debugf("sandbox client grpc stream closed (context cancelled)")
+			} else {
+				s.logger.Errorf("failed to recv msg: %s", err)
+			}
 			return err
 		}
 

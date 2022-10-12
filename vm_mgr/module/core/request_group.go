@@ -83,6 +83,8 @@ type RequestGroup struct {
 
 	origTxController  *txController // original tx controller
 	crossTxController *txController // cross contract tx controller
+
+	ContractFileVersion int64
 }
 
 // check interface implement
@@ -199,6 +201,12 @@ func (r *RequestGroup) GetContractPath() string {
 	return filepath.Join(r.requestScheduler.GetContractManager().GetContractMountDir(), contractKey)
 }
 
+// GetContractFileVersion returns contract update time
+func (r *RequestGroup) GetContractFileVersion() int64 {
+
+	return r.ContractFileVersion
+}
+
 // GetTxCh returns tx chan
 func (r *RequestGroup) GetTxCh(isOrig bool) chan *messages.TxPayload {
 
@@ -287,7 +295,7 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 		controller = r.crossTxController
 	}
 
-	if controller.processWaiting {
+	if controller.processWaiting || r.contractState != _contractReady {
 		return 0, nil
 	}
 
@@ -348,14 +356,26 @@ func (r *RequestGroup) sendGetContractReq(req *protogo.DockerVMMessage) error {
 // handleBadContractResp retry to get bytecode
 func (r *RequestGroup) handleBadContractResp(msg *messages.BadContractResp) error {
 
-	r.logger.Debugf("handle retry get bytecode")
+	r.logger.Debugf("handle bad contract response")
+
+	if r.contractState != _contractReady || msg.ContractFileVersion != r.ContractFileVersion {
+		return nil
+	}
+
+	// remove contract lru and binary
+	if err := r.requestScheduler.GetContractManager().PutMsg(msg); err != nil {
+		return fmt.Errorf("failed to invoke contract manager PutMsg, %v", err)
+	}
 
 	// reset contract state to empty
 	r.contractState = _contractEmpty
 
 	// retry next tx when chan size > 0
+	// if binary is empty, return tx will be in outer txCh or inner txCh:
+	// outer txCh will meet contractWaiting;
+	// inner txCh will send get contract req here.
 	if len(r.origTxController.txCh) > 0 || len(r.crossTxController.txCh) > 0 {
-		r.logger.Debugf("retry to get bytecode")
+		r.logger.Info("handle retrieve contract from blockchain")
 		if err := r.sendGetContractReq(msg.Tx); err != nil {
 			return fmt.Errorf("failed to send get contract req, %v", err)
 		}
@@ -382,6 +402,7 @@ func (r *RequestGroup) handleContractReadyResp(msg *protogo.DockerVMMessage) err
 	}
 
 	r.contractState = _contractReady
+	r.ContractFileVersion = time.Now().UnixNano()
 
 	// put all tx from group txCh to process txCh
 moveTxs:

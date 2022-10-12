@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
@@ -43,6 +45,8 @@ var dockerVMMsgPool = sync.Pool{
 		}
 	},
 }
+
+var sf singleflight.Group
 
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
@@ -336,14 +340,22 @@ func (r *RuntimeInstance) Invoke(
 }
 
 func (r *RuntimeInstance) getChainConfigDefaultGas(txSimContext protocol.TxSimContext) uint64 {
-	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
-	if err != nil {
-		r.logger.Debugf("get last chain config err [%v]", err.Error())
-		return 0
-	}
-	if chainConfig.AccountConfig != nil && chainConfig.AccountConfig.DefaultGas > 0 {
-		return chainConfig.AccountConfig.DefaultGas
-	}
-	r.logger.Debug("account config not set default gas value")
-	return 0
+
+	key := txSimContext.GetBlockFingerprint()
+
+	val, _, _ := sf.Do(key, func() (interface{}, error) {
+		chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
+		if err != nil {
+			r.logger.Debugf("get last chain config err [%v]", err.Error())
+			return uint64(0), nil
+		}
+		if chainConfig.AccountConfig != nil && chainConfig.AccountConfig.DefaultGas > 0 {
+			return chainConfig.AccountConfig.DefaultGas, nil
+		}
+		r.logger.Debug("account config not set default gas value")
+		return uint64(0), nil
+	})
+
+	return val.(uint64)
+
 }

@@ -9,7 +9,6 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -105,7 +104,7 @@ func (c *ContractEngineClient) Stop() {
 
 func (c *ContractEngineClient) sendMsgRoutine() {
 
-	c.logger.Infof("start sending contract engine message ")
+	c.logger.Debugf("start sending contract engine message ")
 
 	var err error
 
@@ -143,7 +142,7 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 
 func (c *ContractEngineClient) receiveMsgRoutine() {
 
-	c.logger.Infof("start receiving contract engine message ")
+	c.logger.Debugf("start receiving contract engine message ")
 	defer func() {
 		c.clientMgr.PutEvent(&interfaces.Event{
 			Id:        c.id,
@@ -157,49 +156,43 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			c.logger.Debugf("close contract engine client receive goroutine")
 			return
 		default:
-			receivedMsg, revErr := c.stream.Recv()
+			msg, err := c.stream.Recv()
 
-			if revErr == io.EOF {
-				c.logger.Warn("client receive eof and exit receive goroutine")
+			if err != nil {
+				c.logger.Errorf("contract engine client receive err, %s", err)
 				close(c.stopSend)
 				return
 			}
 
-			if revErr != nil {
-				c.logger.Warnf("client receive err and exit receive goroutine, %s", revErr)
-				close(c.stopSend)
-				return
-			}
+			c.logger.Debugf("[%s] receive msg from docker manager, msg type [%s]", msg.TxId, msg.Type)
 
-			c.logger.Debugf("[%s] receive msg from docker manager, msg type [%s]", receivedMsg.TxId, receivedMsg.Type)
-
-			switch receivedMsg.Type {
+			switch msg.Type {
 			case protogo.DockerVMType_TX_RESPONSE:
-				notify := c.clientMgr.GetReceiveNotify(receivedMsg.ChainId, receivedMsg.TxId)
+				notify := c.clientMgr.GetReceiveNotify(msg.ChainId, msg.TxId)
 				if notify == nil {
 					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil",
-						receivedMsg.TxId)
+						msg.TxId)
 					continue
 				}
-				notify(receivedMsg)
+				notify(msg)
 			case protogo.DockerVMType_GET_BYTECODE_REQUEST:
-				notify := c.clientMgr.GetReceiveNotify(receivedMsg.ChainId, receivedMsg.TxId)
+				notify := c.clientMgr.GetReceiveNotify(msg.ChainId, msg.TxId)
 				if notify == nil {
-					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil", receivedMsg.TxId)
+					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil", msg.TxId)
 					continue
 				}
-				notify(receivedMsg)
+				notify(msg)
 
 			case protogo.DockerVMType_ERROR:
-				notify := c.clientMgr.GetReceiveNotify(receivedMsg.ChainId, receivedMsg.TxId)
+				notify := c.clientMgr.GetReceiveNotify(msg.ChainId, msg.TxId)
 				if notify == nil {
-					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil", receivedMsg.TxId)
+					c.logger.Warnf("[%s] fail to retrieve notify, tx notify is nil", msg.TxId)
 					continue
 				}
-				notify(receivedMsg)
+				notify(msg)
 
 			default:
-				c.logger.Errorf("unknown message type, received msg: [%v]", receivedMsg)
+				c.logger.Errorf("unknown message type, received msg: [%v]", msg)
 			}
 		}
 	}

@@ -118,7 +118,8 @@ func (s *RuntimeService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVM
 }
 
 func (s *RuntimeService) recvRoutine(ss *serviceStream) {
-	s.logger.Infof("start receiving sandbox message")
+
+	s.logger.Debugf("start receiving sandbox message")
 
 	for {
 		select {
@@ -127,26 +128,22 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 			ss.wg.Done()
 			return
 		default:
-			receivedMsg, recvErr := ss.stream.Recv()
+			msg, err := ss.stream.Recv()
 
-			// 客户端断开连接时会接收到该错误
-			if recvErr == io.EOF {
-				s.logger.Debugf("runtime service eof and exit receive goroutine")
+			if err != nil {
+				if err == io.EOF || status.Code(err) == codes.Canceled {
+					s.logger.Debugf("sandbox client grpc stream closed (context cancelled)")
+				} else {
+					s.logger.Errorf("runtime server receive error %s", err)
+				}
 				close(ss.stopSend)
 				ss.wg.Done()
 				return
 			}
 
-			if recvErr != nil {
-				s.logger.Debugf("runtime service err and exit receive goroutine %s", recvErr)
-				close(ss.stopSend)
-				ss.wg.Done()
-				return
-			}
+			s.logger.Debugf("runtime server recveive msg, txId [%s], type [%s]", msg.TxId, msg.Type)
 
-			s.logger.Debugf("runtime server recveive msg, txId [%s], type [%s]", receivedMsg.TxId, receivedMsg.Type)
-
-			switch receivedMsg.Type {
+			switch msg.Type {
 			case protogo.DockerVMType_TX_RESPONSE,
 				protogo.DockerVMType_CALL_CONTRACT_REQUEST,
 				protogo.DockerVMType_GET_STATE_REQUEST,
@@ -156,17 +153,17 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_REQUEST,
 				protogo.DockerVMType_GET_SENDER_ADDRESS_REQUEST:
 
-				//if receivedMsg.Type == protogo.DockerVMType_TX_RESPONSE {
-				//	utils.EnterNextStep(receivedMsg, protogo.StepType_RUNTIME_GRPC_RECEIVE_TX_RESPONSE, "")
+				//if msg.Type == protogo.DockerVMType_TX_RESPONSE {
+				//	utils.EnterNextStep(msg, protogo.StepType_RUNTIME_GRPC_RECEIVE_TX_RESPONSE, "")
 				//}
 
-				notify := s.getNotify(receivedMsg.ChainId, receivedMsg.TxId)
+				notify := s.getNotify(msg.ChainId, msg.TxId)
 
 				if notify == nil {
-					s.logger.Debugf("get receive notify[%s] failed, please check your key", receivedMsg.TxId)
+					s.logger.Debugf("get receive notify[%s] failed, please check your key", msg.TxId)
 					break
 				}
-				notify(receivedMsg, ss.putResp)
+				notify(msg, ss.putResp)
 			}
 		}
 	}
