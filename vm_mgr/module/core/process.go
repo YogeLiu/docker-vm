@@ -657,8 +657,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  c. send exit sandbox msg
 	//  d. exit process
 	if exitError.err == utils.ContractExecError {
-		p.logger.Errorf("process exited when launch process, start to release process, %s, %s",
-			exitError.err.Error(), exitError.desc)
+		p.logger.Errorf("process exited when launch process, start to release process, %s",
+			exitError.err.Error())
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
 		select {
@@ -680,8 +680,8 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 	//  b. send exit sandbox msg
 	//  c. exit process
 	if exitError.err == utils.ContractNotExistError {
-		p.logger.Errorf("process exited for contract not exist, try to retrieve from blockchain, %s, %s",
-			exitError.err.Error(), exitError.desc)
+		p.logger.Errorf("process exited for contract not found, %s, try to retrieve from blockchain",
+			exitError.err.Error())
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
 		select {
@@ -694,7 +694,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 			returnBadContractResp = true
 			break
 		default:
-			p.logger.Warn("contract exec start failed, no available tx")
+			p.logger.Debug("contract exec start failed, no available tx")
 			break
 		}
 		return true
