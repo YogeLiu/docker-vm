@@ -8,14 +8,15 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"fmt"
+	"sync"
+
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
-	"fmt"
 	"go.uber.org/zap"
-	"sync"
 )
 
 const (
@@ -183,7 +184,9 @@ func (s *RequestScheduler) handleTxReq(req *protogo.DockerVMMessage) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.logger.Debugf("handle tx request, txId: [%s]", req.TxId)
+	logger.DebugDynamic(s.logger, func() string {
+		return fmt.Sprintf("handle tx request, txId: [%s]", req.TxId)
+	})
 
 	if req.Request == nil {
 		return fmt.Errorf("empty request payload")

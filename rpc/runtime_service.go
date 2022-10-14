@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"fmt"
 	"io"
 	"sync"
 
@@ -88,7 +89,9 @@ type serviceStream struct {
 }
 
 func (ss *serviceStream) putResp(msg *protogo.DockerVMMessage) {
-	ss.logger.Debugf("put sys_call response to send chan, txId [%s], type [%s]", msg.TxId, msg.Type)
+	ss.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("put sys_call response to send chan, txId [%s], type [%s]", msg.TxId, msg.Type)
+	})
 	ss.sendResponseCh <- msg
 
 }
@@ -144,7 +147,9 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				return
 			}
 
-			s.logger.Debugf("runtime server recveive msg, txId [%s], type [%s]", receivedMsg.TxId, receivedMsg.Type)
+			s.logger.DebugDynamic(func() string {
+				return fmt.Sprintf("runtime server recveive msg, txId [%s], type [%s]", receivedMsg.TxId, receivedMsg.Type)
+			})
 
 			switch receivedMsg.Type {
 			case protogo.DockerVMType_TX_RESPONSE,
@@ -163,7 +168,9 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				notify := s.getNotify(receivedMsg.ChainId, receivedMsg.TxId)
 
 				if notify == nil {
-					s.logger.Debugf("get receive notify[%s] failed, please check your key", receivedMsg.TxId)
+					s.logger.DebugDynamic(func() string {
+						return fmt.Sprintf("get receive notify[%s] failed, please check your key", receivedMsg.TxId)
+					})
 					break
 				}
 				notify(receivedMsg, ss.putResp)
@@ -178,7 +185,9 @@ func (s *RuntimeService) sendRoutine(ss *serviceStream) {
 	for {
 		select {
 		case msg := <-ss.sendResponseCh:
-			s.logger.Debugf("get sys_call response from send chan, send to sandbox, txId [%s], type [%s]", msg.TxId, msg.Type)
+			s.logger.DebugDynamic(func() string {
+				return fmt.Sprintf("get sys_call response from send chan, send to sandbox, txId [%s], type [%s]", msg.TxId, msg.Type)
+			})
 			if err := ss.stream.Send(msg); err != nil {
 				errStatus, _ := status.FromError(err)
 				s.logger.Errorf("fail to send msg: err: %s, err message: %s, err code: %s",
@@ -201,7 +210,9 @@ func (s *RuntimeService) sendRoutine(ss *serviceStream) {
 func (s *RuntimeService) RegisterSandboxMsgNotify(chainId, txKey string,
 	respNotify func(msg *protogo.DockerVMMessage, sendF func(*protogo.DockerVMMessage))) error {
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txKey)
-	s.logger.Debugf("register receive respNotify for [%s]", notifyKey)
+	s.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("register receive respNotify for [%s]", notifyKey)
+	})
 	if _, ok := s.sandboxMsgNotify.Get(notifyKey); ok {
 		s.logger.Errorf("[%s] fail to register respNotify cause ")
 	}
@@ -212,7 +223,9 @@ func (s *RuntimeService) RegisterSandboxMsgNotify(chainId, txKey string,
 func (s *RuntimeService) getNotify(chainId, txId string) func(msg *protogo.DockerVMMessage,
 	f func(msg *protogo.DockerVMMessage)) {
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
-	s.logger.Debugf("get notify for [%s]", notifyKey)
+	s.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("get notify for [%s]", notifyKey)
+	})
 	if notify, ok := s.sandboxMsgNotify.Get(notifyKey); ok {
 		return notify.(func(msg *protogo.DockerVMMessage, f func(msg *protogo.DockerVMMessage)))
 	}
@@ -222,7 +235,9 @@ func (s *RuntimeService) getNotify(chainId, txId string) func(msg *protogo.Docke
 // DeleteSandboxMsgNotify delete sandbox msg notify
 func (s *RuntimeService) DeleteSandboxMsgNotify(chainId, txId string) bool {
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
-	s.logger.Debugf("[%s] delete notify", txId)
+	s.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("[%s] delete notify", txId)
+	})
 	if _, ok := s.sandboxMsgNotify.Get(notifyKey); !ok {
 		s.logger.Debugf("[%s] delete notify fail, notify is already deleted", notifyKey)
 		return false

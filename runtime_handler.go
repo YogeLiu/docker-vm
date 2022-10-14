@@ -65,7 +65,9 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		r.logger.Errorf("fail to merge tx[%s] sim context read map, %v", txId, err)
 		return r.errorResult(contractResult, err, "fail to put in sim context")
 	}
-	r.logger.Debugf("merge tx[%s] sim context read map succeed", txId)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("merge tx[%s] sim context read map succeed", txId)
+	})
 
 	// merge write map to sim context
 	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
@@ -74,7 +76,9 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, "fail to put in sim context")
 	}
-	r.logger.Debugf("merge tx[%s] sim context write map succeed", txId)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("merge tx[%s] sim context write map succeed", txId)
+	})
 
 	for _, event := range txResponse.Events {
 		contractEvent := &commonPb.ContractEvent{
@@ -192,7 +196,9 @@ func (r *RuntimeInstance) handlerCallContract(
 	parameters[protocol.ContractCrossCallerParam] = []byte(caller)
 	result, specialTxType, code = txSimContext.CallContract(contract, contractMethod,
 		nil, parameters, gasUsed, txSimContext.GetTx().Payload.TxType)
-	r.logger.Debugf("call contract result [%+v]", result)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("call contract result [%+v]", result)
+	})
 
 	if code != commonPb.TxStatusCode_SUCCESS {
 		errMsg := fmt.Sprintf("[call contract] execute error code: %s, msg: %s", code, result.Message)
@@ -316,7 +322,10 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 	}
 
 	//r.logger.Debug("get value: ", string(value))
-	r.logger.Debugf("[%s] get value: %s", txId, string(value))
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("[%s] get value: %s", txId, string(value))
+	})
+
 	response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
 	response.SysCallMessage.Payload = map[string][]byte{
 		config.KeyStateValue: value,
@@ -363,7 +372,9 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 		r.logger.Warnf("failed to add latest storage duration, %v", err)
 	}
 
-	r.logger.Debugf("get batch keys values: %v", getKeys)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("get batch keys values: %v", getKeys)
+	})
 	resp := vmPb.BatchKeys{Keys: getKeys}
 	payload, err = resp.Marshal()
 	if err != nil {
@@ -1029,8 +1040,9 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 	)
 
 	contractName := recvMsg.Request.ContractName
-	r.logger.Debugf("contract name: %s", contractName)
-	r.logger.Debugf("contract full name: %s", contractFullName)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("contract name: %s, contract full name: %s", contractName, contractFullName)
+	})
 
 	sendContract := r.clientMgr.NeedSendContractByteCode()
 

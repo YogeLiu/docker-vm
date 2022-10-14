@@ -59,7 +59,9 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			return err
 		}
 
-		s.logger.Debugf("receive msg from sandbox[%s]", msg.TxId)
+		logger.DebugDynamic(s.logger, func() string {
+			return fmt.Sprintf("receive msg from sandbox[%s]", msg.TxId)
+		})
 
 		var ok bool
 		// process may be created, busy, timeout, recreated
@@ -82,7 +84,9 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			process.SetStream(stream)
 			continue
 		}
-		s.logger.Debugf("end recv msg, txId: %s", msg.TxId)
+		logger.DebugDynamic(s.logger, func() string {
+			return fmt.Sprintf("end recv msg, txId: %s", msg.TxId)
+		})
 		process.PutMsg(msg)
 	}
 }

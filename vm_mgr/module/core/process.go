@@ -464,7 +464,9 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 			config.DockerVMConfig.Process.ExecTxTimeout, elapsedTime)
 	}
 
-	p.logger.Debugf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
+	logger.DebugDynamic(p.logger, func() string {
+		return fmt.Sprintf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
+	})
 
 	p.Tx = tx.Tx
 
@@ -502,11 +504,13 @@ func (p *Process) handleIdleTxRequest(tx *messages.TxPayload) error {
 	// change state from idle to busy
 	if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
 		// failed to change state to busy, return
-		p.logger.Debugf("[%s] failed to change state to ready, %v", p.getTxId(), err)
+		p.logger.Warnf("[%s] failed to change state to ready, %v", p.getTxId(), err)
 		return nil
 	}
 	// succeed to change state to busy, update state for itself
-	p.logger.Debugf("[%s] change state from idle to ready", p.getTxId())
+	logger.DebugDynamic(p.logger, func() string {
+		return fmt.Sprintf("[%s] change state from idle to ready", p.getTxId())
+	})
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.updateProcessState(ready)
@@ -519,7 +523,9 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	p.logger.Debugf("[%s] start handle tx resp [%s]", p.getTxId(), msg.TxId)
+	logger.DebugDynamic(p.logger, func() string {
+		return fmt.Sprintf("[%s] start handle tx resp [%s]", p.getTxId(), msg.TxId)
+	})
 
 	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE, "")
 	if str, ok := utils.PrintTxStepsWithTime(msg); ok {
@@ -572,14 +578,16 @@ func (p *Process) handleTimeout() error {
 	case ready:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Debugf("[%s] ready timeout, go to idle", p.getTxId())
+		logger.DebugDynamic(p.logger, func() string {
+			return fmt.Sprintf("[%s] ready timeout, go to idle", p.getTxId())
+		})
 		if err := p.processManager.ChangeProcessState(p.processName, false); err != nil {
 			return fmt.Errorf("change process state error, %v", err)
 		}
 		p.updateProcessState(idle)
 
 	default:
-		p.logger.Debugf("[%s] process state should be busy / ready / idle, current state is %v", p.getTxId(), p.processState)
+		p.logger.Warnf("[%s] process state should be busy / ready / idle, current state is %v", p.getTxId(), p.processState)
 	}
 	return nil
 }
@@ -645,7 +653,9 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		select {
 		case tx := <-p.txCh:
 			p.Tx = tx.Tx
-			p.logger.Debugf("[%s] contract exec start failed, remove tx %s", p.getTxId(), p.Tx.TxId)
+			logger.DebugDynamic(p.logger, func() string {
+				return fmt.Sprintf("[%s] contract exec start failed, remove tx %s", p.getTxId(), p.Tx.TxId)
+			})
 			returnErrResp = true
 			break
 		default:

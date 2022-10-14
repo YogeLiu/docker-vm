@@ -112,7 +112,9 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 	for {
 		select {
 		case txReq := <-c.clientMgr.GetTxSendCh():
-			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
+			c.logger.DebugDynamic(func() string {
+				return fmt.Sprintf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
+			})
 			utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST,
 				strings.Join([]string{"msgSize", strconv.Itoa(txReq.Size())}, ":"))
 
@@ -206,7 +208,9 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 }
 
 func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
-	c.logger.Debugf("send message[%s], type: [%s]", msg.TxId, msg.Type)
+	c.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("send message[%s], type: [%s]", msg.TxId, msg.Type)
+	})
 	//c.logger.Debugf("msg [%+v]", msg)
 	return c.stream.Send(msg)
 }

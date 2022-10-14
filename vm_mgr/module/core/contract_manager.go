@@ -285,7 +285,7 @@ func (cm *ContractManager) requestContractFromChain(msg *protogo.DockerVMMessage
 	return nil
 }
 
-// sendContractReadySignal send contract _ready signal to request group, request group can request process now.
+// sendContractReadySignal send contract ready signal to request group, request group can request process now.
 func (cm *ContractManager) sendContractReadySignal(chainID, contractName, contractVersion string, status protogo.DockerVMCode) error {
 
 	// check whether scheduler was initialized

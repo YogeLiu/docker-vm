@@ -54,6 +54,8 @@ var (
 	logPathFromConfig          string
 	displayInConsoleFromConfig bool
 	showLineFromConfig         bool
+	logLevel                   zapcore.Level
+	logLevelInitialized        bool
 )
 
 func InitialConfig(logPath string) {
@@ -194,12 +196,21 @@ func GenerateRequestGroupLoggerName(name string) string {
 }
 
 func GetLogLevel() zapcore.Level {
-	var logLevel zapcore.Level
-	if err := logLevel.UnmarshalText([]byte(logLevelFromConfig)); err != nil {
-		logLevel = zapcore.InfoLevel
-	}
-	if logLevel > zapcore.ErrorLevel {
-		logLevel = zapcore.ErrorLevel
+	if !logLevelInitialized {
+		if err := logLevel.UnmarshalText([]byte(logLevelFromConfig)); err != nil {
+			logLevel = zapcore.InfoLevel
+		}
+		if logLevel > zapcore.ErrorLevel {
+			logLevel = zapcore.ErrorLevel
+		}
+		logLevelInitialized = true
 	}
 	return logLevel
+}
+
+func DebugDynamic(l *zap.SugaredLogger, getStr func() string) {
+	if logLevel == zapcore.DebugLevel {
+		str := getStr()
+		l.Debug(str)
+	}
 }

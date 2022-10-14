@@ -1,12 +1,13 @@
 package core
 
 import (
+	"testing"
+
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/messages"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/module/rpc"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
-	"testing"
 )
 
 const (
@@ -224,7 +225,7 @@ func TestChangeSandbox(t *testing.T) {
 //
 //			name:   "TestProcess_SetStream",
 //			fields: fields{process: process},
-//			want:   _ready,
+//			want:   ready,
 //		},
 //	}
 //	for _, tt := range tests {

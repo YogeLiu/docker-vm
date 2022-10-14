@@ -117,13 +117,17 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 
 			switch msg.Type {
 			case protogo.DockerVMType_TX_REQUEST:
-				s.logger.Debugf("chain -> contract engine, put request [%s] into request scheduler", msg.TxId)
+				logger.DebugDynamic(s.logger, func() string {
+					return fmt.Sprintf("chain -> contract engine, put request [%s] into request scheduler", msg.TxId)
+				})
 				err := s.scheduler.PutMsg(msg)
 				if err != nil {
 					s.logger.Errorf("failed to put request into request scheduler chan: [%s]", err)
 				}
 			case protogo.DockerVMType_GET_BYTECODE_RESPONSE:
-				s.logger.Debugf("chain -> contract engine, put get bytecode resp [%s] into request scheduler", msg.TxId)
+				logger.DebugDynamic(s.logger, func() string {
+					return fmt.Sprintf("chain -> contract engine, put get bytecode resp [%s] into request scheduler", msg.TxId)
+				})
 				err := s.scheduler.PutMsg(msg)
 				if err != nil {
 					s.logger.Errorf("failed to put bytecode resp into request scheduler chan: [%s]", err)
@@ -183,12 +187,16 @@ func (s *ChainRPCService) recvMsg(conn *communicateConn) (*protogo.DockerVMMessa
 		s.logger.Errorf("recv err %s, existed", err)
 		return nil, err
 	}
-	s.logger.Debugf("recv msg, type [%v]", msg.Type)
+	logger.DebugDynamic(s.logger, func() string {
+		return fmt.Sprintf("recv msg, type [%v]", msg.Type)
+	})
 	return msg, nil
 }
 
 // sendMsg sends messages to chainmaker
 func (s *ChainRPCService) sendMsg(msg *protogo.DockerVMMessage, conn *communicateConn) error {
-	s.logger.Debugf("send msg, type [%v]", msg.Type)
+	logger.DebugDynamic(s.logger, func() string {
+		return fmt.Sprintf("send msg, type [%v]", msg.Type)
+	})
 	return conn.stream.Send(msg)
 }
