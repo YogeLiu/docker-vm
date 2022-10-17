@@ -182,8 +182,12 @@ func (p *Process) launchProcess() *exitErr {
 	if config.DockerVMConfig.RPC.ChainRPCProtocol == config.UDS {
 		tcpPort = 0
 	}
+
+	path := p.requestGroup.GetContractPath()
+	cfv := p.requestGroup.GetContractFileVersion()
+
 	cmd := exec.Cmd{
-		Path: p.requestGroup.GetContractPath(),
+		Path: path,
 		Args: []string{
 			p.user.GetSockPath(),
 			p.processName,
@@ -200,7 +204,7 @@ func (p *Process) launchProcess() *exitErr {
 	if err != nil {
 		return &exitErr{
 			err:  err,
-			desc: "",
+			desc: stderr.String(),
 		}
 	}
 	// these settings just working on linux,
@@ -216,9 +220,15 @@ func (p *Process) launchProcess() *exitErr {
 
 	if err = cmd.Start(); err != nil {
 		p.logger.Errorf("failed to start process: %v, %v", err, stderr.String())
+		if os.IsNotExist(err) {
+			return &exitErr{
+				err:  utils.ContractNotExistError,
+				desc: strconv.FormatInt(cfv, 10),
+			}
+		}
 		return &exitErr{
 			err:  utils.ContractExecError,
-			desc: "",
+			desc: strconv.FormatInt(cfv, 10),
 		}
 	}
 	p.cmdReadyCh <- true
@@ -241,7 +251,7 @@ func (p *Process) launchProcess() *exitErr {
 		if p.Tx != nil {
 			txId = p.Tx.TxId
 		}
-		p.logger.Warnf("process stopped for tx [%s], %v, %v", txId, err, stderr.String())
+		p.logger.Debugf("process stopped for tx [%s], %v, %v", txId, err, stderr.String())
 		return &exitErr{
 			err:  err,
 			desc: stderr.String(),
@@ -260,7 +270,9 @@ func (p *Process) printContractLog(contractPipe io.ReadCloser) {
 	for {
 		str, err := rd.ReadString('\n')
 		if err != nil {
-			contractLogger.Info(err)
+			if err.Error() != "EOF" {
+				contractLogger.Info(err)
+			}
 			return
 		}
 		str = strings.TrimSuffix(str, "\n")
@@ -612,9 +624,7 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 			err:  utils.SandboxExitDefaultError,
 			desc: "",
 		}
-	}
-
-	if exitError.err == nil {
+	} else if exitError.err == nil {
 		exitError.err = utils.SandboxExitDefaultError
 	}
 
@@ -642,16 +652,25 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 			p.Start()
 		}
 		if returnBadContractResp {
-			if err := p.returnBadContractResp(); err != nil {
+			contractFileVersion, err := strconv.ParseInt(exitError.desc, 10, 64)
+			if err != nil {
+				contractFileVersion = p.requestGroup.GetContractFileVersion()
+			}
+			if err = p.returnBadContractResp(contractFileVersion); err != nil {
 				p.logger.Errorf("failed to return bad contract resp, %v", err)
 			}
 		}
 	}()
 
 	// =========  condition: before cmd.wait
-	// 1. created fail, ContractExecError -> return err and exit
+	// 1. created fail, ContractExecError:
+	//  a. return tx error
+	//  b. return bad contract resp
+	//  c. send exit sandbox msg
+	//  d. exit process
 	if exitError.err == utils.ContractExecError {
-		p.logger.Warnf("process exited when launch process, start to release process")
+		p.logger.Errorf("process exited when launch process, start to release process, %s",
+			exitError.err.Error())
 		exitSandbox = true
 		// contract panic when process start, pop oldest tx, retry get bytecode
 		select {
@@ -661,25 +680,57 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 				return fmt.Sprintf("[%s] contract exec start failed, remove tx %s", p.getTxId(), p.Tx.TxId)
 			})
 			returnErrResp = true
+			returnBadContractResp = true
 			break
 		default:
 			p.logger.Warn("contract exec start failed, no available tx")
 			break
 		}
-		returnBadContractResp = true
 		return true
 	}
 
-	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
-	// 3. created fail, writeToFile fail -> relaunch
+	// 2. created fail, ContractNotExistError:
+	//  a. return bad contract resp
+	//  b. send exit sandbox msg
+	//  c. exit process
+	if exitError.err == utils.ContractNotExistError {
+		p.logger.Errorf("process exited for contract not found, %s, try to retrieve from blockchain",
+			exitError.err.Error())
+		exitSandbox = true
+		// contract panic when process start, pop oldest tx, retry get bytecode
+		select {
+		case tx := <-p.txCh:
+			p.Tx = tx.Tx
+			// return tx
+			if err := p.requestScheduler.PutMsg(tx.Tx); err != nil {
+				p.logger.Errorf("failed to put msg [%s] to request group, %v", tx.Tx.TxId, err)
+			}
+			returnBadContractResp = true
+			break
+		default:
+			p.logger.Debug("contract exec start failed, no available tx")
+			break
+		}
+		return true
+	}
+
+	// 3. created fail, err from cmd.StdoutPipe() or writeToFile fail
+	//  a. restart sandbox
 	if p.processState == created {
-		p.logger.Warnf("process exited when created: %s", exitError.err)
+		p.logger.Errorf("process exited when created, %s, %s",
+			exitError.err.Error(), exitError.desc)
 		restartSandbox = true
 		return false
 	}
 
+	// =========  condition: cmd.wait
+	// 4. sandbox exited when process state is ready:
+	//  a. tx != nil && method == init or upgrade: return bad contract resp
+	//  b. send exit sandbox msg
+	//  c. exit process
 	if p.processState == ready {
-		p.logger.Warnf("process exited when ready: %s", exitError.err)
+		p.logger.Errorf("process exited when ready, %s, %s",
+			exitError.err.Error(), exitError.desc)
 		exitSandbox = true
 		if p.Tx == nil {
 			p.logger.Warnf("exit with none tx")
@@ -698,15 +749,24 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		return true
 	}
 
+	// 5. sandbox exited when process state is idle:
+	//  a. send exit sandbox msg
+	//  b. exit process
 	if p.processState == idle {
-		p.logger.Warnf("process exited when idle: %s", exitError.err)
+		p.logger.Errorf("process exited when idle, %s, %s",
+			exitError.err.Error(), exitError.desc)
 		exitSandbox = true
 		return true
 	}
 
-	// 7. process panic, return error response
+	// 6. sandbox exited when process state is busy:
+	// 	a. return tx error
+	//  b. method == init or upgrade: return bad contract resp
+	//  c. send exit sandbox msg
+	//  d. exit process
 	if p.processState == busy {
-		p.logger.Warnf("process exited when busy: %s", exitError.err)
+		p.logger.Errorf("[%s] process exited when busy, %s, %s", p.getTxId(),
+			exitError.err.Error(), exitError.desc)
 		p.updateProcessState(created)
 		exitSandbox = true
 		returnErrResp = true
@@ -718,26 +778,31 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		return true
 	}
 
-	//  ========= condition: after cmd.wait
-	// 4. process change context, restart process
+	// 7. sandbox exited when process state is changing (change sandbox to another contract):
+	// 	a. restart sandbox (already replaced with new sandbox context)
+	//  b. restart process
 	if p.processState == changing {
-		p.logger.Warnf("changing process to [%s]", p.processName)
+		p.logger.Debugf("changing process to [%s]", p.processName)
 		p.updateProcessState(created)
 		// restart process
 		restartAll = true
 		return true
 	}
 
-	//  ========= condition: after cmd.wait
-	// 5. process killed because resource release
+	// 8. sandbox exited when process state is changing (process release):
+	//  a. exit process
 	if p.processState == closing {
-		p.logger.Warnf("process killed for periodic process cleaning")
+		p.logger.Info("process killed for periodic process cleaning")
 		return true
 	}
 
-	// 6. process killed because of timeout, return error response and relaunch
+	// 9. sandbox exited when process state is timeout (timeout for sandbox execution):
+	//  a. send exit sandbox msg
+	//  b. return tx error
+	//  c. exit process
 	if p.processState == timeout {
-		p.logger.Warnf("process killed for timeout")
+		p.logger.Errorf("[%s] process killed for timeout, %s, %s",
+			p.getTxId(), exitError.err.Error(), exitError.desc)
 		p.updateProcessState(created)
 		exitSandbox = true
 		returnErrResp = true
@@ -745,7 +810,9 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		return true
 	}
 
-	p.logger.Warnf("process killed for other reasons")
+	// 10. sandbox exited for other reasons
+	p.logger.Errorf("[%s] process killed for other reasons, %s, %s",
+		p.getTxId(), exitError.err.Error(), exitError.desc)
 	return false
 }
 
@@ -861,7 +928,7 @@ func (p *Process) returnSandboxExitResp(err error) error {
 }
 
 // returnBadContractResp return bad contract resp to contract manager
-func (p *Process) returnBadContractResp() error {
+func (p *Process) returnBadContractResp(cfv int64) error {
 	resp := &messages.BadContractResp{
 		Tx: &protogo.DockerVMMessage{
 			ChainId: p.chainID,
@@ -872,10 +939,8 @@ func (p *Process) returnBadContractResp() error {
 				ChainId:         p.chainID,
 			},
 		},
-		IsOrig: p.isOrigProcess,
-	}
-	if err := p.requestScheduler.GetContractManager().PutMsg(resp); err != nil {
-		return fmt.Errorf("failed to invoke contract manager PutMsg, %v", err)
+		IsOrig:              p.isOrigProcess,
+		ContractFileVersion: cfv,
 	}
 
 	if err := p.requestGroup.PutMsg(resp); err != nil {

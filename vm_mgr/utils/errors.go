@@ -14,6 +14,7 @@ var (
 	ExceedMaxDepthError            = errors.New("exceed max depth")
 	ContractFileError              = errors.New("bad contract file")
 	ContractExecError              = errors.New("bad contract exec file")
+	ContractNotExistError          = errors.New("contract exec file not exist")
 	ContractNotDeployedError       = errors.New("contract not deployed")
 	CrossContractRuntimePanicError = errors.New("cross contract runtime panic")
 

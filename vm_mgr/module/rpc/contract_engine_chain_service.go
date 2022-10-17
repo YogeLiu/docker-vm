@@ -99,7 +99,7 @@ func (s *ChainRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerV
 // recvMsgRoutine handles messages received from stream
 // message types include: DockerVMType_TX_REQUEST and DockerVMType_GET_BYTECODE_RESPONSE
 func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
-	s.logger.Infof("start recv msg routine...")
+	s.logger.Debugf("start recv msg routine...")
 	for {
 		select {
 		case <-conn.stopRecvCh:
@@ -147,7 +147,7 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 // sendMsgRoutine send messages (<- eventCh) to chain
 // message types include: DockerVMType_GET_BYTECODE_REQUEST and DockerVMType_ERROR
 func (s *ChainRPCService) sendMsgRoutine(conn *communicateConn) {
-	s.logger.Infof("start send msg routine")
+	s.logger.Debugf("start send msg routine")
 	var err error
 	for {
 		select {
@@ -188,7 +188,7 @@ func (s *ChainRPCService) sendMsgRoutine(conn *communicateConn) {
 func (s *ChainRPCService) recvMsg(conn *communicateConn) (*protogo.DockerVMMessage, error) {
 	msg, err := conn.stream.Recv()
 	if err != nil {
-		s.logger.Errorf("recv err %s, existed", err)
+		s.logger.Errorf("receive error from chainmaker: %s, exited", err)
 		return nil, err
 	}
 	logger.DebugDynamic(s.logger, func() string {

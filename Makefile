@@ -9,11 +9,12 @@ build-test:
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-engine:${VERSION} \
+	cd vm_mgr && docker build -t chainmaker-vm-engine \
 	--build-arg BUILD_TIME=${BUILD_TIME} \
 	--build-arg GIT_BRANCH=${GIT_BRANCH} \
 	--build-arg GIT_COMMIT=${GIT_COMMIT} \
 	-f Dockerfile ./
+	docker tag chainmaker-vm-engine chainmakerofficial/chainmaker-vm-engine:${VERSION}
 	docker images | grep chainmaker-vm-engine
 
 image-push:
