@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
@@ -160,7 +161,9 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			return
 		default:
 			receivedMsg, revErr := c.stream.Recv()
-
+			if strings.HasSuffix(strings.Split(receivedMsg.TxId, "#")[0], "0000") {
+				c.logger.Infof("sample tx start send vm time, %v", time.Now().Format("2006-02-01 15:04:05.000"))
+			}
 			if revErr == io.EOF {
 				c.logger.Warn("client receive eof and exit receive goroutine")
 				close(c.stopSend)

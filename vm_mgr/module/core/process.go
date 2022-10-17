@@ -455,6 +455,10 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
+	if strings.HasSuffix(strings.Split(tx.Tx.TxId, "#")[0], "0000") {
+		p.logger.Infof("sample tx start process tx time, %v", time.Now().Format("2006-02-01 15:04:05.000"))
+	}
+
 	elapsedTime := time.Since(tx.StartTime)
 	if elapsedTime > _removeTxTime {
 		p.logger.Warnf("tx [%s] expired for %v, elapsed time: %v", tx.Tx.TxId, _removeTxTime, elapsedTime)
