@@ -456,7 +456,7 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 	defer p.lock.Unlock()
 
 	if strings.HasSuffix(strings.Split(tx.Tx.TxId, "#")[0], "0000") {
-		p.logger.Infof("sample tx start process tx time, %v", time.Now().Format("2006-02-01 15:04:05.000"))
+		p.logger.Infof("sample tx start process tx time")
 	}
 
 	elapsedTime := time.Since(tx.StartTime)

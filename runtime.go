@@ -87,7 +87,7 @@ func (r *RuntimeInstance) Invoke(
 	})
 
 	if strings.HasSuffix(originalTxId, "0000") {
-		r.logger.Infof("sample tx start invoke time, %v", time.Now().Format("2006-02-01 15:04:05.000"))
+		r.logger.Infof("sample tx start invoke time")
 	}
 	// contract response
 	contractResult = &commonPb.ContractResult{
