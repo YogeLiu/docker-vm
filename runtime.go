@@ -262,7 +262,7 @@ func (r *RuntimeInstance) Invoke(
 
 			case protogo.DockerVMType_GET_BATCH_STATE_REQUEST:
 				r.logger.DebugDynamic(func() string {
-					return fmt.Sprintf("tx [%s] start get batch state [%v]", uniqueTxKey)
+					return fmt.Sprintf("tx [%s] start get batch state", uniqueTxKey)
 				})
 				var getStateResponse *protogo.DockerVMMessage
 				getStateResponse, gasUsed = r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext, gasUsed)
