@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "chainmaker.org/chainmaker/vm-engine/pb/protogo";
+option go_package = "chainmaker.org/chainmaker/vm-engine/vm_mgr/pb/protogo";
 
 service DockerVMRpc {
     rpc DockerVMCommunicate(stream DockerVMMessage) returns(stream DockerVMMessage) {};
