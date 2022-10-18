@@ -131,8 +131,8 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 			ss.wg.Done()
 			return
 		default:
-			msg, err := ss.stream.Recv()
-
+			msg := protogo.DockerVMMessageFromVTPool()
+			err := ss.stream.RecvMsg(msg)
 			if err != nil {
 				if err == io.EOF || status.Code(err) == codes.Canceled {
 					s.logger.Debugf("sandbox client grpc stream closed (context cancelled)")
@@ -171,6 +171,7 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				}
 				notify(msg, ss.putResp)
 			}
+			msg.ReturnToVTPool()
 		}
 	}
 

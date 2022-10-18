@@ -49,7 +49,8 @@ func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessMana
 func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	var process interfaces.Process
 	for {
-		msg, err := stream.Recv()
+		msg := protogo.DockerVMMessageFromVTPool()
+		err := stream.RecvMsg(msg)
 
 		if err != nil {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
@@ -95,5 +96,6 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			return fmt.Sprintf("end recv msg, txId: %s", msg.TxId)
 		})
 		process.PutMsg(msg)
+		msg.ReturnToVTPool()
 	}
 }

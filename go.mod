@@ -19,10 +19,11 @@ require (
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.9.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	go.uber.org/atomic v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.41.0
+	google.golang.org/protobuf v1.27.1
 )
 
 replace github.com/linvon/cuckoo-filter => chainmaker.org/third_party/cuckoo-filter v1.0.0

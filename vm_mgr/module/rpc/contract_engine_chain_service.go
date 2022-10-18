@@ -139,6 +139,7 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 			default:
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)
 			}
+			msg.ReturnToVTPool()
 
 		}
 	}
@@ -186,7 +187,8 @@ func (s *ChainRPCService) sendMsgRoutine(conn *communicateConn) {
 
 // recvMsg receives messages from chainmaker
 func (s *ChainRPCService) recvMsg(conn *communicateConn) (*protogo.DockerVMMessage, error) {
-	msg, err := conn.stream.Recv()
+	msg := protogo.DockerVMMessageFromVTPool()
+	err := conn.stream.RecvMsg(msg)
 	if err != nil {
 		s.logger.Errorf("receive error from chainmaker: %s, exited", err)
 		return nil, err

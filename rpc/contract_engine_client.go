@@ -115,7 +115,7 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 				return fmt.Sprintf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
 			})
 			utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST,
-				strings.Join([]string{"msgSize", strconv.Itoa(txReq.Size())}, ":"))
+				strings.Join([]string{"msgSize", strconv.Itoa(txReq.SizeVT())}, ":"))
 
 			err = c.sendMsg(txReq)
 		case getByteCodeResp := <-c.clientMgr.GetByteCodeRespSendCh():
@@ -158,7 +158,8 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			c.logger.Debugf("close contract engine client receive goroutine")
 			return
 		default:
-			msg, err := c.stream.Recv()
+			msg := protogo.DockerVMMessageFromVTPool()
+			err := c.stream.RecvMsg(msg)
 			if strings.HasSuffix(strings.Split(msg.TxId, "#")[0], "0000") {
 				c.logger.Infof("sample tx start send vm time")
 			}
@@ -198,6 +199,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			default:
 				c.logger.Errorf("unknown message type, received msg: [%v]", msg)
 			}
+			msg.ReturnToVTPool()
 		}
 	}
 }

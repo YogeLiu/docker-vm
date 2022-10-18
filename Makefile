@@ -25,8 +25,27 @@ update-gomod:
 	cd scripts && ./gomod_update.sh
 
 gen-dockervm-pb:
-	cd pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dockervm_message.proto
-	cd vm_mgr/pb/proto && protoc -I=. --gogofaster_out=plugins=grpc:../protogo --gogofaster_opt=paths=source_relative dockervm_message.proto
+	cd pb/proto && protoc \
+	--go_out=../protogo --plugin protoc-gen-go="$(GOPATH)/bin/protoc-gen-go" \
+	--go-grpc_out=../protogo --go-grpc_opt=require_unimplemented_servers=false --plugin protoc-gen-go-grpc="$(GOPATH)/bin/protoc-gen-go-grpc" \
+	--go-vtproto_out=../protogo --plugin protoc-gen-go-vtproto="$(GOPATH)/bin/protoc-gen-go-vtproto" \
+	--go_opt=paths=source_relative \
+	--go-grpc_opt=paths=source_relative \
+	--go-vtproto_opt=paths=source_relative \
+	--go-vtproto_opt=features=marshal+unmarshal+size+pool \
+	--go-vtproto_opt=pool=chainmaker.org/chainmaker/vm-engine/pb/protogo.DockerVMMessage \
+	dockervm_message.proto
+
+	cd vm_mgr/pb/proto && protoc \
+	--go_out=../protogo --plugin protoc-gen-go="$(GOPATH)/bin/protoc-gen-go" \
+	--go-grpc_out=../protogo --go-grpc_opt=require_unimplemented_servers=false --plugin protoc-gen-go-grpc="$(GOPATH)/bin/protoc-gen-go-grpc" \
+	--go-vtproto_out=../protogo --plugin protoc-gen-go-vtproto="$(GOPATH)/bin/protoc-gen-go-vtproto" \
+	--go_opt=paths=source_relative \
+	--go-grpc_opt=paths=source_relative \
+	--go-vtproto_opt=paths=source_relative \
+	--go-vtproto_opt=features=marshal+unmarshal+size+pool \
+	--go-vtproto_opt=pool=chainmaker.org/chainmaker/vm-engine/vm_mgr/pb/protogo.DockerVMMessage \
+	dockervm_message.proto
 
 clean-test:
 	cd test/scripts && ./dockerclean.sh

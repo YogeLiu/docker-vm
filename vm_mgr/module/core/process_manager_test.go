@@ -31,7 +31,7 @@ func TestNewProcessManager(t *testing.T) {
 
 	idleProcesses := linkedhashmap.New()
 	busyProcesses := make(map[string]interfaces.Process)
-	processGroups := make(map[string]map[string]bool)
+	processGroups := make(map[string]map[string]interfaces.Process)
 	waitingRequestGroups := linkedhashmap.New()
 
 	log := logger.NewTestDockerLogger()
@@ -273,15 +273,15 @@ func TestProcessManager_GetProcessNumByContractKey(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 
-	processManager.processGroups["chain1#testContractName#1.0.0"] = make(map[string]bool)
-	processManager.processGroups["chain1#testContractName#1.0.0"]["process1"] = true
-	processManager.processGroups["chain1#testContractName#1.0.0"]["process2"] = true
+	processManager.processGroups["chain1#testContractName#1.0.0"] = make(map[string]interfaces.Process)
+	processManager.processGroups["chain1#testContractName#1.0.0"]["process1"] = &Process{}
+	processManager.processGroups["chain1#testContractName#1.0.0"]["process2"] = &Process{}
 
-	processManager.processGroups["chain1#testContractName#1.0.1"] = make(map[string]bool)
-	processManager.processGroups["chain1#testContractName#1.0.1"]["process1"] = true
+	processManager.processGroups["chain1#testContractName#1.0.1"] = make(map[string]interfaces.Process)
+	processManager.processGroups["chain1#testContractName#1.0.1"]["process1"] = &Process{}
 
-	processManager.processGroups["chain1#testContractName2#1.0.0"] = make(map[string]bool)
-	processManager.processGroups["chain1#testContractName2#1.0.0"]["process1"] = true
+	processManager.processGroups["chain1#testContractName2#1.0.0"] = make(map[string]interfaces.Process)
+	processManager.processGroups["chain1#testContractName2#1.0.0"]["process1"] = &Process{}
 
 	type args struct {
 		chainID         string
@@ -616,7 +616,7 @@ func TestProcessManager_addToProcessGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
-			pm.addToProcessGroup(tt.args.chainID, tt.args.contractName, tt.args.contractVersion, tt.args.processName)
+			pm.addToProcessGroup(&Process{}, tt.args.chainID, tt.args.contractName, tt.args.contractVersion, tt.args.processName)
 			groupKey := utils.ConstructContractKey(tt.args.chainID, tt.args.contractName, tt.args.contractVersion)
 			_, ok := pm.processGroups[groupKey][tt.args.processName]
 			if ok != tt.wantInCache {
