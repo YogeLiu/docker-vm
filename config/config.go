@@ -76,9 +76,9 @@ const (
 	//ENV_MAX_LOCAL_CONTRACT_NUM = "ENV_MAX_LOCAL_CONTRACT_NUM"
 
 	// DefaultMaxSendSize is the default max send size
-	DefaultMaxSendSize = 4
+	DefaultMaxSendSize = 100
 	// DefaultMaxRecvSize is the default max recv size
-	DefaultMaxRecvSize = 4
+	DefaultMaxRecvSize = 100
 	//DefaultTxTimeLimit         = 5
 	//DefaultMaxConcurrency      = 50
 	//DefaultMaxLocalContractNum = 1024
