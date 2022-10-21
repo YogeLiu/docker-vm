@@ -335,7 +335,6 @@ func (p *Process) listenProcess() {
 				if err := p.handleIdleTxRequest(tx); err != nil {
 					p.logger.Errorf("failed to handle tx [%s] request when idle, %v", tx.Tx.TxId, err)
 				}
-				tx.Tx.ReturnToVTPool()
 
 			case err := <-p.exitCh:
 				processReleased := p.handleProcessExit(err)

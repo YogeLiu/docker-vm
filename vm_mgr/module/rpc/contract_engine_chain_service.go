@@ -124,6 +124,9 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				logger.DebugDynamic(s.logger, func() string {
 					return fmt.Sprintf("chain -> contract engine, put request [%s] into request scheduler", msg.TxId)
 				})
+				if msg.Request == nil {
+					s.logger.Errorf("empty request payload")
+				}
 				err := s.scheduler.PutMsg(msg)
 				if err != nil {
 					s.logger.Errorf("failed to put request into request scheduler chan: [%s]", err)
