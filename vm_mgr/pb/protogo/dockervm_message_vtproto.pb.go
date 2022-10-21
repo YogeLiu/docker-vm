@@ -6,10 +6,11 @@ package protogo
 
 import (
 	fmt "fmt"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
 	bits "math/bits"
 	sync "sync"
+
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -45,10 +46,7 @@ func (m *DockerVMMessage) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.StepDurations) > 0 {
 		for iNdEx := len(m.StepDurations) - 1; iNdEx >= 0; iNdEx-- {
 			size, err := m.StepDurations[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
@@ -149,10 +147,7 @@ func (m *SysCallMessage) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.Payload) > 0 {
 		for k := range m.Payload {
 			v := m.Payload[k]
@@ -213,10 +208,7 @@ func (m *CrossContext) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if m.CrossInfo != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.CrossInfo))
 		i--
@@ -263,10 +255,7 @@ func (m *StepDuration) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.Msg) > 0 {
 		i -= len(m.Msg)
 		copy(dAtA[i:], m.Msg)
@@ -323,10 +312,7 @@ func (m *TxRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.ChainId) > 0 {
 		i -= len(m.ChainId)
 		copy(dAtA[i:], m.ChainId)
@@ -413,10 +399,7 @@ func (m *TxContext) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.ReadMap) > 0 {
 		for k := range m.ReadMap {
 			v := m.ReadMap[k]
@@ -484,10 +467,7 @@ func (m *TxResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.ChainId) > 0 {
 		i -= len(m.ChainId)
 		copy(dAtA[i:], m.ChainId)
@@ -614,10 +594,7 @@ func (m *DockerContractEvent) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.Data) > 0 {
 		for iNdEx := len(m.Data) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.Data[iNdEx])
@@ -670,10 +647,7 @@ func (m *CallContractRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.Args) > 0 {
 		for k := range m.Args {
 			v := m.Args[k]
@@ -736,10 +710,7 @@ func (m *Response) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.Payload) > 0 {
 		i -= len(m.Payload)
 		copy(dAtA[i:], m.Payload)
@@ -788,10 +759,7 @@ func (m *ContractResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.Events) > 0 {
 		for iNdEx := len(m.Events) - 1; iNdEx >= 0; iNdEx-- {
 			size, err := m.Events[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
@@ -881,10 +849,7 @@ func (m *Event) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
+
 	if len(m.Data) > 0 {
 		for iNdEx := len(m.Data) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.Data[iNdEx])
@@ -980,9 +945,7 @@ func (m *DockerVMMessage) SizeVT() (n int) {
 			n += 1 + l + sov(uint64(l))
 		}
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1008,9 +971,7 @@ func (m *SysCallMessage) SizeVT() (n int) {
 			n += mapEntrySize + 1 + sov(uint64(mapEntrySize))
 		}
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1030,9 +991,7 @@ func (m *CrossContext) SizeVT() (n int) {
 	if m.CrossInfo != 0 {
 		n += 1 + sov(uint64(m.CrossInfo))
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1058,9 +1017,7 @@ func (m *StepDuration) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1099,9 +1056,7 @@ func (m *TxRequest) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1129,9 +1084,7 @@ func (m *TxContext) SizeVT() (n int) {
 			n += mapEntrySize + 1 + sov(uint64(mapEntrySize))
 		}
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1192,9 +1145,7 @@ func (m *TxResponse) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1218,9 +1169,7 @@ func (m *DockerContractEvent) SizeVT() (n int) {
 			n += 1 + l + sov(uint64(l))
 		}
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1247,9 +1196,7 @@ func (m *CallContractRequest) SizeVT() (n int) {
 			n += mapEntrySize + 1 + sov(uint64(mapEntrySize))
 		}
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1270,9 +1217,7 @@ func (m *Response) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1310,9 +1255,7 @@ func (m *ContractResponse) SizeVT() (n int) {
 			n += 1 + l + sov(uint64(l))
 		}
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1336,9 +1279,7 @@ func (m *Event) SizeVT() (n int) {
 			n += 1 + l + sov(uint64(l))
 		}
 	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
+
 	return n
 }
 
@@ -1657,7 +1598,7 @@ func (m *DockerVMMessage) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -1887,7 +1828,7 @@ func (m *SysCallMessage) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -2008,7 +1949,7 @@ func (m *CrossContext) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -2167,7 +2108,7 @@ func (m *StepDuration) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -2510,7 +2451,7 @@ func (m *TxRequest) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -2817,7 +2758,7 @@ func (m *TxContext) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -3371,7 +3312,7 @@ func (m *TxResponse) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -3518,7 +3459,7 @@ func (m *DockerContractEvent) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -3761,7 +3702,7 @@ func (m *CallContractRequest) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -3897,7 +3838,7 @@ func (m *Response) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -4274,7 +4215,7 @@ func (m *ContractResponse) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
@@ -4421,7 +4362,7 @@ func (m *Event) UnmarshalVT(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+
 			iNdEx += skippy
 		}
 	}
