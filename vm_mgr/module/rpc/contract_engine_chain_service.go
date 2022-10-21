@@ -140,7 +140,6 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 			default:
 				s.logger.Errorf("unknown msg type, msg: %+v", msg)
 			}
-			msg.ReturnToVTPool()
 
 		}
 	}

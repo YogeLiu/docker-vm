@@ -295,6 +295,7 @@ func (p *Process) listenProcess() {
 						p.logger.Errorf("failed to return tx error response, %v", err)
 					}
 				}
+				tx.Tx.ReturnToVTPool()
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
@@ -314,6 +315,7 @@ func (p *Process) listenProcess() {
 				if err := p.handleTxResp(resp); err != nil {
 					p.logger.Warnf("failed to handle tx response, %v", err)
 				}
+				resp.ReturnToVTPool()
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
@@ -334,6 +336,7 @@ func (p *Process) listenProcess() {
 				if err := p.handleIdleTxRequest(tx); err != nil {
 					p.logger.Errorf("failed to handle tx [%s] request when idle, %v", tx.Tx.TxId, err)
 				}
+				tx.Tx.ReturnToVTPool()
 
 			case err := <-p.exitCh:
 				processReleased := p.handleProcessExit(err)

@@ -171,7 +171,6 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 				}
 				notify(msg, ss.putResp)
 			}
-			msg.ReturnToVTPool()
 		}
 	}
 

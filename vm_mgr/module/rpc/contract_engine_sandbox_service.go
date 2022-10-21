@@ -96,6 +96,5 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			return fmt.Sprintf("end recv msg, txId: %s", msg.TxId)
 		})
 		process.PutMsg(msg)
-		msg.ReturnToVTPool()
 	}
 }

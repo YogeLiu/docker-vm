@@ -199,7 +199,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			default:
 				c.logger.Errorf("unknown message type, received msg: [%v]", msg)
 			}
-			msg.ReturnToVTPool()
+			//msg.ReturnToVTPool()
 		}
 	}
 }

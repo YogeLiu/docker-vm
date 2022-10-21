@@ -283,6 +283,7 @@ func (r *RuntimeInstance) Invoke(
 				r.logger.DebugDynamic(func() string {
 					return fmt.Sprintf("tx [%s] do some work after receive response", originalTxId)
 				})
+				recvMsg.ReturnToVTPool()
 				return result, txType
 
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:
