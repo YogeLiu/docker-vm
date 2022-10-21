@@ -30,7 +30,7 @@ gen-dockervm-pb:
 	--gogofaster_opt=paths=source_relative \
 	--go-vtproto_out=../protogo --plugin protoc-gen-go-vtproto="$(GOPATH)/bin/protoc-gen-go-vtproto" \
 	--go-vtproto_opt=paths=source_relative \
-	--go-vtproto_opt=features=marshal+unmarshal+size+pool \
+	--go-vtproto_opt=features=pool \
 	--go-vtproto_opt=pool=chainmaker.org/chainmaker/vm-engine/pb/protogo.DockerVMMessage \
 	dockervm_message.proto
 
@@ -39,7 +39,7 @@ gen-dockervm-pb:
 	--gogofaster_opt=paths=source_relative \
 	--go-vtproto_out=../protogo --plugin protoc-gen-go-vtproto="$(GOPATH)/bin/protoc-gen-go-vtproto" \
 	--go-vtproto_opt=paths=source_relative \
-	--go-vtproto_opt=features=marshal+unmarshal+size+pool \
+	--go-vtproto_opt=features=pool \
 	--go-vtproto_opt=pool=chainmaker.org/chainmaker/vm-engine/vm_mgr/pb/protogo.DockerVMMessage \
 	dockervm_message.proto
 
