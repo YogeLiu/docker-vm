@@ -40,7 +40,7 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		r.logger.Infof("sample tx start handle tx resp time")
 	}
 	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE,
-		strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.SizeVT())}, ":"))
+		strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.Size())}, ":"))
 	defer func() {
 		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
 		if str, ok := utils.PrintTxStepsWithTime(recvMsg); ok {
@@ -242,7 +242,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	}
 
 	var respBytes []byte
-	respBytes, err = callContractResponse.MarshalVT()
+	respBytes, err = callContractResponse.Marshal()
 	if err != nil {
 		r.logger.Debugf("handle cross contract request failed, err: %s", err.Error())
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL

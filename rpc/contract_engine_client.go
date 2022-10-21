@@ -115,7 +115,7 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 				return fmt.Sprintf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
 			})
 			utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST,
-				strings.Join([]string{"msgSize", strconv.Itoa(txReq.SizeVT())}, ":"))
+				strings.Join([]string{"msgSize", strconv.Itoa(txReq.Size())}, ":"))
 
 			err = c.sendMsg(txReq)
 		case getByteCodeResp := <-c.clientMgr.GetByteCodeRespSendCh():
