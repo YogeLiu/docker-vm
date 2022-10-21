@@ -33,7 +33,7 @@ gen-dockervm-pb:
 	--go-grpc_opt=paths=source_relative \
 	--go-vtproto_opt=paths=source_relative \
 	--go-vtproto_opt=features=marshal+unmarshal+size+pool \
-	--go-vtproto_opt=pool=chainmaker.org/chainmaker/vm-engine/vm_mgr/pb/protogo.DockerVMMessage \
+	--go-vtproto_opt=pool=chainmaker.org/chainmaker/vm-engine/pb/protogo.DockerVMMessage \
 	dockervm_message.proto
 
 	cd vm_mgr/pb/proto && protoc \

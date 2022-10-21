@@ -114,6 +114,7 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				conn.wg.Done()
 				return
 			}
+			s.logger.Infof("new request from chainmaker: %v", msg)
 			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
 
 			switch msg.Type {
