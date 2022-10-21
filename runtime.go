@@ -148,8 +148,9 @@ func (r *RuntimeInstance) Invoke(
 		//}
 	}()
 
-	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST,
-		strings.Join([]string{"pos", strconv.Itoa(r.clientMgr.GetTxSendChLen())}, ":"))
+	utils.EnterNextStep(dockerVMMsg, protogo.StepType_RUNTIME_PREPARE_TX_REQUEST, func() string {
+		return strings.Join([]string{"pos", strconv.Itoa(r.clientMgr.GetTxSendChLen())}, ":")
+	})
 
 	// init time statistics
 	startTime := time.Now()
@@ -283,7 +284,7 @@ func (r *RuntimeInstance) Invoke(
 				r.logger.DebugDynamic(func() string {
 					return fmt.Sprintf("tx [%s] do some work after receive response", originalTxId)
 				})
-				recvMsg.ReturnToVTPool()
+				recvMsg.ReturnToPool()
 				return result, txType
 
 			case protogo.DockerVMType_CALL_CONTRACT_REQUEST:

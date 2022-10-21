@@ -314,7 +314,7 @@ func (p *Process) listenProcess() {
 				if err := p.handleTxResp(resp); err != nil {
 					p.logger.Warnf("failed to handle tx response, %v", err)
 				}
-				resp.ReturnToVTPool()
+				resp.ReturnToPool()
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
@@ -485,21 +485,21 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 		return fmt.Sprintf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
 	})
 
-	p.Tx.ReturnToVTPool()
+	p.Tx.ReturnToPool()
 	p.Tx = tx.Tx
 
 	p.updateProcessState(busy)
 
-	msg := &protogo.DockerVMMessage{
-		ChainId:       p.chainID,
-		TxId:          p.Tx.TxId,
-		CrossContext:  p.Tx.CrossContext,
-		Request:       p.Tx.Request,
-		StepDurations: tx.Tx.StepDurations,
-	}
+	msg := protogo.DockerVMMessageFromPool()
+	msg.ChainId = p.chainID
+	msg.TxId = p.Tx.TxId
+	msg.CrossContext = p.Tx.CrossContext
+	msg.Request = p.Tx.Request
+	msg.StepDurations = tx.Tx.StepDurations
 
-	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
-		strings.Join([]string{"waitingLen", strconv.Itoa(len(p.txCh))}, ":"))
+	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST, func() string {
+		return strings.Join([]string{"waitingLen", strconv.Itoa(len(p.txCh))}, ":")
+	})
 
 	// send message to sandbox
 	if err := p.sendMsg(msg); err != nil {
@@ -545,7 +545,9 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 		return fmt.Sprintf("[%s] start handle tx resp [%s]", p.getTxId(), msg.TxId)
 	})
 
-	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE, "")
+	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE, func() string {
+		return ""
+	})
 	if str, ok := utils.PrintTxStepsWithTime(msg); ok {
 		p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
 	}

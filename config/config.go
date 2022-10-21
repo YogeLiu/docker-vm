@@ -49,8 +49,9 @@ type ContractEngineConfig struct {
 
 // SlowTxLogConfig is the slow tx log
 type SlowTxLogConfig struct {
-	StepBaseTime int `mapstructure:"step_base_time"`
-	TxBaseTime   int `mapstructure:"tx_base_time"`
+	StepBaseTime int  `mapstructure:"step_base_time"`
+	TxBaseTime   int  `mapstructure:"tx_base_time"`
+	Disable      bool `mapstructure:"disable"`
 }
 
 // DockerContainerConfig docker container settings

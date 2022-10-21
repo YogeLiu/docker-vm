@@ -49,7 +49,7 @@ func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessMana
 func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	var process interfaces.Process
 	for {
-		msg := protogo.DockerVMMessageFromVTPool()
+		msg := protogo.DockerVMMessageFromPool()
 		err := stream.RecvMsg(msg)
 
 		if err != nil {

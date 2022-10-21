@@ -97,6 +97,7 @@ type contractConf struct {
 type slowTxLogConf struct {
 	StepTime time.Duration `mapstructure:"step_time"`
 	TxTime   time.Duration `mapstructure:"tx_time"`
+	Disable  bool          `mapstructure:"disable"`
 }
 
 func InitConfig(configFileName string) error {
@@ -167,6 +168,7 @@ func (c *conf) setDefaultConfigs() {
 	const slowPrefix = "slow"
 	viper.SetDefault(slowPrefix+".step_time", 3*time.Second)
 	viper.SetDefault(slowPrefix+".tx_time", 6*time.Second)
+	viper.SetDefault(slowPrefix+".disable", false)
 }
 
 func (c *conf) setEnv() error {
@@ -242,26 +244,6 @@ func (c *conf) setEnv() error {
 		}
 	}
 
-	if slowStepTime, ok := os.LookupEnv("SLOW_TX_STEP_TIME"); ok {
-		timeout, err := strconv.ParseInt(slowStepTime, 10, 64)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("failed to ParseInt slowStepTime: %v", err))
-		}
-		if timeout != 0 {
-			c.Slow.StepTime = time.Duration(timeout) * time.Second
-		}
-	}
-
-	if slowTxTime, ok := os.LookupEnv("SLOW_TX_TIME"); ok {
-		timeout, err := strconv.ParseInt(slowTxTime, 10, 64)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("failed to ParseInt slowTxTime: %v", err))
-		}
-		if timeout != 0 {
-			c.Slow.TxTime = time.Duration(timeout) * time.Second
-		}
-	}
-
 	if busyTimout, ok := os.LookupEnv("PROCESS_TIMEOUT"); ok {
 		timeout, err := strconv.ParseInt(busyTimout, 10, 64)
 		if err != nil {
@@ -269,6 +251,35 @@ func (c *conf) setEnv() error {
 		}
 		if timeout != 0 {
 			c.Process.ExecTxTimeout = time.Duration(timeout) * time.Second
+		}
+	}
+	if slowTxDisable, ok := os.LookupEnv("SLOW_TX_DISABLE"); ok {
+		isDisable, err := strconv.ParseBool(slowTxDisable)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("failed to ParseBool slowTxDisable: %v", err))
+		}
+		if isDisable {
+			c.Slow.Disable = true
+		} else {
+			if slowStepTime, ok := os.LookupEnv("SLOW_TX_STEP_TIME"); ok {
+				timeout, err := strconv.ParseInt(slowStepTime, 10, 64)
+				if err != nil {
+					errs = append(errs, fmt.Sprintf("failed to ParseInt slowStepTime: %v", err))
+				}
+				if timeout != 0 {
+					c.Slow.StepTime = time.Duration(timeout) * time.Second
+				}
+			}
+
+			if slowTxTime, ok := os.LookupEnv("SLOW_TX_TIME"); ok {
+				timeout, err := strconv.ParseInt(slowTxTime, 10, 64)
+				if err != nil {
+					errs = append(errs, fmt.Sprintf("failed to ParseInt slowTxTime: %v", err))
+				}
+				if timeout != 0 {
+					c.Slow.TxTime = time.Duration(timeout) * time.Second
+				}
+			}
 		}
 	}
 	if len(errs) == 0 {

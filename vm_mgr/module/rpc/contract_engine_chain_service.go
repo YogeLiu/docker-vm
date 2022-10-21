@@ -114,7 +114,9 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 				conn.wg.Done()
 				return
 			}
-			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, "")
+			utils.EnterNextStep(msg, protogo.StepType_ENGINE_GRPC_RECEIVE_TX_REQUEST, func() string {
+				return ""
+			})
 
 			switch msg.Type {
 			case protogo.DockerVMType_TX_REQUEST:
@@ -189,7 +191,7 @@ func (s *ChainRPCService) sendMsgRoutine(conn *communicateConn) {
 
 // recvMsg receives messages from chainmaker
 func (s *ChainRPCService) recvMsg(conn *communicateConn) (*protogo.DockerVMMessage, error) {
-	msg := protogo.DockerVMMessageFromVTPool()
+	msg := protogo.DockerVMMessageFromPool()
 	err := conn.stream.RecvMsg(msg)
 	if err != nil {
 		s.logger.Errorf("receive error from chainmaker: %s, exited", err)

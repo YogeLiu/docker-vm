@@ -39,10 +39,14 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	if strings.HasSuffix(strings.Split(recvMsg.TxId, "#")[0], "0000") {
 		r.logger.Infof("sample tx start handle tx resp time")
 	}
-	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE,
-		strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.Size())}, ":"))
+	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, func() string {
+		return strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.Size())}, ":")
+	})
+
 	defer func() {
-		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
+		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, func() string {
+			return ""
+		})
 		if str, ok := utils.PrintTxStepsWithTime(recvMsg); ok {
 			r.logger.Warnf("[%s] slow tx execution, %s", recvMsg.TxId, str)
 		}

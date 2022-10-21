@@ -47,3 +47,4 @@ contract:
 slow:
   step_time: 3s
   tx_time: 6s
+  disable: false
