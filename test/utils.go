@@ -580,7 +580,7 @@ func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
 
 func GetBlockVersion() uint32 {
 	atomic.AddInt32(&blockVersionCounter, 1)
-	if blockVersionCounter <= 8*2 {
+	if blockVersionCounter <= 8*3 {
 		return 2220
 	}
 	return 2201
