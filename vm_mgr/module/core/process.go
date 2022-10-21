@@ -295,7 +295,6 @@ func (p *Process) listenProcess() {
 						p.logger.Errorf("failed to return tx error response, %v", err)
 					}
 				}
-				tx.Tx.ReturnToVTPool()
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
@@ -487,6 +486,7 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 		return fmt.Sprintf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
 	})
 
+	p.Tx.ReturnToVTPool()
 	p.Tx = tx.Tx
 
 	p.updateProcessState(busy)
