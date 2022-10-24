@@ -299,7 +299,7 @@ func (r *RuntimeInstance) Invoke(
 					txSimContext,
 					gasUsed,
 					contract.Name,
-					contract.Address,
+					contract,
 				)
 				if crossTxType != protocol.ExecOrderTxTypeNormal {
 					specialTxType = crossTxType

@@ -219,7 +219,7 @@ func mockPut(simContext *mock.MockTxSimContext, name string, key, value []byte) 
 	).AnyTimes()
 }
 
-//func mockPutIntoReadSet(simContext *mock.MockTxSimContext, name string, key, value []byte) {
+// func mockPutIntoReadSet(simContext *mock.MockTxSimContext, name string, key, value []byte) {
 func mockPutIntoReadSet(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().PutIntoReadSet(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 		func(name string, key, value []byte) {
@@ -292,16 +292,16 @@ func getMockedCMConfig() (map[string]interface{}, error) {
 // ========== Mock Kv Iterator ==========
 
 /*
-	| Key   | Field   | Value |
-	| ---   | ---     | ---   |
-	| key1  | field1  | val   |
-	| key1  | field2  | val   |
-	| key1  | field23 | val   |
-	| ey1   | field3  | val   |
-	| key2  | field1  | val   |
-	| key3  | field2  | val   |
-	| key33 | field2  | val   |
-	| key4  | field3  | val   |
+| Key   | Field   | Value |
+| ---   | ---     | ---   |
+| key1  | field1  | val   |
+| key1  | field2  | val   |
+| key1  | field23 | val   |
+| ey1   | field3  | val   |
+| key2  | field1  | val   |
+| key3  | field2  | val   |
+| key33 | field2  | val   |
+| key4  | field3  | val   |
 */
 func makeStringKeyMap() (map[string]*commonPb.TxWrite, []*store.KV) {
 	stringKeyMap := make(map[string]*commonPb.TxWrite)
@@ -837,8 +837,9 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 		gomock.Any(),
 		gomock.Any(),
 		gomock.Any(),
+		gomock.Any(),
 	).DoAndReturn(
-		func(contract *commonPb.Contract,
+		func(caller, contract *commonPb.Contract,
 			method string, byteCode []byte,
 			parameter map[string][]byte,
 			gasUsed uint64,

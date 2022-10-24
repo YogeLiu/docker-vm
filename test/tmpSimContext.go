@@ -51,7 +51,7 @@ func (s *TxContextMockTest) GetStrAddrFromPbMember(pbMember *acPb.Member) (strin
 	panic("implement me")
 }
 
-//GetNoRecord read data from state, but not record into read set, only used for framework
+// GetNoRecord read data from state, but not record into read set, only used for framework
 func (s *TxContextMockTest) GetNoRecord(contractName string, key []byte) ([]byte, error) {
 	//TODO implement me
 	panic("implement me")
@@ -115,7 +115,7 @@ func (s *TxContextMockTest) GetHistoryIterForKey(contractName string, key []byte
 }
 
 // CallContract cross contract call, return (contract result, gas used)
-func (s *TxContextMockTest) CallContract(contract *commonPb.Contract, method string, byteCode []byte,
+func (s *TxContextMockTest) CallContract(caller, contract *commonPb.Contract, method string, byteCode []byte,
 	parameter map[string][]byte, gasUsed uint64, refTxType commonPb.TxType) (*commonPb.ContractResult,
 	protocol.ExecOrderTxType, commonPb.TxStatusCode) {
 	panic("implement me")
@@ -367,6 +367,11 @@ func BaseParam(parameters map[string][]byte) {
 }
 
 type mockBlockchainStore struct {
+}
+
+func (m mockBlockchainStore) TxExistsInIncrementDBState(txId string, startHeight uint64) (bool, bool, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m mockBlockchainStore) CreateDatabase(contractName string) error {

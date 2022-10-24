@@ -143,7 +143,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	txSimContext protocol.TxSimContext,
 	gasUsed uint64,
 	currentContractName string,
-	caller string,
+	caller *commonPb.Contract,
 ) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
@@ -203,8 +203,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	}
 
 	parameters := callContractReq.Args
-	parameters[protocol.ContractCrossCallerParam] = []byte(caller)
-	result, specialTxType, code = txSimContext.CallContract(contract, contractMethod,
+	result, specialTxType, code = txSimContext.CallContract(caller, contract, contractMethod,
 		nil, parameters, gasUsed, txSimContext.GetTx().Payload.TxType)
 	r.logger.DebugDynamic(func() string {
 		return fmt.Sprintf("call contract result [%+v]", result)
