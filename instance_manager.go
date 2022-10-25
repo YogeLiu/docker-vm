@@ -268,10 +268,9 @@ func validateVMSettings(dockerVMConfig *config.DockerVMConfig,
 			return fmt.Errorf("failed to abs DockerVMMountPath filepath, %s", dockerVMConfig.DockerVMMountPath)
 		}
 		//hostMountDir = filepath.Join(hostMountDir, chainId)
+	} else {
+		hostMountDir = dockerVMConfig.DockerVMMountPath
 	}
-	//else {
-	//	//hostMountDir = filepath.Join(config.DockerVMMountPath, chainId)
-	//}
 
 	// set host log directory
 	if !filepath.IsAbs(dockerVMConfig.DockerVMLogPath) {
@@ -280,10 +279,9 @@ func validateVMSettings(dockerVMConfig *config.DockerVMConfig,
 			return fmt.Errorf("failed to abs DockerVMLogPath filepath, %s", dockerVMConfig.DockerVMLogPath)
 		}
 		//hostLogDir = filepath.Join(hostLogDir, chainId)
+	} else {
+		hostMountDir = dockerVMConfig.DockerVMLogPath
 	}
-	//else {
-	//	//hostLogDir = filepath.Join(config.DockerVMLogPath, chainId)
-	//}
 
 	if dockerVMConfig.TxTimeout == 0 {
 		dockerVMConfig.TxTimeout = config.DefaultTxTimeout

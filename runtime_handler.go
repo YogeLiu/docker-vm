@@ -1243,6 +1243,11 @@ func (r *RuntimeInstance) extractContract(bytecode []byte, contractFullName stri
 	// range file list
 	for i := range fileInfoList {
 
+		// skip .7z file
+		if strings.HasSuffix(fileInfoList[i].Name(), ".7z") {
+			continue
+		}
+
 		r.logger.Debugf("found file [%s] [size: %d] while extract contract [%s]",
 			fileInfoList[i].Name(), fileInfoList[i].Size(), contractFullName)
 

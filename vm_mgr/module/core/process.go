@@ -525,6 +525,7 @@ func (p *Process) handleIdleTxRequest(tx *messages.TxPayload) error {
 	logger.DebugDynamic(p.logger, func() string {
 		return fmt.Sprintf("[%s] change state from idle to ready", p.getTxId())
 	})
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.updateProcessState(ready)

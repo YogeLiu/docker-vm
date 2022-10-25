@@ -733,6 +733,7 @@ func mockGetLastChainConfig(simContext *mock.MockTxSimContext, ctrl *gomock.Cont
 	blockchainStore.EXPECT().GetLastChainConfig().DoAndReturn(mockLastChainConfig).AnyTimes()
 
 	simContext.EXPECT().GetBlockchainStore().Return(blockchainStore).AnyTimes()
+	simContext.EXPECT().GetLastChainConfig().DoAndReturn(mockLastChainConfig).AnyTimes()
 }
 
 func mockLastChainConfig() (*configPb.ChainConfig, error) {

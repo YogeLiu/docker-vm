@@ -176,7 +176,9 @@ func (s *TxContextMockTest) GetContractBytecode(name string) ([]byte, error) {
 
 // GetLastChainConfig returns last chain config
 func (s *TxContextMockTest) GetLastChainConfig() *configPb.ChainConfig {
-	panic("implement me")
+	return &configPb.ChainConfig{
+		AccountConfig: nil,
+	}
 }
 
 // GetBlockVersion returns block version
