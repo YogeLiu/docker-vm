@@ -57,8 +57,7 @@ func setupTest(t *testing.T) {
 	//step4: mock contractId, contractBin
 	fmt.Printf("======step4 mock contractId and txContext=======\n")
 	mockContractId = initContractId(commonPb.RuntimeType_GO)
-	var ctrl *gomock.Controller
-	mockTxContext, ctrl = initMockSimContext(t)
+	mockTxContext = initMockSimContext(t)
 	mockNormalGetDepth(mockTxContext)
 	mockNormalGetrossInfo(mockTxContext)
 
@@ -78,7 +77,7 @@ func setupTest(t *testing.T) {
 	}
 
 	mockTxContext.EXPECT().GetContractBytecode(gomock.Any()).Return(contractBin, nil).AnyTimes()
-	mockGetLastChainConfig(mockTxContext, ctrl)
+	mockGetLastChainConfig(mockTxContext)
 
 	//step6: invoke user contract --- create user contract
 	fmt.Printf("=== step 6 init user contract ===\n")

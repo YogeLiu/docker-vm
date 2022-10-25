@@ -133,7 +133,7 @@ func newMockTestLogger(ctrl *gomock.Controller, name string) protocol.Logger {
 	return &GoLogger{}
 }
 
-func initMockSimContext(t *testing.T) (*mock.MockTxSimContext, *gomock.Controller) {
+func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	ctrl := gomock.NewController(t)
 	simContext := mock.NewMockTxSimContext(ctrl)
 
@@ -158,7 +158,7 @@ func initMockSimContext(t *testing.T) (*mock.MockTxSimContext, *gomock.Controlle
 	mockPutIntoReadSet(simContext)
 	simContext.EXPECT().GetBlockFingerprint().Return(blockFingerprint).AnyTimes()
 
-	return simContext, ctrl
+	return simContext
 
 }
 
@@ -727,12 +727,7 @@ func mockQueryCert(name string, nothing interface{}) ([]byte, error) {
 //	return 0
 //}
 
-func mockGetLastChainConfig(simContext *mock.MockTxSimContext, ctrl *gomock.Controller) {
-
-	blockchainStore := mock.NewMockBlockchainStore(ctrl)
-	blockchainStore.EXPECT().GetLastChainConfig().DoAndReturn(mockLastChainConfig).AnyTimes()
-
-	simContext.EXPECT().GetBlockchainStore().Return(blockchainStore).AnyTimes()
+func mockGetLastChainConfig(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().GetLastChainConfig().DoAndReturn(mockLastChainConfig).AnyTimes()
 }
 
