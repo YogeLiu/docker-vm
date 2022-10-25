@@ -174,6 +174,11 @@ func (s *TxContextMockTest) GetContractBytecode(name string) ([]byte, error) {
 	return utils.GetContractBytecode(s.Get, name)
 }
 
+// GetLastChainConfig returns last chain config
+func (s *TxContextMockTest) GetLastChainConfig() *configPb.ChainConfig {
+	panic("implement me")
+}
+
 // GetBlockVersion returns block version
 func (s *TxContextMockTest) GetBlockVersion() uint32 {
 	panic("implement me")

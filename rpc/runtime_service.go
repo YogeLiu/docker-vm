@@ -182,7 +182,8 @@ func (s *RuntimeService) sendRoutine(ss *serviceStream) {
 		select {
 		case msg := <-ss.sendResponseCh:
 			s.logger.DebugDynamic(func() string {
-				return fmt.Sprintf("get sys_call response from send chan, send to sandbox, txId [%s], type [%s]", msg.TxId, msg.Type)
+				return fmt.Sprintf("get sys_call response from send chan, send to sandbox, "+
+					"txId [%s], type [%s]", msg.TxId, msg.Type)
 			})
 			if err := ss.stream.Send(msg); err != nil {
 				errStatus, _ := status.FromError(err)

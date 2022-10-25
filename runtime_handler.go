@@ -750,14 +750,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		return getSenderAddressResponse, gasUsed
 	}
 
-	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
-	if err != nil {
-		r.logger.Error(err.Error())
-		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		getSenderAddressResponse.SysCallMessage.Message = err.Error()
-		getSenderAddressResponse.SysCallMessage.Payload = nil
-		return getSenderAddressResponse, gasUsed
-	}
+	chainConfig := txSimContext.GetLastChainConfig()
 
 	if chainConfig.Vm.AddrType == configPb.AddrType_ZXL {
 		zxAddr := strings.Builder{}

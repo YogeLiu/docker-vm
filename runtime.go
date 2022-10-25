@@ -15,8 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/singleflight"
-
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
@@ -45,8 +43,6 @@ var dockerVMMsgPool = sync.Pool{
 		}
 	},
 }
-
-var sf singleflight.Group
 
 // RuntimeInstance docker-go runtime
 type RuntimeInstance struct {
