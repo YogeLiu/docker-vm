@@ -160,9 +160,6 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 		default:
 			msg := protogo.DockerVMMessageFromPool()
 			err := c.stream.RecvMsg(msg)
-			if strings.HasSuffix(strings.Split(msg.TxId, "#")[0], "0000") {
-				c.logger.Infof("sample tx start send vm time")
-			}
 			if err != nil {
 				c.logger.Errorf("contract engine client receive err, %s", err)
 				close(c.stopSend)

@@ -90,9 +90,6 @@ func (r *RuntimeInstance) Invoke(
 		return fmt.Sprintf("start handling tx [%s]", originalTxId)
 	})
 
-	if strings.HasSuffix(originalTxId, "0000") {
-		r.logger.Infof("sample tx start invoke time")
-	}
 	// contract response
 	contractResult = &commonPb.ContractResult{
 		// TODO

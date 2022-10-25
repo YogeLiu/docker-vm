@@ -12,7 +12,6 @@ import (
 	"math"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"chainmaker.org/chainmaker/protocol/v2"
@@ -187,9 +186,6 @@ func (r *RequestGroup) PutMsg(msg interface{}) error {
 		//utils.EnterNextStep(req, protogo.StepType_ENGINE_GROUP_RECEIVE_TX_REQUEST,
 		//	fmt.Sprintf("group tx chan size: %d", len(r.txCh)))
 		r.txCh <- req
-		if strings.HasSuffix(strings.Split(req.TxId, "#")[0], "0000") {
-			r.logger.Infof("sample tx start euqueue request group time")
-		}
 	case *messages.CloseMsg:
 		r.stopCh <- struct{}{}
 	default:

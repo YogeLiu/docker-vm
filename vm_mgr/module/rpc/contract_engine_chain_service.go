@@ -10,7 +10,6 @@ package rpc
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
@@ -120,9 +119,6 @@ func (s *ChainRPCService) recvMsgRoutine(conn *communicateConn) {
 
 			switch msg.Type {
 			case protogo.DockerVMType_TX_REQUEST:
-				if strings.HasSuffix(strings.Split(msg.TxId, "#")[0], "0000") {
-					s.logger.Infof("sample tx start schedule tx time")
-				}
 				logger.DebugDynamic(s.logger, func() string {
 					return fmt.Sprintf("chain -> contract engine, put request [%s] into request scheduler", msg.TxId)
 				})

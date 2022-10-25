@@ -36,9 +36,6 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	var err error
 	txResponse := recvMsg.Response
 
-	if strings.HasSuffix(strings.Split(recvMsg.TxId, "#")[0], "0000") {
-		r.logger.Infof("sample tx start handle tx resp time")
-	}
 	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, func() string {
 		return strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.Size())}, ":")
 	})
@@ -49,9 +46,6 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		})
 		if str, ok := utils.PrintTxStepsWithTime(recvMsg); ok {
 			r.logger.Warnf("[%s] slow tx execution, %s", recvMsg.TxId, str)
-		}
-		if strings.HasSuffix(strings.Split(recvMsg.TxId, "#")[0], "0000") {
-			r.logger.Infof("sample tx end handle tx resp time")
 		}
 	}()
 
@@ -1260,9 +1254,6 @@ func (r *RuntimeInstance) extractContract(bytecode []byte, contractFullName stri
 			fileInfoList[i].Name(), fileInfoList[i].Size(), contractFullName)
 
 		// skip .7z file
-		if strings.HasSuffix(fileInfoList[i].Name(), ".7z") {
-			continue
-		}
 
 		// get contract bin file path
 		fp := filepath.Join(tmpContractDir, fileInfoList[i].Name())
