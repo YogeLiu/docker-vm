@@ -18,6 +18,7 @@ var pbPool = sync.Pool{
 	},
 }
 
+// ReturnToPool return pb msg to pool
 func ReturnToPool(m *protogo.DockerVMMessage) {
 	if m != nil {
 		m.Reset()
@@ -25,6 +26,7 @@ func ReturnToPool(m *protogo.DockerVMMessage) {
 	}
 }
 
+// DockerVMMessageFromPool get pb msg from pool
 func DockerVMMessageFromPool() *protogo.DockerVMMessage {
 	return pbPool.Get().(*protogo.DockerVMMessage)
 }
