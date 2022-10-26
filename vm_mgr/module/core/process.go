@@ -314,7 +314,7 @@ func (p *Process) listenProcess() {
 				if err := p.handleTxResp(resp); err != nil {
 					p.logger.Warnf("failed to handle tx response, %v", err)
 				}
-				resp.ReturnToPool()
+				utils.ReturnToPool(resp)
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
@@ -481,12 +481,12 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 		return fmt.Sprintf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
 	})
 
-	p.Tx.ReturnToPool()
+	utils.ReturnToPool(p.Tx)
 	p.Tx = tx.Tx
 
 	p.updateProcessState(busy)
 
-	msg := protogo.DockerVMMessageFromPool()
+	msg := utils.DockerVMMessageFromPool()
 	msg.ChainId = p.chainID
 	msg.TxId = p.Tx.TxId
 	msg.CrossContext = p.Tx.CrossContext

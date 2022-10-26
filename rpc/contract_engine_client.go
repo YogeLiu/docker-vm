@@ -158,7 +158,7 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			c.logger.Debugf("close contract engine client receive goroutine")
 			return
 		default:
-			msg := protogo.DockerVMMessageFromPool()
+			msg := utils.DockerVMMessageFromPool()
 			err := c.stream.RecvMsg(msg)
 			if err != nil {
 				c.logger.Errorf("contract engine client receive err, %s", err)

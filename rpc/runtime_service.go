@@ -131,7 +131,7 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 			ss.wg.Done()
 			return
 		default:
-			msg := protogo.DockerVMMessageFromPool()
+			msg := utils.DockerVMMessageFromPool()
 			err := ss.stream.RecvMsg(msg)
 			if err != nil {
 				if err == io.EOF || status.Code(err) == codes.Canceled {

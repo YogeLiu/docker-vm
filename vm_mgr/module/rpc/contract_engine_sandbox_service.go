@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io"
 
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
+
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
@@ -49,7 +51,7 @@ func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessMana
 func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	var process interfaces.Process
 	for {
-		msg := protogo.DockerVMMessageFromPool()
+		msg := utils.DockerVMMessageFromPool()
 		err := stream.RecvMsg(msg)
 
 		if err != nil {

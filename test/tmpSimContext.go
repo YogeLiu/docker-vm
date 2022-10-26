@@ -25,7 +25,7 @@ var CertFilePath = "./testdata/admin1.sing.crt"
 var file []byte
 
 // TxContextMockTest mock tx context test
-// nolint: unused, structcheck
+// nolint: unused, struct check
 type TxContextMockTest struct {
 	lock          *sync.Mutex
 	vmManager     protocol.VmManager
@@ -358,16 +358,4 @@ func (*TxContextMockTest) SetTxExecSeq(i int) {
 // GetDepth returns cross contract call depth
 func (s *TxContextMockTest) GetDepth() int {
 	return s.currentDepth
-}
-
-// BaseParam is base params for test
-func BaseParam(parameters map[string][]byte) {
-	parameters[protocol.ContractTxIdParam] = []byte("TX_ID")
-	parameters[protocol.ContractCreatorOrgIdParam] = []byte("org_a")
-	parameters[protocol.ContractCreatorRoleParam] = []byte("admin")
-	parameters[protocol.ContractCreatorPkParam] = []byte("1234567890abcdef1234567890abcdef")
-	parameters[protocol.ContractSenderOrgIdParam] = []byte("org_b")
-	parameters[protocol.ContractSenderRoleParam] = []byte("user")
-	parameters[protocol.ContractSenderPkParam] = []byte("11223344556677889900aabbccddeeff")
-	parameters[protocol.ContractBlockHeightParam] = []byte("1")
 }
