@@ -17,8 +17,8 @@ chainmaker.org/chainmaker/utils/v2 v2.3.1 h1:+H7hSShIMPQGrIHYC6hkIVBnn5N7+jtGG0x
 chainmaker.org/chainmaker/utils/v2 v2.3.1/go.mod h1:NXZXc0fVrRCpWqrVyFP/WyobSeT3gz2zmL4uA0Lqvoo=
 chainmaker.org/chainmaker/vm-native/v2 v2.3.2-0.20221024124606-c4c3e73fea7b h1:muoLZvBKF+EaYTLMHDAzDNxUe2ufLhirbGDDzredg4g=
 chainmaker.org/chainmaker/vm-native/v2 v2.3.2-0.20221024124606-c4c3e73fea7b/go.mod h1:c8O2rT3mnYt9sXxcWgLQE9nLOgXgUU+ERiPkVW1+F7E=
-chainmaker.org/chainmaker/vm/v2 v2.3.1-0.20221027113643-91157345a2bd h1:S/fr/qKXbHLvw4JSDBcUMAdUnW8jZEo/Lg9q4gaW3RU=
-chainmaker.org/chainmaker/vm/v2 v2.3.1-0.20221027113643-91157345a2bd/go.mod h1:GDNdTcZZCEbeDdOmfJ/QnnJ2/xJ3OESEQBSEcFjy52Q=
+chainmaker.org/chainmaker/vm/v2 v2.3.1-0.20221027122110-c35cf46b079c h1:xlEQM1QTwV1HiSIwH9/CK00AMYGoSxkIDfSYMreu2W8=
+chainmaker.org/chainmaker/vm/v2 v2.3.1-0.20221027122110-c35cf46b079c/go.mod h1:GDNdTcZZCEbeDdOmfJ/QnnJ2/xJ3OESEQBSEcFjy52Q=
 chainmaker.org/third_party/cuckoo-filter v1.0.0 h1:YLeHR9IxaIxZDoODQSRDe7glygrWYEGGMbiDDxoYufw=
 chainmaker.org/third_party/cuckoo-filter v1.0.0/go.mod h1:L3YZEEsEkbEEWCA2r4sVk1dkrqz+TZ+uxGihtb6BwwI=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
