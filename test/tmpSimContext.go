@@ -29,7 +29,6 @@ var file []byte
 type TxContextMockTest struct {
 	lock          *sync.Mutex
 	vmManager     protocol.VmManager
-	gasUsed       uint64 // only for callContract
 	currentDepth  int
 	currentResult []byte
 	hisResult     []*callContractResult
