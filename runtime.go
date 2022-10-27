@@ -267,7 +267,8 @@ func (r *RuntimeInstance) Invoke(
 				})
 
 			case protogo.DockerVMType_TX_RESPONSE:
-				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext, gasUsed, specialTxType)
+				result, txType := r.handleTxResponse(originalTxId, recvMsg, txSimContext,
+					gasUsed, specialTxType, contract.Name)
 				r.logger.DebugDynamic(func() string {
 					return fmt.Sprintf("tx [%s] finish handle response", originalTxId)
 				})
@@ -291,7 +292,6 @@ func (r *RuntimeInstance) Invoke(
 					recvMsg,
 					txSimContext,
 					gasUsed,
-					contract.Name,
 					contract,
 				)
 				if crossTxType != protocol.ExecOrderTxTypeNormal {
@@ -308,7 +308,8 @@ func (r *RuntimeInstance) Invoke(
 				})
 				var createKvIteratorResponse *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
-				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
+				createKvIteratorResponse, gasUsed = r.handleCreateKvIterator(uniqueTxKey, recvMsg, txSimContext,
+					gasUsed, contract.Name)
 
 				r.sendSysResponse(createKvIteratorResponse)
 				r.logger.DebugDynamic(func() string {
@@ -334,7 +335,8 @@ func (r *RuntimeInstance) Invoke(
 				})
 				var createKeyHistoryIterResp *protogo.DockerVMMessage
 				specialTxType = protocol.ExecOrderTxTypeIterator
-				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxKey, recvMsg, txSimContext, gasUsed)
+				createKeyHistoryIterResp, gasUsed = r.handleCreateKeyHistoryIterator(uniqueTxKey, recvMsg,
+					txSimContext, gasUsed, contract.Name)
 				r.sendSysResponse(createKeyHistoryIterResp)
 				r.logger.DebugDynamic(func() string {
 					return fmt.Sprintf("tx [%s] finish create key history iterator", uniqueTxKey)

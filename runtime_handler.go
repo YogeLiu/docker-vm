@@ -30,7 +30,7 @@ import (
 )
 
 func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType) (
+	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType, contractName string) (
 	contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
 
 	var err error
@@ -65,7 +65,7 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	contractResult.Message = txResponse.Message
 
 	// merge read map to sim context
-	if err = r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap()); err != nil {
+	if err = r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap(), contractName); err != nil {
 		r.logger.Errorf("fail to merge tx[%s] sim context read map, %v", txId, err)
 		return r.errorResult(contractResult, err, "fail to put in sim context")
 	}
@@ -74,7 +74,7 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	})
 
 	// merge write map to sim context
-	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
+	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed, contractName)
 	if err != nil {
 		r.logger.Errorf("fail to merge tx[%s] sim context write map, %v", txId, err)
 		contractResult.GasUsed = gasUsed
@@ -109,7 +109,7 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 }
 
 func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimContext,
-	readMap map[string][]byte) error {
+	readMap map[string][]byte, txContractName string) error {
 
 	for key, value := range readMap {
 		var contractName string
@@ -121,6 +121,9 @@ func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimCont
 			return fmt.Errorf("%s's key list length == %d, needs to be >= 2", key, keyLen)
 		}
 		contractName = keyList[0]
+		if contractName != txContractName {
+			return fmt.Errorf("wrong contract name [%s] of read map key, need [%s]", contractName, txContractName)
+		}
 		contractKey = keyList[1]
 		if keyLen == 3 {
 			contractField = keyList[2]
@@ -136,7 +139,6 @@ func (r *RuntimeInstance) handlerCallContract(
 	recvMsg *protogo.DockerVMMessage,
 	txSimContext protocol.TxSimContext,
 	gasUsed uint64,
-	currentContractName string,
 	caller *commonPb.Contract,
 ) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
 
@@ -230,7 +232,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	}
 
 	var callContractResponse *protogo.ContractResponse
-	callContractResponse, err = constructCallContractResponse(result, currentContractName, txSimContext)
+	callContractResponse, err = constructCallContractResponse(result, caller.Name, txSimContext)
 	if err != nil {
 		r.logger.Debugf("handle cross contract request failed, err: %s", err.Error())
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
@@ -401,7 +403,7 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 }
 
 func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
+	txSimContext protocol.TxSimContext, gasUsed uint64, contractName string) (*protogo.DockerVMMessage, uint64) {
 
 	createKvIteratorResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CREATE_KV_ITERATOR_RESPONSE)
 
@@ -435,7 +437,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 		}
 	}
 
-	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed)
+	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed, contractName)
 	if err != nil {
 		r.logger.Errorf("merge the sim context write map failed, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
@@ -583,7 +585,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 }
 
 func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
+	txSimContext protocol.TxSimContext, gasUsed uint64, contractName string) (*protogo.DockerVMMessage, uint64) {
 
 	createKeyHistoryIterResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CREATE_KEY_HISTORY_TER_RESPONSE)
 
@@ -619,7 +621,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 		return createKeyHistoryIterResponse, gasUsed
 	}
 
-	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed)
+	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed, contractName)
 	if err != nil {
 		r.logger.Errorf("merge the sim context write map failed, %s", err.Error())
 		createKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
@@ -808,9 +810,9 @@ func kvIteratorClose(kvIterator protocol.StateIterator, gasUsed uint64,
 }
 
 func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimContext,
-	writeMap map[string][]byte, gasUsed uint64) (uint64, error) {
-	// merge the sim context write map
+	writeMap map[string][]byte, gasUsed uint64, txContractName string) (uint64, error) {
 
+	// merge the sim context write map
 	for key, value := range writeMap {
 		var contractName string
 		var contractKey string
@@ -821,6 +823,10 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 			return gasUsed, fmt.Errorf("key list length == %d, needs to be >= 2", keyLen)
 		}
 		contractName = keyList[0]
+		if contractName != txContractName {
+			return gasUsed, fmt.Errorf("wrong contract name [%s] of write map key, need [%s]",
+				contractName, txContractName)
+		}
 		contractKey = keyList[1]
 		if keyLen == 3 {
 			contractField = keyList[2]
