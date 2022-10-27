@@ -30,16 +30,20 @@ import (
 )
 
 func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType) (
+	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType, contractName string) (
 	contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
 
 	var err error
 	txResponse := recvMsg.Response
 
-	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE,
-		strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.Size())}, ":"))
+	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, func() string {
+		return strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.Size())}, ":")
+	})
+
 	defer func() {
-		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, "")
+		utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE, func() string {
+			return ""
+		})
 		if str, ok := utils.PrintTxStepsWithTime(recvMsg); ok {
 			r.logger.Warnf("[%s] slow tx execution, %s", recvMsg.TxId, str)
 		}
@@ -61,20 +65,24 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 	contractResult.Message = txResponse.Message
 
 	// merge read map to sim context
-	if err = r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap()); err != nil {
+	if err = r.mergeSimContextReadMap(txSimContext, txResponse.GetReadMap(), contractName); err != nil {
 		r.logger.Errorf("fail to merge tx[%s] sim context read map, %v", txId, err)
 		return r.errorResult(contractResult, err, "fail to put in sim context")
 	}
-	r.logger.Debugf("merge tx[%s] sim context read map succeed", txId)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("merge tx[%s] sim context read map succeed", txId)
+	})
 
 	// merge write map to sim context
-	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed)
+	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, txResponse.GetWriteMap(), gasUsed, contractName)
 	if err != nil {
 		r.logger.Errorf("fail to merge tx[%s] sim context write map, %v", txId, err)
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, "fail to put in sim context")
 	}
-	r.logger.Debugf("merge tx[%s] sim context write map succeed", txId)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("merge tx[%s] sim context write map succeed", txId)
+	})
 
 	for _, event := range txResponse.Events {
 		contractEvent := &commonPb.ContractEvent{
@@ -101,7 +109,7 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 }
 
 func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimContext,
-	readMap map[string][]byte) error {
+	readMap map[string][]byte, txContractName string) error {
 
 	for key, value := range readMap {
 		var contractName string
@@ -113,6 +121,9 @@ func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimCont
 			return fmt.Errorf("%s's key list length == %d, needs to be >= 2", key, keyLen)
 		}
 		contractName = keyList[0]
+		if contractName != txContractName {
+			return fmt.Errorf("wrong contract name [%s] of read map key, need [%s]", contractName, txContractName)
+		}
 		contractKey = keyList[1]
 		if keyLen == 3 {
 			contractField = keyList[2]
@@ -128,8 +139,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	recvMsg *protogo.DockerVMMessage,
 	txSimContext protocol.TxSimContext,
 	gasUsed uint64,
-	currentContractName string,
-	caller string,
+	caller *commonPb.Contract,
 ) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
@@ -189,10 +199,11 @@ func (r *RuntimeInstance) handlerCallContract(
 	}
 
 	parameters := callContractReq.Args
-	parameters[protocol.ContractCrossCallerParam] = []byte(caller)
-	result, specialTxType, code = txSimContext.CallContract(contract, contractMethod,
+	result, specialTxType, code = txSimContext.CallContract(caller, contract, contractMethod,
 		nil, parameters, gasUsed, txSimContext.GetTx().Payload.TxType)
-	r.logger.Debugf("call contract result [%+v]", result)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("call contract result [%+v]", result)
+	})
 
 	if code != commonPb.TxStatusCode_SUCCESS {
 		errMsg := fmt.Sprintf("[call contract] execute error code: %s, msg: %s", code, result.Message)
@@ -221,7 +232,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	}
 
 	var callContractResponse *protogo.ContractResponse
-	callContractResponse, err = constructCallContractResponse(result, currentContractName, txSimContext)
+	callContractResponse, err = constructCallContractResponse(result, caller.Name, txSimContext)
 	if err != nil {
 		r.logger.Debugf("handle cross contract request failed, err: %s", err.Error())
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
@@ -316,7 +327,10 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 	}
 
 	//r.logger.Debug("get value: ", string(value))
-	r.logger.Debugf("[%s] get value: %s", txId, string(value))
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("[%s] get value: %s", txId, string(value))
+	})
+
 	response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
 	response.SysCallMessage.Payload = map[string][]byte{
 		config.KeyStateValue: value,
@@ -363,7 +377,9 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 		r.logger.Warnf("failed to add latest storage duration, %v", err)
 	}
 
-	r.logger.Debugf("get batch keys values: %v", getKeys)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("get batch keys values: %v", getKeys)
+	})
 	resp := vmPb.BatchKeys{Keys: getKeys}
 	payload, err = resp.Marshal()
 	if err != nil {
@@ -387,7 +403,7 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 }
 
 func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
+	txSimContext protocol.TxSimContext, gasUsed uint64, contractName string) (*protogo.DockerVMMessage, uint64) {
 
 	createKvIteratorResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CREATE_KV_ITERATOR_RESPONSE)
 
@@ -421,7 +437,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 		}
 	}
 
-	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed)
+	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed, contractName)
 	if err != nil {
 		r.logger.Errorf("merge the sim context write map failed, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
@@ -569,7 +585,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 }
 
 func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *protogo.DockerVMMessage,
-	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
+	txSimContext protocol.TxSimContext, gasUsed uint64, contractName string) (*protogo.DockerVMMessage, uint64) {
 
 	createKeyHistoryIterResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CREATE_KEY_HISTORY_TER_RESPONSE)
 
@@ -605,7 +621,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 		return createKeyHistoryIterResponse, gasUsed
 	}
 
-	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed)
+	gasUsed, err = r.mergeSimContextWriteMap(txSimContext, writeMap, gasUsed, contractName)
 	if err != nil {
 		r.logger.Errorf("merge the sim context write map failed, %s", err.Error())
 		createKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
@@ -736,14 +752,7 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 		return getSenderAddressResponse, gasUsed
 	}
 
-	chainConfig, err := txSimContext.GetBlockchainStore().GetLastChainConfig()
-	if err != nil {
-		r.logger.Error(err.Error())
-		getSenderAddressResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		getSenderAddressResponse.SysCallMessage.Message = err.Error()
-		getSenderAddressResponse.SysCallMessage.Payload = nil
-		return getSenderAddressResponse, gasUsed
-	}
+	chainConfig := txSimContext.GetLastChainConfig()
 
 	if chainConfig.Vm.AddrType == configPb.AddrType_ZXL {
 		zxAddr := strings.Builder{}
@@ -801,9 +810,9 @@ func kvIteratorClose(kvIterator protocol.StateIterator, gasUsed uint64,
 }
 
 func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimContext,
-	writeMap map[string][]byte, gasUsed uint64) (uint64, error) {
-	// merge the sim context write map
+	writeMap map[string][]byte, gasUsed uint64, txContractName string) (uint64, error) {
 
+	// merge the sim context write map
 	for key, value := range writeMap {
 		var contractName string
 		var contractKey string
@@ -814,6 +823,10 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 			return gasUsed, fmt.Errorf("key list length == %d, needs to be >= 2", keyLen)
 		}
 		contractName = keyList[0]
+		if contractName != txContractName {
+			return gasUsed, fmt.Errorf("wrong contract name [%s] of write map key, need [%s]",
+				contractName, txContractName)
+		}
 		contractKey = keyList[1]
 		if keyLen == 3 {
 			contractField = keyList[2]
@@ -1029,8 +1042,9 @@ func (r *RuntimeInstance) handleGetByteCodeRequest(
 	)
 
 	contractName := recvMsg.Request.ContractName
-	r.logger.Debugf("contract name: %s", contractName)
-	r.logger.Debugf("contract full name: %s", contractFullName)
+	r.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("contract name: %s, contract full name: %s", contractName, contractFullName)
+	})
 
 	sendContract := r.clientMgr.NeedSendContractByteCode()
 
@@ -1235,13 +1249,15 @@ func (r *RuntimeInstance) extractContract(bytecode []byte, contractFullName stri
 	// range file list
 	for i := range fileInfoList {
 
-		r.logger.Debugf("found file [%s] [size: %d] while extract contract [%s]",
-			fileInfoList[i].Name(), fileInfoList[i].Size(), contractFullName)
-
 		// skip .7z file
 		if strings.HasSuffix(fileInfoList[i].Name(), ".7z") {
 			continue
 		}
+
+		r.logger.Debugf("found file [%s] [size: %d] while extract contract [%s]",
+			fileInfoList[i].Name(), fileInfoList[i].Size(), contractFullName)
+
+		// skip .7z file
 
 		// get contract bin file path
 		fp := filepath.Join(tmpContractDir, fileInfoList[i].Name())

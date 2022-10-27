@@ -34,8 +34,8 @@ func TestDockerGoCrossCall(t *testing.T) {
 		Address:     "",
 	}
 
-	mockTxContext2, ctrl := initMockSimContext(t)
-	mockGetLastChainConfig(mockTxContext2, ctrl)
+	mockTxContext2 := initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext2)
 	mockCrossCallGetDepth(mockTxContext2)
 	mockCrossCallGetCrossInfo(mockTxContext2)
 

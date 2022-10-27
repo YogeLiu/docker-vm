@@ -7,6 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
+	"reflect"
+	"strconv"
+	"testing"
+
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
@@ -15,9 +19,6 @@ import (
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
 	"github.com/emirpasic/gods/maps/linkedhashmap"
-	"reflect"
-	"strconv"
-	"testing"
 )
 
 func TestNewProcessManager(t *testing.T) {
@@ -30,7 +31,7 @@ func TestNewProcessManager(t *testing.T) {
 
 	idleProcesses := linkedhashmap.New()
 	busyProcesses := make(map[string]interfaces.Process)
-	processGroups := make(map[string]map[string]bool)
+	processGroups := make(map[string]map[string]interfaces.Process)
 	waitingRequestGroups := linkedhashmap.New()
 
 	log := logger.NewTestDockerLogger()
@@ -272,15 +273,15 @@ func TestProcessManager_GetProcessNumByContractKey(t *testing.T) {
 	processManager := NewProcessManager(maxOriginalProcessNum, releaseRate, false, userManager)
 	processManager.logger = log
 
-	processManager.processGroups["chain1#testContractName#1.0.0"] = make(map[string]bool)
-	processManager.processGroups["chain1#testContractName#1.0.0"]["process1"] = true
-	processManager.processGroups["chain1#testContractName#1.0.0"]["process2"] = true
+	processManager.processGroups["chain1#testContractName#1.0.0"] = make(map[string]interfaces.Process)
+	processManager.processGroups["chain1#testContractName#1.0.0"]["process1"] = &Process{}
+	processManager.processGroups["chain1#testContractName#1.0.0"]["process2"] = &Process{}
 
-	processManager.processGroups["chain1#testContractName#1.0.1"] = make(map[string]bool)
-	processManager.processGroups["chain1#testContractName#1.0.1"]["process1"] = true
+	processManager.processGroups["chain1#testContractName#1.0.1"] = make(map[string]interfaces.Process)
+	processManager.processGroups["chain1#testContractName#1.0.1"]["process1"] = &Process{}
 
-	processManager.processGroups["chain1#testContractName2#1.0.0"] = make(map[string]bool)
-	processManager.processGroups["chain1#testContractName2#1.0.0"]["process1"] = true
+	processManager.processGroups["chain1#testContractName2#1.0.0"] = make(map[string]interfaces.Process)
+	processManager.processGroups["chain1#testContractName2#1.0.0"]["process1"] = &Process{}
 
 	type args struct {
 		chainID         string
@@ -615,7 +616,7 @@ func TestProcessManager_addToProcessGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pm := tt.fields.processManager
-			pm.addToProcessGroup(tt.args.chainID, tt.args.contractName, tt.args.contractVersion, tt.args.processName)
+			pm.addToProcessGroup(&Process{}, tt.args.chainID, tt.args.contractName, tt.args.contractVersion, tt.args.processName)
 			groupKey := utils.ConstructContractKey(tt.args.chainID, tt.args.contractName, tt.args.contractVersion)
 			_, ok := pm.processGroups[groupKey][tt.args.processName]
 			if ok != tt.wantInCache {
@@ -712,12 +713,12 @@ func TestProcessManager_allocateIdleProcess(t *testing.T) {
 			}
 			idleProcessNum := pm.idleProcesses.Size()
 			if idleProcessNum != tt.wantIdleProcessNum {
-				t.Errorf("handleAllocateIdleProcesses() _idle process size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() idle process size = %v, "+
 					"wantIdleProcessNum %v", idleProcessNum, tt.wantIdleProcessNum)
 			}
 			busyProcessNum := len(pm.busyProcesses)
 			if busyProcessNum != tt.wantBusyProcessNum {
-				t.Errorf("handleAllocateIdleProcesses() _busy process size = %v, "+
+				t.Errorf("handleAllocateIdleProcesses() busy process size = %v, "+
 					"wantBusyProcessNum %v", busyProcessNum, tt.wantBusyProcessNum)
 			}
 			origContractProcessNum := len(pm.processGroups["chain1#testContractName1#1.0.0"])
@@ -948,7 +949,7 @@ func TestProcessManager_handleCleanIdleProcesses(t *testing.T) {
 			pm := tt.fields.processManager
 			pm.handleCleanIdleProcesses()
 			if tt.wantIdleProcessNum != pm.idleProcesses.Size() {
-				t.Errorf("handleCleanIdleProcesses() _idle process num= %v, want %v", pm.idleProcesses.Size(), tt.wantIdleProcessNum)
+				t.Errorf("handleCleanIdleProcesses() idle process num= %v, want %v", pm.idleProcesses.Size(), tt.wantIdleProcessNum)
 			}
 		})
 	}
@@ -1039,10 +1040,10 @@ func TestProcessManager_handleGetProcessReq(t *testing.T) {
 			pm := tt.fields.processManager
 			pm.handleGetProcessReq(tt.args.msg)
 			if tt.wantBusyProcessNum != len(pm.busyProcesses) {
-				t.Errorf("TestProcessManager_handleGetProcessReq() _busy process num= %v, want %v", len(pm.busyProcesses), tt.wantBusyProcessNum)
+				t.Errorf("TestProcessManager_handleGetProcessReq() busy process num= %v, want %v", len(pm.busyProcesses), tt.wantBusyProcessNum)
 			}
 			if tt.wantIdleProcessNum != pm.idleProcesses.Size() {
-				t.Errorf("TestProcessManager_handleGetProcessReq() _idle process num= %v, want %v", pm.idleProcesses.Size(), tt.wantIdleProcessNum)
+				t.Errorf("TestProcessManager_handleGetProcessReq() idle process num= %v, want %v", pm.idleProcesses.Size(), tt.wantIdleProcessNum)
 			}
 			if tt.wantContract1ProcessNum != len(pm.processGroups[contractKey1]) {
 				t.Errorf("TestProcessManager_handleGetProcessReq() contract1 process num= %v, want %v", len(pm.processGroups[contractKey1]), tt.wantContract1ProcessNum)

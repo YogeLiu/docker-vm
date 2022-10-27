@@ -49,8 +49,9 @@ type ContractEngineConfig struct {
 
 // SlowTxLogConfig is the slow tx log
 type SlowTxLogConfig struct {
-	StepBaseTime int `mapstructure:"step_base_time"`
-	TxBaseTime   int `mapstructure:"tx_base_time"`
+	StepBaseTime int  `mapstructure:"step_base_time"`
+	TxBaseTime   int  `mapstructure:"tx_base_time"`
+	Disable      bool `mapstructure:"disable"`
 }
 
 // DockerContainerConfig docker container settings
@@ -76,9 +77,9 @@ const (
 	//ENV_MAX_LOCAL_CONTRACT_NUM = "ENV_MAX_LOCAL_CONTRACT_NUM"
 
 	// DefaultMaxSendSize is the default max send size
-	DefaultMaxSendSize = 4
+	DefaultMaxSendSize = 100
 	// DefaultMaxRecvSize is the default max recv size
-	DefaultMaxRecvSize = 4
+	DefaultMaxRecvSize = 100
 	//DefaultTxTimeLimit         = 5
 	//DefaultMaxConcurrency      = 50
 	//DefaultMaxLocalContractNum = 1024

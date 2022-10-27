@@ -133,7 +133,7 @@ func newMockTestLogger(ctrl *gomock.Controller, name string) protocol.Logger {
 	return &GoLogger{}
 }
 
-func initMockSimContext(t *testing.T) (*mock.MockTxSimContext, *gomock.Controller) {
+func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	ctrl := gomock.NewController(t)
 	simContext := mock.NewMockTxSimContext(ctrl)
 
@@ -158,7 +158,7 @@ func initMockSimContext(t *testing.T) (*mock.MockTxSimContext, *gomock.Controlle
 	mockPutIntoReadSet(simContext)
 	simContext.EXPECT().GetBlockFingerprint().Return(blockFingerprint).AnyTimes()
 
-	return simContext, ctrl
+	return simContext
 
 }
 
@@ -219,7 +219,7 @@ func mockPut(simContext *mock.MockTxSimContext, name string, key, value []byte) 
 	).AnyTimes()
 }
 
-//func mockPutIntoReadSet(simContext *mock.MockTxSimContext, name string, key, value []byte) {
+// func mockPutIntoReadSet(simContext *mock.MockTxSimContext, name string, key, value []byte) {
 func mockPutIntoReadSet(simContext *mock.MockTxSimContext) {
 	simContext.EXPECT().PutIntoReadSet(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 		func(name string, key, value []byte) {
@@ -292,16 +292,16 @@ func getMockedCMConfig() (map[string]interface{}, error) {
 // ========== Mock Kv Iterator ==========
 
 /*
-	| Key   | Field   | Value |
-	| ---   | ---     | ---   |
-	| key1  | field1  | val   |
-	| key1  | field2  | val   |
-	| key1  | field23 | val   |
-	| ey1   | field3  | val   |
-	| key2  | field1  | val   |
-	| key3  | field2  | val   |
-	| key33 | field2  | val   |
-	| key4  | field3  | val   |
+| Key   | Field   | Value |
+| ---   | ---     | ---   |
+| key1  | field1  | val   |
+| key1  | field2  | val   |
+| key1  | field23 | val   |
+| ey1   | field3  | val   |
+| key2  | field1  | val   |
+| key3  | field2  | val   |
+| key33 | field2  | val   |
+| key4  | field3  | val   |
 */
 func makeStringKeyMap() (map[string]*commonPb.TxWrite, []*store.KV) {
 	stringKeyMap := make(map[string]*commonPb.TxWrite)
@@ -727,12 +727,8 @@ func mockQueryCert(name string, nothing interface{}) ([]byte, error) {
 //	return 0
 //}
 
-func mockGetLastChainConfig(simContext *mock.MockTxSimContext, ctrl *gomock.Controller) {
-
-	blockchainStore := mock.NewMockBlockchainStore(ctrl)
-	blockchainStore.EXPECT().GetLastChainConfig().DoAndReturn(mockLastChainConfig).AnyTimes()
-
-	simContext.EXPECT().GetBlockchainStore().Return(blockchainStore).AnyTimes()
+func mockGetLastChainConfig(simContext *mock.MockTxSimContext) {
+	simContext.EXPECT().GetLastChainConfig().DoAndReturn(mockLastChainConfig).AnyTimes()
 }
 
 func mockLastChainConfig() (*configPb.ChainConfig, error) {
@@ -837,8 +833,9 @@ func mockCallContract(simContext *mock.MockTxSimContext, param map[string][]byte
 		gomock.Any(),
 		gomock.Any(),
 		gomock.Any(),
+		gomock.Any(),
 	).DoAndReturn(
-		func(contract *commonPb.Contract,
+		func(caller, contract *commonPb.Contract,
 			method string, byteCode []byte,
 			parameter map[string][]byte,
 			gasUsed uint64,

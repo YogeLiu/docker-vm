@@ -16,7 +16,6 @@ import (
 	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
 	docker_go "chainmaker.org/chainmaker/vm-engine/v2"
-	"github.com/golang/mock/gomock"
 )
 
 const (
@@ -55,9 +54,8 @@ func TestDockerGoMemory(t *testing.T) {
 		Version:     ContractVersionTest,
 		RuntimeType: commonPb.RuntimeType_GO,
 	}
-	var ctrl *gomock.Controller
-	mockTxContext, ctrl = initMockSimContext(t)
-	mockGetLastChainConfig(mockTxContext, ctrl)
+	mockTxContext = initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext)
 	mockNormalGetDepth(mockTxContext)
 	mockNormalGetrossInfo(mockTxContext)
 

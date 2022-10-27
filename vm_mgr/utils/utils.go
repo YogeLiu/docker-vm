@@ -146,12 +146,15 @@ func exists(path string) (bool, error) {
 }
 
 // EnterNextStep enter next duration tx step
-func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, log string) {
+func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, getStr func() string) {
+	if config.DockerVMConfig.Slow.Disable {
+		return
+	}
 
 	if stepType != protogo.StepType_RUNTIME_PREPARE_TX_REQUEST {
 		endTxStep(msg)
 	}
-	addTxStep(msg, stepType, log)
+	addTxStep(msg, stepType, getStr())
 	if stepType == protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE {
 		endTxStep(msg)
 	}

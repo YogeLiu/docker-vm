@@ -158,10 +158,10 @@ func (u *UserManager) generateNewUser(uid int) error {
 		createSuccess = true
 	}
 
-	// add _created newUser to queue
+	// add created newUser to queue
 	err = u.userQueue.Enqueue(newUser)
 	if err != nil {
-		return fmt.Errorf("failed to add _created user %+v to queue, %v", newUser, err)
+		return fmt.Errorf("failed to add created user %+v to queue, %v", newUser, err)
 	}
 	//u.logger.Debugf("success add newUser to newUser queue: %+v", newUser)
 

@@ -111,10 +111,12 @@ func (c *ContractEngineClient) sendMsgRoutine() {
 	for {
 		select {
 		case txReq := <-c.clientMgr.GetTxSendCh():
-			c.logger.Debugf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
-			utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST,
-				strings.Join([]string{"msgSize", strconv.Itoa(txReq.Size())}, ":"))
-
+			c.logger.DebugDynamic(func() string {
+				return fmt.Sprintf("[%s] send tx req, chan len: [%d]", txReq.TxId, c.clientMgr.GetTxSendChLen())
+			})
+			utils.EnterNextStep(txReq, protogo.StepType_RUNTIME_GRPC_SEND_TX_REQUEST, func() string {
+				return strings.Join([]string{"msgSize", strconv.Itoa(txReq.Size())}, ":")
+			})
 			err = c.sendMsg(txReq)
 		case getByteCodeResp := <-c.clientMgr.GetByteCodeRespSendCh():
 			c.logger.Debugf(
@@ -156,8 +158,8 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			c.logger.Debugf("close contract engine client receive goroutine")
 			return
 		default:
-			msg, err := c.stream.Recv()
-
+			msg := utils.DockerVMMessageFromPool()
+			err := c.stream.RecvMsg(msg)
 			if err != nil {
 				c.logger.Errorf("contract engine client receive err, %s", err)
 				close(c.stopSend)
@@ -194,12 +196,15 @@ func (c *ContractEngineClient) receiveMsgRoutine() {
 			default:
 				c.logger.Errorf("unknown message type, received msg: [%v]", msg)
 			}
+			//msg.ReturnToPool()
 		}
 	}
 }
 
 func (c *ContractEngineClient) sendMsg(msg *protogo.DockerVMMessage) error {
-	c.logger.Debugf("send message[%s], type: [%s]", msg.TxId, msg.Type)
+	c.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("send message[%s], type: [%s]", msg.TxId, msg.Type)
+	})
 	//c.logger.Debugf("msg [%+v]", msg)
 	return c.stream.Send(msg)
 }

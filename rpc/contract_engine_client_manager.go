@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -135,7 +136,9 @@ func (cm *ContractEngineClientManager) registerNotify(
 	cm.notifyLock.Lock()
 	defer cm.notifyLock.Unlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
-	cm.logger.Debugf("register notify for [%s]", notifyKey)
+	cm.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("register notify for [%s]", notifyKey)
+	})
 
 	_, ok := cm.notify[notifyKey]
 	if ok {
@@ -151,13 +154,16 @@ func (cm *ContractEngineClientManager) DeleteNotify(chainId, txId string) bool {
 	cm.notifyLock.Lock()
 	defer cm.notifyLock.Unlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
-	cm.logger.Debugf("[%s] delete notify", notifyKey)
+	cm.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("[%s] delete notify", notifyKey)
+	})
 	if _, ok := cm.notify[notifyKey]; ok {
 		delete(cm.notify, notifyKey)
 		return true
 	}
-
-	cm.logger.Debugf("[%s] delete notify fail, notify is already deleted", notifyKey)
+	cm.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("[%s] delete notify fail, notify is already deleted", notifyKey)
+	})
 	return false
 }
 
@@ -214,7 +220,10 @@ func (cm *ContractEngineClientManager) GetReceiveNotify(chainId, txId string) fu
 	cm.notifyLock.RLock()
 	defer cm.notifyLock.RUnlock()
 	notifyKey := utils.ConstructNotifyMapKey(chainId, txId)
-	cm.logger.Debugf("get notify for [%s]", notifyKey)
+	cm.logger.DebugDynamic(func() string {
+		return fmt.Sprintf("get notify for [%s]", notifyKey)
+	})
+
 	notify, ok := cm.notify[notifyKey]
 	if !ok {
 		cm.logger.Debugf("get receive notify[%s] failed, please check your key", notifyKey)

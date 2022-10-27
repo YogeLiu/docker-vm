@@ -38,15 +38,15 @@ type ProcessManager struct {
 	releaseRate   float64 // the minimum rate of available process
 	isOrigManager bool    // cross process manager or original process manager
 
-	idleProcesses        *linkedhashmap.Map                       // _idle processes linked hashmap (process name -> _idle Process)
-	busyProcesses        map[string]interfaces.Process            // _busy process map (process name -> _busy Process)
+	idleProcesses        *linkedhashmap.Map                       // idle processes linked hashmap (process name -> idle Process)
+	busyProcesses        map[string]interfaces.Process            // busy process map (process name -> busy Process)
 	processGroups        map[string]map[string]interfaces.Process // process group by contract key (contract key -> Process name set)
 	waitingRequestGroups *linkedhashmap.Map                       // waiting request groups linked hashmap (group key -> bool)
 
 	eventCh        chan interface{} // process manager event channel
 	allocateIdleCh chan struct{}
 	allocateNewCh  chan struct{}
-	cleanTimer     *time.Timer // clean timer for release _idle processes
+	cleanTimer     *time.Timer // clean timer for release idle processes
 
 	userManager      interfaces.UserManager      // user manager
 	requestScheduler interfaces.RequestScheduler // request scheduler
@@ -115,12 +115,12 @@ func (pm *ProcessManager) Start() {
 
 			case <-pm.allocateIdleCh:
 				if err := pm.handleAllocateIdleProcesses(); err != nil {
-					pm.logger.Errorf("failed to allocate _idle processes, %v", err)
+					pm.logger.Errorf("failed to allocate idle processes, %v", err)
 				}
 
 			case <-pm.allocateNewCh:
 				if err := pm.handleAllocateNewProcesses(); err != nil {
-					pm.logger.Errorf("failed to allocate _idle processes, %v", err)
+					pm.logger.Errorf("failed to allocate idle processes, %v", err)
 				}
 
 			}
@@ -190,25 +190,29 @@ func (pm *ProcessManager) ChangeProcessState(processName string, toBusy bool) er
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
-	pm.logger.Debugf("start change process %s state", processName)
+	logger.DebugDynamic(pm.logger, func() string {
+		return fmt.Sprintf("start change process %s state", processName)
+	})
 
 	if toBusy {
 		process, ok := pm.idleProcesses.Get(processName)
 		if !ok {
-			return fmt.Errorf("process not exist in _idle processes")
+			return fmt.Errorf("process not exist in idle processes")
 		}
 		pm.busyProcesses[processName] = process.(interfaces.Process)
 		pm.idleProcesses.Remove(processName)
 	} else {
 		process, ok := pm.busyProcesses[processName]
 		if !ok {
-			return fmt.Errorf("process not exist in _busy processes")
+			return fmt.Errorf("process not exist in busy processes")
 		}
 		pm.addProcessToIdle(processName, process)
 		delete(pm.busyProcesses, processName)
 	}
 
-	pm.logger.Debugf("end change process %s state", processName)
+	logger.DebugDynamic(pm.logger, func() string {
+		return fmt.Sprintf("end change process %s state", processName)
+	})
 
 	return nil
 }
@@ -221,12 +225,16 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 	groupKey := utils.ConstructContractKey(msg.ChainID, msg.ContractName, msg.ContractVersion)
 
-	pm.logger.Debugf("request group %s request to get %d process(es)", groupKey, msg.ProcessNum)
+	logger.DebugDynamic(pm.logger, func() string {
+		return fmt.Sprintf("request group %s request to get %d process(es)", groupKey, msg.ProcessNum)
+	})
 
 	// do not need any process
 	if msg.ProcessNum == 0 {
 		pm.removeFromWaitingGroup(msg.ChainID, msg.ContractName, msg.ContractVersion)
-		pm.logger.Debugf("request group %s does not need more processes, removed from waiting request group", groupKey)
+		logger.DebugDynamic(pm.logger, func() string {
+			return fmt.Sprintf("request group %s does not need more processes, removed from waiting request group", groupKey)
+		})
 
 		return nil
 	}
@@ -270,13 +278,13 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 	allocatedAvailableProcessNum := msg.ProcessNum - needProcessNum
 
 	idleProcessesSize := pm.idleProcesses.Size()
-	// 2. allocate processes from _idle processes
+	// 2. allocate processes from idle processes
 	if needProcessNum > 0 && idleProcessesSize > 0 {
 		newProcessNum := utils.Min(needProcessNum, idleProcessesSize)
-		// _idle processes to remove
+		// idle processes to remove
 		idleProcesses, err := pm.peekIdleProcesses(newProcessNum)
 		if err != nil {
-			return fmt.Errorf("failed to peek _idle processes, %v", err)
+			return fmt.Errorf("failed to peek idle processes, %v", err)
 		}
 
 		// change processes context concurrently
@@ -293,7 +301,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 				oldContractVersion := process.GetContractVersion()
 				oldProcessName := process.GetProcessName()
 
-				// meet the same _idle process
+				// meet the same idle process
 				if msg.ContractName == oldContractName && msg.ContractVersion == oldContractVersion {
 					lock.Lock()
 					defer lock.Unlock()
@@ -313,7 +321,7 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 				lock.Lock()
 				defer lock.Unlock()
-				// remove process from _idle process list, add to _busy process list
+				// remove process from idle process list, add to busy process list
 				needProcessNum--
 				pm.removeProcessFromCache(oldChainID, oldContractName, oldContractVersion, oldProcessName)
 				pm.addProcessToCache(msg.ChainID, msg.ContractName, msg.ContractVersion, newProcessName, process, true)
@@ -325,9 +333,11 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 
 	allocatedIdleProcessNum := msg.ProcessNum - allocatedAvailableProcessNum - needProcessNum
 
-	pm.logger.Debugf("request group %s request to get %d process(es), "+
-		"allocated %d available process(es), %d _idle process(es)", groupKey,
-		msg.ProcessNum, allocatedAvailableProcessNum, allocatedIdleProcessNum)
+	logger.DebugDynamic(pm.logger, func() string {
+		return fmt.Sprintf("request group %s request to get %d process(es), "+
+			"allocated %d available process(es), %d idle process(es)", groupKey,
+			msg.ProcessNum, allocatedAvailableProcessNum, allocatedIdleProcessNum)
+	})
 
 	// no available process, put to waiting request group
 	if msg.ProcessNum == needProcessNum {
@@ -338,12 +348,14 @@ func (pm *ProcessManager) handleGetProcessReq(msg *messages.GetProcessReqMsg) er
 		}
 		if _, ok := pm.waitingRequestGroups.Get(group); !ok {
 			pm.waitingRequestGroups.Put(group, true)
-			pm.logger.Debugf("put request group %s into waiting request group", groupKey)
+			logger.DebugDynamic(pm.logger, func() string {
+				return fmt.Sprintf("put request group %s into waiting request group", groupKey)
+			})
 		}
 	} else {
 		if err := pm.sendProcessReadyResp(msg.ProcessNum-needProcessNum,
 			msg.ChainID, msg.ContractName, msg.ContractVersion); err != nil {
-			return fmt.Errorf("failed to send process _ready resp, %v", err)
+			return fmt.Errorf("failed to send process ready resp, %v", err)
 		}
 	}
 
@@ -369,13 +381,13 @@ func (pm *ProcessManager) handleSandboxExitMsg(msg *messages.SandboxExitMsg) err
 	return nil
 }
 
-// handleCleanIdleProcesses handle clean _idle processes
+// handleCleanIdleProcesses handle clean idle processes
 func (pm *ProcessManager) handleCleanIdleProcesses() {
 
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
-	pm.logger.Debugf("handle periodic clean _idle processes")
+	pm.logger.Debugf("handle periodic clean idle processes")
 
 	// calculate the process num to release
 	availableProcessNum := pm.getAvailableProcessNum()
@@ -385,17 +397,17 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 	releaseNum = utils.Min(releaseNum, pm.idleProcesses.Size())
 	// available process num > release num, no need to release
 	if releaseNum <= 0 {
-		pm.logger.Debugf("there are enough _idle processes")
+		pm.logger.Debugf("there are enough idle processes")
 		return
 	}
 
-	// peek the _idle processes
+	// peek the idle processes
 	processes, err := pm.peekIdleProcesses(releaseNum)
 	if err != nil {
-		pm.logger.Errorf("failed to peek _idle processes, %v", err)
+		pm.logger.Errorf("failed to peek idle processes, %v", err)
 	}
 
-	pm.logger.Debugf("try to remove %d _idle processes", releaseNum)
+	pm.logger.Debugf("try to remove %d idle processes", releaseNum)
 
 	// put close sandbox req to process
 	var actualNum int
@@ -433,13 +445,13 @@ func (pm *ProcessManager) handleCleanIdleProcesses() {
 	return
 }
 
-// handleAllocateIdleProcesses allocate _idle process to waiting request groups
+// handleAllocateIdleProcesses allocate idle process to waiting request groups
 func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
-	pm.logger.Debugf("handle allocate _idle processes")
+	pm.logger.Debugf("handle allocate idle processes")
 
 	// calculate allocate num
 	allocateNum := utils.Min(pm.waitingRequestGroups.Size(), pm.idleProcesses.Size())
@@ -447,10 +459,10 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 		return nil
 	}
 
-	// _idle processes to remove
+	// idle processes to remove
 	idleProcesses, err := pm.peekIdleProcesses(allocateNum)
 	if err != nil {
-		pm.logger.Errorf("failed to peek _idle processes, %v", err)
+		pm.logger.Errorf("failed to peek idle processes, %v", err)
 	}
 
 	waitingRequestGroups, err := pm.peekWaitingRequestGroups(allocateNum)
@@ -474,15 +486,15 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 			oldContractVersion := process.GetContractVersion()
 			oldProcessName := process.GetProcessName()
 
-			// meet the same _idle process
+			// meet the same idle process
 			if group.ContractName == oldContractName && group.ContractVersion == oldContractVersion {
 				lock.Lock()
 				pm.removeFromWaitingGroup(group.ChainID, group.ContractName, group.ContractVersion)
 				lock.Unlock()
-				// send process _ready resp to request group
+				// send process ready resp to request group
 				if err := pm.sendProcessReadyResp(
 					0, group.ChainID, group.ContractName, group.ContractVersion); err != nil {
-					pm.logger.Errorf("failed to send process _ready resp, %v", err)
+					pm.logger.Errorf("failed to send process ready resp, %v", err)
 					return
 				}
 
@@ -499,14 +511,14 @@ func (pm *ProcessManager) handleAllocateIdleProcesses() error {
 				return
 			}
 
-			// send process _ready resp to request group
+			// send process ready resp to request group
 			if err := pm.sendProcessReadyResp(
 				1, group.ChainID, group.ContractName, group.ContractVersion); err != nil {
-				pm.logger.Errorf("failed to send process _ready resp, %v", err)
+				pm.logger.Errorf("failed to send process ready resp, %v", err)
 				return
 			}
 
-			// remove process from _idle process list, add to _busy process list
+			// remove process from idle process list, add to busy process list
 			lock.Lock()
 			defer lock.Unlock()
 
@@ -547,9 +559,9 @@ func (pm *ProcessManager) handleAllocateNewProcesses() error {
 		go func() {
 			defer wg.Done()
 
-			// send process _ready resp to request group
+			// send process ready resp to request group
 			if err := pm.sendProcessReadyResp(1, group.ChainID, group.ContractName, group.ContractVersion); err != nil {
-				pm.logger.Errorf("failed to send process _ready resp, %v", err)
+				pm.logger.Errorf("failed to send process ready resp, %v", err)
 				return
 			}
 
@@ -564,7 +576,7 @@ func (pm *ProcessManager) handleAllocateNewProcesses() error {
 				return
 			}
 
-			// remove process from _idle process list, add to _busy process list
+			// remove process from idle process list, add to busy process list
 			lock.Lock()
 			defer lock.Unlock()
 
@@ -635,14 +647,14 @@ func (pm *ProcessManager) getProcessByName(processName string) (interfaces.Proce
 	return nil, false
 }
 
-// peekIdleProcesses returns _idle processes from head
+// peekIdleProcesses returns idle processes from head
 func (pm *ProcessManager) peekIdleProcesses(num int) ([]interfaces.Process, error) {
 
 	if num > pm.idleProcesses.Size() {
 		return nil, fmt.Errorf("num > current size")
 	}
 
-	// _idle processes to remove
+	// idle processes to remove
 	var processes []interfaces.Process
 
 	var key string
@@ -654,7 +666,7 @@ func (pm *ProcessManager) peekIdleProcesses(num int) ([]interfaces.Process, erro
 		processes = append(processes, process)
 		key += processIt.Key().(string) + " "
 	}
-	pm.logger.Debugf("peekIdleProcesses keys: %s", key)
+	pm.logger.Debugf("peek idle processes keys: %s", key)
 	return processes, nil
 }
 
@@ -665,7 +677,7 @@ func (pm *ProcessManager) peekWaitingRequestGroups(num int) ([]messages.RequestG
 		return nil, fmt.Errorf("num > current size")
 	}
 
-	// _idle processes to remove
+	// idle processes to remove
 	var groups []messages.RequestGroupKey
 
 	groupIt := pm.waitingRequestGroups.Iterator()
@@ -678,7 +690,7 @@ func (pm *ProcessManager) peekWaitingRequestGroups(num int) ([]messages.RequestG
 	return groups, nil
 }
 
-// addProcessToCache add process to _busy / _idle process cache and process group
+// addProcessToCache add process to busy / idle process cache and process group
 func (pm *ProcessManager) addProcessToCache(chainID, contractName, contractVersion, processName string, process interfaces.Process, isBusy bool) {
 
 	if isBusy {
@@ -698,10 +710,10 @@ func (pm *ProcessManager) removeProcessFromCache(chainID, contractName, contract
 	pm.removeFromProcessGroup(chainID, contractName, contractVersion, processName)
 }
 
-// addProcessToIdle add process to _idle list
+// addProcessToIdle add process to idle list
 func (pm *ProcessManager) addProcessToIdle(processName string, process interfaces.Process) {
 
-	// add process to _idle list
+	// add process to idle list
 	pm.idleProcesses.Put(processName, process)
 
 	// construct group key
@@ -716,7 +728,7 @@ func (pm *ProcessManager) addProcessToIdle(processName string, process interface
 		pm.removeFromWaitingGroup(groupKey.ChainID, groupKey.ContractName, groupKey.ContractVersion)
 	}
 
-	// allocate _idle process to waiting request group
+	// allocate idle process to waiting request group
 	if pm.waitingRequestGroups.Size() > 0 {
 		pm.allocateIdleCh <- struct{}{}
 	}
@@ -772,7 +784,7 @@ func (pm *ProcessManager) removeFromWaitingGroup(chainID, contractName, contract
 		ContractVersion: contractVersion,
 	})
 	if err := pm.sendProcessReadyResp(0, chainID, contractName, contractVersion); err != nil {
-		pm.logger.Errorf("failed to send process _ready resp, %v", err)
+		pm.logger.Errorf("failed to send process ready resp, %v", err)
 	}
 }
 
@@ -787,7 +799,7 @@ func (pm *ProcessManager) closeRequestGroup(chainID, contractName, contractVersi
 	)
 }
 
-// sendProcessReadyResp sends process _ready resp to request group
+// sendProcessReadyResp sends process ready resp to request group
 func (pm *ProcessManager) sendProcessReadyResp(processNum int, chainID, contractName, contractVersion string) error {
 
 	// GetRequestGroup is safe because waiting group exists -> request group exists
@@ -802,7 +814,7 @@ func (pm *ProcessManager) sendProcessReadyResp(processNum int, chainID, contract
 		ProcessNum: processNum,
 	}
 
-	pm.logger.Debugf("send process _ready resp msg %v to %s",
+	pm.logger.Debugf("send process ready resp msg %v to %s",
 		respMsg, utils.ConstructContractKey(chainID, contractName, contractVersion))
 
 	if err := group.PutMsg(respMsg); err != nil {

@@ -314,6 +314,7 @@ func (p *Process) listenProcess() {
 				if err := p.handleTxResp(resp); err != nil {
 					p.logger.Warnf("failed to handle tx response, %v", err)
 				}
+				utils.ReturnToPool(resp)
 
 			case <-p.timer.C:
 				if err := p.handleTimeout(); err != nil {
@@ -476,22 +477,25 @@ func (p *Process) handleTxRequest(tx *messages.TxPayload) error {
 			config.DockerVMConfig.Process.ExecTxTimeout, elapsedTime)
 	}
 
-	p.logger.Debugf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
+	logger.DebugDynamic(p.logger, func() string {
+		return fmt.Sprintf("[%s] start handle tx req [%s]", p.getTxId(), tx.Tx.TxId)
+	})
 
+	utils.ReturnToPool(p.Tx)
 	p.Tx = tx.Tx
 
 	p.updateProcessState(busy)
 
-	msg := &protogo.DockerVMMessage{
-		ChainId:       p.chainID,
-		TxId:          p.Tx.TxId,
-		CrossContext:  p.Tx.CrossContext,
-		Request:       p.Tx.Request,
-		StepDurations: tx.Tx.StepDurations,
-	}
+	msg := utils.DockerVMMessageFromPool()
+	msg.ChainId = p.chainID
+	msg.TxId = p.Tx.TxId
+	msg.CrossContext = p.Tx.CrossContext
+	msg.Request = p.Tx.Request
+	msg.StepDurations = tx.Tx.StepDurations
 
-	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST,
-		strings.Join([]string{"waitingLen", strconv.Itoa(len(p.txCh))}, ":"))
+	utils.EnterNextStep(tx.Tx, protogo.StepType_ENGINE_PROCESS_SEND_TX_REQUEST, func() string {
+		return strings.Join([]string{"waitingLen", strconv.Itoa(len(p.txCh))}, ":")
+	})
 
 	// send message to sandbox
 	if err := p.sendMsg(msg); err != nil {
@@ -514,11 +518,14 @@ func (p *Process) handleIdleTxRequest(tx *messages.TxPayload) error {
 	// change state from idle to busy
 	if err := p.processManager.ChangeProcessState(p.processName, true); err != nil {
 		// failed to change state to busy, return
-		p.logger.Debugf("[%s] failed to change state to ready, %v", p.getTxId(), err)
+		p.logger.Warnf("[%s] failed to change state to ready, %v", p.getTxId(), err)
 		return nil
 	}
 	// succeed to change state to busy, update state for itself
-	p.logger.Debugf("[%s] change state from idle to ready", p.getTxId())
+	logger.DebugDynamic(p.logger, func() string {
+		return fmt.Sprintf("[%s] change state from idle to ready", p.getTxId())
+	})
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.updateProcessState(ready)
@@ -531,9 +538,13 @@ func (p *Process) handleTxResp(msg *protogo.DockerVMMessage) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	p.logger.Debugf("[%s] start handle tx resp [%s]", p.getTxId(), msg.TxId)
+	logger.DebugDynamic(p.logger, func() string {
+		return fmt.Sprintf("[%s] start handle tx resp [%s]", p.getTxId(), msg.TxId)
+	})
 
-	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE, "")
+	utils.EnterNextStep(msg, protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE, func() string {
+		return ""
+	})
 	if str, ok := utils.PrintTxStepsWithTime(msg); ok {
 		p.logger.Warnf("[%s] slow tx execution, %s", msg.TxId, str)
 	}
@@ -584,14 +595,16 @@ func (p *Process) handleTimeout() error {
 	case ready:
 		p.lock.Lock()
 		defer p.lock.Unlock()
-		p.logger.Debugf("[%s] ready timeout, go to idle", p.getTxId())
+		logger.DebugDynamic(p.logger, func() string {
+			return fmt.Sprintf("[%s] ready timeout, go to idle", p.getTxId())
+		})
 		if err := p.processManager.ChangeProcessState(p.processName, false); err != nil {
 			return fmt.Errorf("change process state error, %v", err)
 		}
 		p.updateProcessState(idle)
 
 	default:
-		p.logger.Debugf("[%s] process state should be busy / ready / idle, current state is %v", p.getTxId(), p.processState)
+		p.logger.Warnf("[%s] process state should be busy / ready / idle, current state is %v", p.getTxId(), p.processState)
 	}
 	return nil
 }
@@ -664,7 +677,9 @@ func (p *Process) handleProcessExit(exitError *exitErr) bool {
 		select {
 		case tx := <-p.txCh:
 			p.Tx = tx.Tx
-			p.logger.Debugf("[%s] contract exec start failed, remove tx %s", p.getTxId(), p.Tx.TxId)
+			logger.DebugDynamic(p.logger, func() string {
+				return fmt.Sprintf("[%s] contract exec start failed, remove tx %s", p.getTxId(), p.Tx.TxId)
+			})
 			returnErrResp = true
 			returnBadContractResp = true
 			break

@@ -220,7 +220,9 @@ func (r *RequestGroup) GetTxCh(isOrig bool) chan *messages.TxPayload {
 // handleTxReq handle all tx request
 func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 
-	r.logger.Debugf("handle tx request: [%s]", req.TxId)
+	logger.DebugDynamic(r.logger, func() string {
+		return fmt.Sprintf("handle tx request: [%s]", req.TxId)
+	})
 
 	switch r.contractState {
 	// try to get contract for first tx.
@@ -233,7 +235,9 @@ func (r *RequestGroup) handleTxReq(req *protogo.DockerVMMessage) error {
 	// only enqueue
 	case _contractWaiting:
 		r.bufCh <- req
-		r.logger.Debugf("tx %s enqueue, waiting for contract", req.TxId)
+		logger.DebugDynamic(r.logger, func() string {
+			return fmt.Sprintf("tx %s enqueue, waiting for contract", req.TxId)
+		})
 
 	// see if we should get new processes, if so, try to get
 	case _contractReady:
@@ -305,12 +309,16 @@ func (r *RequestGroup) getProcesses(isOrig bool) (int, error) {
 	readyOrBusyProcessNum := controller.processMgr.GetReadyOrBusyProcessNum(r.chainID, r.contractName, r.contractVersion)
 	needProcessNum = len(controller.txCh) - (processNum - readyOrBusyProcessNum)
 
-	r.logger.Debugf("tx chan size: [%d], need process num (isOrig: %v): [%d]",
-		len(controller.txCh), isOrig, needProcessNum)
+	logger.DebugDynamic(r.logger, func() string {
+		return fmt.Sprintf("tx chan size: [%d], need process num (isOrig: %v): [%d]",
+			len(controller.txCh), isOrig, needProcessNum)
+	})
 
 	// need more processes
 	if needProcessNum > 0 {
-		r.logger.Debugf("try to get %d process(es)", needProcessNum)
+		logger.DebugDynamic(r.logger, func() string {
+			return fmt.Sprintf("try to get %d process(es)", needProcessNum)
+		})
 		err := controller.processMgr.PutMsg(&messages.GetProcessReqMsg{
 			ChainID:         r.chainID,
 			ContractName:    r.contractName,
@@ -557,7 +565,9 @@ func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
 			Tx:        req,
 			StartTime: time.Now(),
 		}
-		r.logger.Debugf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
+		logger.DebugDynamic(r.logger, func() string {
+			return fmt.Sprintf("put tx request [%s] into orig chan, curr ch size [%d]", req.TxId, len(r.origTxController.txCh))
+		})
 		return
 	}
 
@@ -566,7 +576,9 @@ func (r *RequestGroup) enqueueCh(req *protogo.DockerVMMessage) {
 		Tx:        req,
 		StartTime: time.Now(),
 	}
-	r.logger.Debugf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
+	logger.DebugDynamic(r.logger, func() string {
+		return fmt.Sprintf("put tx request [%s] into cross chan, curr ch size [%d]", req.TxId, len(r.crossTxController.txCh))
+	})
 }
 
 // returnTxErrorResp return error to request scheduler

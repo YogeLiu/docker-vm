@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io"
 
+	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
+
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/interfaces"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
@@ -49,7 +51,8 @@ func NewSandboxRPCService(origProcessMgr, crossProcessMgr interfaces.ProcessMana
 func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_DockerVMCommunicateServer) error {
 	var process interfaces.Process
 	for {
-		msg, err := stream.Recv()
+		msg := utils.DockerVMMessageFromPool()
+		err := stream.RecvMsg(msg)
 
 		if err != nil {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
@@ -66,7 +69,9 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			return err
 		}
 
-		s.logger.Debugf("receive msg from sandbox[%s]", msg.TxId)
+		logger.DebugDynamic(s.logger, func() string {
+			return fmt.Sprintf("receive msg from sandbox[%s]", msg.TxId)
+		})
 
 		var ok bool
 		// process may be created, busy, timeout, recreated
@@ -89,7 +94,9 @@ func (s *SandboxRPCService) DockerVMCommunicate(stream protogo.DockerVMRpc_Docke
 			process.SetStream(stream)
 			continue
 		}
-		s.logger.Debugf("end recv msg, txId: %s", msg.TxId)
+		logger.DebugDynamic(s.logger, func() string {
+			return fmt.Sprintf("end recv msg, txId: %s", msg.TxId)
+		})
 		process.PutMsg(msg)
 	}
 }

@@ -17,8 +17,8 @@ import (
 func TestDockerGoGetSenderAddr(t *testing.T) {
 	setupTest(t)
 
-	simContext, ctrl := initMockSimContext(t)
-	mockGetLastChainConfig(simContext, ctrl)
+	simContext := initMockSimContext(t)
+	mockGetLastChainConfig(simContext)
 	mockTxQueryCertFromChain(simContext)
 	mockGetSender(simContext)
 	mockGetStrAddrFromPbMember(simContext)
@@ -87,8 +87,8 @@ func TestDockerGoGetCrossSender(t *testing.T) {
 		Address:     "",
 	}
 
-	mockTxContext2, ctrl := initMockSimContext(t)
-	mockGetLastChainConfig(mockTxContext2, ctrl)
+	mockTxContext2 := initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext2)
 	mockCrossCallGetDepth(mockTxContext2)
 	mockCrossCallGetCrossInfo(mockTxContext2)
 
@@ -125,8 +125,8 @@ func TestDockerGoGetCrossSenderAddr(t *testing.T) {
 		Address:     "",
 	}
 
-	mockTxContext2, ctrl := initMockSimContext(t)
-	mockGetLastChainConfig(mockTxContext2, ctrl)
+	mockTxContext2 := initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext2)
 	mockCrossCallGetDepth(mockTxContext2)
 	mockCrossCallGetCrossInfo(mockTxContext2)
 
@@ -167,8 +167,8 @@ func TestDockerGoGetCrossOrigin(t *testing.T) {
 		Address:     "",
 	}
 
-	mockTxContext2, ctrl := initMockSimContext(t)
-	mockGetLastChainConfig(mockTxContext2, ctrl)
+	mockTxContext2 := initMockSimContext(t)
+	mockGetLastChainConfig(mockTxContext2)
 	mockCrossCallGetDepth(mockTxContext2)
 	mockCrossCallGetCrossInfo(mockTxContext2)
 
