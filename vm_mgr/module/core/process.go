@@ -196,6 +196,7 @@ func (p *Process) launchProcess() *exitErr {
 			config.DockerVMConfig.Log.SandboxLog.Level,
 			strconv.Itoa(tcpPort),
 			config.DockerVMConfig.RPC.ChainHost,
+			strconv.FormatBool(config.DockerVMConfig.Slow.Disable),
 		},
 		Stderr: &stderr,
 	}
