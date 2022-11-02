@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 set -x
-BRANCH=v2.3.0_qc
+BRANCH=v2.3.1_qc
 
 cd ../
 pwd

@@ -128,7 +128,7 @@ docker run -itd \
 -e CHAIN_RPC_PORT=22351 \
 -e SANDBOX_RPC_PORT=32351 \
 --name VM-GO-node1 \
-chainmakerofficial/chainmaker-vm-engine:v2.3.0
+chainmakerofficial/chainmaker-vm-engine:v2.3.1
 ```
 
 3.1 以uds方式启动：
@@ -144,7 +144,7 @@ docker run -itd \
 -v /data/chainmaker/node1/log:/log \
 -e CHAIN_RPC_PROTOCOL="0" \
 --name VM-GO-node1 \
-chainmakerofficial/chainmaker-vm-engine:v2.3.0
+chainmakerofficial/chainmaker-vm-engine:v2.3.1
 ```
 
 ### 2.2. 配置启动 chainmaker
