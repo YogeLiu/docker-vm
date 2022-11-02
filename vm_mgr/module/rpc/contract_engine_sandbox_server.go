@@ -37,7 +37,7 @@ func NewSandboxRPCServer(sockDir string) (*SandboxRPCServer, error) {
 
 	log := logger.NewDockerLogger(logger.MODULE_SANDBOX_RPC_SERVER)
 
-	if err := utils.CreateDir(sockDir); err != nil {
+	if err := utils.CreateDir(sockDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create sandbox sock dir %s", sockDir)
 	}
 
