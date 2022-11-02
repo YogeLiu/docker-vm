@@ -9,18 +9,19 @@ SPDX-License-Identifier: Apache-2.0
 package rpc
 
 import (
+	"errors"
+	"fmt"
+	"net"
+	"path/filepath"
+	"runtime"
+
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/logger"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/pb/protogo"
 	"chainmaker.org/chainmaker/vm-engine/v2/vm_mgr/utils"
-	"errors"
-	"fmt"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
-	"net"
-	"path/filepath"
-	"runtime"
 )
 
 const (
@@ -63,7 +64,7 @@ func NewChainRPCServer() (*ChainRPCServer, error) {
 	} else {
 
 		sockDir := filepath.Join(config.DockerMountDir, ChainRPCDir)
-		if err = utils.CreateDir(sockDir); err != nil {
+		if err = utils.CreateDir(sockDir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create chain rpc sock dir %s", sockDir)
 		}
 

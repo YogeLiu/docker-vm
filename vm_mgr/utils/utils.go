@@ -10,6 +10,7 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -118,14 +119,14 @@ func Min(a, b int) int {
 	return b
 }
 
-func CreateDir(directory string) error {
+func CreateDir(directory string, perm fs.FileMode) error {
 	exist, err := exists(directory)
 	if err != nil {
 		return err
 	}
 
 	if !exist {
-		err = os.MkdirAll(directory, 0755)
+		err = os.MkdirAll(directory, perm)
 		if err != nil {
 			return err
 		}

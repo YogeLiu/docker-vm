@@ -318,7 +318,7 @@ func (cm *ContractManager) initContractPath() error {
 	var err error
 	// mkdir paths
 	contractDir := filepath.Join(config.DockerMountDir, ContractsDir)
-	err = utils.CreateDir(contractDir)
+	err = utils.CreateDir(contractDir, 0777)
 	if err != nil {
 		return err
 	}
