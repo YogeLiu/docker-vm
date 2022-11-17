@@ -46,7 +46,7 @@ import (
 const (
 	mountContractDir        = "contracts"
 	msgIterIsNil            = "iterator is nil"
-	timeout                 = 9000 // tx execution timeout(milliseconds)
+	txTimeout               = 9000 // tx execution timeout(milliseconds)
 	version2201      uint32 = 2201
 	version2210      uint32 = 2210
 	version2220      uint32 = 2220
@@ -199,7 +199,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	// send message to tx chan
 	r.ClientManager.PutTxRequest(cdmMessage)
 
-	timeoutC := time.After(timeout * time.Millisecond)
+	timeoutC := time.After(txTimeout * time.Millisecond)
 
 	r.Log.Debugf("start tx [%s] in runtime", txRequest.TxId)
 	// wait this chan

@@ -391,7 +391,7 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	}
 	// 2. created fail, err from cmd.StdoutPipe() -> exit
 	// 3. created fail, err from cgroup writeToFile fail -> exit
-	// 4. created fail, runtime error -> exit (tx will be timeout)
+	// 4. created fail, contract init failed -> exit (tx will be timeout)
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_CREATED {
 		p.logger.Errorf("[%s] fail to launch process: %s, %s", p.processName, existErr.desc, existErr.err)
 		return true
