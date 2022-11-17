@@ -209,7 +209,7 @@ func (p *Process) LaunchProcess() *ExitErr {
 	if err != nil {
 		return &ExitErr{
 			err:  err,
-			desc: "",
+			desc: "failed to get contract process stdout pipe",
 		}
 	}
 	// these settings just working on linux,
@@ -227,7 +227,7 @@ func (p *Process) LaunchProcess() *ExitErr {
 		p.logger.Errorf("[%s] fail to start process: %s", p.processName, err)
 		return &ExitErr{
 			err:  utils.ContractExecError,
-			desc: "",
+			desc: "failed to start contract process",
 		}
 	}
 	p.cmdReadyCh <- true
@@ -237,7 +237,7 @@ func (p *Process) LaunchProcess() *ExitErr {
 		p.logger.Errorf("fail to add cgroup: %s", err)
 		return &ExitErr{
 			err:  err,
-			desc: "",
+			desc: "failed to write cgroup",
 		}
 	}
 	p.logger.Debugf("[%s] add process to cgroup", p.processName)
@@ -381,22 +381,23 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 	// 1. created fail, ContractExecError -> return err and exit
 	if existErr.err == utils.ContractExecError {
 		p.Handler.scheduler.RemoveTxElapsedTime(currentTx.TxId)
-		p.logger.Errorf("return back error result for process [%s] for tx [%s]", p.processName, currentTx.TxId)
+		p.logger.Errorf("return back error result for process [%s] for tx [%s], %s, %s",
+			p.processName, currentTx.TxId, existErr.desc, existErr.err)
 		p.Handler.scheduler.ReturnErrorResponse(p.ChainId, currentTx.TxId, existErr.err.Error())
 
 		p.logger.Debugf("release process: [%s]", p.processName)
 		p.processMgr.ReleaseProcess(p.processName, p.user)
 		return true
 	}
-	// 2. created fail, err from cmd.StdoutPipe() -> relaunch
-	// 3. created fail, writeToFile fail -> relaunch
+	// 2. created fail, err from cmd.StdoutPipe() -> exit
+	// 3. created fail, err from cgroup writeToFile fail -> exit
+	// 4. created fail, runtime error -> exit (tx will be timeout)
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_CREATED {
-		p.logger.Warnf("[%s] fail to launch process: %s", p.processName, existErr.err)
-		go p.startProcess()
-		return false
+		p.logger.Errorf("[%s] fail to launch process: %s, %s", p.processName, existErr.desc, existErr.err)
+		return true
 	}
 	//  ========= condition: after cmd.wait
-	// 4. process expire, try to exit
+	// 5. process expire, try to exit
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_EXPIRE {
 		// when process timeout, release resources
 		p.logger.Debugf("release process: [%s]", p.processName)
@@ -409,11 +410,11 @@ func (p *Process) handleProcessExit(existErr *ExitErr) bool {
 		p.Handler.TxRequest.TxId, existErr.desc, existErr.err)
 
 	var err error
-	// 5. process killed because of timeout, return error response and relaunch
+	// 6. process killed because of timeout, return error response and relaunch
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_TX_TIMEOUT {
 		err = utils.TxTimeoutPanicError
 	}
-	// 6. process panic, return error response and relaunch
+	// 7. process panic, return error response and relaunch
 	if p.ProcessState == protogo.ProcessState_PROCESS_STATE_RUNNING {
 		err = utils.RuntimePanicError
 		p.Handler.stopTimer()

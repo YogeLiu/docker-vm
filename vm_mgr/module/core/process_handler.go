@@ -13,17 +13,14 @@ import (
 	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
-
 	chainProtocol "chainmaker.org/chainmaker/protocol/v2"
-
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
-
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
 	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 )
