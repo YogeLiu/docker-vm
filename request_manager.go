@@ -166,7 +166,7 @@ func (b *BlockElapsedTime) ToString() string {
 
 type RequestMgr struct {
 	RequestMap map[string]*BlockElapsedTime
-	lock       sync.Mutex
+	lock       sync.RWMutex
 	logger     *logger.CMLogger
 }
 
@@ -178,6 +178,8 @@ func NewRequestMgr() *RequestMgr {
 }
 
 func (r *RequestMgr) PrintBlockElapsedTime(requestId string) string {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
 	blockElapsedTime := r.RequestMap[requestId]
 	return blockElapsedTime.ToString()
 }
