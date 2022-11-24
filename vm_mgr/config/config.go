@@ -184,6 +184,15 @@ func (c *conf) setEnv() error {
 		}
 	}
 
+	if chainHost, ok := os.LookupEnv("CHAIN_HOST"); ok {
+		var err error
+		if len(chainHost) == 0 {
+			errs = append(errs, fmt.Sprintf("chainHost is empty: %v", err))
+		} else {
+			c.RPC.ChainHost = chainHost
+		}
+	}
+
 	if chainRPCPort, ok := os.LookupEnv("CHAIN_RPC_PORT"); ok {
 		var err error
 		if c.RPC.ChainRPCPort, err = strconv.Atoi(chainRPCPort); err != nil {
