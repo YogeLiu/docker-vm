@@ -276,3 +276,13 @@ func (pm *ProcessManager) ModifyContractName(txRequest *protogo.TxRequest) error
 	txRequest.ContractName = contractName
 	return nil
 }
+
+func (pm *ProcessManager) CheckTxExpired(txID string) bool {
+	if txTime := pm.scheduler.GetTxElapsedTime(txID); txTime != nil {
+		// time from scheduler received to process received > expired time limit
+		if time.Now().UnixNano()-txTime.StartTime > config.TxExpireTime*time.Second.Nanoseconds() {
+			return true
+		}
+	}
+	return false
+}
