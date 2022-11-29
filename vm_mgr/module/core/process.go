@@ -48,6 +48,8 @@ type ProcessMgr interface {
 	GetProcessDepth(initialProcessName string) *ProcessDepth
 
 	ReleaseProcess(processName string, user *security.User)
+
+	CheckTxExpired(txID string) bool
 }
 
 type ProcessBalancer interface {
@@ -454,6 +456,11 @@ func (p *Process) handleNewTx() (string, error) {
 
 	select {
 	case nextTx := <-p.processBalancer.GetTxQueue():
+		if p.processMgr.CheckTxExpired(nextTx.TxId) {
+			p.logger.Warnf("[%s] process meet expired tx[%s] before execution, removed",
+				p.processName, nextTx.TxId)
+			return "", nil
+		}
 		p.logger.Debugf("[%s] process start handle tx [%s], waiting queue size [%d]", p.processName,
 			nextTx.TxId, len(p.processBalancer.GetTxQueue()))
 

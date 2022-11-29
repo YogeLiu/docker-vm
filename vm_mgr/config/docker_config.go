@@ -53,6 +53,9 @@ const (
 	DefaultMaxSendSize = 100
 	DefaultMaxRecvSize = 100
 	DefaultMaxProcess  = 100
+
+	// TxExpireTime is the longest duration for tx exists before execution
+	TxExpireTime = 10
 )
 
 var (
