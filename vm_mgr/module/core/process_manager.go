@@ -277,6 +277,7 @@ func (pm *ProcessManager) ModifyContractName(txRequest *protogo.TxRequest) error
 	return nil
 }
 
+// CheckTxExpired return true for tx expired, false for not
 func (pm *ProcessManager) CheckTxExpired(txID string) bool {
 	if txTime := pm.scheduler.GetTxElapsedTime(txID); txTime != nil {
 		// time from scheduler received to process received > expired time limit
