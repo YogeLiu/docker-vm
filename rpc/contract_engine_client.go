@@ -66,6 +66,14 @@ func (c *ContractEngineClient) Start() error {
 		return err
 	}
 
+	stream, err := GetClientStream(conn)
+	if err != nil {
+		c.logger.Warnf("fail to get connection stream: %s", err)
+		return err
+	}
+
+	c.stream = stream
+
 	go func() {
 		select {
 		case <-c.stopReceive:
@@ -78,14 +86,6 @@ func (c *ContractEngineClient) Start() error {
 			}
 		}
 	}()
-
-	stream, err := GetClientStream(conn)
-	if err != nil {
-		c.logger.Warnf("fail to get connection stream: %s", err)
-		return err
-	}
-
-	c.stream = stream
 
 	go c.sendMsgRoutine()
 

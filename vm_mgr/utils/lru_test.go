@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"container/list"
+	"testing"
+
 	"github.com/emirpasic/gods/maps/linkedhashmap"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestCache_Add(t *testing.T) {
@@ -112,7 +112,7 @@ func TestCache_GetOldest_RemoveOldest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := tt.fields.cache
-			gotVal := c.GetOldest().(*list.Element).Value.(*entry).value.(string)
+			gotVal := c.GetOldest().(string)
 			assert.Equal(t, tt.wantVal, gotVal, "oldest val not match")
 			c.RemoveOldest()
 		})
