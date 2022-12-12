@@ -66,6 +66,15 @@ func (c *CDMClient) StartClient() error {
 		return err
 	}
 
+	stream, err := GetCDMClientStream(conn)
+	if err != nil {
+		c.logger.Errorf("client[%d] fail to get connection stream: %s", c.id, err)
+		_ = conn.Close()
+		return err
+	}
+
+	c.stream = stream
+
 	// close connection if send goroutine or receive goroutine exit
 	go func() {
 		select {
@@ -75,15 +84,6 @@ func (c *CDMClient) StartClient() error {
 			_ = conn.Close()
 		}
 	}()
-
-	stream, err := GetCDMClientStream(conn)
-	if err != nil {
-		c.logger.Errorf("client[%d] fail to get connection stream: %s", c.id, err)
-		_ = conn.Close()
-		return err
-	}
-
-	c.stream = stream
 
 	go c.sendMsgRoutine()
 
