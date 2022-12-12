@@ -1,4 +1,3 @@
-
 /*
 Copyright 2013 Google Inc.
 
@@ -104,13 +103,13 @@ func (c *Cache) RemoveOldest() {
 }
 
 // GetOldest returns the oldest item from the cache.
-func (c *Cache) GetOldest() interface{}{
+func (c *Cache) GetOldest() interface{} {
 	if c.cache == nil {
 		return nil
 	}
 	ele := c.ll.Back()
 	if ele != nil {
-		return ele
+		return ele.Value.(*entry).value
 	}
 	return nil
 }
