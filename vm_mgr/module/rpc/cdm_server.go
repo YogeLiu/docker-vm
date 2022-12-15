@@ -16,11 +16,11 @@ import (
 	"strconv"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/utils"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb/protogo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"

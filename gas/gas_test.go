@@ -9,7 +9,7 @@ package gas
 import (
 	"testing"
 
-	"chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/pb-go/v3/common"
 )
 
 func TestInitFuncGasUsed(t *testing.T) {

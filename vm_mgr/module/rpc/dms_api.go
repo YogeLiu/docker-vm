@@ -12,12 +12,12 @@ import (
 	"fmt"
 	"io"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/config"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/core"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/module/core"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb_sdk/protogo"
 	"go.uber.org/zap"
 )
 

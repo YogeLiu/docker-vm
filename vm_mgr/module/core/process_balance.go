@@ -8,9 +8,9 @@ SPDX-License-Identifier: Apache-2.0
 package core
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/utils"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb/protogo"
 )
 
 const (

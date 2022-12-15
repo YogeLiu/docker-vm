@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/module/tx_requests"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/utils"
 	"go.uber.org/zap"
 )
 

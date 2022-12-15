@@ -1,10 +1,10 @@
-module chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr
+module chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr
 
-go 1.15
+go 1.16
 
 require (
-	chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220606153444-cedb486be1ec
-	chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220719065024-9db3a21edd79
+	chainmaker.org/chainmaker/common/v3 v3.0.0-20221215134034-c5c82e01b6c9
+	chainmaker.org/chainmaker/protocol/v3 v3.0.0-20221215135932-313cb4a1f3e8
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2

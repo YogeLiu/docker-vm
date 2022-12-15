@@ -18,11 +18,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/config"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/logger"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/protocol"
 	"go.uber.org/zap"
 )
 

@@ -14,15 +14,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"chainmaker.org/chainmaker/pb-go/v2/common"
-	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/pb-go/v3/common"
+	"chainmaker.org/chainmaker/protocol/v3"
 
 	"github.com/mitchellh/mapstructure"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/rpc"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/rpc"
 
-	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
+	"chainmaker.org/chainmaker/logger/v3"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/config"
 )
 
 type DockerManager struct {

@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/utils"
 
-	"chainmaker.org/chainmaker/logger/v2"
+	"chainmaker.org/chainmaker/logger/v3"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/pb/protogo"
 	"go.uber.org/atomic"
 )
 

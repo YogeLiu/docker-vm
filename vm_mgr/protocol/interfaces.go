@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package protocol
 
 import (
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/security"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/module/tx_requests"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/module/security"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/module/tx_requests"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb_sdk/protogo"
 )
 
 type Scheduler interface {

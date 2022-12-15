@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"chainmaker.org/chainmaker/logger/v2"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
+	"chainmaker.org/chainmaker/logger/v3"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/pb/protogo"
 )
 
 type SysCallElapsedTime struct {

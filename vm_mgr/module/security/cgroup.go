@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/utils"
 )
 
 type CGroup struct {

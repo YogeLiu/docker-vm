@@ -12,14 +12,14 @@ package test
 //	"io/ioutil"
 //	"sync"
 //
-//	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
-//	"chainmaker.org/chainmaker/utils/v2"
+//	configPb "chainmaker.org/chainmaker/pb-go/v3/config"
+//	"chainmaker.org/chainmaker/utils/v3"
 //	"github.com/docker/distribution/uuid"
 //
-//	acPb "chainmaker.org/chainmaker/pb-go/v2/accesscontrol"
-//	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-//	storePb "chainmaker.org/chainmaker/pb-go/v2/store"
-//	"chainmaker.org/chainmaker/protocol/v2"
+//	acPb "chainmaker.org/chainmaker/pb-go/v3/accesscontrol"
+//	commonPb "chainmaker.org/chainmaker/pb-go/v3/common"
+//	storePb "chainmaker.org/chainmaker/pb-go/v3/store"
+//	"chainmaker.org/chainmaker/protocol/v3"
 //)
 //
 //var testOrgId = "wx-org1.chainmaker.org"

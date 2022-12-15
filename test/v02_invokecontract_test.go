@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/protocol/v3"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"

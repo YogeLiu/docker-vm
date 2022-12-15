@@ -19,10 +19,10 @@ package core
 //	"go.uber.org/zap"
 //	"golang.org/x/sync/singleflight"
 //
-//	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/logger"
-//	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
-//	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/protocol"
-//	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/utils"
+//	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/logger"
+//	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb/protogo"
+//	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/protocol"
+//	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/utils"
 //)
 //
 //const (

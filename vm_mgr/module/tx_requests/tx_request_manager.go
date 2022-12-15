@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb/protogo"
 )
 
 // SysCallElapsedTime syscall include read date from chainmaker node and cross call contract

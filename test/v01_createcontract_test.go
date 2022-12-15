@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
+	docker_go "chainmaker.org/chainmaker/vm-docker-go/v3"
 	"github.com/stretchr/testify/assert"
 
-	"chainmaker.org/chainmaker/logger/v2"
-	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	"chainmaker.org/chainmaker/logger/v3"
+	commonPb "chainmaker.org/chainmaker/pb-go/v3/common"
 )
 
 /*

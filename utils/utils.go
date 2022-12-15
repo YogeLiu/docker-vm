@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/config"
 )
 
 const (

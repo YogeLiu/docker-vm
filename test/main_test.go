@@ -9,11 +9,11 @@ import (
 	"os"
 	"testing"
 
-	"chainmaker.org/chainmaker/protocol/v2/mock"
+	"chainmaker.org/chainmaker/protocol/v3/mock"
 
-	"chainmaker.org/chainmaker/protocol/v2"
+	"chainmaker.org/chainmaker/protocol/v3"
 
-	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
+	commonPb "chainmaker.org/chainmaker/pb-go/v3/common"
 )
 
 /*

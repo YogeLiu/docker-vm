@@ -11,7 +11,7 @@ import (
 	"context"
 	"reflect"
 
-	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb_sdk/protogo"
+	SDKProtogo "chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb_sdk/protogo"
 	"github.com/golang/mock/gomock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

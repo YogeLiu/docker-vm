@@ -10,7 +10,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/pb/protogo"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/pb/protogo"
 	"github.com/golang/mock/gomock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"time"
 
-	rotatelogs "chainmaker.org/chainmaker/common/v2/log/file-rotatelogs"
+	rotatelogs "chainmaker.org/chainmaker/common/v3/log/file-rotatelogs"
 
-	"chainmaker.org/chainmaker/vm-docker-go/v2/vm_mgr/config"
+	"chainmaker.org/chainmaker/vm-docker-go/v3/vm_mgr/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

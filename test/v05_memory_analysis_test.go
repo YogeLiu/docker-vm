@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"chainmaker.org/chainmaker/logger/v2"
-	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
-	docker_go "chainmaker.org/chainmaker/vm-docker-go/v2"
+	"chainmaker.org/chainmaker/logger/v3"
+	commonPb "chainmaker.org/chainmaker/pb-go/v3/common"
+	docker_go "chainmaker.org/chainmaker/vm-docker-go/v3"
 )
 
 const (
