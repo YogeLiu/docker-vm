@@ -211,6 +211,9 @@ func (r *RuntimeInstance) handlerCallContract(
 		r.logger.Error(errMsg)
 		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
 		response.SysCallMessage.Message = result.Message
+		response.SysCallMessage.Payload = map[string][]byte{
+			config.KeyCallContractResp: result.Result,
+		}
 		return response, gasUsed, specialTxType
 	}
 
