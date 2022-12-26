@@ -64,6 +64,7 @@ const (
 
 	// invoke contract base gas used
 	invokeBaseGas uint64 = 10000
+	paramsBaseGas uint64 = 1200
 )
 
 func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
@@ -169,7 +170,7 @@ func InitFuncGasUsed(gasUsed uint64, parameters map[string][]byte) (uint64, erro
 		return 0, errors.New("check init key exist")
 	}
 
-	gasUsed = gasUsed + invokeBaseGas
+	gasUsed = gasUsed + invokeBaseGas + paramsBaseGas
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}

@@ -39,7 +39,7 @@ func TestInitFuncGasUsed(t *testing.T) {
 					ContractParamTxTimeStamp:  []byte("timestamp"),
 				},
 			},
-			want:    10000,
+			want:    invokeBaseGas + paramsBaseGas,
 			wantErr: false,
 		},
 	}

@@ -67,6 +67,5 @@ func TestDockerGoGetSenderAddr(t *testing.T) {
 		assert.Equal(t, data.wantAddr, string(result.GetResult()))
 		t.Logf("addr[%d] : [%s]", index, result.GetResult())
 	}
-
 	tearDownTest()
 }
