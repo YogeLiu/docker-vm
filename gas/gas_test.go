@@ -16,7 +16,6 @@ func TestInitFuncGasUsed(t *testing.T) {
 	type args struct {
 		gasUsed    uint64
 		parameters map[string][]byte
-		keys       []string
 	}
 	tests := []struct {
 		name    string
@@ -37,25 +36,16 @@ func TestInitFuncGasUsed(t *testing.T) {
 					ContractParamSenderPk:     []byte("senderPk1"),
 					ContractParamBlockHeight:  []byte("blockHeight1"),
 					ContractParamTxId:         []byte("txId1"),
-				},
-				keys: []string{
-					ContractParamCreatorOrgId,
-					ContractParamCreatorRole,
-					ContractParamCreatorPk,
-					ContractParamSenderOrgId,
-					ContractParamSenderRole,
-					ContractParamSenderPk,
-					ContractParamBlockHeight,
-					ContractParamTxId,
+					ContractParamTxTimeStamp:  []byte("timestamp"),
 				},
 			},
-			want:    10078,
+			want:    10000,
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitFuncGasUsed(tt.args.gasUsed, tt.args.parameters, tt.args.keys...)
+			got, err := InitFuncGasUsed(tt.args.gasUsed, tt.args.parameters)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitFuncGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
