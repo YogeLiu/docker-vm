@@ -33,13 +33,13 @@ import (
 	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
+	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 
-	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -50,6 +50,7 @@ const (
 	version2201      uint32 = 2201
 	version2210      uint32 = 2210
 	version2220      uint32 = 2220
+	version2310      uint32 = 2030100
 )
 
 var (
@@ -123,17 +124,12 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	var err error
 	// init func gas used calc and check gas limit
-	if gasUsed, err = gas.InitFuncGasUsed(gasUsed, parameters,
-		gas.ContractParamCreatorOrgId,
-		gas.ContractParamCreatorRole,
-		gas.ContractParamCreatorPk,
-		gas.ContractParamSenderOrgId,
-		gas.ContractParamSenderRole,
-		gas.ContractParamSenderPk,
-		gas.ContractParamBlockHeight,
-		gas.ContractParamTxId,
-		gas.ContractParamTxTimeStamp,
-	); err != nil {
+	if txSimContext.GetBlockVersion() < version2310 {
+		gasUsed, err = gas.InitFuncGasUsedLT2310(gasUsed, parameters)
+	} else {
+		gasUsed, err = gas.InitFuncGasUsed(gasUsed, parameters)
+	}
+	if err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
 	}
