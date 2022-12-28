@@ -63,6 +63,7 @@ ut:
 	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${IMAGE_VERSION}
 	./ut_cover.sh
 	docker stop chaimaker_vm_test
+	make clean
 
 version:
 	docker inspect chainmakerofficial/chainmaker-vm-docker-go:${IMAGE_VERSION} | jq '.[].ContainerConfig.Labels'

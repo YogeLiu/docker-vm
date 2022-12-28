@@ -64,7 +64,9 @@ const (
 
 	// invoke contract base gas used
 	invokeBaseGas uint64 = 10000
-	paramsBaseGas uint64 = 1200
+
+	// parameters base gas used
+	paramsBaseGas uint64 = 1250
 )
 
 func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
