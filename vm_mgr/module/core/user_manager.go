@@ -60,9 +60,9 @@ func (u *UserManager) BatchCreateUsers() error {
 	origProcessNum := config.DockerVMConfig.Process.MaxOriginalProcessNum // thread num for batch create users
 	maxDepth := protocol.CallContractDepth + 1                            // user num per thread
 	totalNum := origProcessNum * maxDepth                                 // total user num
-
 	startTime := time.Now()
 	createdUserNum := atomic.NewInt64(0)
+
 	for i := 0; i < totalNum; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -137,25 +137,22 @@ func (u *UserManager) generateNewUser(uid int) error {
 
 	newUser := NewUser(uid)
 	_, err := user.LookupId(strconv.Itoa(uid))
-	if err == nil {
-		return nil
-	}
-
-	if !errors.Is(err, user.UnknownUserIdError(uid)) {
-		return err
-	}
-
-	addUserCommand := fmt.Sprintf(_addUserFormat, uid, newUser.UserName)
-
-	createSuccess := false
-
-	// it may failed to create newUser in centos, so add retry until it success
-	for !createSuccess {
-		if err := utils.RunCmd(addUserCommand); err != nil {
-			u.logger.Debugf("failed to create user [%+v], err: [%s] and begin to retry", newUser, err)
-			continue
+	if err != nil {
+		if !errors.Is(err, user.UnknownUserIdError(uid)) {
+			return err
 		}
-		createSuccess = true
+
+		addUserCommand := fmt.Sprintf(_addUserFormat, uid, newUser.UserName)
+
+		createSuccess := false
+		// it may failed to create newUser in centos, so add retry until it success
+		for !createSuccess {
+			if err := utils.RunCmd(addUserCommand); err != nil {
+				u.logger.Debugf("failed to create user [%+v], err: [%s] and begin to retry", newUser, err)
+				continue
+			}
+			createSuccess = true
+		}
 	}
 
 	// add created newUser to queue
