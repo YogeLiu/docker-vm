@@ -151,6 +151,7 @@ func (s *RuntimeService) recvRoutine(ss *serviceStream) {
 			case protogo.DockerVMType_TX_RESPONSE,
 				protogo.DockerVMType_CALL_CONTRACT_REQUEST,
 				protogo.DockerVMType_GET_STATE_REQUEST,
+				protogo.DockerVMType_GET_BATCH_STATE_REQUEST,
 				protogo.DockerVMType_CREATE_KV_ITERATOR_REQUEST,
 				protogo.DockerVMType_CONSUME_KV_ITERATOR_REQUEST,
 				protogo.DockerVMType_CREATE_KEY_HISTORY_ITER_REQUEST,
