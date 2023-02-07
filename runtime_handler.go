@@ -335,8 +335,12 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 	})
 
 	response.SysCallMessage.Code = protocol.ContractSdkSignalResultSuccess
-	response.SysCallMessage.Payload = map[string][]byte{
-		config.KeyStateValue: value,
+
+	// nil value in map[string][]byte will be empty []byte after grpc transfer, old version ignored this problem
+	if txSimContext.GetBlockVersion() < version2310 || value != nil {
+		response.SysCallMessage.Payload = map[string][]byte{
+			config.KeyStateValue: value,
+		}
 	}
 	gasUsed, err = gas.GetStateGasUsed(gasUsed, value)
 	if err != nil {

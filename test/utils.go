@@ -93,6 +93,8 @@ CpIO2ZrxkJ1Nm/FKZzMLQjp7Dm//xEMkpCbqqC6koOkRP2MKGSnEGXGfRr1QgBvr
 	cmCertAddressFromCert  = "305f98514f3c2f6fcaeb8247ed147bacf99990f8"
 
 	blockFingerprint = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+	version2310 uint32 = 2030100
 )
 
 var (
@@ -665,7 +667,7 @@ func mockGetBlockVersion(simContext *mock.MockTxSimContext) {
 
 // GetBlockVersion get block version
 func GetBlockVersion() uint32 {
-	return uint32(2300)
+	return version2310
 }
 
 // 获取sender公钥

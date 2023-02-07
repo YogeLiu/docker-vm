@@ -123,6 +123,9 @@ func TestDockerGoGetState(t *testing.T) {
 	parameters["field"] = []byte("field1")
 	parameters["value"] = []byte("500")
 	method := methodPutState
+	mockTxContext.EXPECT().GetBlockVersion().DoAndReturn(
+		GetBlockVersion,
+	).AnyTimes()
 
 	mockPut(mockTxContext, ContractNameTest, protocol.GetKey([]byte("key1"), []byte("field1")), []byte("500"))
 	result, _ := mockRuntimeInstance.Invoke(mockContractId, method, nil,
