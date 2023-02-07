@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	mountContractDir = "contract-bins"
-	msgIterIsNil     = "iterator is nil"
+	mountContractDir        = "contract-bins"
+	msgIterIsNil            = "iterator is nil"
+	version2310      uint32 = 2030100
 )
 
 var dockerVMMsgPool = sync.Pool{
