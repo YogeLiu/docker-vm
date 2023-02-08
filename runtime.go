@@ -15,8 +15,9 @@ import (
 	"sync"
 	"time"
 
-	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/protocol/v2"
+
+	commonPb "chainmaker.org/chainmaker/pb-go/v2/common"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/interfaces"
@@ -259,6 +260,10 @@ func (r *RuntimeInstance) Invoke(
 				r.logger.DebugDynamic(func() string {
 					return fmt.Sprintf("tx [%s] start get batch state", uniqueTxKey)
 				})
+				if txSimContext.GetBlockVersion() < version2310 {
+					r.logger.Errorf("get batch state is forbidden on version < v2.3.1, will be timeout")
+					break
+				}
 				var getStateResponse *protogo.DockerVMMessage
 				getStateResponse, gasUsed = r.handleGetBatchStateRequest(uniqueTxKey, recvMsg, txSimContext, gasUsed)
 
