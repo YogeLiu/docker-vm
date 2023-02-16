@@ -45,6 +45,6 @@ contract:
   max_file_size: 20480 # contract size(MiB)
 
 slow:
+  disable: false
   step_time: 3s
   tx_time: 6s
-  disable: false

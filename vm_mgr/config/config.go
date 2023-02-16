@@ -34,12 +34,12 @@ const (
 var DockerVMConfig *conf
 
 type conf struct {
-	RPC      rpcConf       `mapstructure:"rpc"`
-	Process  processConf   `mapstructure:"process"`
-	Log      logConf       `mapstructure:"log"`
-	Pprof    pprofConf     `mapstructure:"pprof"`
-	Contract contractConf  `mapstructure:"contract"`
-	Slow     slowTxLogConf `mapstructure:"slow"`
+	RPC      rpcConf      `mapstructure:"rpc"`
+	Process  processConf  `mapstructure:"process"`
+	Log      logConf      `mapstructure:"log"`
+	Pprof    pprofConf    `mapstructure:"pprof"`
+	Contract contractConf `mapstructure:"contract"`
+	Slow     slowConf     `mapstructure:"slow"`
 }
 
 type ChainRPCProtocolType int
@@ -94,10 +94,10 @@ type contractConf struct {
 	MaxFileSize int `mapstructure:"max_file_size"`
 }
 
-type slowTxLogConf struct {
+type slowConf struct {
+	Disable  bool          `mapstructure:"disable"`
 	StepTime time.Duration `mapstructure:"step_time"`
 	TxTime   time.Duration `mapstructure:"tx_time"`
-	Disable  bool          `mapstructure:"disable"`
 }
 
 func InitConfig(configFileName string) error {
@@ -262,15 +262,15 @@ func (c *conf) setEnv() error {
 			c.Process.ExecTxTimeout = time.Duration(timeout) * time.Second
 		}
 	}
-	if slowTxDisable, ok := os.LookupEnv("SLOW_TX_DISABLE"); ok {
-		isDisable, err := strconv.ParseBool(slowTxDisable)
+	if slowDisable, ok := os.LookupEnv("SLOW_DISABLE"); ok {
+		isDisable, err := strconv.ParseBool(slowDisable)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("failed to ParseBool slowTxDisable: %v", err))
+			errs = append(errs, fmt.Sprintf("failed to ParseBool slowDisable: %v", err))
 		}
 		if isDisable {
 			c.Slow.Disable = true
 		} else {
-			if slowStepTime, ok := os.LookupEnv("SLOW_TX_STEP_TIME"); ok {
+			if slowStepTime, ok := os.LookupEnv("SLOW_STEP_TIME"); ok {
 				timeout, err := strconv.ParseInt(slowStepTime, 10, 64)
 				if err != nil {
 					errs = append(errs, fmt.Sprintf("failed to ParseInt slowStepTime: %v", err))
