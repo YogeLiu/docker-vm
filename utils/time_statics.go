@@ -366,7 +366,7 @@ func (r *BlockTxsDurationMgr) FinishTx(id string, txTime *TxDuration) {
 
 // EnterNextStep enter next duration tx step
 func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, getStr func() string) {
-	if config.VMConfig.SlowTxLog.Disable {
+	if config.VMConfig.Slow.Disable {
 		return
 	}
 	if stepType != protogo.StepType_RUNTIME_PREPARE_TX_REQUEST {
@@ -423,13 +423,13 @@ func PrintTxStepsWithTime(msg *protogo.DockerVMMessage) (string, bool) {
 	}
 	lastStep := msg.StepDurations[len(msg.StepDurations)-1]
 	var sb strings.Builder
-	if lastStep.UntilDuration > time.Second.Nanoseconds()*int64(config.VMConfig.SlowTxLog.TxBaseTime) {
+	if lastStep.UntilDuration > time.Second.Nanoseconds()*int64(config.VMConfig.Slow.TxTime) {
 		sb.WriteString("slow tx overall: ")
 		sb.WriteString(PrintTxSteps(msg))
 		return sb.String(), true
 	}
 	for _, step := range msg.StepDurations {
-		if step.StepDuration > time.Second.Nanoseconds()*int64(config.VMConfig.SlowTxLog.StepBaseTime) {
+		if step.StepDuration > time.Second.Nanoseconds()*int64(config.VMConfig.Slow.StepTime) {
 			sb.WriteString(fmt.Sprintf("slow tx at step %q, step cost: %vms: ",
 				step.Type, time.Duration(step.StepDuration).Seconds()*1000))
 			sb.WriteString(PrintTxSteps(msg))

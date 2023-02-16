@@ -31,7 +31,7 @@ type DockerVMConfig struct {
 	// uds_open false， tcp
 	RuntimeServer  RuntimeServerConfig  `mapstructure:"runtime_server"`  // runtime server
 	ContractEngine ContractEngineConfig `mapstructure:"contract_engine"` // contract engine
-	SlowTxLog      SlowTxLogConfig      `mapstructure:"slow_tx_log"`     // slow tx config
+	Slow           SlowConfig           `mapstructure:"slow"`            // slow tx config
 }
 
 // RuntimeServerConfig is the runtime server config
@@ -47,11 +47,11 @@ type ContractEngineConfig struct {
 	MaxConnection uint64 `mapstructure:"max_connection"`
 }
 
-// SlowTxLogConfig is the slow tx log
-type SlowTxLogConfig struct {
-	StepBaseTime int  `mapstructure:"step_base_time"`
-	TxBaseTime   int  `mapstructure:"tx_base_time"`
-	Disable      bool `mapstructure:"disable"`
+// SlowConfig is the slow tx log
+type SlowConfig struct {
+	Disable  bool `mapstructure:"disable"`
+	StepTime int  `mapstructure:"step_time"`
+	TxTime   int  `mapstructure:"tx_time"`
 }
 
 // DockerContainerConfig docker container settings

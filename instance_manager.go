@@ -287,12 +287,12 @@ func validateVMSettings(dockerVMConfig *config.DockerVMConfig,
 		dockerVMConfig.TxTimeout = config.DefaultTxTimeout
 	}
 
-	if dockerVMConfig.SlowTxLog.StepBaseTime == 0 {
-		dockerVMConfig.SlowTxLog.StepBaseTime = config.DefaultSlowStepLogTime
+	if dockerVMConfig.Slow.StepTime == 0 {
+		dockerVMConfig.Slow.StepTime = config.DefaultSlowStepLogTime
 	}
 
-	if dockerVMConfig.SlowTxLog.TxBaseTime == 0 {
-		dockerVMConfig.SlowTxLog.TxBaseTime = config.DefaultSlowTxLogTime
+	if dockerVMConfig.Slow.TxTime == 0 {
+		dockerVMConfig.Slow.TxTime = config.DefaultSlowTxLogTime
 	}
 
 	dockerContainerConfig.HostMountDir = hostMountDir
