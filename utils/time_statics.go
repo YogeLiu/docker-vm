@@ -88,8 +88,8 @@ func (e *TxDuration) ToString() string {
 	if e == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s spend time: %dμs, syscall: %dμs(%d), r/w store: %dμs, possible syscall: %dμs(%d)"+
-		"cross contract: %dμs(%d)",
+	return fmt.Sprintf("%s spend time: %dμs, syscall: %dμs(count: %d), r/w store: %dμs, "+
+		"possible syscall: %dμs(count: %d), cross contract: %dμs(count: %d)",
 		e.TxId, e.TotalDuration/1000, e.SysCallDuration/1000, e.SysCallCnt, e.StorageDuration/1000,
 		e.ContingentSysCallDuration/1000, e.ContingentSysCallCnt, e.CrossCallDuration/1000, e.CrossCallCnt,
 	)
