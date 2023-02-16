@@ -156,7 +156,8 @@ func EnterNextStep(msg *protogo.DockerVMMessage, stepType protogo.StepType, getS
 		endTxStep(msg)
 	}
 	addTxStep(msg, stepType, getStr())
-	if stepType == protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE {
+	if stepType == protogo.StepType_RUNTIME_HANDLE_TX_RESPONSE ||
+		stepType == protogo.StepType_ENGINE_PROCESS_RECEIVE_TX_RESPONSE {
 		endTxStep(msg)
 	}
 }
