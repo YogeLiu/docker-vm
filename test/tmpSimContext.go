@@ -38,6 +38,11 @@ type TxContextMockTest struct {
 	CacheMap map[string][]byte
 }
 
+func (s *TxContextMockTest) GetSnapshot() protocol.Snapshot {
+	//TODO implement me
+	panic("implement me")
+}
+
 // GetBlockFingerprint returns unique id for block
 func (s *TxContextMockTest) GetBlockFingerprint() string {
 	return s.GetTx().GetPayload().GetTxId()
