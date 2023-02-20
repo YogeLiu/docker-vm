@@ -38,6 +38,7 @@ type TxContextMockTest struct {
 	CacheMap map[string][]byte
 }
 
+// GetSnapshot implement me
 func (s *TxContextMockTest) GetSnapshot() protocol.Snapshot {
 	//TODO implement me
 	panic("implement me")
