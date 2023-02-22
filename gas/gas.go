@@ -64,6 +64,9 @@ const (
 
 	// invoke contract base gas used
 	invokeBaseGas uint64 = 10000
+
+	// parameters base gas used
+	paramsBaseGas uint64 = 1250
 )
 
 func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
@@ -164,18 +167,30 @@ func EmitEventGasUsed(gasUsed uint64, contractEvent *common.ContractEvent) (uint
 	return gasUsed, nil
 }
 
-func InitFuncGasUsed(gasUsed uint64, parameters map[string][]byte, keys ...string) (uint64, error) {
-	if !checkKeys(parameters, keys...) {
+func InitFuncGasUsed(gasUsed uint64, parameters map[string][]byte) (uint64, error) {
+	if !checkKeys(parameters) {
 		return 0, errors.New("check init key exist")
 	}
 
-	gasUsed = getInitFuncGasUsed(gasUsed, parameters)
+	gasUsed = gasUsed + invokeBaseGas + paramsBaseGas
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
 
 	return gasUsed, nil
+}
 
+func InitFuncGasUsedLT2310(gasUsed uint64, parameters map[string][]byte) (uint64, error) {
+	if !checkKeys(parameters) {
+		return 0, errors.New("check init key exist")
+	}
+
+	gasUsed = getInitFuncGasUsedLT2310(gasUsed, parameters)
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited ")
+	}
+
+	return gasUsed, nil
 }
 
 func ContractGasUsed(txSimContext protocol.TxSimContext, gasUsed uint64, method string,
@@ -214,7 +229,18 @@ func upgradeContractGasUsed(gasUsed uint64, byteCode, oldByteCode []byte) uint64
 	return gasUsed
 }
 
-func checkKeys(args map[string][]byte, keys ...string) bool {
+func checkKeys(args map[string][]byte) bool {
+	keys := []string{
+		ContractParamCreatorOrgId,
+		ContractParamCreatorRole,
+		ContractParamCreatorPk,
+		ContractParamSenderOrgId,
+		ContractParamSenderRole,
+		ContractParamSenderPk,
+		ContractParamBlockHeight,
+		ContractParamTxId,
+		ContractParamTxTimeStamp,
+	}
 	for _, key := range keys {
 		if _, ok := args[key]; !ok {
 			return false
@@ -223,7 +249,7 @@ func checkKeys(args map[string][]byte, keys ...string) bool {
 	return true
 }
 
-func getInitFuncGasUsed(gasUsed uint64, args map[string][]byte) uint64 {
+func getInitFuncGasUsedLT2310(gasUsed uint64, args map[string][]byte) uint64 {
 	return gasUsed +
 		invokeBaseGas +
 		uint64(len(args[ContractParamCreatorOrgId]))*GetCreatorOrgIdGasPrice +

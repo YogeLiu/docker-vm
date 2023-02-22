@@ -12,11 +12,12 @@ build-test:
 
 build-image:
 	cd vm_mgr && go mod vendor
-	cd vm_mgr && docker build -t chainmakerofficial/chainmaker-vm-docker-go:${IMAGE_VERSION} \
+	cd vm_mgr && docker build -t  chainmaker-vm-docker-go \
 	--build-arg BUILD_TIME=${BUILD_TIME} \
 	--build-arg GIT_BRANCH=${GIT_BRANCH} \
 	--build-arg GIT_COMMIT=${GIT_COMMIT} \
 	-f Dockerfile ./
+	docker tag chainmaker-vm-docker-go chainmakerofficial/chainmaker-vm-docker-go:${IMAGE_VERSION}
 	docker images | grep chainmaker-vm-docker-go
 	docker image prune -f
 
@@ -62,6 +63,7 @@ ut:
 	docker run -itd --rm -p22359:22359 -e ENV_LOG_IN_CONSOLE=true --privileged --name chaimaker_vm_test chainmakerofficial/chainmaker-vm-docker-go:${IMAGE_VERSION}
 	./ut_cover.sh
 	docker stop chaimaker_vm_test
+	make clean
 
 version:
 	docker inspect chainmakerofficial/chainmaker-vm-docker-go:${IMAGE_VERSION} | jq '.[].ContainerConfig.Labels'

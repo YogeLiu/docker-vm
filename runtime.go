@@ -33,23 +33,24 @@ import (
 	configPb "chainmaker.org/chainmaker/pb-go/v2/config"
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	"chainmaker.org/chainmaker/pb-go/v2/syscontract"
+	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/config"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/gas"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/pb/protogo"
 	"chainmaker.org/chainmaker/vm-docker-go/v2/utils"
 
-	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"github.com/gogo/protobuf/proto"
 )
 
 const (
 	mountContractDir        = "contracts"
 	msgIterIsNil            = "iterator is nil"
-	timeout                 = 10000 // tx execution timeout(milliseconds)
+	txTimeout               = 9000 // tx execution timeout(milliseconds)
 	version2201      uint32 = 2201
 	version2210      uint32 = 2210
 	version2220      uint32 = 2220
+	version2310      uint32 = 2030100
 )
 
 var (
@@ -123,17 +124,12 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 
 	var err error
 	// init func gas used calc and check gas limit
-	if gasUsed, err = gas.InitFuncGasUsed(gasUsed, parameters,
-		gas.ContractParamCreatorOrgId,
-		gas.ContractParamCreatorRole,
-		gas.ContractParamCreatorPk,
-		gas.ContractParamSenderOrgId,
-		gas.ContractParamSenderRole,
-		gas.ContractParamSenderPk,
-		gas.ContractParamBlockHeight,
-		gas.ContractParamTxId,
-		gas.ContractParamTxTimeStamp,
-	); err != nil {
+	if txSimContext.GetBlockVersion() < version2310 {
+		gasUsed, err = gas.InitFuncGasUsedLT2310(gasUsed, parameters)
+	} else {
+		gasUsed, err = gas.InitFuncGasUsed(gasUsed, parameters)
+	}
+	if err != nil {
 		contractResult.GasUsed = gasUsed
 		return r.errorResult(contractResult, err, err.Error())
 	}
@@ -199,7 +195,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 	// send message to tx chan
 	r.ClientManager.PutTxRequest(cdmMessage)
 
-	timeoutC := time.After(timeout * time.Millisecond)
+	timeoutC := time.After(txTimeout * time.Millisecond)
 
 	r.Log.Debugf("start tx [%s] in runtime", txRequest.TxId)
 	// wait this chan
@@ -296,7 +292,7 @@ func (r *RuntimeInstance) Invoke(contract *commonPb.Contract, method string,
 				// merge events
 				var contractEvents []*commonPb.ContractEvent
 
-				if len(txResponse.Events) > protocol.EventDataMaxCount-1 {
+				if txSimContext.GetBlockVersion() < 2300 && len(txResponse.Events) > protocol.EventDataMaxCount-1 {
 					err = fmt.Errorf("too many event data")
 					r.Log.Errorf("[%s] return error response [%v]", uniqueTxKey, contractResult)
 					return r.errorResult(contractResult, err, "fail to put event data")
