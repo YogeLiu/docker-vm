@@ -184,7 +184,14 @@ func InitFuncGasUsed(gasUsed, configDefaultGas uint64) (uint64, error) {
 	}
 
 	return gasUsed, nil
+}
 
+func InitFuncGasUsed2312(gasUsed uint64) (uint64, error) {
+	gasUsed += initFuncGas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
 }
 
 // InitFuncGasUsedOld returns old init func gas used

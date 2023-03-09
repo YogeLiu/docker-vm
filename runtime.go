@@ -29,6 +29,7 @@ const (
 	mountContractDir        = "contract-bins"
 	msgIterIsNil            = "iterator is nil"
 	version2310      uint32 = 2030100
+	version2312      uint32 = 2030102
 )
 
 var dockerVMMsgPool = sync.Pool{
@@ -105,17 +106,24 @@ func (r *RuntimeInstance) Invoke(
 	specialTxType := protocol.ExecOrderTxTypeNormal
 
 	var err error
-	// init func gas used calc and check gas limit
-	if gasUsed, err = gas.InitFuncGasUsed(gasUsed, r.getChainConfigDefaultGas(txSimContext)); err != nil {
-		contractResult.GasUsed = gasUsed
-		return r.errorResult(contractResult, err, err.Error())
-	}
+	if txSimContext.GetBlockVersion() < version2312 {
+		// init func gas used calc and check gas limit
+		if gasUsed, err = gas.InitFuncGasUsed(gasUsed, r.getChainConfigDefaultGas(txSimContext)); err != nil {
+			contractResult.GasUsed = gasUsed
+			return r.errorResult(contractResult, err, err.Error())
+		}
 
-	//init contract gas used calc and check gas limit
-	gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode)
-	if err != nil {
-		contractResult.GasUsed = gasUsed
-		return r.errorResult(contractResult, err, err.Error())
+		//init contract gas used calc and check gas limit
+		gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode)
+		if err != nil {
+			contractResult.GasUsed = gasUsed
+			return r.errorResult(contractResult, err, err.Error())
+		}
+	} else {
+		if gasUsed, err = gas.InitFuncGasUsed2312(gasUsed); err != nil {
+			contractResult.GasUsed = gasUsed
+			return r.errorResult(contractResult, err, err.Error())
+		}
 	}
 
 	for key := range parameters {
