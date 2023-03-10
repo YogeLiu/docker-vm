@@ -20,6 +20,7 @@ import (
 	"chainmaker.org/chainmaker/pb-go/v2/store"
 	vmPb "chainmaker.org/chainmaker/pb-go/v2/vm"
 	"chainmaker.org/chainmaker/protocol/v2"
+	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/config"
 	"chainmaker.org/chainmaker/vm-engine/v2/gas"
 	"chainmaker.org/chainmaker/vm-engine/v2/pb/protogo"
@@ -35,6 +36,9 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 
 	var err error
 	txResponse := recvMsg.Response
+
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
 
 	utils.EnterNextStep(recvMsg, protogo.StepType_RUNTIME_HANDLER_RECEIVE_TX_RESPONSE, func() string {
 		return strings.Join([]string{"msgSize", strconv.Itoa(recvMsg.Size())}, ":")
@@ -93,7 +97,7 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		}
 
 		// emit event gas used calc and check gas limit
-		gasUsed, err = gas.EmitEventGasUsed(gasUsed, contractEvent)
+		gasUsed, err = gas.EmitEventGasUsed(blockVersion, gasConfig, gasUsed, contractEvent)
 		if err != nil {
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(contractResult, err, err.Error())
@@ -141,6 +145,9 @@ func (r *RuntimeInstance) handlerCallContract(
 	gasUsed uint64,
 	caller *commonPb.Contract,
 ) (*protogo.DockerVMMessage, uint64, protocol.ExecOrderTxType) {
+
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_CALL_CONTRACT_RESPONSE)
 	specialTxType := protocol.ExecOrderTxTypeNormal
@@ -223,7 +230,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	gasUsed = result.GasUsed
 	for _, event := range result.ContractEvent {
 
-		gasUsed, err = gas.EmitEventGasUsed(gasUsed, event)
+		gasUsed, err = gas.EmitEventGasUsed(blockVersion, gasConfig, gasUsed, event)
 		if err != nil {
 			r.logger.Debugf("handle cross contract request failed, err: %s", err.Error())
 			response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
@@ -296,6 +303,9 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_GET_STATE_RESPONSE)
 
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
+
 	var contractName string
 	var value []byte
 	var err error
@@ -342,7 +352,7 @@ func (r *RuntimeInstance) handleGetStateRequest(txId string, recvMsg *protogo.Do
 			config.KeyStateValue: value,
 		}
 	}
-	gasUsed, err = gas.GetStateGasUsed(gasUsed, value)
+	gasUsed, err = gas.GetStateGasUsed(blockVersion, gasConfig, gasUsed, value)
 	if err != nil {
 		r.logger.Errorf("%s", err)
 		response.SysCallMessage.Message = err.Error()
@@ -357,6 +367,9 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_GET_BATCH_STATE_RESPONSE)
+
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
 
 	var err error
 	var payload []byte
@@ -398,7 +411,7 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 	response.SysCallMessage.Payload = map[string][]byte{
 		config.KeyStateValue: payload,
 	}
-	gasUsed, err = gas.GetBatchStateGasUsed(gasUsed, payload)
+	gasUsed, err = gas.GetBatchStateGasUsed(blockVersion, gasConfig, gasUsed, payload)
 	if err != nil {
 		r.logger.Errorf("%s", err)
 		response.SysCallMessage.Message = err.Error()
@@ -413,6 +426,11 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	txSimContext protocol.TxSimContext, gasUsed uint64, contractName string) (*protogo.DockerVMMessage, uint64) {
 
 	createKvIteratorResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CREATE_KV_ITERATOR_RESPONSE)
+
+	r.logger.Debugf("【gas calc】%v, start create KvIterator => gasUsed = %v", txId, gasUsed)
+	defer func() {
+		r.logger.Debugf("【gas calc】%v, finish create KvIterator => gasUsed = %v", txId, gasUsed)
+	}()
 
 	/*
 		|	index	|			desc			|
@@ -519,6 +537,11 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.DockerVMMessage,
 	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
 
+	r.logger.Debugf("【gas calc】%v, start consume KvIterator => gasUsed = %v", txId, gasUsed)
+	defer func() {
+		r.logger.Debugf("【gas calc】%v, finish consume KvIterator => gasUsed = %v", txId, gasUsed)
+	}()
+
 	consumeKvIteratorResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CONSUME_KV_ITERATOR_RESPONSE)
 
 	/*
@@ -547,6 +570,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 		consumeKvIteratorResponse.SysCallMessage.Message = fmt.Sprintf(
 			"[kv iterator consume] can not found iterator index [%d]", kvIteratorIndex,
 		)
+
 		gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
 		if err != nil {
 			consumeKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
@@ -593,6 +617,11 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 
 func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *protogo.DockerVMMessage,
 	txSimContext protocol.TxSimContext, gasUsed uint64, contractName string) (*protogo.DockerVMMessage, uint64) {
+
+	r.logger.Debugf("【gas calc】%v, start create KeyHistoryIterator => gasUsed = %v", txId, gasUsed)
+	defer func() {
+		r.logger.Debugf("【gas calc】%v, finish create KeyHistoryIterator => gasUsed = %v", txId, gasUsed)
+	}()
 
 	createKeyHistoryIterResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CREATE_KEY_HISTORY_TER_RESPONSE)
 
@@ -819,6 +848,9 @@ func kvIteratorClose(kvIterator protocol.StateIterator, gasUsed uint64,
 func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimContext,
 	writeMap map[string][]byte, gasUsed uint64, txContractName string) (uint64, error) {
 
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
+
 	// merge the sim context write map
 	for key, value := range writeMap {
 		var contractName string
@@ -840,7 +872,7 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 		}
 		// put state gas used calc and check gas limit
 		var err error
-		gasUsed, err = gas.PutStateGasUsed(gasUsed, contractName, contractKey, contractField, value)
+		gas.PutStateGasUsed(blockVersion, gasConfig, gasUsed, contractName, contractKey, contractField, value)
 		r.logger.Debugf("【gas calc】%v, merge write set, gasUsed = %v => %v # %v # %v = data(%v)",
 			txSimContext.GetTx().Payload.TxId, gasUsed, contractName, contractKey, contractField, len(value))
 		if err != nil {
@@ -858,6 +890,7 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 
 func kvIteratorHasNext(kvIterator protocol.StateIterator, gasUsed uint64,
 	response *protogo.DockerVMMessage) (*protogo.DockerVMMessage, uint64) {
+
 	var err error
 	gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
 	if err != nil {
@@ -882,6 +915,7 @@ func kvIteratorHasNext(kvIterator protocol.StateIterator, gasUsed uint64,
 
 func kvIteratorNext(kvIterator protocol.StateIterator, gasUsed uint64,
 	response *protogo.DockerVMMessage) (*protogo.DockerVMMessage, uint64) {
+
 	var err error
 	gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
 	if err != nil {

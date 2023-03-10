@@ -3,8 +3,8 @@ chainmaker.org/chainmaker/common/v2 v2.2.2-0.20220607063940-ded004f7fce5/go.mod 
 chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220607063430-b037daa0847d/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
 chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220713115418-627748021f33 h1:/mawnXy9MPxbXw810lviHe8dHFkO7TAElq2q0W6n0tg=
 chainmaker.org/chainmaker/pb-go/v2 v2.2.2-0.20220713115418-627748021f33/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
-chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230309081530-07f7bf567852 h1:4+ERmzyf4H/8lGEx45OFl1Yw7Wlfi6rBLP7NP7D57eg=
-chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230309081530-07f7bf567852/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
+chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230310080537-20a1a04581a5 h1:VqdjHXCluzrb7f7DoYkn8HJAuF3Xp4pPKU5+Ql23WL4=
+chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230310080537-20a1a04581a5/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
 chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220607065007-b25caf2d737e h1:HHSVghnc9xc+Dd+iQa5DSvJu6FkxGY0ViOwPLxgJGpg=
 chainmaker.org/chainmaker/protocol/v2 v2.2.3-0.20220607065007-b25caf2d737e/go.mod h1:diR/Oq41XnjF85kQljLz0lDkAPqeIGxvw6bjujFDoOw=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
