@@ -105,7 +105,8 @@ func (r *RuntimeInstance) Invoke(
 
 	specialTxType := protocol.ExecOrderTxTypeNormal
 
-	r.logger.Debugf("before vm-engine calc gas => gasUsed = %v", gasUsed)
+	r.logger.Debugf("before vm-engine calc gas => gasUsed = %v, blockVersion = %v",
+		gasUsed, txSimContext.GetBlockVersion())
 	var err error
 	if txSimContext.GetBlockVersion() < version2312 {
 		// init func gas used calc and check gas limit
