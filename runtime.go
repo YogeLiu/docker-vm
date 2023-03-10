@@ -125,12 +125,6 @@ func (r *RuntimeInstance) Invoke(
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(contractResult, err, err.Error())
 		}
-		//init contract gas used calc and check gas limit
-		gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode)
-		if err != nil {
-			contractResult.GasUsed = gasUsed
-			return r.errorResult(contractResult, err, err.Error())
-		}
 	}
 	r.logger.Debugf("after vm-engine calc gas => gasUsed = %v", gasUsed)
 

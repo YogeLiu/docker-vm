@@ -9,6 +9,8 @@ chainmaker.org/chainmaker/logger/v2 v2.3.0 h1:SuBA48m+OQ5HChX34j6eXk4o0uhXHi8Jfk
 chainmaker.org/chainmaker/logger/v2 v2.3.0/go.mod h1:kmHXCIBl9833c0UO+G4GKAifbhqhNdiL4f5dDsR+Vks=
 chainmaker.org/chainmaker/pb-go/v2 v2.3.2 h1:EmGbMEJGSnP+ASqBkbSsPosRgl8tC3xF4De9UszIoE8=
 chainmaker.org/chainmaker/pb-go/v2 v2.3.2/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
+chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230309081530-07f7bf567852 h1:4+ERmzyf4H/8lGEx45OFl1Yw7Wlfi6rBLP7NP7D57eg=
+chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230309081530-07f7bf567852/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
 chainmaker.org/chainmaker/protocol/v2 v2.3.2 h1:/WXi4LRKrjOaxd4NoFVGftKXrX84zNYbwyYPp0wxAWo=
 chainmaker.org/chainmaker/protocol/v2 v2.3.2/go.mod h1:PGP3kYeurnv5lmoYuXr2jvrGjR2Sp3GGocpTj2i5SJM=
 chainmaker.org/chainmaker/utils/v2 v2.3.2 h1:k2nR23f2L03KXCuNclcWCMGhnmVPvw5mep9iOyGXQiA=

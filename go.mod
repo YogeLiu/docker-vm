@@ -6,7 +6,7 @@ require (
 	chainmaker.org/chainmaker/common/v2 v2.3.1
 	chainmaker.org/chainmaker/localconf/v2 v2.3.1
 	chainmaker.org/chainmaker/logger/v2 v2.3.0
-	chainmaker.org/chainmaker/pb-go/v2 v2.3.2
+	chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230309081530-07f7bf567852
 	chainmaker.org/chainmaker/protocol/v2 v2.3.2
 	chainmaker.org/chainmaker/utils/v2 v2.3.2
 	chainmaker.org/chainmaker/vm/v2 v2.3.2
