@@ -105,6 +105,7 @@ func (r *RuntimeInstance) Invoke(
 
 	specialTxType := protocol.ExecOrderTxTypeNormal
 
+	r.logger.Debugf("before vm-engine calc gas => gasUsed = %v", gasUsed)
 	var err error
 	if txSimContext.GetBlockVersion() < version2312 {
 		// init func gas used calc and check gas limit
@@ -124,7 +125,14 @@ func (r *RuntimeInstance) Invoke(
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(contractResult, err, err.Error())
 		}
+		//init contract gas used calc and check gas limit
+		gasUsed, err = gas.ContractGasUsed(gasUsed, method, contract.Name, byteCode)
+		if err != nil {
+			contractResult.GasUsed = gasUsed
+			return r.errorResult(contractResult, err, err.Error())
+		}
 	}
+	r.logger.Debugf("after vm-engine calc gas => gasUsed = %v", gasUsed)
 
 	for key := range parameters {
 		if strings.Contains(key, "CONTRACT") {
