@@ -97,7 +97,11 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		}
 
 		// emit event gas used calc and check gas limit
+		r.logger.Debugf("【gas calc】%v, before EmitEvent => gasUsed = %v",
+			txSimContext.GetTx().Payload.TxId, gasUsed)
 		gasUsed, err = gas.EmitEventGasUsed(blockVersion, gasConfig, gasUsed, contractEvent)
+		r.logger.Debugf("【gas calc】%v, after EmitEvent => gasUsed = %v",
+			txSimContext.GetTx().Payload.TxId, gasUsed)
 		if err != nil {
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(contractResult, err, err.Error())
@@ -872,7 +876,7 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 		}
 		// put state gas used calc and check gas limit
 		var err error
-		gas.PutStateGasUsed(blockVersion, gasConfig, gasUsed, contractName, contractKey, contractField, value)
+		gasUsed, err := gas.PutStateGasUsed(blockVersion, gasConfig, gasUsed, contractName, contractKey, contractField, value)
 		r.logger.Debugf("【gas calc】%v, merge write set, gasUsed = %v => %v # %v # %v = data(%v)",
 			txSimContext.GetTx().Payload.TxId, gasUsed, contractName, contractKey, contractField, len(value))
 		if err != nil {
