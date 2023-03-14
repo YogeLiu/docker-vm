@@ -876,7 +876,7 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 		}
 		// put state gas used calc and check gas limit
 		var err error
-		gasUsed, err := gas.PutStateGasUsed(blockVersion, gasConfig, gasUsed, contractName, contractKey, contractField, value)
+		gasUsed, err = gas.PutStateGasUsed(blockVersion, gasConfig, gasUsed, contractName, contractKey, contractField, value)
 		r.logger.Debugf("【gas calc】%v, merge write set, gasUsed = %v => %v # %v # %v = data(%v)",
 			txSimContext.GetTx().Payload.TxId, gasUsed, contractName, contractKey, contractField, len(value))
 		if err != nil {
