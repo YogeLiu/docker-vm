@@ -7,6 +7,15 @@ import (
 	"errors"
 )
 
+// InitFuncGasUsed2312 return the gasUsed
+func InitFuncGasUsed2312(gasUsed uint64) (uint64, error) {
+	gasUsed += initFuncGas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
 // PutStateGasUsed2312 returns put state gas used
 func PutStateGasUsed2312(gasConfig *gasutils.GasConfig,
 	gasUsed uint64, contractName, key, field string, value []byte) (uint64, error) {

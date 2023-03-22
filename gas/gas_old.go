@@ -176,21 +176,13 @@ func EmitEventGasUsedLt2312(gasUsed uint64, contractEvent *common.ContractEvent)
 	return gasUsed, nil
 }
 
-// InitFuncGasUsed returns init func gas used
-func InitFuncGasUsed(gasUsed, configDefaultGas uint64) (uint64, error) {
+// InitFuncGasUsedLt2312 returns init func gas used
+func InitFuncGasUsedLt2312(gasUsed, configDefaultGas uint64) (uint64, error) {
 	gasUsed = getInitFuncGasUsed(gasUsed, configDefaultGas)
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
 
-	return gasUsed, nil
-}
-
-func InitFuncGasUsed2312(gasUsed uint64) (uint64, error) {
-	gasUsed += initFuncGas
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
 	return gasUsed, nil
 }
 

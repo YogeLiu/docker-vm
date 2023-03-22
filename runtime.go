@@ -110,7 +110,7 @@ func (r *RuntimeInstance) Invoke(
 	var err error
 	if txSimContext.GetBlockVersion() < version2312 {
 		// init func gas used calc and check gas limit
-		if gasUsed, err = gas.InitFuncGasUsed(gasUsed, r.getChainConfigDefaultGas(txSimContext)); err != nil {
+		if gasUsed, err = gas.InitFuncGasUsedLt2312(gasUsed, r.getChainConfigDefaultGas(txSimContext)); err != nil {
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(contractResult, err, err.Error())
 		}
