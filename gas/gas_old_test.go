@@ -76,7 +76,7 @@ func TestEmitEventGasUsed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := EmitEventGasUsed(tt.args.gasUsed, tt.args.contractEvent)
+			got, err := EmitEventGasUsedLt2312(tt.args.gasUsed, tt.args.contractEvent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EmitEventGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -112,7 +112,7 @@ func TestGetStateGasUsed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetStateGasUsed(tt.args.gasUsed, tt.args.value)
+			got, err := GetStateGasUsedLt2312(tt.args.gasUsed, tt.args.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetStateGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -153,7 +153,7 @@ func TestPutStateGasUsed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := PutStateGasUsed(tt.args.gasUsed, tt.args.contractName, tt.args.key, tt.args.field, tt.args.value)
+			got, err := PutStateGasUsedLt2312(tt.args.gasUsed, tt.args.contractName, tt.args.key, tt.args.field, tt.args.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PutStateGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
