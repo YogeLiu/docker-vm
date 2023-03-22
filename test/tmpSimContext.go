@@ -187,7 +187,7 @@ func (s *TxContextMockTest) GetLastChainConfig() *configPb.ChainConfig {
 
 // GetBlockVersion returns block version
 func (s *TxContextMockTest) GetBlockVersion() uint32 {
-	panic("implement me")
+	return uint32(2030102)
 }
 
 // SetStateKvHandle set state kv handle
