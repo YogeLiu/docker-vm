@@ -142,6 +142,7 @@ func initMockSimContext(t *testing.T) *mock.MockTxSimContext {
 	tmpSimContextMap = make(map[string][]byte)
 	txId := uuid.Generate().String()
 
+	simContext.EXPECT().GetBlockVersion().Return(uint32(2030200)).AnyTimes()
 	simContext.EXPECT().GetTx().DoAndReturn(
 		func() *commonPb.Transaction {
 			tx := &commonPb.Transaction{
