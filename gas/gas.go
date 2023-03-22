@@ -16,9 +16,9 @@ func PutStateGasUsed(
 
 	if blockVersion < blockVersion2312 {
 		return PutStateGasUsedLt2312(gasUsed, contractName, key, field, value)
-	} else {
-		return PutStateGasUsed2312(gasConfig, gasUsed, contractName, key, field, value)
 	}
+
+	return PutStateGasUsed2312(gasConfig, gasUsed, contractName, key, field, value)
 }
 
 // GetStateGasUsed returns put state gas used
@@ -28,9 +28,9 @@ func GetStateGasUsed(
 
 	if blockVersion < blockVersion2312 {
 		return GetStateGasUsedLt2312(gasUsed, value)
-	} else {
-		return GetStateGasUsed2312(gasConfig, gasUsed, value)
 	}
+
+	return GetStateGasUsed2312(gasConfig, gasUsed, value)
 }
 
 // GetBatchStateGasUsed returns get batch state gas used
@@ -40,9 +40,10 @@ func GetBatchStateGasUsed(
 
 	if blockVersion < blockVersion2312 {
 		return GetBatchStateGasUsedLt2312(gasUsed, payload)
-	} else {
-		return GetBatchStateGasUsed2312(gasConfig, gasUsed, payload)
 	}
+	
+	return GetBatchStateGasUsed2312(gasConfig, gasUsed, payload)
+
 }
 
 // EmitEventGasUsed returns emit event gas used
@@ -52,7 +53,7 @@ func EmitEventGasUsed(
 
 	if blockVersion < blockVersion2312 {
 		return EmitEventGasUsedLt2312(gasUsed, contractEvent)
-	} else {
-		return EmitEventGasUsed2312(gasConfig, gasUsed, contractEvent)
 	}
+
+	return EmitEventGasUsed2312(gasConfig, gasUsed, contractEvent)
 }
