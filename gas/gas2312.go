@@ -1,10 +1,11 @@
 package gas
 
 import (
-	"chainmaker.org/chainmaker/pb-go/v2/common"
-	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
 	"encoding/json"
 	"errors"
+
+	"chainmaker.org/chainmaker/pb-go/v2/common"
+	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
 )
 
 // InitFuncGasUsed2312 return the gasUsed

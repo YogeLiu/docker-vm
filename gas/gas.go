@@ -41,7 +41,7 @@ func GetBatchStateGasUsed(
 	if blockVersion < blockVersion2312 {
 		return GetBatchStateGasUsedLt2312(gasUsed, payload)
 	}
-	
+
 	return GetBatchStateGasUsed2312(gasConfig, gasUsed, payload)
 
 }
