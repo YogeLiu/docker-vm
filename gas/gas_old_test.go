@@ -188,7 +188,7 @@ func TestInitFuncGasUsed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitFuncGasUsed(tt.args.gasUsed, tt.args.configDefaultGas)
+			got, err := InitFuncGasUsedLt2312(tt.args.gasUsed, tt.args.configDefaultGas)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitFuncGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
