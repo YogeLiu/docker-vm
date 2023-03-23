@@ -183,9 +183,8 @@ func (s *TxContextMockTest) GetLastChainConfig() *configPb.ChainConfig {
 	return &configPb.ChainConfig{
 		AccountConfig: &configPb.GasAccountConfig{
 			EnableGas:       true,
-			DefaultGas:      uint64(10),
-			InvokeGasPrice:  float32(0.1),
-			InvokeBaseGas:   uint64(11),
+			DefaultGasPrice: float32(0.1),
+			DefaultGas:      uint64(11),
 			InstallGasPrice: float32(0.2),
 			InstallBaseGas:  uint64(12),
 		},
