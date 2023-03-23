@@ -24,7 +24,14 @@ func PutStateGasUsed2312(gasConfig *gasutils.GasConfig,
 	if gasConfig != nil {
 		putStateGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
-	gasUsed += uint64(float64(len(value)+len(contractName+key+field)) * float64(putStateGasPrice))
+
+	dataSize := len(value) + len(contractName+key+field)
+	gas, err := gasutils.MultiplyGasPrice(dataSize, putStateGasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
@@ -39,7 +46,12 @@ func GetStateGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64, value []
 		getStateGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
 
-	gasUsed += uint64(float64(len(value)) * float64(getStateGasPrice))
+	gas, err := gasutils.MultiplyGasPrice(len(value), getStateGasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
@@ -53,7 +65,12 @@ func GetBatchStateGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64, pay
 		getBatchStateGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
 
-	gasUsed += uint64(float64(len(payload)) * float64(getBatchStateGasPrice))
+	gas, err := gasutils.MultiplyGasPrice(len(payload), getBatchStateGasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
@@ -74,7 +91,12 @@ func EmitEventGasUsed2312(gasConfig *gasutils.GasConfig,
 		emitEventGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
 
-	gasUsed += uint64(float64(len(contractEventBytes)) * float64(emitEventGasPrice))
+	gas, err := gasutils.MultiplyGasPrice(len(contractEventBytes), emitEventGasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
 	if CheckGasLimit(gasUsed) {
 		return 0, errors.New("over gas limited ")
 	}
