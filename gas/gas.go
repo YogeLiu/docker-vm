@@ -18,7 +18,7 @@ func PutStateGasUsed(
 		return PutStateGasUsedLt2312(gasUsed, contractName, key, field, value)
 	}
 
-	return PutStateGasUsed2312(gasConfig, gasUsed, contractName, key, field, value)
+	return 0, nil
 }
 
 // GetStateGasUsed returns put state gas used
@@ -30,7 +30,7 @@ func GetStateGasUsed(
 		return GetStateGasUsedLt2312(gasUsed, value)
 	}
 
-	return GetStateGasUsed2312(gasConfig, gasUsed, value)
+	return 0, nil
 }
 
 // GetBatchStateGasUsed returns get batch state gas used
@@ -42,8 +42,7 @@ func GetBatchStateGasUsed(
 		return GetBatchStateGasUsedLt2312(gasUsed, payload)
 	}
 
-	return GetBatchStateGasUsed2312(gasConfig, gasUsed, payload)
-
+	return 0, nil
 }
 
 // EmitEventGasUsed returns emit event gas used
@@ -55,5 +54,5 @@ func EmitEventGasUsed(
 		return EmitEventGasUsedLt2312(gasUsed, contractEvent)
 	}
 
-	return EmitEventGasUsed2312(gasConfig, gasUsed, contractEvent)
+	return 0, nil
 }
