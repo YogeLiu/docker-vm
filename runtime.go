@@ -121,12 +121,8 @@ func (r *RuntimeInstance) Invoke(
 			contractResult.GasUsed = gasUsed
 			return r.errorResult(contractResult, err, err.Error())
 		}
-	} else {
-		if gasUsed, err = gas.InitFuncGasUsed2312(gasUsed); err != nil {
-			contractResult.GasUsed = gasUsed
-			return r.errorResult(contractResult, err, err.Error())
-		}
 	}
+	
 	r.logger.Debugf("【gas calc】%v, after vm-engine calc gas => gasUsed = %v",
 		txSimContext.GetTx().Payload.TxId, gasUsed)
 
