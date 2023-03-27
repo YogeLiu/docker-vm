@@ -71,14 +71,14 @@ func PutStateGasUsed(
 
 // GetStateGasUsed returns put state gas used
 func GetStateGasUsed(
-	blockVersion uint32, gasConfig *gasutils.GasConfig,
-	gasUsed uint64, value []byte) (uint64, error) {
+	blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64,
+	contractName, key, field string, value []byte) (uint64, error) {
 
 	if blockVersion < blockVersion2312 {
 		return GetStateGasUsedLt2312(gasUsed, value)
 	}
 
-	return GetStateGasUsed2312(gasConfig, gasUsed, value)
+	return GetStateGasUsed2312(gasConfig, gasUsed, contractName, key, field, value)
 }
 
 // GetBatchStateGasUsed returns get batch state gas used
