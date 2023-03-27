@@ -20,43 +20,6 @@ func GetSenderAddressGasUsed(gasUsed uint64) (uint64, error) {
 	return gasUsed, nil
 }
 
-// CreateKeyHistoryIterGasUsed returns create key history iter gas used
-func CreateKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KeyHistoryIterCreateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
-// ConsumeKeyHistoryIterGasUsed returns consume key history iter gas used
-func ConsumeKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KeyHistoryIterHasNextGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
-// CreateKvIteratorGasUsed create kv iter gas used
-func CreateKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KvIteratorCreateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
-// ConsumeKvIteratorGasUsed returns kv iter gas used
-func ConsumeKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KvIteratorNextGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-
-	return gasUsed, nil
-}
-
 // PutStateGasUsed returns put state gas used
 func PutStateGasUsed(
 	blockVersion uint32, gasConfig *gasutils.GasConfig,
@@ -103,4 +66,37 @@ func EmitEventGasUsed(
 	}
 
 	return EmitEventGasUsed2312(gasConfig, gasUsed, contractEvent)
+}
+
+// CreateKeyHistoryIterGasUsed returns create key history iter gas used
+func CreateKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return CreateKeyHistoryIterGasUsedLt2312(gasUsed)
+	}
+	return CreateKeyHistoryIterGasUsed2312(gasConfig, gasUsed)
+}
+
+// ConsumeKeyHistoryIterGasUsed returns consume key history iter gas used
+func ConsumeKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return ConsumeKeyHistoryIterGasUsedLt2312(gasUsed)
+	}
+	return ConsumeKeyHistoryIterGasUsed2312(gasConfig, gasUsed)
+}
+
+// CreateKvIteratorGasUsed create kv iter gas used
+func CreateKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return CreateKvIteratorGasUsedLt2312(gasUsed)
+	}
+	return CreateKvIteratorGasUsed2312(gasConfig, gasUsed)
+}
+
+// ConsumeKvIteratorGasUsed returns kv iter gas used
+func ConsumeKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return ConsumeKvIteratorGasUsedLt2312(gasUsed)
+	}
+
+	return ConsumeKvIteratorGasUsed2312(gasConfig, gasUsed)
 }

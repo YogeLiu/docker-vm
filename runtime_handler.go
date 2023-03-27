@@ -30,6 +30,10 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	blockVersion2312 = uint32(2030102)
+)
+
 func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerVMMessage,
 	txSimContext protocol.TxSimContext, gasUsed uint64, txType protocol.ExecOrderTxType, contractName string) (
 	contractResult *commonPb.ContractResult, execOrderTxType protocol.ExecOrderTxType) {
@@ -378,7 +382,6 @@ func (r *RuntimeInstance) handleGetBatchStateRequest(txId string, recvMsg *proto
 	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
 
 	response := r.newEmptyResponse(txId, protogo.DockerVMType_GET_BATCH_STATE_RESPONSE)
-
 	blockVersion := txSimContext.GetBlockVersion()
 	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
 
@@ -437,6 +440,8 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	txSimContext protocol.TxSimContext, gasUsed uint64, contractName string) (*protogo.DockerVMMessage, uint64) {
 
 	createKvIteratorResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CREATE_KV_ITERATOR_RESPONSE)
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
 
 	r.logger.Debugf("【gas calc】%v, start create KvIterator => gasUsed = %v", txId, gasUsed)
 	defer func() {
@@ -465,7 +470,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	if err = json.Unmarshal(writeMapBytes, &writeMap); err != nil {
 		r.logger.Errorf("get WriteMap failed, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
-		gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Payload = nil
@@ -477,7 +482,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	if err != nil {
 		r.logger.Errorf("merge the sim context write map failed, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
-		gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Payload = nil
@@ -488,7 +493,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	if err = protocol.CheckKeyFieldStr(string(startKey), string(startField)); err != nil {
 		r.logger.Errorf("invalid key field str, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
-		gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Payload = nil
@@ -503,7 +508,8 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	case config.FuncKvIteratorCreate:
 		limitKey := string(recvMsg.SysCallMessage.Payload[config.KeyIterLimitKey])
 		limitField := string(recvMsg.SysCallMessage.Payload[config.KeyIterLimitField])
-		iter, gasUsed, err = kvIteratorCreate(txSimContext, string(calledContractName), key, limitKey, limitField, gasUsed)
+		iter, gasUsed, err = kvIteratorCreate(blockVersion, gasConfig,
+			txSimContext, string(calledContractName), key, limitKey, limitField, gasUsed)
 		if err != nil {
 			r.logger.Errorf("failed to create kv iterator, %s", err.Error())
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
@@ -512,7 +518,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 			return createKvIteratorResponse, gasUsed
 		}
 	case config.FuncKvPreIteratorCreate:
-		gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Message = err.Error()
@@ -554,6 +560,8 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 	}()
 
 	consumeKvIteratorResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CONSUME_KV_ITERATOR_RESPONSE)
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
 
 	/*
 		|	index	|			desc				|
@@ -565,7 +573,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 	kvIteratorIndex, err := bytehelper.BytesToInt(recvMsg.SysCallMessage.Payload[config.KeyIterIndex])
 	if err != nil {
 		r.logger.Errorf("failed to get iterator index, %s", err.Error())
-		gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
+		gasUsed, err = gas.ConsumeKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 		if err != nil {
 			consumeKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			consumeKvIteratorResponse.SysCallMessage.Message = err.Error()
@@ -582,7 +590,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 			"[kv iterator consume] can not found iterator index [%d]", kvIteratorIndex,
 		)
 
-		gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
+		gasUsed, err = gas.ConsumeKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 		if err != nil {
 			consumeKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			consumeKvIteratorResponse.SysCallMessage.Message = err.Error()
@@ -598,7 +606,7 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 		consumeKvIteratorResponse.SysCallMessage.Message = fmt.Sprintf(
 			"[kv iterator consume] failed, iterator %d assertion failed", kvIteratorIndex,
 		)
-		gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
+		gasUsed, err = gas.ConsumeKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 		if err != nil {
 			consumeKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			consumeKvIteratorResponse.SysCallMessage.Message = err.Error()
@@ -610,13 +618,13 @@ func (r *RuntimeInstance) handleConsumeKvIterator(txId string, recvMsg *protogo.
 
 	switch string(consumeKvIteratorFunc) {
 	case config.FuncKvIteratorHasNext:
-		return kvIteratorHasNext(kvIterator, gasUsed, consumeKvIteratorResponse)
+		return kvIteratorHasNext(blockVersion, gasConfig, kvIterator, gasUsed, consumeKvIteratorResponse)
 
 	case config.FuncKvIteratorNext:
-		return kvIteratorNext(kvIterator, gasUsed, consumeKvIteratorResponse)
+		return kvIteratorNext(blockVersion, gasConfig, kvIterator, gasUsed, consumeKvIteratorResponse)
 
 	case config.FuncKvIteratorClose:
-		return kvIteratorClose(kvIterator, gasUsed, consumeKvIteratorResponse)
+		return kvIteratorClose(blockVersion, gasConfig, kvIterator, gasUsed, consumeKvIteratorResponse)
 
 	default:
 		consumeKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
@@ -635,6 +643,8 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 	}()
 
 	createKeyHistoryIterResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CREATE_KEY_HISTORY_TER_RESPONSE)
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
 
 	/*
 		| index | desc          |
@@ -651,8 +661,7 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 
 	writeMap := make(map[string][]byte)
 	var err error
-
-	gasUsed, err = gas.CreateKeyHistoryIterGasUsed(gasUsed)
+	gasUsed, err = gas.CreateKeyHistoryIterGasUsed(blockVersion, gasConfig, gasUsed)
 	if err != nil {
 		createKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		createKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
@@ -711,13 +720,20 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 func (r *RuntimeInstance) handleConsumeKeyHistoryIterator(txId string, recvMsg *protogo.DockerVMMessage,
 	txSimContext protocol.TxSimContext, gasUsed uint64) (*protogo.DockerVMMessage, uint64) {
 	consumeKeyHistoryIterResponse := r.newEmptyResponse(txId, protogo.DockerVMType_CONSUME_KEY_HISTORY_ITER_RESPONSE)
+	blockVersion := txSimContext.GetBlockVersion()
+	gasConfig := gasutils.NewGasConfig(txSimContext.GetLastChainConfig().AccountConfig)
 
-	currentGasUsed, err := gas.ConsumeKvIteratorGasUsed(gasUsed)
-	if err != nil {
-		consumeKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		consumeKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
-		consumeKeyHistoryIterResponse.SysCallMessage.Payload = nil
-		return consumeKeyHistoryIterResponse, currentGasUsed
+	// for compatible with version 2030102
+	var currentGasUsed uint64
+	var err error
+	if blockVersion < blockVersion2312 {
+		currentGasUsed, err = gas.ConsumeKvIteratorGasUsedLt2312(gasUsed)
+		if err != nil {
+			consumeKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+			consumeKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
+			consumeKeyHistoryIterResponse.SysCallMessage.Payload = nil
+			return consumeKeyHistoryIterResponse, currentGasUsed
+		}
 	}
 
 	/*
@@ -761,13 +777,13 @@ func (r *RuntimeInstance) handleConsumeKeyHistoryIterator(txId string, recvMsg *
 
 	switch string(consumeKeyHistoryIteratorFunc) {
 	case config.FuncKeyHistoryIterHasNext:
-		return keyHistoryIterHasNext(keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
+		return keyHistoryIterHasNext(blockVersion, gasConfig, keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
 
 	case config.FuncKeyHistoryIterNext:
-		return keyHistoryIterNext(keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
+		return keyHistoryIterNext(blockVersion, gasConfig, keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
 
 	case config.FuncKeyHistoryIterClose:
-		return keyHistoryIterClose(keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
+		return keyHistoryIterClose(blockVersion, gasConfig, keyHistoryIterator, gasUsed, consumeKeyHistoryIterResponse)
 	default:
 		consumeKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		consumeKeyHistoryIterResponse.SysCallMessage.Message = fmt.Sprintf("%s not found", consumeKeyHistoryIteratorFunc)
@@ -817,10 +833,12 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 	return getSenderAddressResponse, gasUsed
 }
 
-func kvIteratorCreate(txSimContext protocol.TxSimContext, calledContractName string,
+func kvIteratorCreate(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	txSimContext protocol.TxSimContext, calledContractName string,
 	key []byte, limitKey, limitField string, gasUsed uint64) (protocol.StateIterator, uint64, error) {
 	var err error
-	gasUsed, err = gas.CreateKvIteratorGasUsed(gasUsed)
+	gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 	if err != nil {
 		return nil, gasUsed, err
 	}
@@ -838,10 +856,12 @@ func kvIteratorCreate(txSimContext protocol.TxSimContext, calledContractName str
 	return iter, gasUsed, err
 }
 
-func kvIteratorClose(kvIterator protocol.StateIterator, gasUsed uint64,
+func kvIteratorClose(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	kvIterator protocol.StateIterator, gasUsed uint64,
 	response *protogo.DockerVMMessage) (*protogo.DockerVMMessage, uint64) {
 	var err error
-	gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
+	gasUsed, err = gas.ConsumeKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 	if err != nil {
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		response.SysCallMessage.Message = err.Error()
@@ -899,11 +919,13 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 	return gasUsed, nil
 }
 
-func kvIteratorHasNext(kvIterator protocol.StateIterator, gasUsed uint64,
+func kvIteratorHasNext(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	kvIterator protocol.StateIterator, gasUsed uint64,
 	response *protogo.DockerVMMessage) (*protogo.DockerVMMessage, uint64) {
 
 	var err error
-	gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
+	gasUsed, err = gas.ConsumeKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
 	if err != nil {
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		response.SysCallMessage.Message = err.Error()
@@ -924,16 +946,20 @@ func kvIteratorHasNext(kvIterator protocol.StateIterator, gasUsed uint64,
 	return response, gasUsed
 }
 
-func kvIteratorNext(kvIterator protocol.StateIterator, gasUsed uint64,
+func kvIteratorNext(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	kvIterator protocol.StateIterator, gasUsed uint64,
 	response *protogo.DockerVMMessage) (*protogo.DockerVMMessage, uint64) {
 
 	var err error
-	gasUsed, err = gas.ConsumeKvIteratorGasUsed(gasUsed)
-	if err != nil {
-		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		response.SysCallMessage.Message = err.Error()
-		response.SysCallMessage.Payload = nil
-		return response, gasUsed
+	if blockVersion < blockVersion2312 {
+		gasUsed, err = gas.ConsumeKvIteratorGasUsedLt2312(gasUsed)
+		if err != nil {
+			response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+			response.SysCallMessage.Message = err.Error()
+			response.SysCallMessage.Payload = nil
+			return response, gasUsed
+		}
 	}
 
 	if kvIterator == nil {
@@ -968,13 +994,25 @@ func kvIteratorNext(kvIterator protocol.StateIterator, gasUsed uint64,
 		config.KeyStateValue: value,
 	}
 
+	if blockVersion2312 <= blockVersion {
+		gasUsed, err = gas.ConsumeKvIteratorNextGasUsed2312(gasConfig, gasUsed, key, field, value)
+		if err != nil {
+			response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+			response.SysCallMessage.Message = err.Error()
+			response.SysCallMessage.Payload = nil
+			return response, gasUsed
+		}
+	}
+
 	return response, gasUsed
 }
 
-func keyHistoryIterHasNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
+func keyHistoryIterHasNext(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	iter protocol.KeyHistoryIterator, gasUsed uint64,
 	response *protogo.DockerVMMessage) (*protogo.DockerVMMessage, uint64) {
 	var err error
-	gasUsed, err = gas.ConsumeKeyHistoryIterGasUsed(gasUsed)
+	gasUsed, err = gas.ConsumeKeyHistoryIterGasUsed(blockVersion, gasConfig, gasUsed)
 	if err != nil {
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		response.SysCallMessage.Message = err.Error()
@@ -995,15 +1033,19 @@ func keyHistoryIterHasNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
 	return response, gasUsed
 }
 
-func keyHistoryIterNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
+func keyHistoryIterNext(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	iter protocol.KeyHistoryIterator, gasUsed uint64,
 	response *protogo.DockerVMMessage) (*protogo.DockerVMMessage, uint64) {
 	var err error
-	gasUsed, err = gas.ConsumeKeyHistoryIterGasUsed(gasUsed)
-	if err != nil {
-		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-		response.SysCallMessage.Message = err.Error()
-		response.SysCallMessage.Payload = nil
-		return response, gasUsed
+	if blockVersion < blockVersion2312 {
+		gasUsed, err = gas.ConsumeKeyHistoryIterGasUsedLt2312(gasUsed)
+		if err != nil {
+			response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+			response.SysCallMessage.Message = err.Error()
+			response.SysCallMessage.Payload = nil
+			return response, gasUsed
+		}
 	}
 
 	if iter == nil {
@@ -1030,6 +1072,15 @@ func keyHistoryIterNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
 		isDelete = config.BoolFalse
 	}
 
+	if blockVersion2312 <= blockVersion {
+		gasUsed, err = gas.ConsumeKeyHistoryIterNextGasUsed2312(gasConfig, gasUsed, historyValue.Value)
+		if err != nil {
+			response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+			response.SysCallMessage.Message = err.Error()
+			response.SysCallMessage.Payload = nil
+			return response, gasUsed
+		}
+	}
 	/*
 		| index | desc        |
 		| ---   | ---         |
@@ -1050,10 +1101,12 @@ func keyHistoryIterNext(iter protocol.KeyHistoryIterator, gasUsed uint64,
 	return response, gasUsed
 }
 
-func keyHistoryIterClose(iter protocol.KeyHistoryIterator, gasUsed uint64,
+func keyHistoryIterClose(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	iter protocol.KeyHistoryIterator, gasUsed uint64,
 	response *protogo.DockerVMMessage) (*protogo.DockerVMMessage, uint64) {
 	var err error
-	gasUsed, err = gas.ConsumeKeyHistoryIterGasUsed(gasUsed)
+	gasUsed, err = gas.ConsumeKeyHistoryIterGasUsed(blockVersion, gasConfig, gasUsed)
 	if err != nil {
 		response.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		response.SysCallMessage.Message = err.Error()

@@ -93,3 +93,117 @@ func EmitEventGasUsed2312(gasConfig *gasutils.GasConfig,
 	}
 	return gasUsed, nil
 }
+
+func CreateKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	gasPrice := float32(KeyHistoryIterCreateGasPrice)
+	if gasConfig != nil {
+		gasPrice = gasConfig.GetGasPriceForInvoke()
+	}
+
+	gas, err := gasutils.MultiplyGasPrice(10, gasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+func CreateKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	gasPrice := float32(KvIteratorCreateGasPrice)
+	if gasConfig != nil {
+		gasPrice = gasConfig.GetGasPriceForInvoke()
+	}
+
+	gas, err := gasutils.MultiplyGasPrice(10, gasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+func ConsumeKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	gasPrice := float32(KeyHistoryIterHasNextGasPrice)
+	if gasConfig != nil {
+		gasPrice = gasConfig.GetGasPriceForInvoke()
+	}
+
+	gas, err := gasutils.MultiplyGasPrice(10, gasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+func ConsumeKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	gasPrice := float32(KvIteratorNextGasPrice)
+	if gasConfig != nil {
+		gasPrice = gasConfig.GetGasPriceForInvoke()
+	}
+
+	gas, err := gasutils.MultiplyGasPrice(10, gasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+func ConsumeKvIteratorNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
+	key string, field string, value []byte) (uint64, error) {
+
+	gasPrice := float32(0)
+	if gasConfig != nil {
+		gasPrice = gasConfig.GetGasPriceForInvoke()
+	}
+
+	dataSize := len(key) + len(field) + len(value)
+	gas, err := gasutils.MultiplyGasPrice(dataSize, gasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+func ConsumeKeyHistoryIterNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
+	value []byte) (uint64, error) {
+
+	gasPrice := float32(0)
+	if gasConfig != nil {
+		gasPrice = gasConfig.GetGasPriceForInvoke()
+	}
+
+	dataSize := len(value)
+	gas, err := gasutils.MultiplyGasPrice(dataSize, gasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}

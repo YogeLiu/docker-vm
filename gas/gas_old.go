@@ -148,3 +148,40 @@ func getInitFuncGasUsed(gasUsed, configDefaultGas uint64) uint64 {
 func CheckGasLimit(gasUsed uint64) bool {
 	return gasUsed > protocol.GasLimit
 }
+
+// CreateKeyHistoryIterGasUsedLt2312 returns create key history iter gas used
+func CreateKeyHistoryIterGasUsedLt2312(gasUsed uint64) (uint64, error) {
+	gasUsed += 10 * KeyHistoryIterCreateGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+// ConsumeKeyHistoryIterGasUsedLt2312 returns consume key history iter gas used
+func ConsumeKeyHistoryIterGasUsedLt2312(gasUsed uint64) (uint64, error) {
+	gasUsed += 10 * KeyHistoryIterHasNextGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+// CreateKvIteratorGasUsedLt2312 create kv iter gas used
+func CreateKvIteratorGasUsedLt2312(gasUsed uint64) (uint64, error) {
+	gasUsed += 10 * KvIteratorCreateGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+// ConsumeKvIteratorGasUsedLt2312 returns kv iter gas used
+func ConsumeKvIteratorGasUsedLt2312(gasUsed uint64) (uint64, error) {
+	gasUsed += 10 * KvIteratorNextGasPrice
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+
+	return gasUsed, nil
+}
