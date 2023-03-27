@@ -94,15 +94,6 @@ func PutStateGasUsedLt2312(gasUsed uint64, contractName, key, field string, valu
 	return gasUsed, nil
 }
 
-// DelStateGasUsed returns del state gas used
-func DelStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
-	gasUsed += uint64(len(value)) * DelStateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
-}
-
 // EmitEventGasUsedLt2312 returns emit event gas used
 func EmitEventGasUsedLt2312(gasUsed uint64, contractEvent *common.ContractEvent) (uint64, error) {
 	contractEventBytes, err := json.Marshal(contractEvent)

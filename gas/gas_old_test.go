@@ -12,41 +12,6 @@ import (
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 )
 
-func TestDelStateGasUsed(t *testing.T) {
-	type args struct {
-		gasUsed uint64
-		value   []byte
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    uint64
-		wantErr bool
-	}{
-		{
-			name: "delStateGasUsed",
-			args: args{
-				gasUsed: 0,
-				value:   []byte("delStateGasUsed"),
-			},
-			want:    150,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := DelStateGasUsed(tt.args.gasUsed, tt.args.value)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DelStateGasUsed() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("DelStateGasUsed() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestEmitEventGasUsed(t *testing.T) {
 	type args struct {
 		gasUsed       uint64

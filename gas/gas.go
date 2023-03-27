@@ -1,9 +1,10 @@
 package gas
 
 import (
+	"errors"
+
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
-	"errors"
 )
 
 const (
