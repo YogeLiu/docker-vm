@@ -8,7 +8,7 @@ require (
 	chainmaker.org/chainmaker/logger/v2 v2.3.0
 	chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230321020437-c64dd5a3c606
 	chainmaker.org/chainmaker/protocol/v2 v2.3.3-0.20230320082116-0c7643a35069
-	chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230322035519-c0208cb0dec7
+	chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230327083208-e51ca4aeac91
 	chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230323023752-f4501eabf947
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2
