@@ -1,84 +1,15 @@
-/*
-Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
-
 package gas
 
 import (
-	"encoding/json"
 	"errors"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
-	"chainmaker.org/chainmaker/protocol/v2"
-	"chainmaker.org/chainmaker/utils/v2"
+	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
 )
 
-// nolint: revive
 const (
-	// function list gas price
-	GetArgsGasPrice               uint64 = 1  // GetArgsGasPrice
-	GetStateGasPrice              uint64 = 1  // GetStateGasPrice
-	GetBatchStateGasPrice         uint64 = 1  // GetBatchStateGasPrice
-	PutStateGasPrice              uint64 = 10 // PutStateGasPrice
-	DelStateGasPrice              uint64 = 10 // DelStateGasPrice
-	GetCreatorOrgIdGasPrice       uint64 = 1  // GetCreatorOrgIdGasPrice
-	GetCreatorRoleGasPrice        uint64 = 1  // GetCreatorRoleGasPrice
-	GetCreatorPkGasPrice          uint64 = 1  // GetCreatorPkGasPrice
-	GetSenderOrgIdGasPrice        uint64 = 1  //GetSenderOrgIdGasPrice
-	GetSenderRoleGasPrice         uint64 = 1  //GetSenderRoleGasPrice
-	GetSenderPkGasPrice           uint64 = 1  //GetSenderPkGasPrice
-	GetBlockHeightGasPrice        uint64 = 1  //GetBlockHeightGasPrice
-	GetTxIdGasPrice               uint64 = 1  //GetTxIdGasPrice
-	GetTimeStampPrice             uint64 = 1  //GetTimeStampPrice
-	EmitEventGasPrice             uint64 = 5  //EmitEventGasPrice
-	LogGasPrice                   uint64 = 5  //LogGasPrice
-	KvIteratorCreateGasPrice      uint64 = 1  //KvIteratorCreateGasPrice
-	KvPreIteratorCreateGasPrice   uint64 = 1  //KvPreIteratorCreateGasPrice
-	KvIteratorHasNextGasPrice     uint64 = 1  //KvIteratorHasNextGasPrice
-	KvIteratorNextGasPrice        uint64 = 1  //KvIteratorNextGasPrice
-	KvIteratorCloseGasPrice       uint64 = 1  //KvIteratorCloseGasPrice
-	KeyHistoryIterCreateGasPrice  uint64 = 1  //KeyHistoryIterCreateGasPrice
-	KeyHistoryIterHasNextGasPrice uint64 = 1  //KeyHistoryIterHasNextGasPrice
-	KeyHistoryIterNextGasPrice    uint64 = 1  //KeyHistoryIterNextGasPrice
-	KeyHistoryIterCloseGasPrice   uint64 = 1  //KeyHistoryIterCloseGasPrice
-	GetSenderAddressGasPrice      uint64 = 1  //GetSenderAddressGasPrice
-
-	// special parameters passed to contract
-	ContractParamCreatorOrgId = "__creator_org_id__" //ContractParamCreatorOrgId
-	ContractParamCreatorRole  = "__creator_role__"   //ContractParamCreatorRole
-	ContractParamCreatorPk    = "__creator_pk__"     //ContractParamCreatorPk
-	ContractParamSenderOrgId  = "__sender_org_id__"  //ContractParamSenderOrgId
-	ContractParamSenderRole   = "__sender_role__"    //ContractParamSenderRole
-	ContractParamSenderPk     = "__sender_pk__"      //ContractParamSenderPk
-	ContractParamBlockHeight  = "__block_height__"   //ContractParamBlockHeight
-	ContractParamTxId         = "__tx_id__"          //ContractParamTxId
-	ContractParamTxTimeStamp  = "__tx_time_stamp__"  //ContractParamTxTimeStamp
-
-	// method
-	initContract    = "init_contract"
-	upgradeContract = "upgrade"
-
-	// invoke contract base gas used
-	defaultInvokeBaseGas uint64 = 10000
-
-	// init function gas used
-	initFuncGas uint64 = 1250
+	blockVersion2312 = uint32(2030102)
 )
-
-// GetArgsGasUsed returns get args gas used
-func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
-	argsBytes, err := json.Marshal(args)
-	if err != nil {
-		return 0, err
-	}
-	gasUsed += uint64(len(argsBytes)) * GetArgsGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
-}
 
 // GetSenderAddressGasUsed returns get sender address gas used
 func GetSenderAddressGasUsed(gasUsed uint64) (uint64, error) {
@@ -89,169 +20,83 @@ func GetSenderAddressGasUsed(gasUsed uint64) (uint64, error) {
 	return gasUsed, nil
 }
 
-// CreateKeyHistoryIterGasUsed returns create key history iter gas used
-func CreateKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KeyHistoryIterCreateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
+// PutStateGasUsed returns put state gas used
+func PutStateGasUsed(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	gasUsed uint64, contractName, key, field string, value []byte) (uint64, error) {
+
+	if blockVersion < blockVersion2312 {
+		return PutStateGasUsedLt2312(gasUsed, contractName, key, field, value)
 	}
-	return gasUsed, nil
+
+	return PutStateGasUsed2312(gasConfig, gasUsed, contractName, key, field, value)
 }
 
-// ConsumeKeyHistoryIterGasUsed returns consume key history iter gas used
-func ConsumeKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KeyHistoryIterHasNextGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
+// GetStateGasUsed returns put state gas used
+func GetStateGasUsed(
+	blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64,
+	contractName, key, field string, value []byte) (uint64, error) {
 
-// CreateKvIteratorGasUsed create kv iter gas used
-func CreateKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KvIteratorCreateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
-// ConsumeKvIteratorGasUsed returns kv iter gas used
-func ConsumeKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KvIteratorNextGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
+	if blockVersion < blockVersion2312 {
+		return GetStateGasUsedLt2312(gasUsed, value)
 	}
 
-	return gasUsed, nil
-}
-
-// GetStateGasUsed returns get state gas used
-func GetStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
-	gasUsed += uint64(len(value)) * GetStateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
+	return GetStateGasUsed2312(gasConfig, gasUsed, contractName, key, field, value)
 }
 
 // GetBatchStateGasUsed returns get batch state gas used
-func GetBatchStateGasUsed(gasUsed uint64, payload []byte) (uint64, error) {
-	gasUsed += uint64(len(payload)) * GetBatchStateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
-}
+func GetBatchStateGasUsed(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	gasUsed uint64, payload []byte) (uint64, error) {
 
-// PutStateGasUsed returns put state gas used
-func PutStateGasUsed(gasUsed uint64, contractName, key, field string, value []byte) (uint64, error) {
-	gasUsed += (uint64(len(value)) + uint64(len([]byte(contractName+key+field)))) * PutStateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
+	if blockVersion < blockVersion2312 {
+		return GetBatchStateGasUsedLt2312(gasUsed, payload)
 	}
-	return gasUsed, nil
-}
 
-// DelStateGasUsed returns del state gas used
-func DelStateGasUsed(gasUsed uint64, value []byte) (uint64, error) {
-	gasUsed += uint64(len(value)) * DelStateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
+	return GetBatchStateGasUsed2312(gasConfig, gasUsed, payload)
 }
 
 // EmitEventGasUsed returns emit event gas used
-func EmitEventGasUsed(gasUsed uint64, contractEvent *common.ContractEvent) (uint64, error) {
-	contractEventBytes, err := json.Marshal(contractEvent)
-	if err != nil {
-		return 0, err
+func EmitEventGasUsed(
+	blockVersion uint32, gasConfig *gasutils.GasConfig,
+	gasUsed uint64, contractEvent *common.ContractEvent) (uint64, error) {
+
+	if blockVersion < blockVersion2312 {
+		return EmitEventGasUsedLt2312(gasUsed, contractEvent)
 	}
 
-	gasUsed += uint64(len(contractEventBytes)) * EmitEventGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
+	return EmitEventGasUsed2312(gasConfig, gasUsed, contractEvent)
 }
 
-// InitFuncGasUsed returns init func gas used
-func InitFuncGasUsed(gasUsed, configDefaultGas uint64) (uint64, error) {
-	gasUsed = getInitFuncGasUsed(gasUsed, configDefaultGas)
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
+// CreateKeyHistoryIterGasUsed returns create key history iter gas used
+func CreateKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return CreateKeyHistoryIterGasUsedLt2312(gasUsed)
 	}
-
-	return gasUsed, nil
-
+	return CreateKeyHistoryIterGasUsed2312(gasConfig, gasUsed)
 }
 
-// InitFuncGasUsedOld returns old init func gas used
-func InitFuncGasUsedOld(gasUsed uint64, parameters map[string][]byte, keys ...string) (uint64, error) {
-	if !checkKeys(parameters, keys...) {
-		return 0, errors.New("check init key exist")
+// ConsumeKeyHistoryIterGasUsed returns consume key history iter gas used
+func ConsumeKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return ConsumeKeyHistoryIterGasUsedLt2312(gasUsed)
 	}
-
-	gasUsed = getInitFuncGasUsedOld(gasUsed, parameters)
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-
-	return gasUsed, nil
-
+	return ConsumeKeyHistoryIterGasUsed2312(gasConfig, gasUsed)
 }
 
-func getInitFuncGasUsedOld(gasUsed uint64, args map[string][]byte) uint64 {
-	return gasUsed +
-		defaultInvokeBaseGas +
-		uint64(len(args[ContractParamCreatorOrgId]))*GetCreatorOrgIdGasPrice +
-		uint64(len(args[ContractParamBlockHeight]))*GetBlockHeightGasPrice +
-		uint64(len(args[ContractParamCreatorPk]))*GetCreatorPkGasPrice +
-		uint64(len(args[ContractParamCreatorRole]))*GetCreatorRoleGasPrice +
-		uint64(len(args[ContractParamSenderOrgId]))*GetSenderOrgIdGasPrice +
-		uint64(len(args[ContractParamTxId]))*GetTxIdGasPrice +
-		uint64(len(args[ContractParamSenderRole]))*GetSenderRoleGasPrice +
-		uint64(len(args[ContractParamSenderPk]))*GetSenderPkGasPrice +
-		uint64(len(args[ContractParamTxTimeStamp]))*GetTimeStampPrice
+// CreateKvIteratorGasUsed create kv iter gas used
+func CreateKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return CreateKvIteratorGasUsedLt2312(gasUsed)
+	}
+	return CreateKvIteratorGasUsed2312(gasConfig, gasUsed)
 }
 
-func checkKeys(args map[string][]byte, keys ...string) bool {
-	for _, key := range keys {
-		if _, ok := args[key]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-// ContractGasUsed returns contract gas used
-func ContractGasUsed(gasUsed uint64, method string, contractName string, byteCode []byte) (uint64, error) {
-	if method == initContract {
-		gasUsed += (uint64(len([]byte(contractName+utils.PrefixContractByteCode))) +
-			uint64(len(byteCode))) * PutStateGasPrice
+// ConsumeKvIteratorGasUsed returns kv iter gas used
+func ConsumeKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return ConsumeKvIteratorGasUsedLt2312(gasUsed)
 	}
 
-	if method == upgradeContract {
-		gasUsed += uint64(len(byteCode)) * PutStateGasPrice
-	}
-
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
-}
-
-func getInitFuncGasUsed(gasUsed, configDefaultGas uint64) uint64 {
-	// if config not set default gas
-	if configDefaultGas == 0 {
-		return gasUsed + defaultInvokeBaseGas + initFuncGas
-	}
-	return gasUsed + configDefaultGas + initFuncGas
-
-}
-
-// CheckGasLimit judge gas limit enough
-func CheckGasLimit(gasUsed uint64) bool {
-	return gasUsed > protocol.GasLimit
+	return ConsumeKvIteratorGasUsed2312(gasConfig, gasUsed)
 }

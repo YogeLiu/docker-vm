@@ -1,4 +1,4 @@
-VERSION=v2.3.1
+VERSION=v2.3.1.2
 
 BUILD_TIME = $(shell date "+%Y%m%d%H%M%S")
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)

@@ -12,41 +12,6 @@ import (
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 )
 
-func TestDelStateGasUsed(t *testing.T) {
-	type args struct {
-		gasUsed uint64
-		value   []byte
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    uint64
-		wantErr bool
-	}{
-		{
-			name: "delStateGasUsed",
-			args: args{
-				gasUsed: 0,
-				value:   []byte("delStateGasUsed"),
-			},
-			want:    150,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := DelStateGasUsed(tt.args.gasUsed, tt.args.value)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DelStateGasUsed() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("DelStateGasUsed() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestEmitEventGasUsed(t *testing.T) {
 	type args struct {
 		gasUsed       uint64
@@ -76,7 +41,7 @@ func TestEmitEventGasUsed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := EmitEventGasUsed(tt.args.gasUsed, tt.args.contractEvent)
+			got, err := EmitEventGasUsedLt2312(tt.args.gasUsed, tt.args.contractEvent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EmitEventGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -112,7 +77,7 @@ func TestGetStateGasUsed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetStateGasUsed(tt.args.gasUsed, tt.args.value)
+			got, err := GetStateGasUsedLt2312(tt.args.gasUsed, tt.args.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetStateGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -153,7 +118,7 @@ func TestPutStateGasUsed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := PutStateGasUsed(tt.args.gasUsed, tt.args.contractName, tt.args.key, tt.args.field, tt.args.value)
+			got, err := PutStateGasUsedLt2312(tt.args.gasUsed, tt.args.contractName, tt.args.key, tt.args.field, tt.args.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PutStateGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -188,7 +153,7 @@ func TestInitFuncGasUsed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitFuncGasUsed(tt.args.gasUsed, tt.args.configDefaultGas)
+			got, err := InitFuncGasUsedLt2312(tt.args.gasUsed, tt.args.configDefaultGas)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitFuncGasUsed() error = %v, wantErr %v", err, tt.wantErr)
 				return

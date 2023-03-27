@@ -181,13 +181,19 @@ func (s *TxContextMockTest) GetContractBytecode(name string) ([]byte, error) {
 // GetLastChainConfig returns last chain config
 func (s *TxContextMockTest) GetLastChainConfig() *configPb.ChainConfig {
 	return &configPb.ChainConfig{
-		AccountConfig: nil,
+		AccountConfig: &configPb.GasAccountConfig{
+			EnableGas:       true,
+			DefaultGasPrice: float32(0.1),
+			DefaultGas:      uint64(11),
+			InstallGasPrice: float32(0.2),
+			InstallBaseGas:  uint64(12),
+		},
 	}
 }
 
 // GetBlockVersion returns block version
 func (s *TxContextMockTest) GetBlockVersion() uint32 {
-	panic("implement me")
+	return uint32(2030102)
 }
 
 // SetStateKvHandle set state kv handle
