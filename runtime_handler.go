@@ -97,8 +97,8 @@ func (r *RuntimeInstance) handleTxResponse(txId string, recvMsg *protogo.DockerV
 		}
 
 		// emit event gas used calc and check gas limit
-		r.logger.Debugf("【gas calc】%v, before EmitEvent => gasUsed = %v",
-			txSimContext.GetTx().Payload.TxId, gasUsed)
+		r.logger.Debugf("【gas calc】%v, before EmitEvent => gasUsed = %v, events = %v",
+			txSimContext.GetTx().Payload.TxId, gasUsed, contractEvent)
 		gasUsed, err = gas.EmitEventGasUsed(blockVersion, gasConfig, gasUsed, contractEvent)
 		r.logger.Debugf("【gas calc】%v, after EmitEvent => gasUsed = %v",
 			txSimContext.GetTx().Payload.TxId, gasUsed)
