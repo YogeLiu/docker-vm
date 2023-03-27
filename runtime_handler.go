@@ -867,7 +867,20 @@ func (r *RuntimeInstance) mergeSimContextWriteMap(txSimContext protocol.TxSimCon
 		var contractName string
 		var contractKey string
 		var contractField string
-		contractName, contractKey, contractField := splitKeys(key)
+		keyList := strings.Split(key, "#")
+		keyLen := len(keyList)
+		if keyLen < 2 {
+			return gasUsed, fmt.Errorf("key list length == %d, needs to be >= 2", keyLen)
+		}
+		contractName = keyList[0]
+		if contractName != txContractName {
+			return gasUsed, fmt.Errorf("wrong contract name [%s] of write map key, need [%s]",
+				contractName, txContractName)
+		}
+		contractKey = keyList[1]
+		if keyLen == 3 {
+			contractField = keyList[2]
+		}
 		// put state gas used calc and check gas limit
 		var err error
 		gasUsed, err = gas.PutStateGasUsed(blockVersion, gasConfig, gasUsed, contractName, contractKey, contractField, value)
