@@ -8,11 +8,6 @@ import (
 	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
 )
 
-// InitFuncGasUsed2312 return the gasUsed
-func InitFuncGasUsed2312(gasUsed uint64) (uint64, error) {
-	return gasUsed, nil
-}
-
 // PutStateGasUsed2312 returns put state gas used
 func PutStateGasUsed2312(gasConfig *gasutils.GasConfig,
 	gasUsed uint64, contractName, key, field string, value []byte) (uint64, error) {

@@ -67,65 +67,6 @@ const (
 	initFuncGas uint64 = 1250
 )
 
-// GetArgsGasUsed returns get args gas used
-func GetArgsGasUsed(gasUsed uint64, args map[string]string) (uint64, error) {
-	argsBytes, err := json.Marshal(args)
-	if err != nil {
-		return 0, err
-	}
-	gasUsed += uint64(len(argsBytes)) * GetArgsGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited ")
-	}
-	return gasUsed, nil
-}
-
-// GetSenderAddressGasUsed returns get sender address gas used
-func GetSenderAddressGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * GetSenderAddressGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
-// CreateKeyHistoryIterGasUsed returns create key history iter gas used
-func CreateKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KeyHistoryIterCreateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
-// ConsumeKeyHistoryIterGasUsed returns consume key history iter gas used
-func ConsumeKeyHistoryIterGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KeyHistoryIterHasNextGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
-// CreateKvIteratorGasUsed create kv iter gas used
-func CreateKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KvIteratorCreateGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
-// ConsumeKvIteratorGasUsed returns kv iter gas used
-func ConsumeKvIteratorGasUsed(gasUsed uint64) (uint64, error) {
-	gasUsed += 10 * KvIteratorNextGasPrice
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-
-	return gasUsed, nil
-}
-
 // GetStateGasUsedLt2312 returns get state gas used
 func GetStateGasUsedLt2312(gasUsed uint64, value []byte) (uint64, error) {
 	gasUsed += uint64(len(value)) * GetStateGasPrice
@@ -184,15 +125,6 @@ func InitFuncGasUsedLt2312(gasUsed, configDefaultGas uint64) (uint64, error) {
 	}
 
 	return gasUsed, nil
-}
-
-func checkKeys(args map[string][]byte, keys ...string) bool {
-	for _, key := range keys {
-		if _, ok := args[key]; !ok {
-			return false
-		}
-	}
-	return true
 }
 
 // ContractGasUsed returns contract gas used
