@@ -94,6 +94,7 @@ func EmitEventGasUsed2312(gasConfig *gasutils.GasConfig,
 	return gasUsed, nil
 }
 
+// CreateKeyHistoryIterGasUsed2312 calculate gas for key history iterator `Create` operation
 func CreateKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
 	gasPrice := float32(KeyHistoryIterCreateGasPrice)
 	if gasConfig != nil {
@@ -112,6 +113,7 @@ func CreateKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint
 	return gasUsed, nil
 }
 
+// CreateKvIteratorGasUsed2312 calculate gas for key-value iterator `Create` operation
 func CreateKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
 	gasPrice := float32(KvIteratorCreateGasPrice)
 	if gasConfig != nil {
@@ -130,6 +132,7 @@ func CreateKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) 
 	return gasUsed, nil
 }
 
+// ConsumeKeyHistoryIterGasUsed2312 calculate gas for key history iterator `HasNext/Close` operation
 func ConsumeKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
 	gasPrice := float32(KeyHistoryIterHasNextGasPrice)
 	if gasConfig != nil {
@@ -148,6 +151,7 @@ func ConsumeKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uin
 	return gasUsed, nil
 }
 
+// ConsumeKvIteratorGasUsed2312 calculate gas for key-value iterator `HasNext/Close` operation
 func ConsumeKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
 	gasPrice := float32(KvIteratorNextGasPrice)
 	if gasConfig != nil {
@@ -166,6 +170,7 @@ func ConsumeKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64)
 	return gasUsed, nil
 }
 
+// ConsumeKvIteratorNextGasUsed2312 calculate gas for key-value iterator `Next` operation
 func ConsumeKvIteratorNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	key string, field string, value []byte) (uint64, error) {
 
@@ -187,6 +192,7 @@ func ConsumeKvIteratorNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uin
 	return gasUsed, nil
 }
 
+// ConsumeKeyHistoryIterNextGasUsed2312 calculate gas for key-value iterator `Next` operation
 func ConsumeKeyHistoryIterNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	value []byte) (uint64, error) {
 
