@@ -122,7 +122,7 @@ func (r *RuntimeInstance) Invoke(
 			return r.errorResult(contractResult, err, err.Error())
 		}
 	}
-	
+
 	r.logger.Debugf("【gas calc】%v, after vm-engine calc gas => gasUsed = %v",
 		txSimContext.GetTx().Payload.TxId, gasUsed)
 
