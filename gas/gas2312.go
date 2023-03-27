@@ -10,7 +10,7 @@ import (
 // PutStateGasUsed2312 returns put state gas used
 func PutStateGasUsed2312(gasConfig *gasutils.GasConfig,
 	gasUsed uint64, contractName, key, field string, value []byte) (uint64, error) {
-	putStateGasPrice := float32(PutStateGasPrice)
+	putStateGasPrice := float32(0)
 	if gasConfig != nil {
 		putStateGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -32,12 +32,12 @@ func PutStateGasUsed2312(gasConfig *gasutils.GasConfig,
 func GetStateGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	contractName, key, field string, value []byte) (uint64, error) {
 
-	getStateGasPrice := float32(GetStateGasPrice)
+	getStateGasPrice := float32(0)
 	if gasConfig != nil {
 		getStateGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
 
-	dataSize := len(contractName) + len(key) + len(field)
+	dataSize := len(contractName) + len(key) + len(field) + len(value)
 	gas, err := gasutils.MultiplyGasPrice(dataSize, getStateGasPrice)
 	if err != nil {
 		return 0, err
@@ -52,7 +52,7 @@ func GetStateGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 
 // GetBatchStateGasUsed2312 returns get batch state gas used
 func GetBatchStateGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64, payload []byte) (uint64, error) {
-	getBatchStateGasPrice := float32(GetBatchStateGasPrice)
+	getBatchStateGasPrice := float32(0)
 	if gasConfig != nil {
 		getBatchStateGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -73,7 +73,7 @@ func GetBatchStateGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64, pay
 func EmitEventGasUsed2312(gasConfig *gasutils.GasConfig,
 	gasUsed uint64, contractEvent *common.ContractEvent) (uint64, error) {
 
-	emitEventGasPrice := float32(EmitEventGasPrice)
+	emitEventGasPrice := float32(0)
 	if gasConfig != nil {
 		emitEventGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -96,7 +96,7 @@ func EmitEventGasUsed2312(gasConfig *gasutils.GasConfig,
 
 // CreateKeyHistoryIterGasUsed2312 calculate gas for key history iterator `Create` operation
 func CreateKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
-	gasPrice := float32(KeyHistoryIterCreateGasPrice)
+	gasPrice := float32(0)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -115,7 +115,7 @@ func CreateKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint
 
 // CreateKvIteratorGasUsed2312 calculate gas for key-value iterator `Create` operation
 func CreateKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
-	gasPrice := float32(KvIteratorCreateGasPrice)
+	gasPrice := float32(0)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -134,7 +134,7 @@ func CreateKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) 
 
 // ConsumeKeyHistoryIterGasUsed2312 calculate gas for key history iterator `HasNext/Close` operation
 func ConsumeKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
-	gasPrice := float32(KeyHistoryIterHasNextGasPrice)
+	gasPrice := float32(0)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -153,7 +153,7 @@ func ConsumeKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uin
 
 // ConsumeKvIteratorGasUsed2312 calculate gas for key-value iterator `HasNext/Close` operation
 func ConsumeKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
-	gasPrice := float32(KvIteratorHasNextGasPrice)
+	gasPrice := float32(0)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -174,7 +174,7 @@ func ConsumeKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64)
 func ConsumeKvIteratorNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	key string, field string, value []byte) (uint64, error) {
 
-	gasPrice := float32(KvIteratorNextGasPrice)
+	gasPrice := float32(0)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -196,7 +196,7 @@ func ConsumeKvIteratorNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uin
 func ConsumeKeyHistoryIterNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	value []byte) (uint64, error) {
 
-	gasPrice := float32(KeyHistoryIterNextGasPrice)
+	gasPrice := float32(0)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
