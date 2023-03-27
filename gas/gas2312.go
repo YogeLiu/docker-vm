@@ -153,7 +153,7 @@ func ConsumeKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uin
 
 // ConsumeKvIteratorGasUsed2312 calculate gas for key-value iterator `HasNext/Close` operation
 func ConsumeKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
-	gasPrice := float32(KvIteratorNextGasPrice)
+	gasPrice := float32(KvIteratorHasNextGasPrice)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -174,7 +174,7 @@ func ConsumeKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64)
 func ConsumeKvIteratorNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	key string, field string, value []byte) (uint64, error) {
 
-	gasPrice := float32(0)
+	gasPrice := float32(KvIteratorNextGasPrice)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
@@ -196,7 +196,7 @@ func ConsumeKvIteratorNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uin
 func ConsumeKeyHistoryIterNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	value []byte) (uint64, error) {
 
-	gasPrice := float32(0)
+	gasPrice := float32(KeyHistoryIterNextGasPrice)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
