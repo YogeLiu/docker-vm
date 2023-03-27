@@ -1,7 +1,6 @@
 package gas
 
 import (
-	"encoding/json"
 	"errors"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
@@ -74,17 +73,16 @@ func GetBatchStateGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64, pay
 func EmitEventGasUsed2312(gasConfig *gasutils.GasConfig,
 	gasUsed uint64, contractEvent *common.ContractEvent) (uint64, error) {
 
-	contractEventBytes, err := json.Marshal(contractEvent)
-	if err != nil {
-		return 0, err
-	}
-
 	emitEventGasPrice := float32(EmitEventGasPrice)
 	if gasConfig != nil {
 		emitEventGasPrice = gasConfig.GetGasPriceForInvoke()
 	}
 
-	gas, err := gasutils.MultiplyGasPrice(len(contractEventBytes), emitEventGasPrice)
+	dataSize := len(contractEvent.Topic) + len(contractEvent.ContractName) + len(contractEvent.ContractVersion)
+	for _, event := range contractEvent.EventData {
+		dataSize += len(event)
+	}
+	gas, err := gasutils.MultiplyGasPrice(dataSize, emitEventGasPrice)
 	if err != nil {
 		return 0, err
 	}
