@@ -20,6 +20,8 @@ chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230316060344-296fce9c8e3e h1:G9dfk
 chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230316060344-296fce9c8e3e/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
 chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230321020437-c64dd5a3c606 h1:aKKlGq+Qzbpuo0qVHwbyFagOqW9RXvTabo4dFMZWbpU=
 chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230321020437-c64dd5a3c606/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
+chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230324030146-d53d46c7ee9f h1:RIjYu787h/2aO8XUbtMOnNRxs82KW8863dG/eCCZVFY=
+chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230324030146-d53d46c7ee9f/go.mod h1:MB2+suualBWOKvd6FRQD/XcZzlav7APiSa7uzdDLkY8=
 chainmaker.org/chainmaker/protocol/v2 v2.3.2 h1:/WXi4LRKrjOaxd4NoFVGftKXrX84zNYbwyYPp0wxAWo=
 chainmaker.org/chainmaker/protocol/v2 v2.3.2/go.mod h1:PGP3kYeurnv5lmoYuXr2jvrGjR2Sp3GGocpTj2i5SJM=
 chainmaker.org/chainmaker/protocol/v2 v2.3.3-0.20230309081741-d605629d293d h1:CT8luOKG/dd1aeqpJ+A4SBtEy7nqQo5ZLImUCc9Bt9E=
@@ -36,6 +38,7 @@ chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230322032143-528e8240c930/go.mod h
 chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230322035519-c0208cb0dec7 h1:ndmRXZxFn0ittA6eO0Bwmrvghs16Las73RgWGe2pPeU=
 chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230322035519-c0208cb0dec7/go.mod h1:3hAkz8AapYCzDs7YyDBms2m7Xq5tHCW86VGuuif09wQ=
 chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230323015802-cb5afd830657/go.mod h1:pTs6n6oBHKNuW6lk+XQHsEIT/KXjO3MyyOPxA5gsC5M=
+chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230323061541-eb5b34953c52/go.mod h1:AoHW2wmO6hGzvr1eDlCRgWsUeBMH2gwk2skhNf+hbkw=
 chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230327083208-e51ca4aeac91 h1:MdkdOHeDjPmpe2LC2oT5QZ/yvvE47o6nxSfZyUSTQ/g=
 chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230327083208-e51ca4aeac91/go.mod h1:AoHW2wmO6hGzvr1eDlCRgWsUeBMH2gwk2skhNf+hbkw=
 chainmaker.org/chainmaker/vm-native/v2 v2.0.0-20230323015946-d4751a7198f7/go.mod h1:VJS6pkVAb/s/+9Y5AXTc6E6RahJY0t/HwtC6NYW3pbM=
@@ -47,6 +50,8 @@ chainmaker.org/chainmaker/vm-native/v2 v2.3.3-0.20230310085002-e75234969832 h1:V
 chainmaker.org/chainmaker/vm-native/v2 v2.3.3-0.20230310085002-e75234969832/go.mod h1:6mqoYImi4u4xBqdmQr4Gq/7VGwDiU8NPRFmLNjXrdF4=
 chainmaker.org/chainmaker/vm-native/v2 v2.3.3-0.20230322035808-f1c6873c5e52 h1:/uYgXuQ3k97ai0DuB6JxcBpgWnY27mw/EgrqF+mnxLM=
 chainmaker.org/chainmaker/vm-native/v2 v2.3.3-0.20230322035808-f1c6873c5e52/go.mod h1:VODn+WXyOcxsFMpW9jcTth7pxdPh40FQcSI1gjKn4HY=
+chainmaker.org/chainmaker/vm-native/v2 v2.3.3-0.20230324072622-8ed0501e2433 h1:55R2XfZ5lyBSIi9T+YHSPXC2WO9NsFxxebAu5UQPMI8=
+chainmaker.org/chainmaker/vm-native/v2 v2.3.3-0.20230324072622-8ed0501e2433/go.mod h1:8B+VV5SgdgynEz47+QN7BkhziU9hLk+dI8/btevI6no=
 chainmaker.org/chainmaker/vm/v2 v2.3.2/go.mod h1:RgpRm6AuKzwSvK8tC6ENhjasEDgojXWiHKYhJFEh1j4=
 chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230309110152-259a2d848dd8 h1:Y7ykBapq//mUKvc7dFhxhNE5Hw1tIu/veE83Lfa9vok=
 chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230309110152-259a2d848dd8/go.mod h1:KtIyfCh5MpYglupkdk2Ulq/Ngp8GxBPXE0jl1GQLSQ8=
@@ -56,6 +61,8 @@ chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230323023752-f4501eabf947 h1:IBWhbPxU
 chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230323023752-f4501eabf947/go.mod h1:q2Itcz4XPze+Wj5BRcBb12ePVMF6qqfCv2kFOv6PCqg=
 chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230324024801-bdbc1a66a348 h1:bWsxx01l0Ole6QSCPY1OuCQ7b/57YcG2aw4dSsbGvCA=
 chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230324024801-bdbc1a66a348/go.mod h1:EPVk0rI2IMsMrLRXjNCHiASLjGBPJ0MU18ky/4YXWdg=
+chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230327090151-15e3a8850251 h1:3IeUJ9tkgP0hG17FoLKwfGLZC4Zng60i23B0+gL1rO8=
+chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230327090151-15e3a8850251/go.mod h1:JMH6NMkCdtLn0WZwgAsM/D5Oq+qfKmn1V1aykx7yGyY=
 chainmaker.org/third_party/cuckoo-filter v1.0.0 h1:YLeHR9IxaIxZDoODQSRDe7glygrWYEGGMbiDDxoYufw=
 chainmaker.org/third_party/cuckoo-filter v1.0.0/go.mod h1:L3YZEEsEkbEEWCA2r4sVk1dkrqz+TZ+uxGihtb6BwwI=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
