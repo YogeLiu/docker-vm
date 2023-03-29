@@ -214,7 +214,7 @@ func ConsumeKeyHistoryIterNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed
 	return gasUsed, nil
 }
 
-// CallContractGasUsed2312 calculate gas for key-value iterator `HasNext/Close` operation
+// CallContractGasUsed2312 calculate gas for calling contract
 func CallContractGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	contractName string, contractMethod string, parameters map[string][]byte) (uint64, error) {
 	gasPrice := float32(0)

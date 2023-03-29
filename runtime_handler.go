@@ -146,6 +146,12 @@ func (r *RuntimeInstance) mergeSimContextReadMap(txSimContext protocol.TxSimCont
 	return nil
 }
 
+func (r *RuntimeInstance) setError(errMsg string, response *protogo.DockerVMMessage) {
+	r.logger.Error(errMsg)
+	response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+	response.SysCallMessage.Message = errMsg
+}
+
 func (r *RuntimeInstance) handlerCallContract(
 	txId string,
 	recvMsg *protogo.DockerVMMessage,
@@ -172,26 +178,20 @@ func (r *RuntimeInstance) handlerCallContract(
 	contractName := callContractReq.ContractName
 	if len(contractName) == 0 {
 		errMsg := "missing contract name"
-		r.logger.Error(errMsg)
-		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
-		response.SysCallMessage.Message = errMsg
+		r.setError(errMsg, response)
 		return response, gasUsed, specialTxType
 	}
 
 	contractMethod := callContractReq.ContractMethod
 	if len(contractMethod) == 0 {
 		errMsg := "missing contract method"
-		r.logger.Error(errMsg)
-		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
-		response.SysCallMessage.Message = errMsg
+		r.setError(errMsg, response)
 		return response, gasUsed, specialTxType
 	}
 
 	if recvMsg.CrossContext.CurrentDepth > protocol.CallContractDepth {
 		errMsg := "exceed max depth"
-		r.logger.Error(errMsg)
-		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
-		response.SysCallMessage.Message = errMsg
+		r.setError(errMsg, response)
 		return response, gasUsed, specialTxType
 	}
 
@@ -206,10 +206,7 @@ func (r *RuntimeInstance) handlerCallContract(
 			contractName,
 			err.Error(),
 		)
-		r.logger.Error(errMsg)
-
-		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
-		response.SysCallMessage.Message = errMsg
+		r.setError(errMsg, response)
 		return response, gasUsed, specialTxType
 	}
 
@@ -221,10 +218,7 @@ func (r *RuntimeInstance) handlerCallContract(
 			contractName,
 			err.Error(),
 		)
-		r.logger.Error(errMsg)
-
-		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
-		response.SysCallMessage.Message = errMsg
+		r.setError(errMsg, response)
 		return response, gasUsed, specialTxType
 	}
 
@@ -237,9 +231,7 @@ func (r *RuntimeInstance) handlerCallContract(
 	if code != commonPb.TxStatusCode_SUCCESS {
 		errMsg := fmt.Sprintf("[call contract] execute error code: %s, msg: %s", code, result.Message)
 		r.logger.Debugf("handle cross contract request failed, err: %s", errMsg)
-		r.logger.Error(errMsg)
-		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
-		response.SysCallMessage.Message = result.Message
+		r.setError(errMsg, response)
 		response.SysCallMessage.Payload = map[string][]byte{
 			config.KeyCallContractResp: result.Result,
 		}
