@@ -2,6 +2,7 @@ package gas
 
 import (
 	"errors"
+	"strings"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
@@ -223,6 +224,9 @@ func CallContractGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 	}
 	dataSize := len(contractName) + len(contractMethod)
 	for key, val := range parameters {
+		if strings.HasPrefix(key, "__") && strings.HasSuffix(key, "__") {
+			continue
+		}
 		dataSize = len(key) + len(val)
 	}
 
