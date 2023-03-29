@@ -214,6 +214,20 @@ func (r *RuntimeInstance) handlerCallContract(
 	}
 
 	parameters := callContractReq.Args
+	gasUsed, err = gas.CallContractGasUsed(blockVersion, gasConfig, gasUsed, contractName, contractMethod, parameters)
+	if err != nil {
+		errMsg := fmt.Sprintf(
+			"[call contract] failed to substract gas by [%s], err: %s",
+			contractName,
+			err.Error(),
+		)
+		r.logger.Error(errMsg)
+
+		response.SysCallMessage.Code = protogo.DockerVMCode_FAIL
+		response.SysCallMessage.Message = errMsg
+		return response, gasUsed, specialTxType
+	}
+
 	result, specialTxType, code = txSimContext.CallContract(caller, contract, contractMethod,
 		nil, parameters, gasUsed, txSimContext.GetTx().Payload.TxType)
 	r.logger.DebugDynamic(func() string {

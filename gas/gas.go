@@ -100,3 +100,12 @@ func ConsumeKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig
 
 	return ConsumeKvIteratorGasUsed2312(gasConfig, gasUsed)
 }
+
+func CallContractGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64,
+	contractName string, contractMethod string, parameters map[string][]byte) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return gasUsed, nil
+	}
+
+	return CallContractGasUsed2312(gasConfig, gasUsed, contractName, contractMethod, parameters)
+}
