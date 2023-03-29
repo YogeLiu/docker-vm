@@ -2,6 +2,7 @@ package gas
 
 import (
 	"errors"
+	"strings"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
@@ -202,6 +203,33 @@ func ConsumeKeyHistoryIterNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed
 	}
 
 	dataSize := len(value)
+	gas, err := gasutils.MultiplyGasPrice(dataSize, gasPrice)
+	if err != nil {
+		return 0, err
+	}
+
+	gasUsed += gas
+	if CheckGasLimit(gasUsed) {
+		return 0, errors.New("over gas limited")
+	}
+	return gasUsed, nil
+}
+
+// CallContractGasUsed2312 calculate gas for calling contract
+func CallContractGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
+	contractName string, contractMethod string, parameters map[string][]byte) (uint64, error) {
+	gasPrice := float32(0)
+	if gasConfig != nil {
+		gasPrice = gasConfig.GetGasPriceForInvoke()
+	}
+	dataSize := len(contractName) + len(contractMethod)
+	for key, val := range parameters {
+		if strings.HasPrefix(key, "__") && strings.HasSuffix(key, "__") {
+			continue
+		}
+		dataSize = len(key) + len(val)
+	}
+
 	gas, err := gasutils.MultiplyGasPrice(dataSize, gasPrice)
 	if err != nil {
 		return 0, err
