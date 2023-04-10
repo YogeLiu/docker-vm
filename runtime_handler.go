@@ -211,7 +211,8 @@ func (r *RuntimeInstance) handlerCallContract(
 	}
 
 	parameters := callContractReq.Args
-	gasUsed, err = gas.CallContractGasUsed(blockVersion, gasConfig, gasUsed, contractName, contractMethod, parameters)
+	gasUsed, err = gas.CallContractGasUsed(blockVersion, gasConfig, gasUsed,
+		contractName, contractMethod, parameters, txId, r.logger)
 	if err != nil {
 		errMsg := fmt.Sprintf(
 			"[call contract] failed to subtract gas by [%s], err: %s",

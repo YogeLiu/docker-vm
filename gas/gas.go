@@ -1,6 +1,7 @@
 package gas
 
 import (
+	"chainmaker.org/chainmaker/protocol/v2"
 	"errors"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
@@ -103,10 +104,11 @@ func ConsumeKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig
 
 //CallContractGasUsed return call contract gas used
 func CallContractGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64,
-	contractName string, contractMethod string, parameters map[string][]byte) (uint64, error) {
+	contractName string, contractMethod string, parameters map[string][]byte,
+	txId string, log protocol.Logger) (uint64, error) {
 	if blockVersion < blockVersion2312 {
 		return gasUsed, nil
 	}
 
-	return CallContractGasUsed2312(gasConfig, gasUsed, contractName, contractMethod, parameters)
+	return CallContractGasUsed2312(gasConfig, gasUsed, contractName, contractMethod, parameters, txId, log)
 }

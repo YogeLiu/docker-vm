@@ -1,6 +1,7 @@
 package gas
 
 import (
+	"chainmaker.org/chainmaker/protocol/v2"
 	"errors"
 	"strings"
 
@@ -217,17 +218,20 @@ func ConsumeKeyHistoryIterNextGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed
 
 // CallContractGasUsed2312 calculate gas for calling contract
 func CallContractGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
-	contractName string, contractMethod string, parameters map[string][]byte) (uint64, error) {
+	contractName string, contractMethod string, parameters map[string][]byte,
+	txId string, log protocol.Logger) (uint64, error) {
 	gasPrice := float32(0)
 	if gasConfig != nil {
 		gasPrice = gasConfig.GetGasPriceForInvoke()
 	}
 	dataSize := len(contractName) + len(contractMethod)
+	log.Debugf("【gas calc】%v, len(%v) + len(%v) = %v", txId, contractName, contractMethod, dataSize)
 	for key, val := range parameters {
 		if strings.HasPrefix(key, "__") && strings.HasSuffix(key, "__") {
 			continue
 		}
 		dataSize = len(key) + len(val)
+		log.Debugf("【gas calc】%v, len(%v) + len(%v) = %v", txId, key, val, dataSize)
 	}
 
 	gas, err := gasutils.MultiplyGasPrice(dataSize, gasPrice)
