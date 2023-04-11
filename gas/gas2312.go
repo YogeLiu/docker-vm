@@ -230,8 +230,8 @@ func CallContractGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64,
 		if strings.HasPrefix(key, "__") && strings.HasSuffix(key, "__") {
 			continue
 		}
-		dataSize = len(key) + len(val)
-		log.Debugf("【gas calc】%v, len(%v) + len(%v) = %v", txId, key, val, dataSize)
+		dataSize += len(key) + len(val)
+		log.Debugf("【gas calc】%v, len(%v) + len(%v) = %v", txId, key, string(val), dataSize)
 	}
 
 	gas, err := gasutils.MultiplyGasPrice(dataSize, gasPrice)
