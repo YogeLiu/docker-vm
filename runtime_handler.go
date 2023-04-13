@@ -516,20 +516,8 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	var iter protocol.StateIterator
 	switch string(createFunc) {
 	case config.FuncKvIteratorCreate:
-		limitKey := string(recvMsg.SysCallMessage.Payload[config.KeyIterLimitKey])
-		limitField := string(recvMsg.SysCallMessage.Payload[config.KeyIterLimitField])
-		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig,
+		iter, gasUsed, err = kvIteratorCreate(txSimContext, gasConfig, string(calledContractName),
 			recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
-		if err != nil {
-			r.logger.Errorf("failed to create kv iterator, %s", err.Error())
-			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
-			createKvIteratorResponse.SysCallMessage.Message = err.Error()
-			createKvIteratorResponse.SysCallMessage.Payload = nil
-			return createKvIteratorResponse, gasUsed
-		}
-
-		iter, gasUsed, err = kvIteratorCreate(txSimContext, string(calledContractName),
-			key, limitKey, limitField, gasUsed)
 		if err != nil {
 			r.logger.Errorf("failed to create kv iterator, %s", err.Error())
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
@@ -855,9 +843,24 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 	return getSenderAddressResponse, gasUsed
 }
 
-func kvIteratorCreate(txSimContext protocol.TxSimContext, calledContractName string,
-	key []byte, limitKey, limitField string, gasUsed uint64) (protocol.StateIterator, uint64, error) {
+func kvIteratorCreate(txSimContext protocol.TxSimContext,
+	gasConfig *gasutils.GasConfig, calledContractName string,
+	params map[string][]byte, gasUsed uint64, txId string, log protocol.Logger) (protocol.StateIterator, uint64, error) {
 	var err error
+	blockVersion := txSimContext.GetBlockVersion()
+	startKey := string(params[config.KeyIterStartKey])
+	startField := string(params[config.KeyIterStartField])
+	limitKey := string(params[config.KeyIterLimitKey])
+	limitField := string(params[config.KeyIterLimitField])
+
+	gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig,
+		params, gasUsed, txId, log)
+	if err != nil {
+		log.Errorf("failed to create kv iterator, %s", err.Error())
+		return nil, gasUsed, err
+	}
+
+	key := protocol.GetKeyStr(startKey, startField)
 	if err = protocol.CheckKeyFieldStr(limitKey, limitField); err != nil {
 		return nil, gasUsed, err
 	}
