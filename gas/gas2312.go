@@ -1,9 +1,10 @@
 package gas
 
 import (
-	"chainmaker.org/chainmaker/protocol/v2"
 	"errors"
 	"strings"
+
+	"chainmaker.org/chainmaker/protocol/v2"
 
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
