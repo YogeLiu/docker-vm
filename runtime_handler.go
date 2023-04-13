@@ -520,6 +520,14 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 		limitField := string(recvMsg.SysCallMessage.Payload[config.KeyIterLimitField])
 		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig,
 			recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
+		if err != nil {
+			r.logger.Errorf("failed to create kv iterator, %s", err.Error())
+			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
+			createKvIteratorResponse.SysCallMessage.Message = err.Error()
+			createKvIteratorResponse.SysCallMessage.Payload = nil
+			return createKvIteratorResponse, gasUsed
+		}
+
 		iter, gasUsed, err = kvIteratorCreate(txSimContext, string(calledContractName),
 			key, limitKey, limitField, gasUsed)
 		if err != nil {
