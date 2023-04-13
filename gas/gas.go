@@ -71,11 +71,12 @@ func EmitEventGasUsed(
 }
 
 // CreateKeyHistoryIterGasUsed returns create key history iter gas used
-func CreateKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+func CreateKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig,
+	params map[string][]byte, gasUsed uint64, txId string, log protocol.Logger) (uint64, error) {
 	if blockVersion < blockVersion2312 {
 		return CreateKeyHistoryIterGasUsedLt2312(gasUsed)
 	}
-	return CreateKeyHistoryIterGasUsed2312(gasConfig, gasUsed)
+	return CreateKeyHistoryIterGasUsed2312(gasConfig, params, gasUsed, txId, log)
 }
 
 // ConsumeKeyHistoryIterGasUsed returns consume key history iter gas used
@@ -87,11 +88,21 @@ func ConsumeKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasCo
 }
 
 // CreateKvIteratorGasUsed create kv iter gas used
-func CreateKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+func CreateKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig,
+	params map[string][]byte, gasUsed uint64, txId string, log protocol.Logger) (uint64, error) {
 	if blockVersion < blockVersion2312 {
 		return CreateKvIteratorGasUsedLt2312(gasUsed)
 	}
-	return CreateKvIteratorGasUsed2312(gasConfig, gasUsed)
+	return CreateKvIteratorGasUsed2312(gasConfig, params, gasUsed, txId, log)
+}
+
+// CreateKvPreIteratorGasUsed create kv iter gas used
+func CreateKvPreIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig,
+	params map[string][]byte, gasUsed uint64, txId string, log protocol.Logger) (uint64, error) {
+	if blockVersion < blockVersion2312 {
+		return CreateKvIteratorGasUsedLt2312(gasUsed)
+	}
+	return CreateKvPreIteratorGasUsed2312(gasConfig, params, gasUsed, txId, log)
 }
 
 // ConsumeKvIteratorGasUsed returns kv iter gas used

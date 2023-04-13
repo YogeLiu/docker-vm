@@ -477,7 +477,8 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	if err = json.Unmarshal(writeMapBytes, &writeMap); err != nil {
 		r.logger.Errorf("get WriteMap failed, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
-		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig,
+			recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Payload = nil
@@ -489,7 +490,8 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	if err != nil {
 		r.logger.Errorf("merge the sim context write map failed, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
-		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig,
+			recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Payload = nil
@@ -500,7 +502,8 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	if err = protocol.CheckKeyFieldStr(string(startKey), string(startField)); err != nil {
 		r.logger.Errorf("invalid key field str, %s", err.Error())
 		createKvIteratorResponse.SysCallMessage.Message = err.Error()
-		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig,
+			recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Payload = nil
@@ -515,8 +518,10 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 	case config.FuncKvIteratorCreate:
 		limitKey := string(recvMsg.SysCallMessage.Payload[config.KeyIterLimitKey])
 		limitField := string(recvMsg.SysCallMessage.Payload[config.KeyIterLimitField])
-		iter, gasUsed, err = kvIteratorCreate(blockVersion, gasConfig,
-			txSimContext, string(calledContractName), key, limitKey, limitField, gasUsed)
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig,
+			recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
+		iter, gasUsed, err = kvIteratorCreate(txSimContext, string(calledContractName),
+			key, limitKey, limitField, gasUsed)
 		if err != nil {
 			r.logger.Errorf("failed to create kv iterator, %s", err.Error())
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
@@ -525,7 +530,8 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 			return createKvIteratorResponse, gasUsed
 		}
 	case config.FuncKvPreIteratorCreate:
-		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
+		gasUsed, err = gas.CreateKvPreIteratorGasUsed(blockVersion, gasConfig,
+			recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 			createKvIteratorResponse.SysCallMessage.Message = err.Error()
@@ -668,7 +674,8 @@ func (r *RuntimeInstance) handleCreateKeyHistoryIterator(txId string, recvMsg *p
 
 	writeMap := make(map[string][]byte)
 	var err error
-	gasUsed, err = gas.CreateKeyHistoryIterGasUsed(blockVersion, gasConfig, gasUsed)
+	gasUsed, err = gas.CreateKeyHistoryIterGasUsed(blockVersion, gasConfig,
+		recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
 	if err != nil {
 		createKeyHistoryIterResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail
 		createKeyHistoryIterResponse.SysCallMessage.Message = err.Error()
@@ -840,16 +847,9 @@ func (r *RuntimeInstance) handleGetSenderAddress(txId string,
 	return getSenderAddressResponse, gasUsed
 }
 
-func kvIteratorCreate(
-	blockVersion uint32, gasConfig *gasutils.GasConfig,
-	txSimContext protocol.TxSimContext, calledContractName string,
+func kvIteratorCreate(txSimContext protocol.TxSimContext, calledContractName string,
 	key []byte, limitKey, limitField string, gasUsed uint64) (protocol.StateIterator, uint64, error) {
 	var err error
-	gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig, gasUsed)
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
 	if err = protocol.CheckKeyFieldStr(limitKey, limitField); err != nil {
 		return nil, gasUsed, err
 	}
