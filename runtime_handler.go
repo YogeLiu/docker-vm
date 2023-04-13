@@ -538,7 +538,7 @@ func (r *RuntimeInstance) handleCreateKvIterator(txId string, recvMsg *protogo.D
 			return createKvIteratorResponse, gasUsed
 		}
 	case config.FuncKvPreIteratorCreate:
-		gasUsed, err = gas.CreateKvPreIteratorGasUsed(blockVersion, gasConfig,
+		gasUsed, err = gas.CreateKvIteratorGasUsed(blockVersion, gasConfig,
 			recvMsg.SysCallMessage.Payload, gasUsed, txId, r.logger)
 		if err != nil {
 			createKvIteratorResponse.SysCallMessage.Code = protocol.ContractSdkSignalResultFail

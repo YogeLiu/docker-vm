@@ -94,33 +94,6 @@ func CreateKvIteratorGasUsed2312(gasConfig *gasutils.GasConfig,
 	return gasUsed, nil
 }
 
-// CreateKvPreIteratorGasUsed2312 calculate gas for key-value pre iterator `Create` operation
-func CreateKvPreIteratorGasUsed2312(gasConfig *gasutils.GasConfig,
-	params map[string][]byte, gasUsed uint64,
-	txId string, log protocol.Logger) (uint64, error) {
-
-	gasPrice := float32(0)
-	if gasConfig != nil {
-		gasPrice = gasConfig.GetGasPriceForInvoke()
-	}
-	dataSize := 0
-	dataSize += len(params[config.KeyIterStartKey])
-	dataSize += len(params[config.KeyIterStartField])
-
-	log.Debugf("【gas calc】%v, CreateKvPreIteratorGasUsed2312, dataSize = %v", txId, dataSize)
-
-	gas, err := gasutils.MultiplyGasPrice(dataSize, gasPrice)
-	if err != nil {
-		return 0, err
-	}
-
-	gasUsed += gas
-	if CheckGasLimit(gasUsed) {
-		return 0, errors.New("over gas limited")
-	}
-	return gasUsed, nil
-}
-
 // ConsumeKeyHistoryIterGasUsed2312 calculate gas for key history iterator `HasNext/Close` operation
 func ConsumeKeyHistoryIterGasUsed2312(gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
 

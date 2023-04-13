@@ -96,18 +96,6 @@ func CreateKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig,
 	return CreateKvIteratorGasUsed2312(gasConfig, params, gasUsed, txId, log)
 }
 
-// CreateKvPreIteratorGasUsed create kv iter gas used
-func CreateKvPreIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig,
-	params map[string][]byte, gasUsed uint64, txId string, log protocol.Logger) (uint64, error) {
-	if blockVersion < blockVersion2312 {
-		// 这里调用的是 CreateKvIteratorGasUsedLt2312, 没有 Pre
-		// 因为 CreateKvPreIteratorGasUsed 是为了解决 CreateKvIteratorGasUsed 不能处理的问题而创建的新函数，
-		// 为了兼容性，所以调用 CreateKvIteratorGasUsedLt2312
-		return CreateKvIteratorGasUsedLt2312(gasUsed)
-	}
-	return CreateKvPreIteratorGasUsed2312(gasConfig, params, gasUsed, txId, log)
-}
-
 // ConsumeKvIteratorGasUsed returns kv iter gas used
 func ConsumeKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
 	if blockVersion < blockVersion2312 {
