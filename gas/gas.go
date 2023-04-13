@@ -3,6 +3,8 @@ package gas
 import (
 	"errors"
 
+	"chainmaker.org/chainmaker/protocol/v2"
+
 	"chainmaker.org/chainmaker/pb-go/v2/common"
 	gasutils "chainmaker.org/chainmaker/utils/v2/gas"
 )
@@ -69,11 +71,12 @@ func EmitEventGasUsed(
 }
 
 // CreateKeyHistoryIterGasUsed returns create key history iter gas used
-func CreateKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+func CreateKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig,
+	params map[string][]byte, gasUsed uint64, txId string, log protocol.Logger) (uint64, error) {
 	if blockVersion < blockVersion2312 {
 		return CreateKeyHistoryIterGasUsedLt2312(gasUsed)
 	}
-	return CreateKeyHistoryIterGasUsed2312(gasConfig, gasUsed)
+	return CreateKeyHistoryIterGasUsed2312(gasConfig, params, gasUsed, txId, log)
 }
 
 // ConsumeKeyHistoryIterGasUsed returns consume key history iter gas used
@@ -85,11 +88,12 @@ func ConsumeKeyHistoryIterGasUsed(blockVersion uint32, gasConfig *gasutils.GasCo
 }
 
 // CreateKvIteratorGasUsed create kv iter gas used
-func CreateKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64) (uint64, error) {
+func CreateKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig,
+	params map[string][]byte, gasUsed uint64, txId string, log protocol.Logger) (uint64, error) {
 	if blockVersion < blockVersion2312 {
 		return CreateKvIteratorGasUsedLt2312(gasUsed)
 	}
-	return CreateKvIteratorGasUsed2312(gasConfig, gasUsed)
+	return CreateKvIteratorGasUsed2312(gasConfig, params, gasUsed, txId, log)
 }
 
 // ConsumeKvIteratorGasUsed returns kv iter gas used
@@ -103,10 +107,11 @@ func ConsumeKvIteratorGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig
 
 //CallContractGasUsed return call contract gas used
 func CallContractGasUsed(blockVersion uint32, gasConfig *gasutils.GasConfig, gasUsed uint64,
-	contractName string, contractMethod string, parameters map[string][]byte) (uint64, error) {
+	contractName string, contractMethod string, parameters map[string][]byte,
+	txId string, log protocol.Logger) (uint64, error) {
 	if blockVersion < blockVersion2312 {
 		return gasUsed, nil
 	}
 
-	return CallContractGasUsed2312(gasConfig, gasUsed, contractName, contractMethod, parameters)
+	return CallContractGasUsed2312(gasConfig, gasUsed, contractName, contractMethod, parameters, txId, log)
 }
