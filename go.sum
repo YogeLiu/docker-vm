@@ -13,7 +13,7 @@ chainmaker.org/chainmaker/protocol/v2 v2.3.2 h1:/WXi4LRKrjOaxd4NoFVGftKXrX84zNYb
 chainmaker.org/chainmaker/protocol/v2 v2.3.2/go.mod h1:PGP3kYeurnv5lmoYuXr2jvrGjR2Sp3GGocpTj2i5SJM=
 chainmaker.org/chainmaker/utils/v2 v2.3.2 h1:k2nR23f2L03KXCuNclcWCMGhnmVPvw5mep9iOyGXQiA=
 chainmaker.org/chainmaker/utils/v2 v2.3.2/go.mod h1:UcFHxei/7e3K67TxIAuFExWdTqfFniKGKt0Vlu+RxSo=
-chainmaker.org/chainmaker/vm-native/v2 v2.3.2 h1:qm407aR78OdE4M1265G29il6Vli0Pjvp2hpcn9RfK+Y=
+chainmaker.org/chainmaker/vm-native/v2 v2.3.2 h1:wfOf7YN2q90xLSy+KNkPTqs13tDr3umrDm/afxMs5Js=
 chainmaker.org/chainmaker/vm-native/v2 v2.3.2/go.mod h1:kbLdrmDoNKG/PB/O0eNFZB3D3+RYC8sZEbmpCc46sx0=
 chainmaker.org/chainmaker/vm/v2 v2.3.2 h1:klnNUPt9JZdK83pnk1uSbRhrXJ8ZQ2ftgVyHaGTHM5c=
 chainmaker.org/chainmaker/vm/v2 v2.3.2/go.mod h1:RgpRm6AuKzwSvK8tC6ENhjasEDgojXWiHKYhJFEh1j4=
