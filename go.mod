@@ -9,7 +9,6 @@ require (
 	chainmaker.org/chainmaker/pb-go/v2 v2.3.3-0.20230324030146-d53d46c7ee9f
 	chainmaker.org/chainmaker/protocol/v2 v2.3.3-0.20230320082116-0c7643a35069
 	chainmaker.org/chainmaker/utils/v2 v2.3.3-0.20230327083208-e51ca4aeac91
-	chainmaker.org/chainmaker/vm-native/v2 v2.3.3-0.20230324072622-8ed0501e2433 // indirect
 	chainmaker.org/chainmaker/vm/v2 v2.3.3-0.20230327090151-15e3a8850251
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/gogo/protobuf v1.3.2

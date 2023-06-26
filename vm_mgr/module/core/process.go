@@ -197,6 +197,8 @@ func (p *Process) launchProcess() *exitErr {
 			strconv.Itoa(tcpPort),
 			config.DockerVMConfig.RPC.ChainHost,
 			strconv.FormatBool(config.DockerVMConfig.Slow.Disable),
+			strconv.Itoa(config.DockerVMConfig.RPC.MaxSendMsgSize),
+			strconv.Itoa(config.DockerVMConfig.RPC.MaxRecvMsgSize),
 		},
 		Stderr: &stderr,
 	}
