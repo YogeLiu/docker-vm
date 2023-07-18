@@ -27,6 +27,7 @@ var file []byte
 // TxContextMockTest mock tx context test
 // nolint: unused, struct check
 type TxContextMockTest struct {
+	gasRemaining  uint64
 	lock          *sync.Mutex
 	vmManager     protocol.VmManager
 	currentDepth  int
@@ -38,14 +39,15 @@ type TxContextMockTest struct {
 	CacheMap map[string][]byte
 }
 
+// SubtractGas subtract gas from txSimContext
 func (s *TxContextMockTest) SubtractGas(gasUsed uint64) error {
-	//TODO implement me
-	panic("implement me")
+	s.gasRemaining -= gasUsed
+	return nil
 }
 
+// GetGasRemaining return gas remaining in txSimContext
 func (s *TxContextMockTest) GetGasRemaining() uint64 {
-	//TODO implement me
-	panic("implement me")
+	return s.gasRemaining
 }
 
 // GetSnapshot implement me
@@ -167,12 +169,13 @@ func InitContextTest() *TxContextMockTest {
 	}
 
 	txContext := TxContextMockTest{
-		lock:      &sync.Mutex{},
-		vmManager: nil,
-		hisResult: make([]*callContractResult, 0),
-		creator:   sender,
-		sender:    sender,
-		CacheMap:  make(map[string][]byte),
+		lock:         &sync.Mutex{},
+		vmManager:    nil,
+		hisResult:    make([]*callContractResult, 0),
+		creator:      sender,
+		sender:       sender,
+		CacheMap:     make(map[string][]byte),
+		gasRemaining: uint64(10_000_000),
 	}
 
 	return &txContext
