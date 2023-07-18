@@ -38,6 +38,16 @@ type TxContextMockTest struct {
 	CacheMap map[string][]byte
 }
 
+func (s *TxContextMockTest) SubtractGas(gasUsed uint64) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *TxContextMockTest) GetGasRemaining() uint64 {
+	//TODO implement me
+	panic("implement me")
+}
+
 // GetSnapshot implement me
 func (s *TxContextMockTest) GetSnapshot() protocol.Snapshot {
 	//TODO implement me
